@@ -2,7 +2,7 @@
 
 # Add the option for build the Python wrapping to VTK.
 option(VTK_WRAP_PYTHON "Should VTK Python wrapping be built?" OFF)
-set(VTK_PYTHON_VERSION 2 CACHE STRING
+set(VTK_PYTHON_VERSION 3 CACHE STRING
   "Python version to use")
 set_property(CACHE VTK_PYTHON_VERSION
   PROPERTY

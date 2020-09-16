@@ -1206,11 +1206,7 @@ std::string vtkPVFileInformation::GetParaViewSharedResourcesDirectory()
 
   // Where docs might be in relation to the executable
   std::vector<std::string> prefixes = {
-#if defined(_WIN32) || defined(__APPLE__)
-    ".."
-#else
     "share/paraview-" PARAVIEW_VERSION
-#endif
   };
 
   // Search for the docs directory
@@ -1220,6 +1216,11 @@ std::string vtkPVFileInformation::GetParaViewSharedResourcesDirectory()
   {
     resource_dir = vtksys::SystemTools::CollapseFullPath(resource_dir);
   }
+
+  vtkProcessModule* pm = vtkProcessModule::GetProcessModule();
+
+  if((pm)&&(prefixes.size()))
+    resource_dir = pm->GetSelfDir() + "/../" + prefixes[0];
 
   return resource_dir;
 }

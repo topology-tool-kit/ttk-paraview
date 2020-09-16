@@ -16,9 +16,9 @@ if (PARAVIEW_ENABLE_EMBEDDED_DOCUMENTATION)
 endif ()
 
 if (DEFINED PARAVIEW_VERSION_NICKNAME)
-  set(paraview_version "${PARAVIEW_VERSION_NICKNAME}")
+  set(paraview_version "[TTK 0.9.9] ${PARAVIEW_VERSION_NICKNAME}")
 else ()
-  set(paraview_version "${PARAVIEW_VERSION_FULL}")
+  set(paraview_version "[TTK 0.9.9] ${PARAVIEW_VERSION_FULL}")
 endif ()
 set(paraview_title "")
 
@@ -62,7 +62,7 @@ paraview_client_add(
   EXPORT            "ParaViewClient"
   APPLICATION_NAME  "ParaView"
   TITLE             "ParaView ${paraview_version}"
-  ORGANIZATION      "ParaView"
+  ORGANIZATION      "TTK"
   VERSION           "${PARAVIEW_VERSION_MAJOR}.${PARAVIEW_VERSION_MINOR}.${PARAVIEW_VERSION_PATCH}"
   ${style_args}
   MAIN_WINDOW_CLASS "ParaViewMainWindow"
