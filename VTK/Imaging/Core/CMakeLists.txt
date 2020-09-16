@@ -1,0 +1,46 @@
+set(classes
+  vtkAbstractImageInterpolator
+  vtkExtractVOI
+  vtkImageAppendComponents
+  vtkImageBlend
+  vtkImageBSplineCoefficients
+  vtkImageBSplineInternals
+  vtkImageBSplineInterpolator
+  vtkImageCacheFilter
+  vtkImageCast
+  vtkImageChangeInformation
+  vtkImageClip
+  vtkImageConstantPad
+  vtkImageDataStreamer
+  vtkImageDecomposeFilter
+  vtkImageDifference
+  vtkImageExtractComponents
+  vtkImageFlip
+  vtkImageInterpolator
+  vtkImageIterateFilter
+  vtkImageMagnify
+  vtkImageMapToColors
+  vtkImageMask
+  vtkImageMirrorPad
+  vtkImagePadFilter
+  vtkImagePermute
+  vtkImagePointDataIterator
+  vtkImagePointIterator
+  vtkImageResample
+  vtkImageResize
+  vtkImageReslice
+  vtkImageResliceToColors
+  vtkImageShiftScale
+  vtkImageShrink3D
+  vtkImageSincInterpolator
+  vtkImageStencilAlgorithm
+  vtkImageStencilData
+  vtkImageStencilIterator
+  vtkImageStencilSource # Needed by vtkImageStencilData
+  vtkImageThreshold
+  vtkImageTranslateExtent
+  vtkImageWrapPad
+  vtkRTAnalyticSource)
+
+vtk_module_add_module(VTK::ImagingCore
+  CLASSES ${classes})

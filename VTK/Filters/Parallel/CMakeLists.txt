@@ -1,0 +1,54 @@
+set(classes
+  vtkAggregateDataSetFilter
+  vtkAngularPeriodicFilter
+  vtkCollectGraph
+  vtkCollectPolyData
+  vtkCollectTable
+  vtkCutMaterial
+  vtkDistributedDataFilter
+  vtkDuplicatePolyData
+  vtkExtractCTHPart
+  vtkExtractPolyDataPiece
+  vtkExtractUnstructuredGridPiece
+  vtkExtractUserDefinedPiece
+  vtkHyperTreeGridGhostCellsGenerator
+  vtkIntegrateAttributes
+  vtkPCellDataToPointData
+  vtkPExtractDataArraysOverTime
+  vtkPExtractExodusGlobalTemporalVariables
+  vtkPExtractSelectedArraysOverTime
+  vtkPeriodicFilter
+  vtkPKdTree
+  vtkPLinearExtrusionFilter
+  vtkPMaskPoints
+  vtkPOutlineCornerFilter
+  vtkPOutlineFilter
+  vtkPOutlineFilterInternals
+  vtkPPolyDataNormals
+  vtkPProbeFilter
+  vtkPProjectSphereFilter
+  vtkPReflectionFilter
+  vtkPResampleFilter
+  vtkPSphereSource
+  vtkPYoungsMaterialInterface
+  vtkPassThroughFilter
+  vtkPieceRequestFilter
+  vtkPieceScalars
+  vtkPipelineSize
+  vtkProcessIdScalars
+  vtkPTextureMapToSphere
+  vtkRectilinearGridOutlineFilter
+  vtkRemoveGhosts
+  vtkTransmitPolyDataPiece
+  vtkTransmitStructuredDataPiece
+  vtkTransmitRectilinearGridPiece
+  vtkTransmitStructuredGridPiece
+  vtkTransmitUnstructuredGridPiece
+  vtkUnstructuredGridGhostCellsGenerator)
+
+set(headers
+  vtkBlockDistribution.h)
+
+vtk_module_add_module(VTK::FiltersParallel
+  CLASSES ${classes}
+  HEADERS ${headers})

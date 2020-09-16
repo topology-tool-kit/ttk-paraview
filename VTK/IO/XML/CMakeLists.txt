@@ -1,0 +1,57 @@
+set(classes
+  vtkRTXMLPolyDataReader
+  vtkXMLCompositeDataReader
+  vtkXMLCompositeDataWriter
+  vtkXMLDataObjectWriter
+  vtkXMLDataReader
+  vtkXMLDataSetWriter
+  vtkXMLFileReadTester
+  vtkXMLGenericDataObjectReader
+  vtkXMLHierarchicalBoxDataFileConverter
+  vtkXMLHierarchicalBoxDataReader
+  vtkXMLHierarchicalBoxDataWriter
+  vtkXMLHierarchicalDataReader
+  vtkXMLHyperTreeGridReader
+  vtkXMLHyperTreeGridWriter
+  vtkXMLImageDataReader
+  vtkXMLImageDataWriter
+  vtkXMLMultiBlockDataReader
+  vtkXMLMultiBlockDataWriter
+  vtkXMLMultiGroupDataReader
+  vtkXMLPDataObjectReader
+  vtkXMLPDataReader
+  vtkXMLPHyperTreeGridReader
+  vtkXMLPImageDataReader
+  vtkXMLPPolyDataReader
+  vtkXMLPRectilinearGridReader
+  vtkXMLPStructuredDataReader
+  vtkXMLPStructuredGridReader
+  vtkXMLPTableReader
+  vtkXMLPUnstructuredDataReader
+  vtkXMLPUnstructuredGridReader
+  vtkXMLPartitionedDataSetCollectionReader
+  vtkXMLPartitionedDataSetCollectionWriter
+  vtkXMLPartitionedDataSetReader
+  vtkXMLPartitionedDataSetWriter
+  vtkXMLPolyDataReader
+  vtkXMLPolyDataWriter
+  vtkXMLReader
+  vtkXMLRectilinearGridReader
+  vtkXMLRectilinearGridWriter
+  vtkXMLStructuredDataReader
+  vtkXMLStructuredDataWriter
+  vtkXMLStructuredGridReader
+  vtkXMLStructuredGridWriter
+  vtkXMLTableReader
+  vtkXMLTableWriter
+  vtkXMLUniformGridAMRReader
+  vtkXMLUniformGridAMRWriter
+  vtkXMLUnstructuredDataReader
+  vtkXMLUnstructuredDataWriter
+  vtkXMLUnstructuredGridReader
+  vtkXMLUnstructuredGridWriter
+  vtkXMLWriter
+  vtkXMLWriterC)
+
+vtk_module_add_module(VTK::IOXML
+  CLASSES ${classes})

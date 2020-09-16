@@ -1,0 +1,42 @@
+set(classes
+  vtkBMPReader
+  vtkBMPWriter
+  vtkDEMReader
+  vtkDICOMImageReader
+  vtkGESignaReader
+  vtkImageExport
+  vtkImageImport
+  vtkImageImportExecutive
+  vtkImageReader
+  vtkImageReader2
+  vtkImageReader2Collection
+  vtkImageReader2Factory
+  vtkImageWriter
+  vtkJPEGReader
+  vtkJPEGWriter
+  vtkJSONImageWriter
+  vtkMedicalImageProperties
+  vtkMedicalImageReader2
+  vtkMetaImageReader
+  vtkMetaImageWriter
+  vtkMRCReader
+  vtkNIFTIImageHeader
+  vtkNIFTIImageReader
+  vtkNIFTIImageWriter
+  vtkNrrdReader
+  vtkOMETIFFReader
+  vtkPNGReader
+  vtkPNGWriter
+  vtkPNMReader
+  vtkPNMWriter
+  vtkPostScriptWriter
+  vtkSEPReader
+  vtkSLCReader
+  vtkTIFFReader
+  vtkTIFFWriter
+  vtkVolume16Reader
+  vtkVolumeReader)
+
+vtk_module_add_module(VTK::IOImage
+  PRIVATE_HEADERS vtkTIFFReaderInternal.h
+  CLASSES ${classes})
