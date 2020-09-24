@@ -1,8 +1,0 @@
-NAME
-  VTK::TestingCore
-LIBRARY_NAME
-  vtkTestingCore
-DEPENDS
-  VTK::CommonCore
-  VTK::vtksys
-EXCLUDE_WRAP
