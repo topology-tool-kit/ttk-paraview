@@ -1,0 +1,6 @@
+NAME
+ GLTFReader
+DESCRIPTION
+  glTF reader plugin
+REQUIRES_MODULES
+  VTK::FiltersSources

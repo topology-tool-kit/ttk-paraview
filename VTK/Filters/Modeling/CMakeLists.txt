@@ -1,0 +1,37 @@
+set(classes
+  vtkAdaptiveSubdivisionFilter
+  vtkBandedPolyDataContourFilter
+  vtkButterflySubdivisionFilter
+  vtkCollisionDetectionFilter
+  vtkContourLoopExtraction
+  vtkCookieCutter
+  vtkDijkstraGraphGeodesicPath
+  vtkDijkstraImageGeodesicPath
+  vtkFillHolesFilter
+  vtkFitToHeightMapFilter
+  vtkGeodesicPath
+  vtkGraphGeodesicPath
+  vtkHausdorffDistancePointSetFilter
+  vtkHyperTreeGridOutlineFilter
+  vtkLinearCellExtrusionFilter
+  vtkLinearExtrusionFilter
+  vtkLinearSubdivisionFilter
+  vtkLoopSubdivisionFilter
+  vtkOutlineFilter
+  vtkPolyDataPointSampler
+  vtkProjectedTexture
+  vtkQuadRotationalExtrusionFilter
+  vtkRibbonFilter
+  vtkRotationalExtrusionFilter
+  vtkRuledSurfaceFilter
+  vtkSectorSource
+  vtkSelectEnclosedPoints
+  vtkSelectPolyData
+  vtkSpherePuzzle
+  vtkSpherePuzzleArrows
+  vtkSubdivideTetra
+  vtkTrimmedExtrusionFilter
+  vtkVolumeOfRevolutionFilter)
+
+vtk_module_add_module(VTK::FiltersModeling
+  CLASSES ${classes})
