@@ -20,7 +20,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-16.04, ubuntu-18.04, ubuntu-20.04]
+        os: [ubuntu-18.04, ubuntu-20.04]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -46,6 +46,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/usr \
           -DVTK_ENABLE_OSPRAY=OFF \
+          -DPARAVIEW_PYTHON_SITE_PACKAGES_SUFFIX=lib/python3/dist-packages \
           $GITHUB_WORKSPACE
         make -j$(nproc)
         cpack -G DEB
@@ -82,6 +83,8 @@ jobs:
 
     - name: Build patched ParaView & create package
       run: |
+        # switch to Xcode 11 since Xcode 12 breaks the ParaView build
+        sudo xcode-select -s "/Applications/Xcode_11.7.app"
         mkdir build && cd build
         cmake \
           -DCMAKE_BUILD_TYPE=Release \
@@ -144,16 +147,6 @@ jobs:
 
     - name: Fetch all uploaded artifacts
       uses: actions/download-artifact@v2
-
-    - name: Upload Ubuntu Xenial .deb as Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ttk-paraview-ubuntu-16.04.deb/ttk-paraview.deb
-        asset_name: ttk-paraview-ubuntu-16.04.deb
-        asset_content_type: application/vnd.debian.binary-package
 
     - name: Upload Ubuntu Bionic .deb as Release Asset
       uses: actions/upload-release-asset@v1
