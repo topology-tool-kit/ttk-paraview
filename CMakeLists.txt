@@ -829,4 +829,8 @@ set(CPACK_PACKAGE_VERSION_MINOR ${PARAVIEW_VERSION_MINOR})
 set(CPACK_PACKAGE_VERSION_PATCH ${PARAVIEW_VERSION_PATCH})
 # autogenerate dependency information
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+# package will be installed under %ProgramFiles%\${CPACK_PACKAGE_INSTALL_DIRECTORY} on Windows
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "TTK-ParaView")
+# let the installer uninstall previous installations on Windows
+set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON))
 include(CPack)
