@@ -1,0 +1,50 @@
+set(classes
+  vtkAxis
+  vtkAxisExtended
+  vtkCategoryLegend
+  vtkChartBox
+  vtkChart
+  vtkChartHistogram2D
+  vtkChartLegend
+  vtkChartMatrix
+  vtkChartParallelCoordinates
+  vtkChartPie
+  vtkChartXY
+  vtkChartXYZ
+  vtkColorLegend
+  vtkColorTransferControlPointsItem
+  vtkColorTransferFunctionItem
+  vtkCompositeControlPointsItem
+  vtkCompositeTransferFunctionItem
+  vtkContextArea
+  vtkContextPolygon
+  vtkControlPointsItem
+  vtkInteractiveArea
+  vtkLookupTableItem
+  vtkPiecewiseControlPointsItem
+  vtkPiecewiseFunctionItem
+  vtkPiecewisePointHandleItem
+  vtkPlot3D
+  vtkPlotArea
+  vtkPlotBag
+  vtkPlotBar
+  vtkPlotBox
+  vtkPlot
+  vtkPlotFunctionalBag
+  vtkPlotGrid
+  vtkPlotHistogram2D
+  vtkPlotLine3D
+  vtkPlotLine
+  vtkPlotParallelCoordinates # This adds a vtkInfovisCore dep for one class...
+  vtkPlotPie
+  vtkPlotPoints3D
+  vtkPlotPoints
+  vtkPlotStacked
+  vtkPlotSurface
+  vtkRangeHandlesItem
+  vtkScalarsToColorsItem
+  vtkScatterPlotMatrix
+  )
+
+vtk_module_add_module(VTK::ChartsCore
+  CLASSES ${classes})

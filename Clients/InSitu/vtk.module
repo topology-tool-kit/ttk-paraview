@@ -1,0 +1,21 @@
+NAME
+  ParaView::InSitu
+LIBRARY_NAME
+  vtkPVInSitu
+DEPENDS
+  VTK::CommonCore
+KIT
+  ParaView::ClientKit
+GROUPS
+  PARAVIEW_CORE
+PRIVATE_DEPENDS
+  ParaView::Catalyst
+  ParaView::RemotingApplication
+  ParaView::VTKExtensionsConduit
+  ParaView::VTKExtensionsCore
+OPTIONAL_DEPENDS
+  ParaView::PythonCatalyst
+  ParaView::PythonInitializer
+  ParaView::RemotingLive
+  VTK::ParallelMPI
+  VTK::WrappingPythonCore
