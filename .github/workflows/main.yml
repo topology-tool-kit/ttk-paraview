@@ -21,7 +21,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-18.04, ubuntu-20.04]
+        os: [ubuntu-20.04]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -38,6 +38,9 @@ jobs:
           qtxmlpatterns5-dev-tools \
           libqt5x11extras5-dev \
           libqt5svg5-dev \
+          libgl1-mesa-dev \
+          libxcursor-dev \
+          ninja-build \
           dpkg-dev
 
     - name: Configure ParaView build
@@ -47,12 +50,13 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/usr \
           -DPARAVIEW_PYTHON_SITE_PACKAGES_SUFFIX=lib/python3/dist-packages \
+          -GNinja \
           $GITHUB_WORKSPACE
 
     - name: Build patched ParaView
       run: |
         cd build
-        make -j$(nproc)
+        cmake --build . --parallel
 
     - name: Create package
       run: |
@@ -87,7 +91,7 @@ jobs:
     - name: Install macOS dependencies
       run: |
         brew install --cask xquartz
-        brew install wget libomp mesa glew boost qt ninja python
+        brew install wget libomp mesa glew boost qt@5 ninja python
 
     - name: Configure ParaView build
       run: |
@@ -97,14 +101,14 @@ jobs:
         cmake \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/Applications \
-          -DQt5_DIR=$(brew --prefix qt)/lib/cmake/Qt5 \
+          -DQt5_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5 \
           -GNinja \
           $GITHUB_WORKSPACE
 
     - name: Build patched ParaView
       run: |
         cd build
-        ninja
+        cmake --build . --parallel
 
     - name: Create package
       run: |
@@ -119,6 +123,10 @@ jobs:
 
   build-windows:
     runs-on: windows-latest
+    env:
+      CONDA_ROOT: C:\Miniconda
+      VCVARS: C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat
+
     steps:
     - uses: actions/checkout@v2
 
@@ -129,7 +137,7 @@ jobs:
       run: |
         rm -rf C:/hostedtoolcache/windows/Python
 
-    - name: Install qt with conda
+    - name: Install Windows dependencies
       shell: bash
       run: |
         conda install -c conda-forge qt
@@ -137,10 +145,10 @@ jobs:
     - name: Configure ParaView build
       shell: cmd
       run: |
-        call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+        call "%VCVARS%"
         mkdir build
         cd build
-        cmake  -GNinja ..
+        cmake -DPython3_ROOT_DIR="%CONDA_ROOT%" -DCMAKE_BUILD_TYPE=Release ..
 
     - name: Build patched ParaView
       shell: bash
@@ -177,14 +185,6 @@ jobs:
 
     - name: Fetch all uploaded artifacts
       uses: actions/download-artifact@v2
-
-    - name: Upload Ubuntu Bionic .deb as Release Asset
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ github.ref }}
-        file: ttk-paraview-ubuntu-18.04.deb/ttk-paraview.deb
-        asset_name: ttk-paraview-$tag-ubuntu-18.04.deb
 
     - name: Upload Ubuntu Focal .deb as Release Asset
       uses: svenstaro/upload-release-action@v2
