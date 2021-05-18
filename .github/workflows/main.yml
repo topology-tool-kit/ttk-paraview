@@ -40,16 +40,23 @@ jobs:
           libqt5svg5-dev \
           dpkg-dev
 
-    - name: Build patched ParaView & create package
+    - name: Configure ParaView build
       run: |
         mkdir build && cd build
         cmake \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/usr \
-          -DVTK_ENABLE_OSPRAY=OFF \
           -DPARAVIEW_PYTHON_SITE_PACKAGES_SUFFIX=lib/python3/dist-packages \
           $GITHUB_WORKSPACE
+
+    - name: Build patched ParaView
+      run: |
+        cd build
         make -j$(nproc)
+
+    - name: Create package
+      run: |
+        cd build
         cpack -G DEB
 
     - name: Update package informations
@@ -80,25 +87,28 @@ jobs:
     - name: Install macOS dependencies
       run: |
         brew install --cask xquartz
-        brew install wget libomp mesa glew boost qt ninja
+        brew install wget libomp mesa glew boost qt ninja python
 
-    - uses: actions/setup-python@v2
-      with:
-        python-version: "3.8"
-
-    - name: Build patched ParaView & create package
+    - name: Configure ParaView build
       run: |
         # switch to Xcode 11 since Xcode 12 breaks the ParaView build
         sudo xcode-select -s "/Applications/Xcode_11.7.app"
         mkdir build && cd build
         cmake \
           -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_INSTALL_PREFIX=/usr \
-          -DVTK_ENABLE_OSPRAY=OFF \
+          -DCMAKE_INSTALL_PREFIX=/Applications \
           -DQt5_DIR=$(brew --prefix qt)/lib/cmake/Qt5 \
           -GNinja \
           $GITHUB_WORKSPACE
+
+    - name: Build patched ParaView
+      run: |
+        cd build
         ninja
+
+    - name: Create package
+      run: |
+        cd build
         cpack -G productbuild
 
     - name: Upload .pgk package
@@ -114,19 +124,34 @@ jobs:
 
     - uses: s-weigand/setup-conda@v1
 
+    - name: Remove hosted Python
+      shell: bash
+      run: |
+        rm -rf C:/hostedtoolcache/windows/Python
+
     - name: Install qt with conda
       shell: bash
       run: |
-        conda install -c anaconda qt
+        conda install -c conda-forge qt
 
-    - name: Configure & build ParaView
+    - name: Configure ParaView build
       shell: cmd
       run: |
         call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
         mkdir build
         cd build
-        cmake -DCMAKE_BUILD_TYPE=Release -DVTK_ENABLE_OSPRAY=OFF -GNinja ..
-        ninja
+        cmake  -GNinja ..
+
+    - name: Build patched ParaView
+      shell: bash
+      run: |
+        cd build
+        cmake --build . --config Release --parallel
+
+    - name: Create package
+      shell: bash
+      run: |
+        cd build
         cpack -G NSIS64
 
     - name: Upload .exe installer
@@ -154,45 +179,33 @@ jobs:
       uses: actions/download-artifact@v2
 
     - name: Upload Ubuntu Bionic .deb as Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: svenstaro/upload-release-action@v2
       with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ttk-paraview-ubuntu-18.04.deb/ttk-paraview.deb
+        file: ttk-paraview-ubuntu-18.04.deb/ttk-paraview.deb
         asset_name: ttk-paraview-$tag-ubuntu-18.04.deb
-        asset_content_type: application/vnd.debian.binary-package
 
     - name: Upload Ubuntu Focal .deb as Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: svenstaro/upload-release-action@v2
       with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ttk-paraview-ubuntu-20.04.deb/ttk-paraview.deb
+        file: ttk-paraview-ubuntu-20.04.deb/ttk-paraview.deb
         asset_name: ttk-paraview-$tag-ubuntu-20.04.deb
-        asset_content_type: application/vnd.debian.binary-package
 
     - name: Upload .pkg as Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: svenstaro/upload-release-action@v2
       with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ttk-paraview.pkg/ttk-paraview.pkg
+        file: ttk-paraview.pkg/ttk-paraview.pkg
         asset_name: ttk-paraview-$tag.pkg
-        asset_content_type: application/x-newton-compatible-pkg
 
     - name: Upload .exe as Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: svenstaro/upload-release-action@v2
       with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ttk-paraview.exe/ttk-paraview.exe
+        file: ttk-paraview.exe/ttk-paraview.exe
         asset_name: ttk-paraview-$tag.exe
-        asset_content_type: application/vnd.microsoft.portable-executable
