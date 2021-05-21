@@ -88,6 +88,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Remove hosted Python
+      run: |
+        sudo rm -rf /usr/local/Frameworks/Python.framework
+
     - name: Install macOS dependencies
       run: |
         brew install --cask xquartz
@@ -102,6 +106,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/Applications \
           -DQt5_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5 \
+          -DPython3_ROOT_DIR=$(brew --prefix python) \
           -GNinja \
           $GITHUB_WORKSPACE
 
