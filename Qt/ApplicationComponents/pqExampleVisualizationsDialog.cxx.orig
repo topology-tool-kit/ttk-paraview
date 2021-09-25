@@ -22,11 +22,13 @@ pqExampleVisualizationsDialog::pqExampleVisualizationsDialog(QWidget* parentObje
   ui->setupUi(this);
 
   QObject::connect(
-    this->ui->Example1Button, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
+    this->ui->CanExampleButton, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
   QObject::connect(
-    this->ui->Example2Button, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
+    this->ui->DiskOutRefExampleButton, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
   QObject::connect(
-    this->ui->Example3Button, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
+    this->ui->WaveletExampleButton, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
+  QObject::connect(
+    this->ui->HotGasAnalysisExampleButton, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
 }
 
 //-----------------------------------------------------------------------------
@@ -44,20 +46,25 @@ void pqExampleVisualizationsDialog::onButtonPressed()
   {
     const char* stateFile = NULL;
     bool needsData = false;
-    if (button == this->ui->Example1Button)
+    if (button == this->ui->CanExampleButton)
     {
-      stateFile = ":/pqApplicationComponents/ExampleVisualizations/Example1.pvsm";
+      stateFile = ":/pqApplicationComponents/ExampleVisualizations/CanExample.pvsm";
       needsData = true;
     }
-    else if (button == this->ui->Example2Button)
+    else if (button == this->ui->DiskOutRefExampleButton)
     {
-      stateFile = ":/pqApplicationComponents/ExampleVisualizations/Example2.pvsm";
+      stateFile = ":/pqApplicationComponents/ExampleVisualizations/DiskOutRefExample.pvsm";
       needsData = true;
     }
-    else if (button == this->ui->Example3Button)
+    else if (button == this->ui->WaveletExampleButton)
     {
-      stateFile = ":/pqApplicationComponents/ExampleVisualizations/Example3.pvsm";
+      stateFile = ":/pqApplicationComponents/ExampleVisualizations/WaveletExample.pvsm";
       needsData = false;
+    }
+    else if (button == this->ui->HotGasAnalysisExampleButton)
+    {
+      stateFile = ":/pqApplicationComponents/ExampleVisualizations/HotGasAnalysisExample.pvsm";
+      needsData = true;
     }
     else
     {
