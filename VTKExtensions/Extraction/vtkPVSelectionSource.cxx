@@ -138,7 +138,7 @@ public:
   };
 
   typedef std::set<vtkIdType> SetOfIDs;
-  typedef std::vector<IDType> SetOfIDType;
+  typedef std::set<IDType> SetOfIDType;
   typedef std::set<CompositeIDType> SetOfCompositeIDType;
   typedef std::set<HierarchicalIDType> SetOfHierarchicalIDType;
   typedef std::set<PedigreeIDType> SetOfPedigreeIDType;
@@ -248,18 +248,7 @@ void vtkPVSelectionSource::AddID(vtkIdType piece, vtkIdType id)
     piece = -1;
   }
   this->Mode = ID;
-
-  bool inThere = false;
-  for(int i = 0; i < (int) this->Internal->IDs.size(); i++){
-    if(this->Internal->IDs[i].ID == vtkInternal::IDType(piece, id).ID){
-      inThere = true;
-      break;
-    }
-  }
-  if(!inThere){
-    // no duplicated entry
-    this->Internal->IDs.push_back(vtkInternal::IDType(piece, id));
-  }
+  this->Internal->IDs.insert(vtkInternal::IDType(piece, id));
   this->Modified();
 }
 
@@ -279,18 +268,7 @@ void vtkPVSelectionSource::AddValue(vtkIdType piece, vtkIdType value)
     piece = -1;
   }
   this->Mode = VALUES;
-  bool inThere = false;
-  for(int i = 0; i < (int) this->Internal->Values.size(); i++){
-    if(this->Internal->Values[i].ID == vtkInternal::IDType(piece, value).ID){
-      inThere = true;
-      break;
-    }
-  }
-  if(!inThere){
-    // no duplicated entry
-    this->Internal->Values.push_back(vtkInternal::IDType(piece, value));
-  }
-
+  this->Internal->Values.insert(vtkInternal::IDType(piece, value));
   this->Modified();
 }
 

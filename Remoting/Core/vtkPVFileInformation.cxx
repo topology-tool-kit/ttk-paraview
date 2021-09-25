@@ -28,12 +28,10 @@
 #include "vtkVersion.h"
 
 #if defined(_WIN32)
-#define _WIN32_IE 0x0400    // special folder support
-#define _WIN32_WINNT 0x0400 // shared folder support
-#include <direct.h>         // _getcwd
-#include <shlobj.h>         // SHGetFolderPath
-#include <string.h>         // for strcasecmp
-#include <windows.h>        // FindFirstFile, FindNextFile, FindClose, ...
+#include <direct.h>  // _getcwd
+#include <shlobj.h>  // SHGetFolderPath
+#include <string.h>  // for strcasecmp
+#include <windows.h> // FindFirstFile, FindNextFile, FindClose, ...
 #define vtkPVServerFileListingGetCWD _getcwd
 #else
 #include <dirent.h>    // opendir, readdir, closedir
@@ -1208,7 +1206,11 @@ std::string vtkPVFileInformation::GetParaViewSharedResourcesDirectory()
 
   // Where docs might be in relation to the executable
   std::vector<std::string> prefixes = {
+#if defined(_WIN32) || defined(__APPLE__)
+    ".."
+#else
     "share/paraview-" PARAVIEW_VERSION
+#endif
   };
 
   // Search for the docs directory
@@ -1218,11 +1220,6 @@ std::string vtkPVFileInformation::GetParaViewSharedResourcesDirectory()
   {
     resource_dir = vtksys::SystemTools::CollapseFullPath(resource_dir);
   }
-
-  vtkProcessModule* pm = vtkProcessModule::GetProcessModule();
-
-  if((pm)&&(prefixes.size()))
-    resource_dir = pm->GetSelfDir() + "/../" + prefixes[0];
 
   return resource_dir;
 }

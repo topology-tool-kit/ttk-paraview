@@ -95,8 +95,15 @@ void vtkSurfaceLICMapper::ReplaceShaderValues(
   vtkShaderProgram::Substitute(FSSource, "//VTK::TCoord::Dec",
     // 0/1, when 1 V is projected to surface for |V| computation.
     "uniform int uMaskOnSurface;\n"
-    "uniform mat3 normalMatrix;\n"
-    "in vec3 tcoordVCVSOutput;");
+    "in vec3 tcoordVCVSOutput;\n"
+    "//VTK::TCoord::Dec");
+
+  // No need to create uniform normalMatrix as it will be done in superclass
+  // if the data contains normals
+  if (this->VBOs->GetNumberOfComponents("normalMC") != 3)
+  {
+    vtkShaderProgram::Substitute(FSSource, "//VTK::TCoord::Dec", "uniform mat3 normalMatrix;");
+  }
 
   if (this->LastLightComplexity[this->LastBoundBO] > 0)
   {
@@ -181,6 +188,7 @@ void vtkSurfaceLICMapper::RenderPiece(vtkRenderer* renderer, vtkActor* actor)
   vtkOpenGLRenderWindow* rw = vtkOpenGLRenderWindow::SafeDownCast(renderer->GetRenderWindow());
   vtkOpenGLState* ostate = rw->GetState();
   vtkOpenGLState::ScopedglEnableDisable bsaver(ostate, GL_BLEND);
+  vtkOpenGLState::ScopedglEnableDisable cfsaver(ostate, GL_CULL_FACE);
 
   vtkNew<vtkOpenGLFramebufferObject> fbo;
   fbo->SetContext(rw);
@@ -192,11 +200,15 @@ void vtkSurfaceLICMapper::RenderPiece(vtkRenderer* renderer, vtkActor* actor)
 
   // draw the geometry
   this->LICInterface->PrepareForGeometry();
+
   this->UpdateCameraShiftScale(renderer, actor);
   this->RenderPieceStart(renderer, actor);
   this->RenderPieceDraw(renderer, actor);
   this->RenderPieceFinish(renderer, actor);
   this->LICInterface->CompletedGeometry();
+
+  // Disable cull face to make sure geometry won't be culled again
+  ostate->vtkglDisable(GL_CULL_FACE);
 
   // --------------------------------------------- compoiste vectors for parallel LIC
   this->LICInterface->GatherVectors();

@@ -120,7 +120,7 @@ if (NOT WIN32)
   unset(_has_fortran)
 endif()
 
-vtk_deprecated_setting(python_default PARAVIEW_USE_PYTHON PARAVIEW_ENABLE_PYTHON ON)
+vtk_deprecated_setting(python_default PARAVIEW_USE_PYTHON PARAVIEW_ENABLE_PYTHON OFF)
 option(PARAVIEW_USE_PYTHON "Enable/Disable Python scripting support" "${python_default}")
 
 # Currently, we're making `PARAVIEW_USE_QT` available only when doing CANONICAL
@@ -448,6 +448,7 @@ paraview_require_module(
             VTK::IOCONVERGECFD
             VTK::IOIoss
             VTK::IOH5part
+            VTK::IOH5Rage
             VTK::IONetCDF
             VTK::IOOggTheora
             VTK::IOParallelExodus

@@ -69,6 +69,7 @@ function(catalyst_library)
     install(
       TARGETS ${arg_TARGET}
       ${_exports}
+      RUNTIME DESTINATION ${arg_LIBRARY_DESTINATION}
       LIBRARY DESTINATION ${arg_LIBRARY_DESTINATION})
   endif()
 endfunction()
