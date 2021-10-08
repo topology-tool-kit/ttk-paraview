@@ -13,9 +13,11 @@ on:
       - 'dev*'
       - 'pack*'
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
+
+  # ------ #
+  # Ubuntu #
+  # ------ #
   build-linux:
     # The type of runner that the job will run on
     runs-on: ubuntu-20.04
@@ -80,6 +82,10 @@ jobs:
         name: ttk-paraview-ubuntu-20.04.deb
         path: build/ttk-paraview.deb
 
+
+  # ----- #
+  # macOS #
+  # ----- #
   build-macos:
     runs-on: macos-latest
     steps:
@@ -123,6 +129,10 @@ jobs:
         name: ttk-paraview.pkg
         path: build/ttk-paraview.pkg
 
+
+  # ------- #
+  # Windows #
+  # ------- #
   build-windows:
     runs-on: windows-latest
     env:
@@ -131,18 +141,19 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+      name: Checkout TTK-ParaView source code
 
     - uses: s-weigand/setup-conda@v1
+
+    - name: Install dependencies with conda
+      shell: bash
+      run: |
+        conda install -c conda-forge qt
 
     - name: Remove hosted Python
       shell: bash
       run: |
         rm -rf C:/hostedtoolcache/windows/Python
-
-    - name: Install Windows dependencies
-      shell: bash
-      run: |
-        conda install -c conda-forge qt
 
     - name: Configure ParaView build
       shell: cmd
@@ -150,11 +161,16 @@ jobs:
         call "%VCVARS%"
         mkdir build
         cd build
-        cmake -DPython3_ROOT_DIR="%CONDA_ROOT%" -DCMAKE_BUILD_TYPE=Release ..
+        cmake ^
+          -DPython3_ROOT_DIR="%CONDA_ROOT%" ^
+          -DCMAKE_BUILD_TYPE=Release ^
+          -GNinja ^
+          ..
 
     - name: Build patched ParaView
-      shell: bash
+      shell: cmd
       run: |
+        call "%VCVARS%"
         cd build
         cmake --build . --config Release --parallel
 
