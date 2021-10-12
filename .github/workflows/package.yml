@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name: CI
+name: packaging
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
@@ -9,19 +9,18 @@ on:
     branch-ignore:
       - '*'
     tags:
-      - 'v*'
+      - 'v?\d+.\d+.\d+'
       - 'dev*'
-      - '*.*.*'
+      - 'pack*'
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
+
+  # ------ #
+  # Ubuntu #
+  # ------ #
   build-linux:
     # The type of runner that the job will run on
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-18.04, ubuntu-20.04]
+    runs-on: ubuntu-20.04
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -38,18 +37,29 @@ jobs:
           qtxmlpatterns5-dev-tools \
           libqt5x11extras5-dev \
           libqt5svg5-dev \
+          libgl1-mesa-dev \
+          libxcursor-dev \
+          ninja-build \
           dpkg-dev
 
-    - name: Build patched ParaView & create package
+    - name: Configure ParaView build
       run: |
         mkdir build && cd build
         cmake \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/usr \
-          -DVTK_ENABLE_OSPRAY=OFF \
           -DPARAVIEW_PYTHON_SITE_PACKAGES_SUFFIX=lib/python3/dist-packages \
+          -GNinja \
           $GITHUB_WORKSPACE
-        make -j$(nproc)
+
+    - name: Build patched ParaView
+      run: |
+        cd build
+        cmake --build . --parallel
+
+    - name: Create package
+      run: |
+        cd build
         cpack -G DEB
 
     - name: Update package informations
@@ -69,36 +79,48 @@ jobs:
     - name: Upload .deb package
       uses: actions/upload-artifact@v2
       with:
-        name: ttk-paraview-${{ matrix.os }}.deb
+        name: ttk-paraview-ubuntu-20.04.deb
         path: build/ttk-paraview.deb
 
+
+  # ----- #
+  # macOS #
+  # ----- #
   build-macos:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
 
+    - name: Remove hosted Python
+      run: |
+        sudo rm -rf /usr/local/Frameworks/Python.framework
+
     - name: Install macOS dependencies
       run: |
         brew install --cask xquartz
-        brew install wget libomp mesa glew boost qt ninja
+        brew install wget libomp mesa glew boost qt@5 ninja python
 
-    - uses: actions/setup-python@v2
-      with:
-        python-version: "3.8"
-
-    - name: Build patched ParaView & create package
+    - name: Configure ParaView build
       run: |
         # switch to Xcode 11 since Xcode 12 breaks the ParaView build
         sudo xcode-select -s "/Applications/Xcode_11.7.app"
         mkdir build && cd build
         cmake \
           -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_INSTALL_PREFIX=/usr \
-          -DVTK_ENABLE_OSPRAY=OFF \
-          -DQt5_DIR=$(brew --prefix qt)/lib/cmake/Qt5 \
+          -DCMAKE_INSTALL_PREFIX=/Applications \
+          -DQt5_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5 \
+          -DPython3_ROOT_DIR=$(brew --prefix python) \
           -GNinja \
           $GITHUB_WORKSPACE
-        ninja
+
+    - name: Build patched ParaView
+      run: |
+        cd build
+        cmake --build . --parallel
+
+    - name: Create package
+      run: |
+        cd build
         cpack -G productbuild
 
     - name: Upload .pgk package
@@ -107,26 +129,55 @@ jobs:
         name: ttk-paraview.pkg
         path: build/ttk-paraview.pkg
 
+
+  # ------- #
+  # Windows #
+  # ------- #
   build-windows:
     runs-on: windows-latest
+    env:
+      CONDA_ROOT: C:\Miniconda
+      VCVARS: C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat
+
     steps:
     - uses: actions/checkout@v2
+      name: Checkout TTK-ParaView source code
 
     - uses: s-weigand/setup-conda@v1
 
-    - name: Install qt with conda
+    - name: Install dependencies with conda
       shell: bash
       run: |
-        conda install -c anaconda qt
+        conda install -c conda-forge qt
 
-    - name: Configure & build ParaView
+    - name: Remove hosted Python
+      shell: bash
+      run: |
+        rm -rf C:/hostedtoolcache/windows/Python
+
+    - name: Configure ParaView build
       shell: cmd
       run: |
-        call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+        call "%VCVARS%"
         mkdir build
         cd build
-        cmake -DCMAKE_BUILD_TYPE=Release -DVTK_ENABLE_OSPRAY=OFF -GNinja ..
-        ninja
+        cmake ^
+          -DPython3_ROOT_DIR="%CONDA_ROOT%" ^
+          -DCMAKE_BUILD_TYPE=Release ^
+          -GNinja ^
+          ..
+
+    - name: Build patched ParaView
+      shell: cmd
+      run: |
+        call "%VCVARS%"
+        cd build
+        cmake --build . --config Release --parallel
+
+    - name: Create package
+      shell: bash
+      run: |
+        cd build
         cpack -G NSIS64
 
     - name: Upload .exe installer
@@ -153,46 +204,26 @@ jobs:
     - name: Fetch all uploaded artifacts
       uses: actions/download-artifact@v2
 
-    - name: Upload Ubuntu Bionic .deb as Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag: ${{ github.ref }}
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ttk-paraview-ubuntu-18.04.deb/ttk-paraview.deb
-        asset_name: ttk-paraview-$tag-ubuntu-18.04.deb
-        asset_content_type: application/vnd.debian.binary-package
-
     - name: Upload Ubuntu Focal .deb as Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: svenstaro/upload-release-action@v2
       with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ttk-paraview-ubuntu-20.04.deb/ttk-paraview.deb
+        file: ttk-paraview-ubuntu-20.04.deb/ttk-paraview.deb
         asset_name: ttk-paraview-$tag-ubuntu-20.04.deb
-        asset_content_type: application/vnd.debian.binary-package
 
     - name: Upload .pkg as Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: svenstaro/upload-release-action@v2
       with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ttk-paraview.pkg/ttk-paraview.pkg
+        file: ttk-paraview.pkg/ttk-paraview.pkg
         asset_name: ttk-paraview-$tag.pkg
-        asset_content_type: application/x-newton-compatible-pkg
 
     - name: Upload .exe as Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: svenstaro/upload-release-action@v2
       with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ttk-paraview.exe/ttk-paraview.exe
+        file: ttk-paraview.exe/ttk-paraview.exe
         asset_name: ttk-paraview-$tag.exe
-        asset_content_type: application/vnd.microsoft.portable-executable
