@@ -16,9 +16,9 @@ if (PARAVIEW_ENABLE_EMBEDDED_DOCUMENTATION)
 endif ()
 
 if (DEFINED PARAVIEW_VERSION_NICKNAME)
-  set(paraview_version "[TTK 0.9.10] ${PARAVIEW_VERSION_NICKNAME}")
+  set(paraview_version "[TTK 1.0] ${PARAVIEW_VERSION_NICKNAME}")
 else ()
-  set(paraview_version "[TTK 0.9.10] ${PARAVIEW_VERSION_FULL}")
+  set(paraview_version "[TTK 1.0] ${PARAVIEW_VERSION_FULL}")
 endif ()
 set(paraview_title "")
 
