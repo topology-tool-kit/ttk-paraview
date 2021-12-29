@@ -36,7 +36,7 @@ vtkStandardNewMacro(vtkSelectionSource);
 class vtkSelectionSource::vtkInternals
 {
 public:
-  typedef std::vector<vtkIdType> IDSetType;
+  typedef std::set<vtkIdType> IDSetType;
   typedef std::vector<IDSetType> IDsType;
   IDsType IDs;
 
@@ -177,7 +177,7 @@ void vtkSelectionSource::SetFrustum(double* vertices)
 //------------------------------------------------------------------------------
 void vtkSelectionSource::AddBlock(vtkIdType block)
 {
-  this->Internal->Blocks.push_back(block);
+  this->Internal->Blocks.insert(block);
   this->Modified();
 }
 
