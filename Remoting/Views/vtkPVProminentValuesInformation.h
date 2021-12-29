@@ -27,7 +27,7 @@
  * the prominent values are also made available.
  *
  * This class uses vtkAbstractArray::GetProminentComponentValues().
-*/
+ */
 
 #ifndef vtkPVProminentValuesInformation_h
 #define vtkPVProminentValuesInformation_h
@@ -185,7 +185,7 @@ public:
   void AddDistinctValues(vtkPVProminentValuesInformation*);
 
   /**
-   * Returns either NULL (array component appears to be continuous) or
+   * Returns either nullptr (array component appears to be continuous) or
    * a pointer to a vtkAbstractArray (array component appears to be discrete)
    * containing a sorted list of all distinct prominent values encountered in
    * the array component.

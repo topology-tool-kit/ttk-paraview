@@ -1722,7 +1722,7 @@ static inline VTKM_EXEC_CONT vtkm::Float64 Max(vtkm::Float64 x, vtkm::Float64 y)
 ///
 template <typename T>
 static inline VTKM_EXEC_CONT T Min(const T& x, const T& y);
-#ifdef VTKM_USE_STL
+#if defined(VTKM_USE_STL) && !defined(VTKM_HIP)
 static inline VTKM_EXEC_CONT vtkm::Float32 Min(vtkm::Float32 x, vtkm::Float32 y)
 {
   return (std::min)(x, y);
@@ -1731,7 +1731,7 @@ static inline VTKM_EXEC_CONT vtkm::Float64 Min(vtkm::Float64 x, vtkm::Float64 y)
 {
   return (std::min)(x, y);
 }
-#else // !VTKM_USE_STL
+#else // !VTKM_USE_STL OR HIP
 static inline VTKM_EXEC_CONT vtkm::Float32 Min(vtkm::Float32 x, vtkm::Float32 y)
 {
 #ifdef VTKM_CUDA
@@ -2381,7 +2381,8 @@ static inline VTKM_EXEC_CONT vtkm::Float32 RemainderQuotient(vtkm::Float32 numer
                                                              QType& quotient)
 {
   int iQuotient;
-#ifdef VTKM_CUDA
+  // See: https://github.com/ROCm-Developer-Tools/HIP/issues/2169
+#if defined(VTKM_CUDA) || defined(VTKM_HIP)
   const vtkm::Float32 result =
     VTKM_CUDA_MATH_FUNCTION_32(remquo)(numerator, denominator, &iQuotient);
 #else
@@ -2411,11 +2412,20 @@ static inline VTKM_EXEC_CONT vtkm::Float64 RemainderQuotient(vtkm::Float64 numer
 ///
 static inline VTKM_EXEC_CONT vtkm::Float32 ModF(vtkm::Float32 x, vtkm::Float32& integral)
 {
+  // See: https://github.com/ROCm-Developer-Tools/HIP/issues/2169
+#if defined(VTKM_CUDA) || defined(VTKM_HIP)
+  return VTKM_CUDA_MATH_FUNCTION_32(modf)(x, &integral);
+#else
   return std::modf(x, &integral);
+#endif
 }
 static inline VTKM_EXEC_CONT vtkm::Float64 ModF(vtkm::Float64 x, vtkm::Float64& integral)
 {
+#if defined(VTKM_CUDA)
+  return VTKM_CUDA_MATH_FUNCTION_64(modf)(x, &integral);
+#else
   return std::modf(x, &integral);
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -2552,7 +2562,8 @@ static inline VTKM_EXEC_CONT vtkm::Vec<T, N> CopySign(const vtkm::Vec<T, N>& x,
 
 inline VTKM_EXEC_CONT vtkm::Float32 Frexp(vtkm::Float32 x, vtkm::Int32 *exponent)
 {
-#ifdef VTKM_CUDA
+  // See: https://github.com/ROCm-Developer-Tools/HIP/issues/2169
+#if defined(VTKM_CUDA) || defined(VTKM_HIP)
   return VTKM_CUDA_MATH_FUNCTION_32(frexp)(x, exponent);
 #else
   return std::frexp(x, exponent);
@@ -2683,6 +2694,57 @@ inline VTKM_EXEC_CONT vtkm::UInt64 FloatDistance(vtkm::Float32 x, vtkm::Float32 
     return yi - xi;
   }
   return xi - yi;
+}
+
+// Computes ab - cd.
+// See: https://pharr.org/matt/blog/2019/11/03/difference-of-floats.html
+template<typename T>
+inline VTKM_EXEC_CONT T DifferenceOfProducts(T a, T b, T c, T d)
+{
+    T cd = c * d;
+    T err = std::fma(-c, d, cd);
+    T dop = std::fma(a, b, -cd);
+    return dop + err;
+}
+
+// Solves ax² + bx + c = 0.
+// Only returns the real roots.
+// If there are real roots, the first element of the pair is <= the second.
+// If there are no real roots, both elements are NaNs.
+// The error should be at most 3 ulps.
+template<typename T>
+inline VTKM_EXEC_CONT vtkm::Vec<T, 2> QuadraticRoots(T a, T b, T c)
+{
+  if (a == 0)
+  {
+    if (b == 0)
+    {
+      if (c == 0)
+      {
+        // A degenerate case. All real numbers are roots; hopefully this arbitrary decision interacts gracefully with use.
+        return vtkm::Vec<T,2>(0,0);
+      }
+      else
+      {
+        return vtkm::Vec<T,2>(vtkm::Nan<T>(), vtkm::Nan<T>());
+      }
+    }
+    return vtkm::Vec<T,2>(-c/b, -c/b);
+  }
+  T delta = DifferenceOfProducts(b, b, 4*a, c);
+  if (delta < 0)
+  {
+    return vtkm::Vec<T,2>(vtkm::Nan<T>(), vtkm::Nan<T>());
+  }
+
+  T q = -(b + vtkm::CopySign(vtkm::Sqrt(delta), b)) / 2;
+  T r0 = q / a;
+  T r1 = c / q;
+  if (r0 < r1)
+  {
+    return vtkm::Vec<T,2>(r0, r1);
+  }
+  return vtkm::Vec<T,2>(r1, r0);
 }
 
 /// Bitwise operations

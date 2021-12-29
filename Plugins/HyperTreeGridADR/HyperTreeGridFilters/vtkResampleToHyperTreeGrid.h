@@ -44,9 +44,9 @@
 #include "vtkSmartPointer.h"                  // For BroadcastHyperTreeOwnership
 #include "vtkTuple.h"                         // For internal methods
 
-#include <queue>
-#include <unordered_map>
-#include <vector>
+#include <queue>         // for std::priority_queue
+#include <unordered_map> // for std::unordered_map
+#include <vector>        // for std::vector
 
 class vtkAbstractAccumulator;
 class vtkAbstractArrayMeasurement;
@@ -286,7 +286,7 @@ protected:
     /**
      * Accumulators used for measuring quantities on subtrees
      */
-    std::vector<vtkSmartPointer<vtkAbstractArrayMeasurement> > ArrayMeasurements;
+    std::vector<vtkSmartPointer<vtkAbstractArrayMeasurement>> ArrayMeasurements;
 
     vtkIdType NumberOfLeavesInSubtree;
     vtkIdType NumberOfPointsInSubtree;
@@ -327,7 +327,7 @@ protected:
    * idx bijectively maps to element (i,j,k) = this->IndexToCoordinates(idx,depth).
    * this->CoordinatesToIndex is the inverse function of this->IndexToCoordinates.
    */
-  typedef std::vector<std::unordered_map<vtkIdType, GridElement> > MultiResGridType;
+  typedef std::vector<std::unordered_map<vtkIdType, GridElement>> MultiResGridType;
 
   //@{
   /**
@@ -441,7 +441,7 @@ protected:
    * resolution grids
    * matching the subdivision scheme of the output hyper tree grid.
    */
-  void CreateGridOfMultiResolutionGrids(vtkDataSet* dataSet, int fieldAssociation);
+  void CreateGridOfMultiResolutionGrids(std::vector<vtkDataSet*>& dataSet, int fieldAssociation);
 
   //@{
   /**
@@ -491,7 +491,7 @@ protected:
    * Dummy pointer for creating at run-time the proper type of ArrayMeasurement or
    * ArrayMeasurementDisplay.
    */
-  std::vector<vtkSmartPointer<vtkAbstractArrayMeasurement> > ArrayMeasurements;
+  std::vector<vtkSmartPointer<vtkAbstractArrayMeasurement>> ArrayMeasurements;
 
   /**
    * Converts indexing at given resolution to a tuple (i,j,k) to navigate in a MultiResolutionGrid.
@@ -529,15 +529,6 @@ protected:
   GridOfMultiResGridsType GridOfMultiResolutionGrids;
   //@}
 
-  //@{
-  /**
-   * Buffer to store the pointers of the correct accumulator when measuring.
-   * We only use them if this->ArrayMeasurementDisplay != nullptr
-   */
-  std::vector<vtkAbstractAccumulator*> ArrayMeasurementAccumulators;
-  std::vector<vtkAbstractAccumulator*> ArrayMeasurementDisplayAccumulators;
-  //@}
-
   /**
    * Method which will forbid subdividing cells if they have an empty children intersecting
    * a cell of the input.
@@ -571,7 +562,8 @@ protected:
    * Method retristributing points and cells of the input so hyper trees are not split
    * between processes.
    */
-  vtkSmartPointer<vtkDataSet> BroadcastHyperTreeOwnership(vtkDataSet* ds, vtkIdType processId);
+  vtkSmartPointer<vtkDataObject> BroadcastHyperTreeOwnership(
+    vtkDataObject* input, vtkIdType processId);
 
   /**
    * Cache used to handle SetMaxState(bool) and SetMinState(bool)
@@ -588,7 +580,7 @@ protected:
    * Collection of input point data arrays to resample, deducted from
    * InputDataArrayNames.
    */
-  std::vector<vtkDataArray*> InputPointDataArrays;
+  std::vector<std::vector<vtkDataArray*>> InputPointDataArrays;
 
   /**
    * Collection of input scalar field names to resample.
@@ -601,8 +593,8 @@ protected:
   vtkMultiProcessController* Controller;
 
 private:
-  vtkResampleToHyperTreeGrid(vtkResampleToHyperTreeGrid&) = delete;
-  void operator=(vtkResampleToHyperTreeGrid&) = delete;
+  vtkResampleToHyperTreeGrid(const vtkResampleToHyperTreeGrid&) = delete;
+  void operator=(const vtkResampleToHyperTreeGrid&) = delete;
 };
 
 #endif

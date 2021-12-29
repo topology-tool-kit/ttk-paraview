@@ -43,15 +43,15 @@ int localVerbosity = 0;
 
 void obj_set_material_defaults(vtkOBJImportedMaterial* mtl)
 {
-  mtl->amb[0] = 0.2;
-  mtl->amb[1] = 0.2;
-  mtl->amb[2] = 0.2;
-  mtl->diff[0] = 0.8;
-  mtl->diff[1] = 0.8;
-  mtl->diff[2] = 0.8;
-  mtl->spec[0] = 1.0;
-  mtl->spec[1] = 1.0;
-  mtl->spec[2] = 1.0;
+  mtl->amb[0] = 0.0;
+  mtl->amb[1] = 0.0;
+  mtl->amb[2] = 0.0;
+  mtl->diff[0] = 1.0;
+  mtl->diff[1] = 1.0;
+  mtl->diff[2] = 1.0;
+  mtl->spec[0] = 0.0;
+  mtl->spec[1] = 0.0;
+  mtl->spec[2] = 0.0;
   mtl->map_Kd_scale[0] = 1.0;
   mtl->map_Kd_scale[1] = 1.0;
   mtl->map_Kd_scale[2] = 1.0;
@@ -245,6 +245,7 @@ bool tokenGetTexture(size_t& t, std::vector<Token>& tokens, vtkOBJImportedMateri
 }
 }
 
+// NOLINTNEXTLINE(bugprone-suspicious-include)
 #include "mtlsyntax.cxx"
 std::vector<vtkOBJImportedMaterial*> vtkOBJPolyDataProcessor::ParseOBJandMTL(
   std::string Filename, int& result_code)
@@ -392,6 +393,7 @@ void bindTexturedPolydataToRenderWindow(
 
     vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     mapper->SetInputData(objPoly);
+    mapper->SetColorModeToDirectScalars();
 
     vtkSmartPointer<vtkActor> actor = vtkSmartPointer<vtkActor>::New();
     actor->SetMapper(mapper);
@@ -485,6 +487,14 @@ void bindTexturedPolydataToRenderWindow(
         tf->Scale(raw_mtl_data->map_Kd_scale[0], raw_mtl_data->map_Kd_scale[1],
           raw_mtl_data->map_Kd_scale[2]);
         actor->GetTexture()->SetTransform(tf);
+      }
+
+      // When the material is created from a MTL file,
+      // the name is different than the default "x" name.
+      // in this case, we disable vertex coloring
+      if (raw_mtl_data->name != "x")
+      {
+        mapper->ScalarVisibilityOff();
       }
 
       properties->SetDiffuseColor(raw_mtl_data->diff);

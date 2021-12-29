@@ -364,12 +364,17 @@ static char** append_class_contents(char** lines, size_t* np, ClassInfo* data, c
 
       line = append_scope_to_line(line, &m, &maxlen, scope);
       line = append_class_to_line(line, &m, &maxlen, class_info);
+      /* force exclusion of nested classes, for now */
       tmpflags = "WRAPEXCLUDE";
     }
     else if (data->Items[i].Type == VTK_ENUM_INFO)
     {
       line = append_scope_to_line(line, &m, &maxlen, scope);
       line = append_enum_to_line(line, &m, &maxlen, data->Enums[data->Items[i].Index]);
+      if (data->Enums[data->Items[i].Index]->IsExcluded)
+      {
+        tmpflags = "WRAPEXCLUDE";
+      }
     }
     else if (data->Items[i].Type == VTK_TYPEDEF_INFO)
     {
@@ -896,12 +901,13 @@ int main(int argc, char* argv[])
   char** files = 0;
   char* flags;
   char* module_name;
+  StringCache* string_cache;
 
   /* pre-define a macro to identify the language */
   vtkParse_DefineMacro("__VTK_WRAP_HIERARCHY__", 0);
 
   /* parse command-line options */
-  StringCache* string_cache = vtkParse_MainMulti(argc, argv);
+  string_cache = vtkParse_MainMulti(argc, argv);
   options = vtkParse_GetCommandLineOptions();
 
   /* make sure than an output file was given on the command line */

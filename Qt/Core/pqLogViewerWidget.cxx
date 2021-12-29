@@ -47,6 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqFileDialog.h"
 
 #include <cassert>
+#include <cmath>
 
 //-----------------------------------------------------------------------------
 const int RAW_DATA_ROLE = Qt::UserRole + 1;
@@ -72,10 +73,8 @@ public:
 
   void addLines(const QVector<QStringRef>& lines)
   {
-    /* clang-format off */
     QRegularExpression scopeBegin(R"==(^\s*{ (?<label>.*))==");
     QRegularExpression scopeEnd(R"==(^\s*} (?<time>[^:]+):.*)==");
-    /* clang-format on */
     for (const auto& line : lines)
     {
       bool is_raw_log;
@@ -256,9 +255,7 @@ pqLogViewerWidget::pqLogViewerWidget(QWidget* parentObject)
 }
 
 //-----------------------------------------------------------------------------
-pqLogViewerWidget::~pqLogViewerWidget()
-{
-}
+pqLogViewerWidget::~pqLogViewerWidget() = default;
 
 //-----------------------------------------------------------------------------
 void pqLogViewerWidget::setLog(const QString& text)
@@ -324,10 +321,8 @@ void pqLogViewerWidget::scrollToTime(double time)
 QVector<QString> pqLogViewerWidget::extractLogParts(const QStringRef& txt, bool& is_raw)
 {
   QVector<QString> parts{ 5 };
-  /* clang-format off */
   QRegularExpression re(
     R"==(\(\s*(?<time>\S+)\s*\) \[(?<tid>.+)\]\s*(?<fname>\S+)\s+(?<v>\S+)\s*\| (\.\s+)*(?<txt>.*))==");
-  /* clang-format on */
   auto match = re.match(txt);
   if (match.hasMatch())
   {
@@ -357,7 +352,7 @@ void pqLogViewerWidget::toggleAdvanced()
 void pqLogViewerWidget::exportLog()
 {
   QString text = this->Internals->Ui.details->toPlainText();
-  pqFileDialog fileDialog(NULL, pqCoreUtilities::mainWidget(), "Save log", QString(),
+  pqFileDialog fileDialog(nullptr, pqCoreUtilities::mainWidget(), "Save log", QString(),
     "Text Files (*.txt);;All Files (*)");
   fileDialog.setFileMode(pqFileDialog::AnyFile);
   if (fileDialog.exec() != pqFileDialog::Accepted)
@@ -367,7 +362,7 @@ void pqLogViewerWidget::exportLog()
   }
 
   QString filename = fileDialog.getSelectedFiles().first();
-  QByteArray filename_ba = filename.toLocal8Bit();
+  QByteArray filename_ba = filename.toUtf8();
   std::ofstream fileStream;
   fileStream.open(filename_ba.data());
   if (fileStream.is_open())

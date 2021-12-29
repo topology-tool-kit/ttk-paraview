@@ -23,15 +23,14 @@
  *
  * The fragment to be transacted and the executing process are
  * determined implicitly by where the transaction is stored.
-*/
+ */
 
 #ifndef vtkMaterialInterfacePieceTransaction_h
 #define vtkMaterialInterfacePieceTransaction_h
 
 #include "vtkPVVTKExtensionsFiltersMaterialInterfaceModule.h" //needed for exports
-#include "vtkSystemIncludes.h"
 
-#include <iostream>
+#include <iostream> // for std::ostream
 
 class VTKPVVTKEXTENSIONSFILTERSMATERIALINTERFACE_EXPORT vtkMaterialInterfacePieceTransaction
 {
@@ -82,11 +81,10 @@ public:
   int GetRemoteProc() const { return this->Data[REMOTE_PROC]; }
   //
   int GetFlatSize() const { return SIZE; }
+
 private:
   int Data[SIZE];
 };
 VTKPVVTKEXTENSIONSFILTERSMATERIALINTERFACE_EXPORT
 std::ostream& operator<<(std::ostream& sout, const vtkMaterialInterfacePieceTransaction& ta);
 #endif
-
-// VTK-HeaderTest-Exclude: vtkMaterialInterfacePieceTransaction.h

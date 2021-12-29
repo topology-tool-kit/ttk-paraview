@@ -170,8 +170,9 @@ paraview_add_server_manager_xmls(
 # rather than explicitly adding those by using target_link_libraries.
 
 # Required for paraDIS.
-find_package(Boost REQUIRED)
+vtk_module_find_package(PRIVATE
+  PACKAGE Boost)
 vtk_module_link(ParaView::IOVisItBridge
   PRIVATE
-    Boost::boost
+    "$<BUILD_INTERFACE:Boost::boost>"
     ${visit_libraries})

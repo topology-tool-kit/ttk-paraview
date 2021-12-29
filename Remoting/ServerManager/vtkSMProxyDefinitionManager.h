@@ -19,7 +19,7 @@
  * vtkSIProxyDefinitionManager instance on all the processes. ParaView clients
  * should use API on this class to add/update xml definitions to ensure that
  * the xmls are processed/updated correctly on all the processes.
-*/
+ */
 
 #ifndef vtkSMProxyDefinitionManager_h
 #define vtkSMProxyDefinitionManager_h
@@ -75,7 +75,7 @@ public:
 
   //@{
   /**
-   * Returns a registered proxy definition or return a NULL otherwise.
+   * Returns a registered proxy definition or return a nullptr otherwise.
    * Moreover, error can be throw if the definition was not found if the
    * flag throwError is true.
    */
@@ -83,13 +83,13 @@ public:
   {
     return this->ProxyDefinitionManager
       ? this->ProxyDefinitionManager->GetProxyDefinition(group, name, throwError)
-      : NULL;
+      : nullptr;
   }
   vtkPVXMLElement* GetProxyDefinition(const char* group, const char* name)
   {
     return this->ProxyDefinitionManager
       ? this->ProxyDefinitionManager->GetProxyDefinition(group, name)
-      : NULL;
+      : nullptr;
   }
   //@}
 
@@ -101,10 +101,9 @@ public:
   vtkPVXMLElement* GetCollapsedProxyDefinition(
     const char* group, const char* name, const char* subProxyName, bool throwError)
   {
-    return this->ProxyDefinitionManager
-      ? this->ProxyDefinitionManager->GetCollapsedProxyDefinition(
-          group, name, subProxyName, throwError)
-      : NULL;
+    return this->ProxyDefinitionManager ? this->ProxyDefinitionManager->GetCollapsedProxyDefinition(
+                                            group, name, subProxyName, throwError)
+                                        : nullptr;
   }
 
   /**
@@ -141,12 +140,13 @@ public:
   VTK_NEWINSTANCE
   vtkPVProxyDefinitionIterator* NewIterator()
   {
-    return this->ProxyDefinitionManager ? this->ProxyDefinitionManager->NewIterator() : NULL;
+    return this->ProxyDefinitionManager ? this->ProxyDefinitionManager->NewIterator() : nullptr;
   }
   VTK_NEWINSTANCE
   vtkPVProxyDefinitionIterator* NewIterator(int scope)
   {
-    return this->ProxyDefinitionManager ? this->ProxyDefinitionManager->NewIterator(scope) : NULL;
+    return this->ProxyDefinitionManager ? this->ProxyDefinitionManager->NewIterator(scope)
+                                        : nullptr;
   }
   //@}
 
@@ -161,13 +161,13 @@ public:
   {
     return this->ProxyDefinitionManager
       ? this->ProxyDefinitionManager->NewSingleGroupIterator(groupName)
-      : NULL;
+      : nullptr;
   }
   vtkPVProxyDefinitionIterator* NewSingleGroupIterator(const char* groupName, int scope)
   {
     return this->ProxyDefinitionManager
       ? this->ProxyDefinitionManager->NewSingleGroupIterator(groupName, scope)
-      : NULL;
+      : nullptr;
   }
   //@}
 

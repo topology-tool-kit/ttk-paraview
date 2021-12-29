@@ -86,10 +86,7 @@ class vtkXMLCollectionReaderString : public std::string
 {
 public:
   typedef std::string Superclass;
-  vtkXMLCollectionReaderString()
-    : Superclass()
-  {
-  }
+  vtkXMLCollectionReaderString() = default;
   vtkXMLCollectionReaderString(const char* s)
     : Superclass(s)
   {
@@ -100,7 +97,7 @@ public:
   }
 };
 typedef std::vector<vtkXMLCollectionReaderString> vtkXMLCollectionReaderAttributeNames;
-typedef std::vector<std::vector<vtkXMLCollectionReaderString> >
+typedef std::vector<std::vector<vtkXMLCollectionReaderString>>
   vtkXMLCollectionReaderAttributeValueSets;
 typedef std::map<vtkXMLCollectionReaderString, vtkXMLCollectionReaderString>
   vtkXMLCollectionReaderRestrictions;
@@ -112,17 +109,16 @@ public:
   vtkXMLCollectionReaderAttributeNames AttributeNames;
   vtkXMLCollectionReaderAttributeValueSets AttributeValueSets;
   vtkXMLCollectionReaderRestrictions Restrictions;
-  std::vector<vtkSmartPointer<vtkXMLReader> > Readers;
+  std::vector<vtkSmartPointer<vtkXMLReader>> Readers;
 
   typedef vtkXMLReader* (*Constructor)(void); // function pointer type
-  typedef std::map<std::string, std::pair<std::string, Constructor> > ReaderConstructorsType;
+  typedef std::map<std::string, std::pair<std::string, Constructor>> ReaderConstructorsType;
   static const ReaderConstructorsType ReaderConstructors;
 };
 
-#define GET_NEW_FUNCTOR(x)                                                                         \
-  {                                                                                                \
-    #x, [](void) -> vtkXMLReader* { return x::New(); }                                             \
-  }
+// clang-format off
+#define GET_NEW_FUNCTOR(x) { #x, [](void) -> vtkXMLReader* { return x::New(); } }
+// clang-format on
 const vtkXMLCollectionReaderInternals::ReaderConstructorsType
   vtkXMLCollectionReaderInternals::ReaderConstructors = { { "vtp",
                                                             GET_NEW_FUNCTOR(vtkXMLPolyDataReader) },
@@ -131,10 +127,10 @@ const vtkXMLCollectionReaderInternals::ReaderConstructorsType
     { "vtr", GET_NEW_FUNCTOR(vtkXMLRectilinearGridReader) },
     { "vtm", GET_NEW_FUNCTOR(vtkXMLMultiBlockDataReader) },
     { "vtmb", GET_NEW_FUNCTOR(vtkXMLMultiBlockDataReader) },
-    { "vtmg", GET_NEW_FUNCTOR(
-                vtkXMLMultiGroupDataReader) }, // legacy reader - produces vtkMultiBlockDataSet.
-    { "vthd", GET_NEW_FUNCTOR(
-                vtkXMLHierarchicalDataReader) }, // legacy reader - produces vtkMultiBlockDataSet.
+    // legacy reader - produces vtkMultiBlockDataSet.
+    { "vtmg", GET_NEW_FUNCTOR(vtkXMLMultiGroupDataReader) },
+    // legacy reader - produces vtkMultiBlockDataSet.
+    { "vthd", GET_NEW_FUNCTOR(vtkXMLHierarchicalDataReader) },
     { "vthb", GET_NEW_FUNCTOR(vtkXMLHierarchicalBoxDataReader) },
     { "vts", GET_NEW_FUNCTOR(vtkXMLStructuredGridReader) },
     { "vtt", GET_NEW_FUNCTOR(vtkXMLTableReader) },
@@ -224,7 +220,7 @@ const char* vtkXMLCollectionReader::GetRestriction(const char* name)
   }
   else
   {
-    return 0;
+    return nullptr;
   }
 }
 
@@ -327,35 +323,45 @@ vtkXMLReader* vtkXMLCollectionReader::SetupReader(const std::string& filePath, i
 
   // Get the file extension.
   std::string ext = vtksys::SystemTools::GetFilenameLastExtension(fileName);
-  // remove "." from extension.
-  ext.erase(ext.begin());
 
-  // Search for the reader matching this extension.
-  auto iter = this->Internal->ReaderConstructors.find(ext);
-  // If a reader was found, allocate an instance of it for this output.
-  if (iter != this->Internal->ReaderConstructors.end())
+  if (ext.empty())
   {
-    const std::string& rname = iter->second.first;
-    if (!(this->Internal->Readers[index].GetPointer() &&
-          rname == this->Internal->Readers[index]->GetClassName()))
-    {
-      // Use the instantiator to create the reader.
-      vtkXMLReader* reader = (*iter->second.second)();
-      this->Internal->Readers[index] = reader;
-      if (reader)
-      {
-        reader->Delete();
-      }
-      else
-      {
-        // The class was not registered with the instantiator.
-        vtkErrorMacro("Error creating \"" << rname << "\".");
-      }
-    }
+    vtkErrorMacro(
+      "Filename " << fileName << " does not contain an extension, no reader can be created.");
+    this->Internal->Readers[index] = nullptr;
   }
   else
   {
-    this->Internal->Readers[index] = nullptr;
+    // remove "." from extension.
+    ext.erase(ext.begin());
+
+    // Search for the reader matching this extension.
+    auto iter = this->Internal->ReaderConstructors.find(ext);
+    // If a reader was found, allocate an instance of it for this output.
+    if (iter != this->Internal->ReaderConstructors.end())
+    {
+      const std::string& rname = iter->second.first;
+      if (!(this->Internal->Readers[index].GetPointer() &&
+            rname == this->Internal->Readers[index]->GetClassName()))
+      {
+        // Use the instantiator to create the reader.
+        vtkXMLReader* reader = (*iter->second.second)();
+        this->Internal->Readers[index] = reader;
+        if (reader)
+        {
+          reader->Delete();
+        }
+        else
+        {
+          // The class was not registered with the instantiator.
+          vtkErrorMacro("Error creating \"" << rname << "\".");
+        }
+      }
+    }
+    else
+    {
+      this->Internal->Readers[index] = nullptr;
+    }
   }
 
   // If we have a reader for this output, connect its output to our
@@ -562,7 +568,7 @@ void vtkXMLCollectionReader::ReadXMLDataImpl()
 
       // Set the block name from the DataSet name attribute, if any
       vtkXMLDataElement* ds = this->Internal->RestrictedDataSets[i];
-      const char* name = ds ? ds->GetAttribute("name") : 0;
+      const char* name = ds ? ds->GetAttribute("name") : nullptr;
       if (name)
       {
         output->GetMetaData(i)->Set(vtkCompositeDataSet::NAME(), name);
@@ -605,7 +611,7 @@ void vtkXMLCollectionReader::ReadAFile(int index, int updatePiece, int updateNum
     // If a "name" attribute exists, store the name of the output in
     // its field data.
     vtkXMLDataElement* ds = this->Internal->RestrictedDataSets[index];
-    const char* name = ds ? ds->GetAttribute("name") : 0;
+    const char* name = ds ? ds->GetAttribute("name") : nullptr;
     if (name)
     {
       vtkCharArray* nmArray = vtkCharArray::New();
@@ -629,7 +635,7 @@ void vtkXMLCollectionReader::AddAttributeNameValue(const char* name, const char*
   // Find an entry for this attribute.
   vtkXMLCollectionReaderAttributeNames::iterator n =
     std::find(this->Internal->AttributeNames.begin(), this->Internal->AttributeNames.end(), name);
-  std::vector<vtkXMLCollectionReaderString>* values = 0;
+  std::vector<vtkXMLCollectionReaderString>* values = nullptr;
   if (n == this->Internal->AttributeNames.end())
   {
     // Need to create an entry for this attribute.
@@ -669,7 +675,7 @@ const char* vtkXMLCollectionReader::GetAttributeName(int attribute)
   {
     return this->Internal->AttributeNames[attribute].c_str();
   }
-  return 0;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -707,7 +713,7 @@ const char* vtkXMLCollectionReader::GetAttributeValue(int attribute, int index)
   {
     return this->Internal->AttributeValueSets[attribute][index].c_str();
   }
-  return 0;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -753,7 +759,7 @@ vtkXMLDataElement* vtkXMLCollectionReader::GetOutputXMLDataElement(int index)
     vtkErrorMacro("Attempt to get XMLDataElement for output index "
       << index << " from a reader with " << this->Internal->RestrictedDataSets.size()
       << " outputs.");
-    return 0;
+    return nullptr;
   }
   return this->Internal->RestrictedDataSets[index];
 }

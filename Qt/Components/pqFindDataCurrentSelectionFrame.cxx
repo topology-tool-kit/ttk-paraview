@@ -33,13 +33,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ui_pqFindDataCurrentSelectionFrame.h"
 
 #include "pqApplicationCore.h"
-#include "pqFindDataCreateSelectionFrame.h"
 #include "pqOutputPort.h"
 #include "pqPipelineSource.h"
 #include "pqPropertiesPanel.h"
 #include "pqSelectionManager.h"
 #include "pqServer.h"
 #include "pqSpreadSheetViewModel.h"
+#include "pqTimer.h"
+#include "vtkDataObject.h"
+#include "vtkLogger.h"
+#include "vtkNew.h"
+#include "vtkPVDataInformation.h"
+#include "vtkSMFieldDataDomain.h"
+#include "vtkSMParaViewPipelineController.h"
 #include "vtkSMPropertyHelper.h"
 #include "vtkSMSessionProxyManager.h"
 #include "vtkSMSourceProxy.h"
@@ -48,8 +54,66 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkSmartPointer.h"
 
 #include <QPointer>
+#include <QSignalBlocker>
 
 #include <cassert>
+
+namespace
+{
+// copied from `pqFindDataCreateSelectionFrame::populateSelectionTypeCombo`.
+// `pqFindDataCreateSelectionFrame` class was removed. Until we rewrite this
+// class as well, just copying this piece of code over.
+void populateSelectionTypeCombo(QComboBox* cbox, pqOutputPort* port)
+{
+  if (port == nullptr)
+  {
+    cbox->clear();
+    return;
+  }
+
+  // preserve the selection type, if possible.
+  const QString currentText = cbox->currentText();
+
+  cbox->clear();
+  vtkPVDataInformation* dataInfo = port->getDataInformation();
+  for (int attributeType = vtkDataObject::POINT;
+       attributeType < vtkDataObject::NUMBER_OF_ATTRIBUTE_TYPES; ++attributeType)
+  {
+    if (dataInfo->IsAttributeValid(attributeType))
+    {
+      const char* label = vtkSMFieldDataDomain::GetAttributeTypeAsString(attributeType);
+      switch (attributeType)
+      {
+        case vtkDataObject::POINT:
+          cbox->addItem(QIcon(":/pqWidgets/Icons/pqPointData.svg"), label, attributeType);
+          break;
+
+        case vtkDataObject::CELL:
+          cbox->addItem(QIcon(":/pqWidgets/Icons/pqCellData.svg"), label, attributeType);
+          break;
+
+        case vtkDataObject::VERTEX:
+          cbox->addItem(QIcon(":/pqWidgets/Icons/pqCellData.svg"), label, attributeType);
+          break;
+
+        case vtkDataObject::EDGE:
+          cbox->addItem(QIcon(":/pqWidgets/Icons/pqEdgeCenterData.svg"), label, attributeType);
+          break;
+
+        case vtkDataObject::ROW:
+          cbox->addItem(QIcon(":/pqWidgets/Icons/pqSpreadsheet.svg"), label, attributeType);
+          break;
+      }
+    }
+  }
+
+  int index = cbox->findText(currentText);
+  if (index != -1)
+  {
+    cbox->setCurrentIndex(index);
+  }
+}
+}
 
 class pqFindDataCurrentSelectionFrame::pqInternals
 {
@@ -57,13 +121,14 @@ class pqFindDataCurrentSelectionFrame::pqInternals
   vtkSmartPointer<vtkSMViewProxy> ViewProxy;
   QPointer<pqSpreadSheetViewModel> Model;
   QPointer<pqOutputPort> ShowingPort;
+  pqTimer UpdateSpreadSheetTimer;
 
   void deleteSpreadSheet()
   {
-    this->ViewProxy = NULL;
-    this->RepresentationProxy = NULL;
+    this->ViewProxy = nullptr;
+    this->RepresentationProxy = nullptr;
     delete this->Model;
-    this->Ui.spreadsheet->setModel(NULL);
+    this->Ui.spreadsheet->setModel(nullptr);
   }
 
 public:
@@ -76,10 +141,9 @@ public:
       pqApplicationCore::instance()->manager("SELECTION_MANAGER"));
 
     this->Ui.setupUi(self);
-    this->Ui.verticalLayout->setMargin(pqPropertiesPanel::suggestedMargin());
-    this->Ui.verticalLayout->setSpacing(pqPropertiesPanel::suggestedVerticalSpacing());
-    this->Ui.horizontalLayout->setMargin(pqPropertiesPanel::suggestedMargin());
-    this->Ui.horizontalLayout->setSpacing(pqPropertiesPanel::suggestedHorizontalSpacing());
+    this->Ui.gridLayout->setMargin(pqPropertiesPanel::suggestedMargin());
+    this->Ui.gridLayout->setVerticalSpacing(pqPropertiesPanel::suggestedVerticalSpacing());
+    this->Ui.gridLayout->setHorizontalSpacing(pqPropertiesPanel::suggestedHorizontalSpacing());
 
     self->connect(this->SelectionManager, SIGNAL(selectionChanged(pqOutputPort*)),
       SLOT(showSelectedData(pqOutputPort*)));
@@ -89,6 +153,11 @@ public:
       this->Ui.invertSelectionCheckBox, SIGNAL(toggled(bool)), SLOT(invertSelection(bool)));
 
     this->showSelectedData(this->SelectionManager->getSelectedPort(), self);
+
+    this->UpdateSpreadSheetTimer.setInterval(100);
+    this->UpdateSpreadSheetTimer.setSingleShot(true);
+    QObject::connect(
+      &this->UpdateSpreadSheetTimer, &QTimer::timeout, [this]() { this->updateSpreadSheetNow(); });
   }
 
   ~pqInternals() { this->deleteSpreadSheet(); }
@@ -99,30 +168,30 @@ public:
   // we'll reuse the old one.
   void setupSpreadsheet(pqServer* server)
   {
-    if (server == NULL)
+    if (server == nullptr)
     {
       this->deleteSpreadSheet();
       return;
     }
 
-    assert(server != NULL);
+    assert(server != nullptr);
 
     if (this->ViewProxy && this->ViewProxy->GetSession() != server->session())
     {
       this->deleteSpreadSheet();
     }
 
-    assert(this->ViewProxy == NULL || (this->ViewProxy->GetSession() == server->session()));
+    assert(this->ViewProxy == nullptr || (this->ViewProxy->GetSession() == server->session()));
     if (!this->ViewProxy)
     {
       vtkSMSessionProxyManager* pxm = server->proxyManager();
 
       vtkSMProxy* repr = pxm->NewProxy("representations", "SpreadSheetRepresentation");
       repr->PrototypeOn();
-      // we always want to show all the blocks in the dataset, since we don't have a
-      // block chooser widget in this dialog.
-      vtkSMPropertyHelper(repr, "CompositeDataSetIndex").Set(0);
       repr->UpdateVTKObjects();
+
+      vtkNew<vtkSMParaViewPipelineController> controller;
+      auto timeKeeper = controller->FindTimeKeeper(server->session());
 
       vtkSMViewProxy* view =
         vtkSMViewProxy::SafeDownCast(pxm->NewProxy("views", "SpreadSheetView"));
@@ -131,6 +200,8 @@ public:
       vtkSMPropertyHelper(view, "Representations").Set(repr);
       vtkSMPropertyHelper(view, "ViewSize").Set(0, 1);
       vtkSMPropertyHelper(view, "ViewSize").Set(1, 1);
+      vtkSMPropertyHelper(view, "ViewTime")
+        .Set(0, vtkSMPropertyHelper(timeKeeper, "Time").GetAsDouble());
       view->UpdateVTKObjects();
 
       this->ViewProxy.TakeReference(view);
@@ -158,12 +229,12 @@ public:
       self->connect(
         port->getSource(), SIGNAL(dataUpdated(pqPipelineSource*)), SLOT(updateSpreadSheet()));
     }
-    this->setupSpreadsheet(port ? port->getServer() : NULL);
+    this->setupSpreadsheet(port ? port->getServer() : nullptr);
 
     bool prev = this->Ui.showTypeComboBox->blockSignals(true);
-    pqFindDataCreateSelectionFrame::populateSelectionTypeCombo(this->Ui.showTypeComboBox, port);
+    ::populateSelectionTypeCombo(this->Ui.showTypeComboBox, port);
     this->Ui.showTypeComboBox->blockSignals(prev);
-    this->Ui.invertSelectionCheckBox->setEnabled(port != NULL);
+    this->Ui.invertSelectionCheckBox->setEnabled(port != nullptr);
     if (port)
     {
       vtkSMPropertyHelper(this->RepresentationProxy, "Input")
@@ -178,14 +249,28 @@ public:
         // We only do this if the selection is "new" so that is user is
         // interactively updating the selection and he picked a specified
         // attribute type, we don't force change it on him/her.
-        int index = this->Ui.showTypeComboBox->findData(
-          vtkSelectionNode::ConvertSelectionFieldToAttributeType(
-            vtkSMPropertyHelper(selectionSource, "FieldType").GetAsInt()));
+        int index = -1;
+        if (auto ftProperty = selectionSource->GetProperty("FieldType"))
+        {
+          // old-style properties
+          index = this->Ui.showTypeComboBox->findData(
+            vtkSelectionNode::ConvertSelectionFieldToAttributeType(
+              vtkSMPropertyHelper(ftProperty).GetAsInt()));
+        }
+        else if (auto etProperty = selectionSource->GetProperty("ElementType"))
+        {
+          // new-style properties.
+          index = this->Ui.showTypeComboBox->findData(vtkSMPropertyHelper(etProperty).GetAsInt());
+        }
         if (index != -1)
         {
-          prev = this->Ui.showTypeComboBox->blockSignals(true);
+          const QSignalBlocker blocker(this->Ui.showTypeComboBox);
           this->Ui.showTypeComboBox->setCurrentIndex(index);
-          this->Ui.showTypeComboBox->blockSignals(prev);
+          this->Ui.showTypeComboBox->setEnabled(true);
+        }
+        else
+        {
+          this->Ui.showTypeComboBox->setEnabled(false);
         }
       }
       this->updateFieldType();
@@ -213,12 +298,24 @@ public:
     }
   }
 
-  void updateSpreadSheet()
+  void updateSpreadSheet() { this->UpdateSpreadSheetTimer.start(); }
+
+  void updateSpreadSheetNow()
   {
     if (this->ViewProxy)
     {
+      // Ensure we're showing the right timestep.
+      vtkNew<vtkSMParaViewPipelineController> controller;
+      auto timeKeeper = controller->FindTimeKeeper(this->ViewProxy->GetSession());
+      vtkSMPropertyHelper(this->ViewProxy, "ViewTime")
+        .Set(0, vtkSMPropertyHelper(timeKeeper, "Time").GetAsDouble());
+      this->ViewProxy->UpdateVTKObjects();
       this->ViewProxy->StillRender();
     }
+    this->Ui.spreadsheet->viewport()->update();
+
+    // cancel timer, since we just updated.
+    this->UpdateSpreadSheetTimer.stop();
   }
 
   pqOutputPort* showingPort() const { return this->ShowingPort; }
@@ -236,7 +333,7 @@ pqFindDataCurrentSelectionFrame::pqFindDataCurrentSelectionFrame(
 pqFindDataCurrentSelectionFrame::~pqFindDataCurrentSelectionFrame()
 {
   delete this->Internals;
-  this->Internals = NULL;
+  this->Internals = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -276,7 +373,6 @@ void pqFindDataCurrentSelectionFrame::invertSelection(bool val)
       selectionSource->UpdateVTKObjects();
       port->renderAllViews();
 
-      // update spread sheet
       this->Internals->updateSpreadSheet();
     }
   }

@@ -33,7 +33,7 @@ int vtkWrapPython_IsEnumWrapped(HierarchyInfo* hinfo, const char* enumname)
   if (hinfo && enumname)
   {
     entry = vtkParseHierarchy_FindEntry(hinfo, enumname);
-    if (entry && entry->IsEnum)
+    if (entry && entry->IsEnum && !vtkParseHierarchy_GetProperty(entry, "WRAPEXCLUDE"))
     {
       rval = 1;
     }
@@ -91,6 +91,11 @@ void vtkWrapPython_AddEnumType(FILE* fp, const char* indent, const char* dictvar
   ValueInfo* val;
   int j;
 
+  if (cls->IsDeprecated)
+  {
+    fprintf(fp, "  /* Deprecated %s */\n", (cls->DeprecatedReason ? cls->DeprecatedReason : ""));
+  }
+
   fprintf(fp, "%sPyType_Ready(&Py%s%s%s_Type);\n", indent, (scope ? scope : ""), (scope ? "_" : ""),
     cls->Name);
 
@@ -117,7 +122,8 @@ void vtkWrapPython_AddEnumType(FILE* fp, const char* indent, const char* dictvar
     for (j = 0; j < cls->NumberOfConstants; j++)
     {
       val = cls->Constants[j];
-      fprintf(fp, "%s    { \"%s\", cxx_enum_type::%s },\n", indent, val->Name, val->Name);
+      fprintf(fp, "%s    { \"%s\", cxx_enum_type::%s },%s\n", indent, val->Name, val->Name,
+        ((val->Attributes & VTK_PARSE_DEPRECATED) ? " /* deprecated */" : ""));
     }
 
     fprintf(fp,
@@ -183,6 +189,10 @@ void vtkWrapPython_GenerateEnumType(
 
   /* generate the TypeObject */
   fprintf(fp,
+    "#ifdef VTK_PYTHON_NEEDS_DEPRECATION_WARNING_SUPPRESSION\n"
+    "#pragma GCC diagnostic ignored \"-Wdeprecated-declarations\"\n"
+    "#endif\n"
+    "\n"
     "static PyTypeObject Py%s_Type = {\n"
     "  PyVarObject_HEAD_INIT(&PyType_Type, 0)\n"
     "  PYTHON_PACKAGE_SCOPE \"%s.%s\", // tp_name\n"

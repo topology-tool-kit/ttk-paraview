@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ========================================================================*/
 #include "pqHelpWindow.h"
 #include "ui_pqHelpWindow.h"
+#include "vtkPVConfig.h" // for PARAVIEW_USE_QTWEBENGINE
 
 #include <cassert>
 
@@ -48,8 +49,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class pqBrowser
 {
 public:
-  pqBrowser() {}
-  virtual ~pqBrowser() {}
+  pqBrowser() = default;
+  virtual ~pqBrowser() = default;
   virtual QWidget* widget() const = 0;
   virtual void setUrl(const QUrl& url) = 0;
 
@@ -72,7 +73,7 @@ public:
   void setUrl(const QUrl& url) override { this->Widget->setUrl(url); }
 };
 
-#ifdef PARAVIEW_USE_QTWEBENGINE
+#if PARAVIEW_USE_QTWEBENGINE
 #include "pqHelpWindowWebEngine.h"
 typedef pqBrowserTemplate<pqWebView> PQBROWSER_TYPE;
 #else
@@ -90,7 +91,7 @@ pqHelpWindow::pqHelpWindow(QHelpEngine* engine, QWidget* parentObject, Qt::Windo
   , HelpEngine(engine)
   , Browser(new PQBROWSER_TYPE(this->HelpEngine, this))
 {
-  assert(engine != NULL);
+  assert(engine != nullptr);
 
   Ui::pqHelpWindow ui;
   ui.setupUi(this);
@@ -122,9 +123,7 @@ pqHelpWindow::pqHelpWindow(QHelpEngine* engine, QWidget* parentObject, Qt::Windo
 }
 
 //-----------------------------------------------------------------------------
-pqHelpWindow::~pqHelpWindow()
-{
-}
+pqHelpWindow::~pqHelpWindow() = default;
 
 //-----------------------------------------------------------------------------
 void pqHelpWindow::showPage(const QString& url)

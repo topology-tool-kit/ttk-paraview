@@ -34,11 +34,16 @@
 #include <vector> // For member variables
 
 class vtkActor;
+class vtkColorTransferFunction;
 class vtkDataObject;
 class vtkDataSet;
+class vtkPiecewiseFunction;
 class vtkPolyData;
+class vtkPropCollection;
 class vtkScalarsToColors;
 class vtkTexture;
+class vtkVolume;
+class vtkVolumeCollection;
 
 class VTKIOEXPORT_EXPORT vtkJSONSceneExporter : public vtkExporter
 {
@@ -47,16 +52,16 @@ public:
   vtkTypeMacro(vtkJSONSceneExporter, vtkExporter);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Specify file name of vtk data file to write.
    * This correspond to the root directory of the data to write.
    */
-  vtkSetStringMacro(FileName);
-  vtkGetStringMacro(FileName);
-  //@}
+  vtkSetFilePathMacro(FileName);
+  vtkGetFilePathMacro(FileName);
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Whether or not to write textures.
    * Textures will be written in JPEG format.
@@ -64,9 +69,9 @@ public:
    */
   vtkSetMacro(WriteTextures, bool);
   vtkGetMacro(WriteTextures, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Whether or not to write texture LODs.
    * This will write out the textures in a series of decreasing
@@ -78,9 +83,9 @@ public:
    */
   vtkSetMacro(WriteTextureLODs, bool);
   vtkGetMacro(WriteTextureLODs, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * The base size to be used for texture LODs. The texture LODs will
    * stop being written out when one is smaller than this size.
@@ -88,18 +93,18 @@ public:
    */
   vtkSetMacro(TextureLODsBaseSize, size_t);
   vtkGetMacro(TextureLODsBaseSize, size_t);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * The base URL to be used for texture LODs.
    * Default is nullptr.
    */
   vtkSetStringMacro(TextureLODsBaseUrl);
   vtkGetStringMacro(TextureLODsBaseUrl);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Whether or not to write poly LODs.
    * This will write out the poly LOD sources in a series of decreasing
@@ -116,9 +121,9 @@ public:
    */
   vtkSetMacro(WritePolyLODs, bool);
   vtkGetMacro(WritePolyLODs, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * The base size to be used for poly LODs. The poly LODs will stop
    * being written out when one is smaller than this size, or if the
@@ -128,23 +133,29 @@ public:
    */
   vtkSetMacro(PolyLODsBaseSize, size_t);
   vtkGetMacro(PolyLODsBaseSize, size_t);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * The base URL to be used for poly LODs.
    * Default is nullptr.
    */
   vtkSetStringMacro(PolyLODsBaseUrl);
   vtkGetStringMacro(PolyLODsBaseUrl);
-  //@}
+  ///@}
 
 protected:
   vtkJSONSceneExporter();
   ~vtkJSONSceneExporter() override;
 
-  void WriteDataObject(ostream& os, vtkDataObject* dataObject, vtkActor* actor);
-  std::string ExtractRenderingSetup(vtkActor* actor);
+  void WritePropCollection(vtkPropCollection* collection, std::ostream& sceneComponents);
+  void WriteVolumeCollection(vtkVolumeCollection* volumeCollection, std::ostream& sceneComponents);
+
+  void WriteDataObject(ostream& os, vtkDataObject* dataObject, vtkActor* actor, vtkVolume* volume);
+  std::string ExtractPiecewiseFunctionSetup(vtkPiecewiseFunction* pwf);
+  std::string ExtractColorTransferFunctionSetup(vtkColorTransferFunction* volume);
+  std::string ExtractVolumeRenderingSetup(vtkVolume* volume);
+  std::string ExtractActorRenderingSetup(vtkActor* actor);
   std::string WriteDataSet(vtkDataSet* dataset, const char* addOnMeta);
   void WriteLookupTable(const char* name, vtkScalarsToColors* lookupTable);
 

@@ -60,9 +60,7 @@ vtkPVClipDataSet::vtkPVClipDataSet(vtkImplicitFunction* vtkNotUsed(cf))
 }
 
 //----------------------------------------------------------------------------
-vtkPVClipDataSet::~vtkPVClipDataSet()
-{
-}
+vtkPVClipDataSet::~vtkPVClipDataSet() = default;
 
 //----------------------------------------------------------------------------
 void vtkPVClipDataSet::PrintSelf(ostream& os, vtkIndent indent)
@@ -314,11 +312,13 @@ int vtkPVClipDataSet::ClipUsingThreshold(
 
   if (this->GetInsideOut())
   {
-    threshold->ThresholdByLower(this->GetValue());
+    threshold->SetThresholdFunction(vtkThreshold::THRESHOLD_LOWER);
+    threshold->SetLowerThreshold(this->GetValue());
   }
   else
   {
-    threshold->ThresholdByUpper(this->GetValue());
+    threshold->SetThresholdFunction(vtkThreshold::THRESHOLD_UPPER);
+    threshold->SetUpperThreshold(this->GetValue());
   }
 
   threshold->Update();
@@ -400,7 +400,7 @@ int vtkPVClipDataSet::ClipUsingSuperclass(
 
   outputCD->CopyStructure(inputCD);
 
-  vtkSmartPointer<vtkHierarchicalBoxDataIterator> itr(0);
+  vtkSmartPointer<vtkHierarchicalBoxDataIterator> itr(nullptr);
   itr.TakeReference(vtkHierarchicalBoxDataIterator::SafeDownCast(inputCD->NewIterator()));
 
   // Loop over all the datasets.

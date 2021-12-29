@@ -42,8 +42,20 @@ void ClearFieldDataFromGrid(vtkDataSet* grid)
 }
 } // end namespace
 
-vtkCPDataDescription* vtkCPAdaptorAPI::CoProcessorData = NULL;
-vtkCPProcessor* vtkCPAdaptorAPI::CoProcessor = NULL;
+//----------------------------------------------------------------------------
+vtkCPAdaptorAPI::vtkCPAdaptorAPI() = default;
+
+//----------------------------------------------------------------------------
+vtkCPAdaptorAPI::~vtkCPAdaptorAPI() = default;
+
+//-----------------------------------------------------------------------------
+void vtkCPAdaptorAPI::PrintSelf(ostream& os, vtkIndent indent)
+{
+  this->Superclass::PrintSelf(os, indent);
+}
+
+vtkCPDataDescription* vtkCPAdaptorAPI::CoProcessorData = nullptr;
+vtkCPProcessor* vtkCPAdaptorAPI::CoProcessor = nullptr;
 bool vtkCPAdaptorAPI::IsTimeDataSet = false;
 
 //-----------------------------------------------------------------------------
@@ -70,13 +82,13 @@ void vtkCPAdaptorAPI::CoProcessorFinalize()
   if (vtkCPAdaptorAPI::CoProcessor)
   {
     vtkCPAdaptorAPI::CoProcessor->Delete();
-    vtkCPAdaptorAPI::CoProcessor = 0;
+    vtkCPAdaptorAPI::CoProcessor = nullptr;
   }
 
   if (vtkCPAdaptorAPI::CoProcessorData)
   {
     vtkCPAdaptorAPI::CoProcessorData->Delete();
-    vtkCPAdaptorAPI::CoProcessorData = 0;
+    vtkCPAdaptorAPI::CoProcessorData = nullptr;
   }
 }
 

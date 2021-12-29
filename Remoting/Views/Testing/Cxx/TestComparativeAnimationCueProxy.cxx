@@ -16,7 +16,6 @@
 // works are expected.
 
 #include "vtkInitializationHelper.h"
-#include "vtkPVOptions.h"
 #include "vtkProcessModule.h"
 #include "vtkSMProxyManager.h"
 #include "vtkSMSession.h"
@@ -26,7 +25,7 @@
 #include "vtkPVComparativeAnimationCue.h"
 #include "vtkSMComparativeAnimationCueProxy.h"
 #include "vtkSmartPointer.h"
-#include <assert.h>
+#include <cassert>
 
 #define ERROR(msg)                                                                                 \
   cerr << "ERROR: " msg << endl;                                                                   \
@@ -35,8 +34,7 @@
 int TestComparativeAnimationCueProxy(int argc, char* argv[])
 {
   // Initialization
-  vtkPVOptions* options = vtkPVOptions::New();
-  vtkInitializationHelper::Initialize(argc, argv, vtkProcessModule::PROCESS_CLIENT, options);
+  vtkInitializationHelper::Initialize(argc, argv, vtkProcessModule::PROCESS_CLIENT);
   vtkSMSession* session = vtkSMSession::New();
   vtkProcessModule::GetProcessModule()->RegisterSession(session);
   vtkSMSessionProxyManager* pxm =
@@ -81,6 +79,5 @@ int TestComparativeAnimationCueProxy(int argc, char* argv[])
 
   //---------------------------------------------------------------------------
   vtkInitializationHelper::Finalize();
-  options->Delete();
   return 0;
 }

@@ -86,15 +86,15 @@ public:
    */
   static vtkBorderWidget* New();
 
-  //@{
+  ///@{
   /**
    * Standard methods for class.
    */
   vtkTypeMacro(vtkBorderWidget, vtkAbstractWidget);
   void PrintSelf(ostream& os, vtkIndent indent) override;
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Indicate whether the interior region of the widget can be selected or
    * not. If not, then events (such as left mouse down) allow the user to
@@ -104,9 +104,9 @@ public:
   vtkSetMacro(Selectable, vtkTypeBool);
   vtkGetMacro(Selectable, vtkTypeBool);
   vtkBooleanMacro(Selectable, vtkTypeBool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Indicate whether the boundary of the widget can be resized.
    * If not, the cursor will not change to "resize" type when mouse
@@ -115,7 +115,7 @@ public:
   vtkSetMacro(Resizable, vtkTypeBool);
   vtkGetMacro(Resizable, vtkTypeBool);
   vtkBooleanMacro(Resizable, vtkTypeBool);
-  //@}
+  ///@}
 
   /**
    * Specify an instance of vtkWidgetRepresentation used to represent this
@@ -160,6 +160,7 @@ protected:
   static void TranslateAction(vtkAbstractWidget*);
   static void EndSelectAction(vtkAbstractWidget*);
   static void MoveAction(vtkAbstractWidget*);
+  static void HoverLeaveAction(vtkAbstractWidget*);
 
   // Special internal methods to support subclasses handling events.
   // If a non-zero value is returned, the subclass is handling the event.

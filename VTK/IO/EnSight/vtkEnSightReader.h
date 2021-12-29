@@ -82,21 +82,21 @@ public:
     ELEMENT = 2
   };
 
-  //@{
+  ///@{
   /**
    * Get the Measured file name. Made public to allow access from
    * apps requiring detailed info about the Data contents
    */
-  vtkGetStringMacro(MeasuredFileName);
-  //@}
+  vtkGetFilePathMacro(MeasuredFileName);
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the Match file name. Made public to allow access from
    * apps requiring detailed info about the Data contents
    */
-  vtkGetStringMacro(MatchFileName);
-  //@}
+  vtkGetFilePathMacro(MatchFileName);
+  ///@}
 
 protected:
   vtkEnSightReader();
@@ -107,21 +107,21 @@ protected:
 
   void ClearForNewCaseFileName() override;
 
-  //@{
+  ///@{
   /**
    * Set the Measured file name.
    */
-  vtkSetStringMacro(MeasuredFileName);
-  //@}
+  vtkSetFilePathMacro(MeasuredFileName);
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set the Match file name.
    */
-  vtkSetStringMacro(MatchFileName);
-  //@}
+  vtkSetFilePathMacro(MatchFileName);
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Read the case file.  If an error occurred, 0 is returned; otherwise 1.
    */
@@ -130,7 +130,7 @@ protected:
   int ReadCaseFileVariable(char* line);
   int ReadCaseFileTime(char* line);
   int ReadCaseFileFile(char* line);
-  //@}
+  ///@}
 
   // set in UpdateInformation to value returned from ReadCaseFile
   int CaseFileRead;
@@ -254,7 +254,11 @@ protected:
   /**
    * Replace the *'s in the filename with the given filename number.
    */
+  VTK_DEPRECATED_IN_9_1_0("Use vtkGenericEnSightReader::ReplaceWildcardsHelper instead.")
   void ReplaceWildcards(char* filename, int num);
+
+  // Remove when removing the deprecated method above.
+  using vtkGenericEnSightReader::ReplaceWildcards;
 
   /**
    * Remove leading blank spaces from a string.

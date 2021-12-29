@@ -18,7 +18,7 @@
 #include <vtkm/cont/DynamicCellSet.h>
 #include <vtkm/cont/ErrorBadValue.h>
 #include <vtkm/cont/Field.h>
-#include <vtkm/cont/VariantArrayHandle.h>
+#include <vtkm/cont/UnknownArrayHandle.h>
 
 namespace vtkm
 {
@@ -133,7 +133,7 @@ public:
   //@}
 
   VTKM_CONT
-  void AddPointField(const std::string& fieldName, const vtkm::cont::VariantArrayHandle& field)
+  void AddPointField(const std::string& fieldName, const vtkm::cont::UnknownArrayHandle& field)
   {
     this->AddField(make_FieldPoint(fieldName, field));
   }
@@ -161,7 +161,7 @@ public:
 
   //Cell centered field
   VTKM_CONT
-  void AddCellField(const std::string& fieldName, const vtkm::cont::VariantArrayHandle& field)
+  void AddCellField(const std::string& fieldName, const vtkm::cont::UnknownArrayHandle& field)
   {
     this->AddField(make_FieldCell(fieldName, field));
   }
@@ -338,7 +338,7 @@ public:
     vtkmdiy::save(bb, numberOfFields);
     for (vtkm::IdComponent i = 0; i < numberOfFields; ++i)
     {
-      vtkmdiy::save(bb, vtkm::cont::SerializableField<FieldTypeList>(dataset.GetField(i)));
+      vtkmdiy::save(bb, dataset.GetField(i));
     }
   }
 
@@ -364,9 +364,9 @@ public:
     vtkmdiy::load(bb, numberOfFields);
     for (vtkm::IdComponent i = 0; i < numberOfFields; ++i)
     {
-      vtkm::cont::SerializableField<FieldTypeList> field;
+      vtkm::cont::Field field;
       vtkmdiy::load(bb, field);
-      dataset.AddField(field.Field);
+      dataset.AddField(field);
     }
   }
 };

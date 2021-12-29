@@ -33,13 +33,25 @@
 #include "vtkSMObject.h"
 
 #include "vtkRemotingViewsModule.h" // needed for exports
-#include "vtkSmartPointer.h"
-#include <vtk_jsoncpp_fwd.h> // for forward declarations
+#include "vtkSmartPointer.h"        // for ivars
+#include <vector>                   // for vector
+#include <vtk_jsoncpp_fwd.h>        // for forward declarations
 
 class vtkPVXMLElement;
 class VTKREMOTINGVIEWS_EXPORT vtkSMTransferFunctionPresets : public vtkSMObject
 {
 public:
+  // Used to return information about the imported presets to the caller of ImportPresets
+  struct ImportedPreset
+  {
+    std::string name;
+    struct
+    {
+      bool isValid = false;
+      std::vector<std::string> groups;
+    } potentialGroups;
+  };
+
   static vtkSMTransferFunctionPresets* New();
   vtkTypeMacro(vtkSMTransferFunctionPresets, vtkSMObject);
   void PrintSelf(ostream& os, vtkIndent indent) override;
@@ -127,13 +139,6 @@ public:
   }
 
   /**
-   * Returns the preset's JSON-defined default position (if any)
-   * or -1 if none.
-   */
-  bool IsPresetDefault(const Json::Value& preset);
-  bool IsPresetDefault(unsigned int index) { return this->IsPresetDefault(this->GetPreset(index)); }
-
-  /**
    * Set the Json::Value object for preset 'name' if such a preset was found in the custom presets.
    * Return true if preset was correctly set, false otherwise.
    */
@@ -148,7 +153,7 @@ public:
    * Same as AddPreset() expect it create a unique name using the prefix
    * provided. If no prefix is specified, "Preset" will be used as the prefix.
    */
-  std::string AddUniquePreset(const Json::Value& preset, const char* prefix = NULL);
+  std::string AddUniquePreset(const Json::Value& preset, const char* prefix = nullptr);
 
   /**
    * Returns true if the preset is a builtin preset.
@@ -169,7 +174,9 @@ public:
    * and will be converted to the new format before processing.
    */
   bool ImportPresets(const char* filename);
+  bool ImportPresets(const char* filename, std::vector<ImportedPreset>* importedPresets);
   bool ImportPresets(const Json::Value& presets);
+  bool ImportPresets(const Json::Value& presets, std::vector<ImportedPreset>* importedPresets);
   //@}
 
   /**

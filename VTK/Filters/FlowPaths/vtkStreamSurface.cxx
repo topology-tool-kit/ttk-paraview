@@ -1,7 +1,7 @@
 /*=========================================================================
 
  Program:   Visualization Toolkit
- Module:    vtkPolyDataAlgorithm.h
+ Module:    vtkStreamSurface.cxx
 
  Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
  All rights reserved.
@@ -34,6 +34,8 @@ vtkStandardNewMacro(vtkStreamSurface);
 //----------------------------------------------------------------------------
 vtkStreamSurface::vtkStreamSurface()
 {
+  // this prevents that vtkPStreamTracer is called, which is necessary to prevent deadlocks
+  vtkObjectFactory::SetAllEnableFlags(false, "vtkStreamTracer"); // this will need to be discussed
   this->RuledSurface->SetInputConnection(this->StreamTracer->GetOutputPort());
   this->RuledSurface->SetRuledModeToResample();
 }
@@ -55,7 +57,8 @@ void vtkStreamSurface::PrintSelf(ostream& os, vtkIndent indent)
 }
 
 //----------------------------------------------------------------------------
-int vtkStreamSurface::AdvectIterative(vtkDataSet* field, vtkPolyData* seeds, vtkPolyData* output)
+int vtkStreamSurface::AdvectIterative(
+  vtkDataSet* field, vtkPolyData* seeds, int integrationDirection, vtkPolyData* output)
 {
   // adapt dist if cell unit was selected
   double distThreshold = this->InitialIntegrationStep;
@@ -84,13 +87,18 @@ int vtkStreamSurface::AdvectIterative(vtkDataSet* field, vtkPolyData* seeds, vtk
     this->StreamTracer->SetMaximumPropagation(this->MaximumPropagation);
     this->StreamTracer->SetIntegrationStepUnit(this->IntegrationStepUnit);
     this->StreamTracer->SetInitialIntegrationStep(this->InitialIntegrationStep);
-    this->StreamTracer->SetIntegrationDirection(this->IntegrationDirection);
+    this->StreamTracer->SetIntegrationDirection(integrationDirection);
+    int vecType(0);
+    vtkSmartPointer<vtkDataArray> vectors = this->GetInputArrayToProcess(0, field, vecType);
+    this->StreamTracer->SetInputArrayToProcess(
+      0, 0, 0, vtkDataObject::FIELD_ASSOCIATION_POINTS, vectors->GetName());
     // setting this to zero makes the tracer do 1 step
     this->StreamTracer->SetMaximumNumberOfSteps(0);
     this->StreamTracer->Update();
 
     if (StreamTracer->GetOutput()->GetNumberOfPoints() == 0)
     {
+      this->StreamTracer->SetInputData(nullptr);
       return 1;
     }
 
@@ -162,15 +170,6 @@ int vtkStreamSurface::AdvectIterative(vtkDataSet* field, vtkPolyData* seeds, vtk
     iterationArray->SetNumberOfTuples(orderedSurface->GetNumberOfPoints());
     iterationArray->Fill(currentIteration);
     orderedSurface->GetPointData()->AddArray(iterationArray);
-
-    vtkNew<vtkDoubleArray> indexArray;
-    indexArray->SetName("index");
-    indexArray->SetNumberOfTuples(orderedSurface->GetNumberOfPoints());
-    orderedSurface->GetPointData()->AddArray(indexArray);
-    for (int k = 0; k < orderedSurface->GetNumberOfPoints(); k++)
-    {
-      indexArray->SetTuple1(k, k);
-    }
 
     // insert cells
     for (int k = 0; k < orderedSurface->GetNumberOfPoints() - 2; k += 2)
@@ -267,17 +266,20 @@ int vtkStreamSurface::AdvectIterative(vtkDataSet* field, vtkPolyData* seeds, vtk
     if (this->StreamTracer->GetOutput()
           ->GetPointData()
           ->GetArray("IntegrationTime")
-          ->GetRange()[1 - this->IntegrationDirection] == 0)
+          ->GetRange()[1 - integrationDirection] == 0)
     {
       vtkDebugMacro("Surface stagnates. All particles have left the boundary.");
       break;
     }
     if (currentSeeds == nullptr)
     {
+      this->StreamTracer->SetInputData(nullptr);
       vtkErrorMacro("Circle is empty, output may not be correct.");
       return 0;
     }
   }
+
+  this->StreamTracer->SetInputData(nullptr);
   return 1;
 }
 
@@ -322,7 +324,18 @@ int vtkStreamSurface::RequestData(vtkInformation* vtkNotUsed(request),
   int finishedSuccessfully = 0;
   if (this->UseIterativeSeeding)
   {
-    finishedSuccessfully = AdvectIterative(field, seeds, output);
+    // if this->IntegrationDirection is set to BOTH, then run forward and backward separately and
+    // combine results
+    if (this->IntegrationDirection == 2)
+    {
+      finishedSuccessfully = AdvectIterative(field, seeds, 0, output);
+      finishedSuccessfully =
+        std::min(finishedSuccessfully, AdvectIterative(field, seeds, 1, output));
+    }
+    else
+    {
+      finishedSuccessfully = AdvectIterative(field, seeds, this->IntegrationDirection, output);
+    }
   }
   else
   {

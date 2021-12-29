@@ -21,17 +21,17 @@ namespace arg
 {
 
 // Specialization for extrude types.
-template <typename Device, typename ScatterAndMaskMode>
-class ThreadIndicesTopologyMap<vtkm::exec::ConnectivityExtrude<Device>, ScatterAndMaskMode>
+template <typename ScatterAndMaskMode>
+class ThreadIndicesTopologyMap<vtkm::exec::ConnectivityExtrude, ScatterAndMaskMode>
 {
 
-  using ConnectivityType = vtkm::exec::ConnectivityExtrude<Device>;
+  using ConnectivityType = vtkm::exec::ConnectivityExtrude;
 
 public:
   using CellShapeTag = typename ConnectivityType::CellShapeTag;
   using IndicesIncidentType = typename ConnectivityType::IndicesType;
   using LogicalIndexType = typename ConnectivityType::SchedulingRangeType;
-  using Connectivity = vtkm::exec::ConnectivityExtrude<Device>;
+  using Connectivity = vtkm::exec::ConnectivityExtrude;
 
   VTKM_SUPPRESS_EXEC_WARNINGS
   VTKM_EXEC ThreadIndicesTopologyMap(vtkm::Id threadIndex,
@@ -184,10 +184,10 @@ private:
 };
 
 // Specialization for extrude types.
-template <typename Device, typename ScatterAndMaskMode>
-class ThreadIndicesTopologyMap<vtkm::exec::ReverseConnectivityExtrude<Device>, ScatterAndMaskMode>
+template <typename ScatterAndMaskMode>
+class ThreadIndicesTopologyMap<vtkm::exec::ReverseConnectivityExtrude, ScatterAndMaskMode>
 {
-  using ConnectivityType = vtkm::exec::ReverseConnectivityExtrude<Device>;
+  using ConnectivityType = vtkm::exec::ReverseConnectivityExtrude;
 
 public:
   using CellShapeTag = typename ConnectivityType::CellShapeTag;
@@ -214,6 +214,7 @@ public:
     this->IndicesIncident = connectivity.GetIndices(logicalIndex);
   }
 
+  VTKM_EXEC
   ThreadIndicesTopologyMap(const vtkm::Id3& threadIndex3D,
                            vtkm::Id threadIndex1D,
                            const ConnectivityType& connectivity)
@@ -229,6 +230,7 @@ public:
     this->IndicesIncident = connectivity.GetIndices(logicalIndex);
   }
 
+  VTKM_EXEC
   ThreadIndicesTopologyMap(const vtkm::Id3& threadIndex3D,
                            vtkm::Id threadIndex1D,
                            vtkm::Id inputIndex,

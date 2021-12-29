@@ -1,46 +1,6 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
-// Copyright (c) 2014-2019, Lawrence Livermore National Security, LLC.
-// 
-// Produced at the Lawrence Livermore National Laboratory
-// 
-// LLNL-CODE-666778
-// 
-// All rights reserved.
-// 
-// This file is part of Conduit. 
-// 
-// For details, see: http://software.llnl.gov/conduit/.
-// 
-// Please also read conduit/LICENSE
-// 
-// Redistribution and use in source and binary forms, with or without 
-// modification, are permitted provided that the following conditions are met:
-// 
-// * Redistributions of source code must retain the above copyright notice, 
-//   this list of conditions and the disclaimer below.
-// 
-// * Redistributions in binary form must reproduce the above copyright notice,
-//   this list of conditions and the disclaimer (as noted below) in the
-//   documentation and/or other materials provided with the distribution.
-// 
-// * Neither the name of the LLNS/LLNL nor the names of its contributors may
-//   be used to endorse or promote products derived from this software without
-//   specific prior written permission.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY,
-// LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
-// DAMAGES  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-// OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, 
-// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
-// IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
-// POSSIBILITY OF SUCH DAMAGE.
-// 
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
+// Copyright (c) Lawrence Livermore National Security, LLC and other Conduit
+// Project developers. See top-level LICENSE AND COPYRIGHT files for dates and
+// other details. No copyright assignment is required to contribute to Conduit.
 
 //-----------------------------------------------------------------------------
 ///
@@ -50,6 +10,10 @@
 
 #ifndef CONDUIT_DATA_ARRAY_HPP
 #define CONDUIT_DATA_ARRAY_HPP
+
+#ifdef CONDUIT_USE_CXX11
+#include <initializer_list>
+#endif
 
 //-----------------------------------------------------------------------------
 // -- conduit  includes -- 
@@ -139,6 +103,14 @@ public:
                                     Node &info,
                                     const float64 epsilon = CONDUIT_EPSILON) const;
 
+    ///
+    /// Summary Stats Helpers
+    ///
+    T               min()  const;
+    T               max()  const;
+    T               sum() const;
+    float64         mean() const;
+
 //-----------------------------------------------------------------------------
 // Setters
 //-----------------------------------------------------------------------------
@@ -184,6 +156,130 @@ public:
     void            set(const std::vector<float64> &values)
                         {set(&values[0],values.size());}
 
+    //-------------------------------------------------------------------------
+    #ifdef CONDUIT_USE_CXX11
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    // -- set for std::initializer_list types ---
+    //-------------------------------------------------------------------------
+
+    /// signed integer arrays via std::initializer_list
+    void            set(const std::initializer_list<int8>    &values);
+    void            set(const std::initializer_list<int16>   &values);
+    void            set(const std::initializer_list<int32>   &values);
+    void            set(const std::initializer_list<int64>   &values);
+
+    /// unsigned integer arrays via std::initializer_list
+    void            set(const std::initializer_list<uint8>   &values);
+    void            set(const std::initializer_list<uint16>  &values);
+    void            set(const std::initializer_list<uint32>  &values);
+    void            set(const std::initializer_list<uint64>  &values);
+    
+    /// floating point arrays via std::initializer_list
+    void            set(const std::initializer_list<float32> &values);
+    void            set(const std::initializer_list<float64> &values);
+
+    //-------------------------------------------------------------------------
+    // --  assignment c-native gap operators for initializer_list types ---
+    //-------------------------------------------------------------------------
+
+    void set(const std::initializer_list<char> &values);
+
+    #ifndef CONDUIT_USE_CHAR
+        void set(const std::initializer_list<signed char> &values);
+        void set(const std::initializer_list<unsigned char> &values);
+    #endif
+
+    #ifndef CONDUIT_USE_SHORT
+        void set(const std::initializer_list<short> &values);
+        void set(const std::initializer_list<unsigned short> &values);
+    #endif
+
+    #ifndef CONDUIT_USE_INT
+       void set(const std::initializer_list<int> &values);
+       void set(const std::initializer_list<unsigned int> &values); 
+    #endif
+
+    #ifndef CONDUIT_USE_LONG
+       void set(const std::initializer_list<long> &values);
+       void set(const std::initializer_list<unsigned long> &values); 
+    #endif
+
+    #if defined(CONDUIT_HAS_LONG_LONG) && !defined(CONDUIT_USE_LONG_LONG)
+       void set(const std::initializer_list<long long> &values);
+       void set(const std::initializer_list<unsigned long long> &values); 
+    #endif
+
+    #ifndef CONDUIT_USE_FLOAT
+       void set(const std::initializer_list<float> &values);
+    #endif
+
+    #ifndef CONDUIT_USE_DOUBLE
+       void set(const std::initializer_list<double> &values);
+    #endif
+
+    //-------------------------------------------------------------------------
+    // -- assignment operators for std::initializer_list types ---
+    //-------------------------------------------------------------------------
+    // signed integer array types via std::initializer_list
+    DataArray &operator=(const std::initializer_list<int8>   &values);
+    DataArray &operator=(const std::initializer_list<int16>  &values);
+    DataArray &operator=(const std::initializer_list<int32>  &values);
+    DataArray &operator=(const std::initializer_list<int64>  &values);
+
+    // unsigned integer array types via std::initialize_list
+    DataArray &operator=(const std::initializer_list<uint8>   &values);
+    DataArray &operator=(const std::initializer_list<uint16>  &values);
+    DataArray &operator=(const std::initializer_list<uint32>  &values);
+    DataArray &operator=(const std::initializer_list<uint64>  &values);
+
+    // floating point array types via std::initializer_list
+    DataArray &operator=(const std::initializer_list<float32> &values);
+    DataArray &operator=(const std::initializer_list<float64> &values);
+
+    //-------------------------------------------------------------------------
+    // --  assignment c-native gap operators for initializer_list types ---
+    //-------------------------------------------------------------------------
+
+    DataArray &operator=(const std::initializer_list<char> &values);
+
+    #ifndef CONDUIT_USE_CHAR
+        DataArray &operator=(const std::initializer_list<signed char> &values);
+        DataArray &operator=(const std::initializer_list<unsigned char> &values);
+    #endif
+
+    #ifndef CONDUIT_USE_SHORT
+        DataArray &operator=(const std::initializer_list<short> &values);
+        DataArray &operator=(const std::initializer_list<unsigned short> &values);
+    #endif
+
+    #ifndef CONDUIT_USE_INT
+        DataArray &operator=(const std::initializer_list<int> &values);
+        DataArray &operator=(const std::initializer_list<unsigned int> &values);
+    #endif
+
+    #ifndef CONDUIT_USE_LONG
+        DataArray &operator=(const std::initializer_list<long> &values);
+        DataArray &operator=(const std::initializer_list<unsigned long> &values);
+    #endif
+
+    #if defined(CONDUIT_HAS_LONG_LONG) && !defined(CONDUIT_USE_LONG_LONG)
+        DataArray &operator=(const std::initializer_list<long long> &values);
+        DataArray &operator=(const std::initializer_list<unsigned long long> &values);
+    #endif
+
+    #ifndef CONDUIT_USE_FLOAT
+        DataArray &operator=(const std::initializer_list<float> &values);
+    #endif
+
+    #ifndef CONDUIT_USE_DOUBLE
+        DataArray &operator=(const std::initializer_list<double> &values);
+    #endif
+
+    //-------------------------------------------------------------------------
+    #endif // end CONDUIT_USE_CXX11
+    //-------------------------------------------------------------------------
+
     /// signed integer arrays via DataArray
     void            set(const DataArray<int8>    &values);
     void            set(const DataArray<int16>   &values);
@@ -201,12 +297,55 @@ public:
     void            set(const DataArray<float64>  &values);
 
 //-----------------------------------------------------------------------------
+// fill
+//-----------------------------------------------------------------------------
+    /// signed integer fill
+    void            fill(int8  value);
+    void            fill(int16 value);
+    void            fill(int32 value);
+    void            fill(int64 value);
+
+    /// unsigned integer fill
+    void            fill(uint8  value);
+    void            fill(uint16 value);
+    void            fill(uint32 value);
+    void            fill(uint64 value);
+
+    /// floating point fill
+    void            fill(float32 value);
+    void            fill(float64 value);
+
+//-----------------------------------------------------------------------------
 // Transforms
 //-----------------------------------------------------------------------------
+    std::string     to_string(const std::string &protocol="json") const;
+    void            to_string_stream(std::ostream &os, 
+                                     const std::string &protocol="json") const;
+
+    // NOTE(cyrush): The primary reason this function exists is to enable 
+    // easier compatibility with debugging tools (e.g. totalview, gdb) that
+    // have difficulty allocating default string parameters.
+    std::string     to_string_default() const;
+
     std::string     to_json() const;
-    void            to_json(std::ostream &os) const;
-    void            compact_elements_to(uint8 *data) const;
+    void            to_json_stream(std::ostream &os) const;
     
+    /// DEPRECATED: to_json(std::ostream &os) is deprecated in favor of 
+    ///             to_json_stream(std::ostream &os)
+    void            to_json(std::ostream &os) const;
+
+    std::string     to_yaml() const;
+    void            to_yaml_stream(std::ostream &os) const;
+
+    void            compact_elements_to(uint8 *data) const;
+
+    /// Creates a string repression for printing that limits
+    /// the number of elements shown to a max number
+    std::string     to_summary_string_default() const;
+    std::string     to_summary_string(index_t threshold=5) const;
+    void            to_summary_string_stream(std::ostream &os,
+                                             index_t threshold=5) const;
+
 //-----------------------------------------------------------------------------
 // -- stdout print methods ---
 //-----------------------------------------------------------------------------

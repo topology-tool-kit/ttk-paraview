@@ -16,8 +16,10 @@ PRIVATE_DEPENDS
 OPTIONAL_DEPENDS
   VTK::loguru
 TEST_DEPENDS
+  VTK::cli11
   VTK::CommonDataModel
   VTK::CommonSystem
   VTK::CommonTransforms
   VTK::TestingCore
   VTK::vtksys
+  VTK::fmt

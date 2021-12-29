@@ -19,12 +19,14 @@ PURPOSE.  See the above copyright notice for more information.
 #include "vtkSMParaViewPipelineController.h"
 #include "vtkSMPropertyHelper.h"
 #include "vtkSMProxy.h"
+#include "vtkSMProxyListDomain.h"
+#include "vtkSMProxyProperty.h"
 #include "vtkSMSession.h"
 #include "vtkSMSessionProxyManager.h"
 #include "vtkSMSettings.h"
 #include "vtkSmartPointer.h"
 
-#include <assert.h>
+#include <cassert>
 #include <sstream>
 #include <vtk_jsoncpp.h>
 int TestSettings(int argc, char* argv[])
@@ -44,6 +46,8 @@ int TestSettings(int argc, char* argv[])
   cout << settingString;
 
   vtkSMSettings* settings = vtkSMSettings::GetInstance();
+  // cleanup because vtkInitialixationHelper looks for settings on disk
+  settings->ClearAllSettings();
   settings->AddCollectionFromString(settingString, 1.0);
 
   const char* higherPrioritySettingsString = "{\n"
@@ -100,29 +104,60 @@ int TestSettings(int argc, char* argv[])
   }
 
   // Test saving different number of repeatable property values
-  vtkSmartPointer<vtkSMProxy> contour;
-  contour.TakeReference(pxm->NewProxy("filters", "Contour"));
-  controller->PreInitializeProxy(contour);
-  vtkSMPropertyHelper(contour, "Input").Set(sphere);
-  controller->PostInitializeProxy(contour);
-
-  vtkSMDoubleVectorProperty* contourValuesProperty =
-    vtkSMDoubleVectorProperty::SafeDownCast(contour->GetProperty("ContourValues"));
-  if (!contourValuesProperty)
+  // NOTE: Contour property is not available in all editions, so it's possible the
+  // Contour filter is not defined. Handle that case.
+  if (pxm->HasDefinition("filters", "Contour"))
   {
-    std::cerr << "No contour values property in GenericContour\n";
-    return EXIT_FAILURE;
+    vtkSmartPointer<vtkSMProxy> contour;
+    contour.TakeReference(pxm->NewProxy("filters", "Contour"));
+    controller->PreInitializeProxy(contour);
+    vtkSMPropertyHelper(contour, "Input").Set(sphere);
+    controller->PostInitializeProxy(contour);
+
+    vtkSMDoubleVectorProperty* contourValuesProperty =
+      vtkSMDoubleVectorProperty::SafeDownCast(contour->GetProperty("ContourValues"));
+    if (!contourValuesProperty)
+    {
+      std::cerr << "No contour values property in GenericContour\n";
+      return EXIT_FAILURE;
+    }
+
+    // Double vector property resize
+    contourValuesProperty->SetNumberOfElements(1);
+    contourValuesProperty->SetElement(0, -1.0);
+    settings->SetProxySettings(contour);
+
+    contourValuesProperty->SetNumberOfElements(2);
+    contourValuesProperty->SetElement(0, -2.0);
+    contourValuesProperty->SetElement(1, -3.0);
+    settings->SetProxySettings(contour);
+
+    auto contourLocatorProperty = vtkSMProxyProperty::SafeDownCast(contour->GetProperty("Locator"));
+    if (!contourLocatorProperty)
+    {
+      std::cerr << "No contour locator property in GenericContour" << std::endl;
+      return EXIT_FAILURE;
+    }
+
+    auto proxyListDomain = contourLocatorProperty->FindDomain<vtkSMProxyListDomain>();
+    vtkSMProxy* locator0 = proxyListDomain->GetProxy(0);
+    vtkSMProxy* locator1 = proxyListDomain->GetProxy(1);
+    contourLocatorProperty->SetProxy(0, locator1);
+    settings->SetProxySettings(contour);
+    contourLocatorProperty->SetProxy(0, locator0);
+
+    settings->GetProxySettings(contour);
+    contour->ResetPropertiesToDefault();
+
+    if (strcmp(contourLocatorProperty->GetProxy(0)->GetXMLName(), locator1->GetXMLName()) != 0)
+    {
+      std::cerr << "Wrong selected locator. Has "
+                << contourLocatorProperty->GetProxy(0)->GetXMLName() << " instead of "
+                << locator1->GetXMLName() << std::endl;
+      std::cerr << *settings << std::endl;
+      return EXIT_FAILURE;
+    }
   }
-
-  // Double vector property resize
-  contourValuesProperty->SetNumberOfElements(1);
-  contourValuesProperty->SetElement(0, -1.0);
-  settings->SetProxySettings(contour);
-
-  contourValuesProperty->SetNumberOfElements(2);
-  contourValuesProperty->SetElement(0, -2.0);
-  contourValuesProperty->SetElement(1, -3.0);
-  settings->SetProxySettings(contour);
 
   vtkSMPropertyHelper(sphere, "Radius").Set(12);
   Json::Value state = vtkSMSettings::SerializeAsJSON(sphere);
@@ -135,6 +170,9 @@ int TestSettings(int argc, char* argv[])
     cerr << "Failed to DeserializeFromJSON." << endl;
     return EXIT_FAILURE;
   }
+
+  // avoid writing our test settings on disk.
+  settings->ClearAllSettings();
   session->Delete();
   vtkInitializationHelper::Finalize();
   return EXIT_SUCCESS;

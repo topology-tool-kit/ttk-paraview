@@ -466,13 +466,29 @@ modules may not add themselves to kits declared prior. The arguments are as foll
   * `HIDE_MODULES_FROM_CACHE`: (Defaults to `OFF`) Whether or not to hide the
     control variables from the cache or not. If enabled, modules will not be
     built unless they are required elsewhere.
-  * `ENABLE_TESTS`: (Defaults to `WANT`) Whether or not modules required by
+  * `ENABLE_TESTS`: (Defaults to `DEFAULT`) Whether or not modules required by
     the tests for the scanned modules should be enabled or not.
     - `ON`: Modules listed as `TEST_DEPENDS` will be required.
     - `OFF`: Test modules will not be considered.
-    - `WANT`: Test dependencies will enable modules if possible.
+    - `WANT`: Test dependencies will enable modules if possible. Note that this
+      has known issues where modules required only via testing may not have
+      their dependencies enabled.
     - `DEFAULT`: Test modules will be enabled if their required dependencies
       are satisfied and skipped otherwise.
+
+To make error messages clearer, modules passed to `REQUIRES_MODULES` and
+`REJECT_MODULES` may have a `_vtk_module_reason_<MODULE>` variable set to the
+reason for the module appearing in either argument. For example, if the
+`Package::Frobnitz` module is required due to a `ENABLE_FROBNITZ` cache
+variable:
+
+~~~{.cmake}
+set("_vtk_module_reason_Package::Frobnitz"
+  "via the `ENABLE_FROBNITZ` setting")
+~~~
+
+Additionally, the reason for the `WANT_BY_DEFAULT` value may be provided via
+the `_vtk_module_reason_WANT_BY_DEFAULT` variable.
 
 @section module-scanning-multiple Scanning multiple groups of modules
 
@@ -553,7 +569,7 @@ function (vtk_module_scan)
   endif ()
 
   if (NOT DEFINED _vtk_scan_ENABLE_TESTS)
-    set(_vtk_scan_ENABLE_TESTS "WANT")
+    set(_vtk_scan_ENABLE_TESTS "DEFAULT")
   endif ()
 
   if (NOT (_vtk_scan_ENABLE_TESTS STREQUAL "ON" OR
@@ -712,6 +728,8 @@ function (vtk_module_scan)
 
       if (NOT VTK_MODULE_ENABLE_${_vtk_scan_module_name_safe} STREQUAL "DEFAULT")
         set("_vtk_scan_enable_${_vtk_scan_module_name}" "${VTK_MODULE_ENABLE_${_vtk_scan_module_name_safe}}")
+        set("_vtk_scan_enable_reason_${_vtk_scan_module_name}"
+          "via `VTK_MDDULE_ENABLE_${_vtk_scan_module_name_safe}`")
         _vtk_module_debug(enable "@_vtk_scan_module_name@ is `${_vtk_scan_enable_${_vtk_scan_module_name}}` by cache value")
       endif ()
 
@@ -741,6 +759,8 @@ function (vtk_module_scan)
         set(_vtk_scan_group_enable "${VTK_GROUP_ENABLE_${_vtk_scan_group}}")
         if (NOT _vtk_scan_group_enable STREQUAL "DEFAULT")
           set("_vtk_scan_enable_${_vtk_scan_module_name}" "${_vtk_scan_group_enable}")
+          set("_vtk_scan_enable_reason_${_vtk_scan_module_name}"
+            "via `VTK_GROUP_ENABLE_${_vtk_scan_group}`")
           _vtk_module_debug(enable "@_vtk_scan_module_name@ is DEFAULT, using group `@_vtk_scan_group@` setting: @_vtk_scan_group_enable@")
         endif ()
       endforeach ()
@@ -757,7 +777,14 @@ function (vtk_module_scan)
       else ()
         set("_vtk_scan_enable_${_vtk_scan_module_name}" "DONT_WANT")
       endif ()
-      _vtk_module_debug(enable "@_vtk_scan_module_name@ is DEFAULT, using `WANT_BY_DEFAULT`: ${_vtk_scan_enable_${_vtk_scan_module_name}}")
+      if (DEFINED _vtk_module_reason_WANT_BY_DEFAULT)
+        set("_vtk_scan_enable_reason_${_vtk_scan_module_name}"
+          "${_vtk_module_reason_WANT_BY_DEFAULT}")
+      else ()
+        set("_vtk_scan_enable_reason_${_vtk_scan_module_name}"
+          "via `WANT_BY_DEFAULT=${_vtk_scan_WANT_BY_DEFAULT}`")
+      endif ()
+      _vtk_module_debug(enable "@_vtk_scan_module_name@ is DEFAULT, using `WANT_BY_DEFAULT`: ${_vtk_scan_enable_reason_${_vtk_scan_module_name}}")
     endif ()
 
     list(APPEND _vtk_scan_all_modules
@@ -825,6 +852,11 @@ function (vtk_module_scan)
     set_property(GLOBAL
       PROPERTY
         "_vtk_module_${_vtk_scan_module_name}_implementable" "${${_vtk_scan_module_name}_IMPLEMENTABLE}")
+    if (_vtk_scan_ENABLE_TESTS STREQUAL "WANT")
+      set_property(GLOBAL
+        PROPERTY
+          "_vtk_module_${_vtk_scan_module_name}_enable_tests_by_want" "1")
+    endif ()
   endforeach ()
 
   set(_vtk_scan_current_modules "${_vtk_scan_all_modules}")
@@ -838,11 +870,25 @@ function (vtk_module_scan)
   # as arguments.
   foreach (_vtk_scan_request_module IN LISTS _vtk_scan_REQUEST_MODULES)
     set("_vtk_scan_provide_${_vtk_scan_request_module}" ON)
-    _vtk_module_debug(provide "@_vtk_scan_request_module@ is provided via `REQUEST_MODULES`")
+    if (DEFINED "_vtk_module_reason_${_vtk_scan_request_module}")
+      set("_vtk_scan_provide_reason_${_vtk_scan_request_module}"
+        "${_vtk_module_reason_${_vtk_scan_request_module}}")
+    else ()
+      set("_vtk_scan_provide_reason_${_vtk_scan_request_module}"
+        "via `REQUEST_MODULES`")
+    endif ()
+    _vtk_module_debug(provide "@_vtk_scan_request_module@ is provided ${_vtk_scan_provide_reason_${_vtk_scan_request_module}}")
   endforeach ()
   foreach (_vtk_scan_reject_module IN LISTS _vtk_scan_REJECT_MODULES)
     set("_vtk_scan_provide_${_vtk_scan_reject_module}" OFF)
-    _vtk_module_debug(provide "@_vtk_scan_reject_module@ is not provided via `REJECT_MODULES`")
+    if (DEFINED "_vtk_module_reason_${_vtk_scan_reject_module}")
+      set("_vtk_scan_provide_reason_${_vtk_scan_reject_module}"
+        "${_vtk_module_reason_${_vtk_scan_reject_module}}")
+    else ()
+      set("_vtk_scan_provide_reason_${_vtk_scan_reject_module}"
+        "via `REJECT_MODULES`")
+    endif ()
+    _vtk_module_debug(provide "@_vtk_scan_reject_module@ is not provided ${_vtk_scan_provide_reason_${_vtk_scan_reject_module}}")
   endforeach ()
 
   # Traverse the graph classifying the quad-state for enabling modules into a
@@ -859,6 +905,8 @@ function (vtk_module_scan)
       # Mark enabled modules as to-be-provided. Any errors with requiring a
       # disabled module will be dealt with later.
       set("_vtk_scan_provide_${_vtk_scan_module}" ON)
+      set("_vtk_scan_provide_reason_${_vtk_scan_module}"
+        "via a `YES` setting (${_vtk_scan_enable_reason_${_vtk_scan_module}})")
       _vtk_module_debug(provide "@_vtk_scan_module@ is provided due to `YES` setting")
     elseif (_vtk_scan_enable_${_vtk_scan_module} STREQUAL "WANT")
       # Check to see if we can provide this module by checking of any of its
@@ -870,10 +918,18 @@ function (vtk_module_scan)
       endif ()
 
       set("_vtk_scan_provide_${_vtk_scan_module}" ON)
+      set("_vtk_scan_provide_reason_${_vtk_scan_module}"
+        "via a `WANT` setting (${_vtk_scan_enable_reason_${_vtk_scan_module}})")
       _vtk_module_debug(provide "@_vtk_scan_module@ is provided due to `WANT` setting")
       foreach (_vtk_scan_module_depend IN LISTS "${_vtk_scan_module}_DEPENDS" "${_vtk_scan_module}_PRIVATE_DEPENDS" _vtk_scan_test_depends)
         if (DEFINED "_vtk_scan_provide_${_vtk_scan_module_depend}" AND NOT _vtk_scan_provide_${_vtk_scan_module_depend})
           set("_vtk_scan_provide_${_vtk_scan_module}" OFF)
+          set("_vtk_scan_provide_reason_${_vtk_scan_module}"
+            "due to the ${_vtk_scan_module_depend} module not being available")
+          if (DEFINED "_vtk_scan_provide_reason_${_vtk_scan_module_depend}")
+            string(APPEND "_vtk_scan_provide_reason_${_vtk_scan_module}"
+              " (${_vtk_scan_provide_reason_${_vtk_scan_module_depend}})")
+          endif ()
           _vtk_module_debug(provide "@_vtk_scan_module@ is not provided due to not provided dependency @_vtk_scan_module_depend@")
           break ()
         endif ()
@@ -883,6 +939,12 @@ function (vtk_module_scan)
       foreach (_vtk_scan_module_depend IN LISTS "${_vtk_scan_module}_DEPENDS" "${_vtk_scan_module}_PRIVATE_DEPENDS" _vtk_scan_test_depends)
         if (DEFINED "_vtk_scan_provide_${_vtk_scan_module_depend}" AND NOT _vtk_scan_provide_${_vtk_scan_module_depend})
           set("_vtk_scan_provide_${_vtk_scan_module}" OFF)
+          set("_vtk_scan_provide_reason_${_vtk_scan_module}"
+            "due to the ${_vtk_scan_module_depend} module not being available")
+          if (DEFINED "_vtk_scan_provide_reason_${_vtk_scan_module_depend}")
+            string(APPEND "_vtk_scan_provide_reason_${_vtk_scan_module}"
+              " (${_vtk_scan_provide_reason_${_vtk_scan_module_depend}})")
+          endif ()
           _vtk_module_debug(provide "@_vtk_scan_module@ is not provided due to not provided dependency @_vtk_scan_module_depend@")
           break ()
         endif ()
@@ -890,6 +952,8 @@ function (vtk_module_scan)
     elseif (_vtk_scan_enable_${_vtk_scan_module} STREQUAL "NO")
       # Disable the module.
       set("_vtk_scan_provide_${_vtk_scan_module}" OFF)
+      set("_vtk_scan_provide_reason_${_vtk_scan_module}"
+        "via a `NO` setting (${_vtk_scan_enable_reason_${_vtk_scan_module}})")
       _vtk_module_debug(provide "@_vtk_scan_module@ is not provided due to `NO` setting")
     endif ()
 
@@ -900,7 +964,7 @@ function (vtk_module_scan)
     endif ()
 
     if (NOT DEFINED "_vtk_scan_provide_${_vtk_scan_module}")
-      _vtk_module_debug(provide "@_vtk_scan_module@ is indeterminite (${_vtk_scan_enable_${_vtk_scan_module}})")
+      _vtk_module_debug(provide "@_vtk_scan_module@ is indeterminate (${_vtk_scan_enable_${_vtk_scan_module}})")
     endif ()
   endforeach ()
 
@@ -956,16 +1020,28 @@ function (vtk_module_scan)
             continue ()
           else ()
             message(FATAL_ERROR
-              "The ${_vtk_scan_module} module requires the disabled module ${_vtk_scan_module_depend}.")
+              "The ${_vtk_scan_module} module (enabled "
+              "${_vtk_scan_provide_reason_${_vtk_scan_module}}) requires the "
+              "disabled module ${_vtk_scan_module_depend} (disabled "
+              "${_vtk_scan_provide_reason_${_vtk_scan_module_depend}}).")
           endif ()
         endif ()
 
         if (DEFINED "_vtk_scan_provide_${_vtk_scan_module_depend}")
           if (NOT _vtk_scan_provide_${_vtk_scan_module_depend})
             message(FATAL_ERROR
-              "The `${_vtk_scan_module_depend} should be provided, but is disabled.")
+              "The ${_vtk_scan_module_depend} module (disabled "
+              "${_vtk_scan_provide_reason_${_vtk_scan_module_depend}}) should "
+              "be provided because it is required by ${_vtk_scan_module} "
+              "(${_vtk_scan_provide_reason_${_vtk_scan_module}})")
           endif ()
           continue ()
+        endif ()
+        set("_vtk_scan_provide_reason_${_vtk_scan_module_depend}"
+          "via dependency from ${_vtk_scan_module}")
+        if (DEFINED "_vtk_scan_provide_reason_${_vtk_scan_module}")
+          string(APPEND "_vtk_scan_provide_reason_${_vtk_scan_module_depend}"
+            " (${_vtk_scan_provide_reason_${_vtk_scan_module}})")
         endif ()
         set("_vtk_scan_provide_${_vtk_scan_module_depend}" ON)
 
@@ -1127,9 +1203,12 @@ function (_vtk_module_real_target var module)
       if (DEFINED _vtk_build_module)
         set(_vtk_real_target_msg
           " Is a module dependency missing?")
+      elseif (TARGET "${module}")
+        set(_vtk_real_target_msg
+          " It's a target, but is it a VTK module?")
       else ()
         set(_vtk_real_target_msg
-          " Is a `find_package` missing a required component?")
+          " The module name is not a CMake target. Is there a typo? Is it missing a `Package::` prefix? Is a `find_package` missing a required component?")
       endif ()
     endif ()
     message(FATAL_ERROR
@@ -2193,13 +2272,13 @@ See CMake documentation for the difference between `ARCHIVE`, `LIBRARY`, and
     destination for library files.
   * `RUNTIME_DESTINATION`: (Defaults to `${CMAKE_INSTALL_BINDIR}`) The install
     destination for runtime files.
-  * `CMAKE_DESTINATION`: (Defaults to `<library destination>/cmake/<package>`)
+  * `CMAKE_DESTINATION`: (Defaults to `<LIBRARY_DESTINATION>/cmake/<PACKAGE>`)
     The install destination for CMake files.
   * `LICENSE_DESTINATION`: (Defaults to `${CMAKE_INSTALL_DATAROOTDIR}/licenses/${CMAKE_PROJECT_NAME}`)
     The install destination for license files (relevant for third party
     packages).
-  * `HIERARCHY_DESTINATION`: (Defaults to `<library
-    destination>/vtk/hierarchy/<PACKAGE>`) The install destination
+  * `HIERARCHY_DESTINATION`: (Defaults to
+    `<LIBRARY_DESTINATION>/vtk/hierarchy/<PACKAGE>`) The install destination
     for hierarchy files (used for language wrapping).
 #]==]
 function (vtk_module_build)
@@ -2286,6 +2365,11 @@ function (vtk_module_build)
 
   if (NOT DEFINED _vtk_build_BUILD_WITH_KITS)
     set(_vtk_build_BUILD_WITH_KITS OFF)
+  endif ()
+  if (_vtk_build_BUILD_WITH_KITS AND NOT BUILD_SHARED_LIBS)
+    message(AUTHOR_WARNING
+      "Static builds with kits are not well-tested and doesn't make much "
+      "sense. It is recommended to only build with kits in shared builds.")
   endif ()
 
   if (_vtk_build_BUILD_WITH_KITS AND NOT DEFINED _vtk_build_KITS)
@@ -2413,8 +2497,21 @@ function (vtk_module_build)
 
     foreach (_vtk_build_depend IN LISTS "_vtk_build_${_vtk_build_module}_depends" "_vtk_build_${_vtk_build_module}_private_depends")
       if (NOT TARGET "${_vtk_build_depend}")
+        get_property(_vtk_build_enable_tests_by_want GLOBAL
+          PROPERTY  "_vtk_module_${_vtk_build_module}_enable_tests_by_want")
+
+        set(_vtk_build_explain "")
+        if (_vtk_build_enable_tests_by_want)
+          string(APPEND _vtk_build_explain
+            " The `vtk_module_scan` for this module used `ENABLE_TESTS WANT`. "
+            "This is a known issue, but the fix is not trivial. You may "
+            "either change the flag used to control testing for this scan or "
+            "explicitly enable the ${_vtk_build_depend} module.")
+        endif ()
+
         message(FATAL_ERROR
-          "The ${_vtk_build_depend} dependency is missing for ${_vtk_build_module}.")
+          "The ${_vtk_build_depend} dependency is missing for "
+          "${_vtk_build_module}.${_vtk_build_explain}")
       endif ()
     endforeach ()
 
@@ -3194,12 +3291,13 @@ include(GenerateExportHeader)
 
 ~~~
 vtk_module_add_module(<name>
-  [FORCE_STATIC] [HEADER_ONLY]
+  [FORCE_STATIC] [HEADER_ONLY] [HEADER_DIRECTORIES]
   [EXPORT_MACRO_PREFIX      <prefix>]
   [HEADERS_SUBDIR           <subdir>]
   [LIBRARY_NAME_SUFFIX      <suffix>]
   [CLASSES                  <class>...]
   [TEMPLATE_CLASSES         <template class>...]
+  [NOWRAP_CLASSES           <nowrap class>...]
   [SOURCES                  <source>...]
   [HEADERS                  <header>...]
   [NOWRAP_HEADERS           <header>...]
@@ -3218,6 +3316,8 @@ always private, so there is no `PRIVATE_` variant for that argument).
     `BUILD_SHARED_LIBS` will control the library type.
   * `HEADER_ONLY`: The module only contains headers (or templates) and contains
     no compilation steps. Mutually exclusive with `FORCE_STATIC`.
+  * `HEADER_DIRECTORIES`: The headers for this module are in a directory
+    structure which should be preserved in the install tree.
   * `EXPORT_MACRO_PREFIX`: The prefix for the export macro definitions.
     Defaults to the library name of the module in all uppercase.
   * `HEADERS_SUBDIR`: The subdirectory to install headers into in the install
@@ -3232,6 +3332,9 @@ always private, so there is no `PRIVATE_` variant for that argument).
   * `SOURCES`: A list of source files which require compilation.
   * `HEADERS`: A list of header files which will be available for wrapping and
     installed.
+  * `NOWRAP_CLASSES`: A list of classes which will not be available for
+    wrapping but installed. This is a shortcut for adding `<class>.cxx` to
+    `SOURCES` and `<class>.h` to `NOWRAP_HEADERS`.
   * `NOWRAP_HEADERS`: A list of header files which will not be available for
     wrapping but installed.
   * `TEMPLATES`: A list of template files which will be installed.
@@ -3250,9 +3353,9 @@ function (vtk_module_add_module name)
   endforeach ()
 
   cmake_parse_arguments(PARSE_ARGV 1 _vtk_add_module
-    "FORCE_STATIC;HEADER_ONLY"
+    "FORCE_STATIC;HEADER_ONLY;HEADER_DIRECTORIES"
     "EXPORT_MACRO_PREFIX;HEADERS_SUBDIR;LIBRARY_NAME_SUFFIX"
-    "${_vtk_add_module_source_keywords};SOURCES;NOWRAP_HEADERS")
+    "${_vtk_add_module_source_keywords};SOURCES;NOWRAP_CLASSES;NOWRAP_HEADERS")
 
   if (_vtk_add_module_UNPARSED_ARGUMENTS)
     message(FATAL_ERROR
@@ -3282,6 +3385,13 @@ function (vtk_module_add_module name)
       "${_vtk_add_module_template_class}.txx")
     list(APPEND _vtk_add_module_HEADERS
       "${_vtk_add_module_template_class}.h")
+  endforeach ()
+
+  foreach (_vtk_add_module_class IN LISTS _vtk_add_module_NOWRAP_CLASSES)
+    list(APPEND _vtk_add_module_SOURCES
+      "${_vtk_add_module_class}.cxx")
+    list(APPEND _vtk_add_module_NOWRAP_HEADERS
+      "${_vtk_add_module_class}.h")
   endforeach ()
 
   foreach (_vtk_add_module_class IN LISTS _vtk_add_module_PRIVATE_CLASSES)
@@ -3317,7 +3427,14 @@ function (vtk_module_add_module name)
       "${_vtk_add_module_generated_header}")
   endif ()
 
+  set(_vtk_add_module_use_relative_paths)
+  if (_vtk_add_module_HEADER_DIRECTORIES)
+    set(_vtk_add_module_use_relative_paths
+      USE_RELATIVE_PATHS)
+  endif ()
+
   vtk_module_install_headers(
+    ${_vtk_add_module_use_relative_paths}
     FILES   ${_vtk_add_module_HEADERS}
             ${_vtk_add_module_NOWRAP_HEADERS}
             ${_vtk_add_module_TEMPLATES}
@@ -3519,7 +3636,6 @@ function (vtk_module_add_module name)
       PROPERTY  "_vtk_module_${_vtk_build_module}_optional_depends")
     foreach (_vtk_add_module_optional_depend IN LISTS _vtk_add_module_optional_depends)
       if (TARGET "${_vtk_add_module_optional_depend}")
-        set(_vtk_add_module_have_optional_depend 1)
         set(_vtk_add_module_optional_depend_link "${_vtk_add_module_optional_depend}")
         if (_vtk_add_module_build_with_kit)
           get_property(_vtk_add_module_optional_depend_kit GLOBAL
@@ -3540,13 +3656,11 @@ function (vtk_module_add_module name)
         target_link_libraries("${_vtk_add_module_real_target}"
           PRIVATE
             "${_vtk_add_module_optional_depend_link}")
-      else ()
-        set(_vtk_add_module_have_optional_depend 0)
       endif ()
       string(REPLACE "::" "_" _vtk_add_module_optional_depend_safe "${_vtk_add_module_optional_depend}")
       target_compile_definitions("${_vtk_add_module_real_target}"
         PRIVATE
-          "VTK_MODULE_ENABLE_${_vtk_add_module_optional_depend_safe}=${_vtk_add_module_have_optional_depend}")
+          "VTK_MODULE_ENABLE_${_vtk_add_module_optional_depend_safe}=$<TARGET_EXISTS:${_vtk_add_module_optional_depend}>")
     endforeach ()
 
     if (_vtk_add_module_private_depends_forward_link)
@@ -3732,7 +3846,7 @@ function (_vtk_module_add_header_tests)
   # public headers have their includes satisfied by a public dependency.
 
   # Bad...
-  if (NOT "Python${VTK_PYTHON_VERSION}_EXECUTABLE")
+  if (NOT Python${VTK_PYTHON_VERSION}_EXECUTABLE)
     return ()
   endif ()
 
@@ -3765,6 +3879,7 @@ and `HEADERS_COMPONENT` arguments to @ref vtk_module_build.
 
 ~~~
 vtk_module_install_headers(
+  [USE_RELATIVE_PATHS]
   [DIRECTORIES  <directory>...]
   [FILES        <file>...]
   [SUBDIR       <subdir>])
@@ -3772,10 +3887,14 @@ vtk_module_install_headers(
 
 Installation of header directories follows CMake's `install` function semantics
 with respect to trailing slashes.
+
+If `USE_RELATIVE_PATHS` is given, the directory part of any listed files will
+be added to the destination. Absolute paths will be computed relative to
+`${CMAKE_CURRENT_BINARY_DIR}`.
 #]==]
 function (vtk_module_install_headers)
   cmake_parse_arguments(PARSE_ARGV 0 _vtk_install_headers
-    ""
+    "USE_RELATIVE_PATHS"
     "SUBDIR"
     "FILES;DIRECTORIES")
 
@@ -3806,16 +3925,43 @@ function (vtk_module_install_headers)
       endif ()
     endif ()
   endif ()
-  if (_vtk_install_headers_FILES)
+  if (_vtk_install_headers_USE_RELATIVE_PATHS)
+    set(_vtk_install_headers_destination_file_subdir "")
+    foreach (_vtk_install_headers_file IN LISTS _vtk_install_headers_FILES)
+      if (IS_ABSOLUTE "${_vtk_install_headers_file}")
+        file(RELATIVE_PATH _vtk_install_headers_destination_file_from_binary_dir
+          "${CMAKE_CURRENT_BINARY_DIR}"
+          "${_vtk_install_headers_file}")
+        get_filename_component(_vtk_install_headers_destination_file_subdir "${_vtk_install_headers_destination_file_from_binary_dir}" DIRECTORY)
+      else ()
+        get_filename_component(_vtk_install_headers_destination_file_subdir "${_vtk_install_headers_file}" DIRECTORY)
+      endif ()
+      install(
+        FILES       ${_vtk_install_headers_file}
+        DESTINATION "${_vtk_install_headers_destination}/${_vtk_install_headers_destination_file_subdir}"
+        COMPONENT   "${_vtk_install_headers_headers_component}")
+    endforeach ()
+  elseif (_vtk_install_headers_FILES)
     install(
       FILES       ${_vtk_install_headers_FILES}
       DESTINATION "${_vtk_install_headers_destination}"
       COMPONENT   "${_vtk_install_headers_headers_component}")
   endif ()
+  set(_vtk_install_headers_destination_directory_subdir "")
   foreach (_vtk_install_headers_directory IN LISTS _vtk_install_headers_DIRECTORIES)
+    if (_vtk_install_headers_USE_RELATIVE_PATHS)
+      if (IS_ABSOLUTE "${_vtk_install_headers_directory}")
+        file(RELATIVE_PATH _vtk_install_headers_destination_directory_from_binary_dir
+          "${CMAKE_CURRENT_BINARY_DIR}"
+          "${_vtk_install_headers_directory}")
+        get_filename_component(_vtk_install_headers_destination_directory_subdir "${_vtk_install_headers_destination_directory_from_binary_dir}" DIRECTORY)
+      else ()
+        get_filename_component(_vtk_install_headers_destination_directory_subdir "${_vtk_install_headers_directory}" DIRECTORY)
+      endif ()
+    endif ()
     install(
       DIRECTORY   "${_vtk_install_headers_directory}"
-      DESTINATION "${_vtk_install_headers_destination}"
+      DESTINATION "${_vtk_install_headers_destination}/${_vtk_install_headers_destination_directory_subdir}"
       COMPONENT   "${_vtk_install_headers_headers_component}")
   endforeach ()
 endfunction ()
@@ -4078,14 +4224,9 @@ function (vtk_module_add_executable name)
       PROPERTY  "_vtk_module_${_vtk_build_module}_optional_depends")
     foreach (_vtk_add_executable_optional_depend IN LISTS _vtk_add_executable_optional_depends)
       string(REPLACE "::" "_" _vtk_add_executable_optional_depend_safe "${_vtk_add_executable_optional_depend}")
-      if (TARGET "${_vtk_add_executable_optional_depend}")
-        set(_vtk_add_executable_have_optional_depend 1)
-      else ()
-        set(_vtk_add_executable_have_optional_depend 0)
-      endif ()
       target_compile_definitions("${_vtk_add_executable_target_name}"
         PRIVATE
-          "VTK_MODULE_ENABLE_${_vtk_add_executable_optional_depend_safe}=${_vtk_add_executable_have_optional_depend}")
+          "VTK_MODULE_ENABLE_${_vtk_add_executable_optional_depend_safe}=$<TARGET_EXISTS:{_vtk_add_executable_optional_depend}>")
     endforeach ()
 
     if (_vtk_module_warnings)
@@ -4158,7 +4299,9 @@ The `PACKAGE` argument is the only required argument. The rest are optional.
 Note that `PRIVATE` is *only* applicable for private dependencies on interface
 targets (basically, header libraries) because some platforms require private
 shared libraries dependencies to be present when linking dependent libraries
-and executables as well.
+and executables as well. Such usages should additionally be used only via a
+`$<BUILD_INTERFACE>` generator expression to avoid putting the target name into
+the install tree at all.
 #]==]
 macro (vtk_module_find_package)
   # This needs to be a macro because find modules typically set variables which
@@ -4238,74 +4381,75 @@ macro (vtk_module_find_package)
     endif ()
   endforeach ()
 
-  if (NOT _vtk_find_package_PRIVATE)
-    set_property(GLOBAL APPEND
-      PROPERTY
-        "_vtk_module_find_packages_${_vtk_build_PACKAGE}" "${_vtk_find_package_PACKAGE}")
-    set(_vtk_find_package_base "_vtk_module_find_package_${_vtk_build_module}")
-    set_property(GLOBAL APPEND
-      PROPERTY
-        "${_vtk_find_package_base}" "${_vtk_find_package_PACKAGE}")
-    set(_vtk_find_package_base_package "${_vtk_find_package_base}_${_vtk_find_package_PACKAGE}")
-    set_property(GLOBAL
-      PROPERTY
-        "${_vtk_find_package_base_package}_version" "${_vtk_find_package_VERSION}")
-    set_property(GLOBAL
-      PROPERTY
-        "${_vtk_find_package_base_package}_config" "${_vtk_find_package_CONFIG_MODE}")
-    set_property(GLOBAL APPEND
-      PROPERTY
-        "${_vtk_find_package_base_package}_components" "${_vtk_find_package_COMPONENTS}")
-    set_property(GLOBAL APPEND
-      PROPERTY
-        "${_vtk_find_package_base_package}_optional_components" "${_vtk_find_package_OPTIONAL_COMPONENTS}")
-    set_property(GLOBAL APPEND
-      PROPERTY
-        "${_vtk_find_package_base_package}_optional_components_found" "${_vtk_find_package_optional_components_found}")
-    set_property(GLOBAL
-      PROPERTY
-        "${_vtk_find_package_base_package}_exact" "0")
-    if (DEFINED _vtk_find_package_FORWARD_VERSION_REQ)
-      string(FIND "${_vtk_find_package_VERSION_VAR}" "@" _vtk_find_package_idx)
-      if (_vtk_find_package_idx EQUAL -1)
-        if (NOT DEFINED "${_vtk_find_package_VERSION_VAR}")
-          message(FATAL_ERROR
-            "The `${_vtk_find_package_VERSION_VAR}` variable is not defined.")
-        endif ()
-        set(_vtk_find_package_version "${${_vtk_find_package_VERSION_VAR}}")
-      else ()
-        string(CONFIGURE "${_vtk_find_package_VERSION_VAR}" _vtk_find_package_version)
-      endif ()
-      unset(_vtk_find_package_idx)
-
-      if ("${_vtk_find_package_version}" STREQUAL "")
+  set_property(GLOBAL APPEND
+    PROPERTY
+      "_vtk_module_find_packages_${_vtk_build_PACKAGE}" "${_vtk_find_package_PACKAGE}")
+  set(_vtk_find_package_base "_vtk_module_find_package_${_vtk_build_module}")
+  set_property(GLOBAL APPEND
+    PROPERTY
+      "${_vtk_find_package_base}" "${_vtk_find_package_PACKAGE}")
+  set(_vtk_find_package_base_package "${_vtk_find_package_base}_${_vtk_find_package_PACKAGE}")
+  set_property(GLOBAL
+    PROPERTY
+      "${_vtk_find_package_base_package}_private" "${_vtk_find_package_PRIVATE}")
+  set_property(GLOBAL
+    PROPERTY
+      "${_vtk_find_package_base_package}_version" "${_vtk_find_package_VERSION}")
+  set_property(GLOBAL
+    PROPERTY
+      "${_vtk_find_package_base_package}_config" "${_vtk_find_package_CONFIG_MODE}")
+  set_property(GLOBAL APPEND
+    PROPERTY
+      "${_vtk_find_package_base_package}_components" "${_vtk_find_package_COMPONENTS}")
+  set_property(GLOBAL APPEND
+    PROPERTY
+      "${_vtk_find_package_base_package}_optional_components" "${_vtk_find_package_OPTIONAL_COMPONENTS}")
+  set_property(GLOBAL APPEND
+    PROPERTY
+      "${_vtk_find_package_base_package}_optional_components_found" "${_vtk_find_package_optional_components_found}")
+  set_property(GLOBAL
+    PROPERTY
+      "${_vtk_find_package_base_package}_exact" "0")
+  if (DEFINED _vtk_find_package_FORWARD_VERSION_REQ)
+    string(FIND "${_vtk_find_package_VERSION_VAR}" "@" _vtk_find_package_idx)
+    if (_vtk_find_package_idx EQUAL -1)
+      if (NOT DEFINED "${_vtk_find_package_VERSION_VAR}")
         message(FATAL_ERROR
-          "The `${_vtk_find_package_PACKAGE}` version is empty.")
+          "The `${_vtk_find_package_VERSION_VAR}` variable is not defined.")
       endif ()
+      set(_vtk_find_package_version "${${_vtk_find_package_VERSION_VAR}}")
+    else ()
+      string(CONFIGURE "${_vtk_find_package_VERSION_VAR}" _vtk_find_package_version)
+    endif ()
+    unset(_vtk_find_package_idx)
 
-      if (_vtk_find_package_FORWARD_VERSION_REQ STREQUAL "MAJOR")
-        set(_vtk_find_package_version_regex "^\([^.]*\).*")
-      elseif (_vtk_find_package_FORWARD_VERSION_REQ STREQUAL "MINOR")
-        set(_vtk_find_package_version_regex "^\([^.]*.[^.]*\).*")
-      elseif (_vtk_find_package_FORWARD_VERSION_REQ STREQUAL "PATCH")
-        set(_vtk_find_package_version_regex "^\([^.]*.[^.]*.[^.]*\).*")
-      elseif (_vtk_find_package_FORWARD_VERSION_REQ STREQUAL "EXACT")
-        set(_vtk_find_package_version_regex "^\\(.*\\)$")
-        set_property(GLOBAL
-          PROPERTY
-            "${_vtk_find_package_base_package}_exact" "1")
-      endif ()
+    if ("${_vtk_find_package_version}" STREQUAL "")
+      message(FATAL_ERROR
+        "The `${_vtk_find_package_PACKAGE}` version is empty.")
+    endif ()
 
-      string(REGEX REPLACE "${_vtk_find_package_version_regex}" "\\1"
-        _vtk_find_package_found_version "${_vtk_find_package_version}")
-      unset(_vtk_find_package_version_regex)
-      unset(_vtk_find_package_version)
-
+    if (_vtk_find_package_FORWARD_VERSION_REQ STREQUAL "MAJOR")
+      set(_vtk_find_package_version_regex "^\([^.]*\).*")
+    elseif (_vtk_find_package_FORWARD_VERSION_REQ STREQUAL "MINOR")
+      set(_vtk_find_package_version_regex "^\([^.]*.[^.]*\).*")
+    elseif (_vtk_find_package_FORWARD_VERSION_REQ STREQUAL "PATCH")
+      set(_vtk_find_package_version_regex "^\([^.]*.[^.]*.[^.]*\).*")
+    elseif (_vtk_find_package_FORWARD_VERSION_REQ STREQUAL "EXACT")
+      set(_vtk_find_package_version_regex "^\\(.*\\)$")
       set_property(GLOBAL
         PROPERTY
-          "${_vtk_find_package_base_package}_version" "${_vtk_find_package_found_version}")
-      unset(_vtk_find_package_found_version)
+          "${_vtk_find_package_base_package}_exact" "1")
     endif ()
+
+    string(REGEX REPLACE "${_vtk_find_package_version_regex}" "\\1"
+      _vtk_find_package_found_version "${_vtk_find_package_version}")
+    unset(_vtk_find_package_version_regex)
+    unset(_vtk_find_package_version)
+
+    set_property(GLOBAL
+      PROPERTY
+        "${_vtk_find_package_base_package}_version" "${_vtk_find_package_found_version}")
+    unset(_vtk_find_package_found_version)
   endif ()
 
   unset(_vtk_find_package_base)
@@ -4374,9 +4518,7 @@ function (vtk_module_export_find_packages)
     set(_vtk_export_COMPONENT "development")
   endif ()
 
-  set(_vtk_export_output_file
-    "${CMAKE_BINARY_DIR}/${_vtk_export_CMAKE_DESTINATION}/${_vtk_export_FILE_NAME}")
-  file(WRITE "${_vtk_export_output_file}"
+  set(_vtk_export_prelude
 "set(_vtk_module_find_package_quiet)
 if (\${CMAKE_FIND_PACKAGE_NAME}_FIND_QUIETLY)
   set(_vtk_module_find_package_quiet QUIET)
@@ -4468,6 +4610,8 @@ if (_vtk_module_find_package_components_required)
   list(REMOVE_DUPLICATES _vtk_module_find_package_components_required)
 endif ()\n\n")
 
+  set(_vtk_export_build_content)
+  set(_vtk_export_install_content)
   foreach (_vtk_export_module IN LISTS _vtk_export_MODULES)
     get_property(_vtk_export_target_name GLOBAL
       PROPERTY "_vtk_module_${_vtk_export_module}_target_name")
@@ -4487,7 +4631,7 @@ endif ()\n\n")
       continue ()
     endif ()
 
-    file(APPEND "${_vtk_export_output_file}"
+    set(_vtk_export_module_prelude
 "set(_vtk_module_find_package_enabled OFF)
 set(_vtk_module_find_package_is_required OFF)
 set(_vtk_module_find_package_fail_if_not_found OFF)
@@ -4512,8 +4656,12 @@ if (_vtk_module_find_package_enabled)
   endif ()\n\n")
 
     list(REMOVE_DUPLICATES _vtk_export_packages)
+    set(_vtk_export_module_build_content)
+    set(_vtk_export_module_install_content)
     foreach (_vtk_export_package IN LISTS _vtk_export_packages)
       set(_vtk_export_base_package "${_vtk_export_base}_${_vtk_export_package}")
+      get_property(_vtk_export_private GLOBAL
+        PROPERTY "${_vtk_export_base_package}_private")
       get_property(_vtk_export_version GLOBAL
         PROPERTY "${_vtk_export_base_package}_version")
       get_property(_vtk_export_config GLOBAL
@@ -4545,7 +4693,7 @@ if (_vtk_module_find_package_enabled)
         set(_vtk_export_exact_arg EXACT)
       endif ()
 
-      file(APPEND "${_vtk_export_output_file}"
+      set(_vtk_export_module_content
 "  find_package(${_vtk_export_package}
     ${_vtk_export_version}
     ${_vtk_export_exact_arg}
@@ -4564,25 +4712,58 @@ if (_vtk_module_find_package_enabled)
     list(APPEND \"\${CMAKE_FIND_PACKAGE_NAME}_${_vtk_export_target_name}_NOT_FOUND_MESSAGE\"
       \"Failed to find the ${_vtk_export_package} package.\")
   endif ()\n")
+
+      string(APPEND _vtk_export_module_build_content "${_vtk_export_module_content}")
+      # Private usages should be guarded by `$<BUILD_INTERFACE>` and can be
+      # skipped for the install tree regardless of the build mode.
+      if (NOT _vtk_export_private)
+        string(APPEND _vtk_export_module_install_content "${_vtk_export_module_content}")
+      endif ()
     endforeach ()
 
-    file(APPEND "${_vtk_export_output_file}"
+    set(_vtk_export_module_trailer
 "endif ()
 
 unset(_vtk_module_find_package_fail_if_not_found)
 unset(_vtk_module_find_package_enabled)
 unset(_vtk_module_find_package_required)\n\n")
 
+    if (_vtk_export_module_build_content)
+      string(APPEND _vtk_export_build_content
+        "${_vtk_export_module_prelude}${_vtk_export_module_build_content}${_vtk_export_module_trailer}")
+    endif ()
+    if (_vtk_export_module_install_content)
+      string(APPEND _vtk_export_install_content
+        "${_vtk_export_module_prelude}${_vtk_export_module_install_content}${_vtk_export_module_trailer}")
+    endif ()
   endforeach ()
 
-  file(APPEND "${_vtk_export_output_file}"
+  set(_vtk_export_trailer
     "unset(_vtk_module_find_package_components)
 unset(_vtk_module_find_package_components_required)
 unset(_vtk_module_find_package_quiet)\n")
 
+  set(_vtk_export_build_file
+    "${CMAKE_BINARY_DIR}/${_vtk_export_CMAKE_DESTINATION}/${_vtk_export_FILE_NAME}")
+  set(_vtk_export_install_file
+    "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${_vtk_export_FILE_NAME}.install")
+  if (_vtk_export_build_content)
+    file(WRITE "${_vtk_export_build_file}"
+      "${_vtk_export_prelude}${_vtk_export_build_content}${_vtk_export_trailer}")
+  else ()
+    file(WRITE "${_vtk_export_build_file}" "")
+  endif ()
+  if (_vtk_export_install_content)
+    file(WRITE "${_vtk_export_install_file}"
+      "${_vtk_export_prelude}${_vtk_export_install_content}${_vtk_export_trailer}")
+  else ()
+    file(WRITE "${_vtk_export_install_file}" "")
+  endif ()
+
   install(
-    FILES       "${CMAKE_BINARY_DIR}/${_vtk_export_CMAKE_DESTINATION}/${_vtk_export_FILE_NAME}"
+    FILES       "${_vtk_export_install_file}"
     DESTINATION "${_vtk_export_CMAKE_DESTINATION}"
+    RENAME      "${_vtk_export_FILE_NAME}"
     COMPONENT   "${_vtk_export_COMPONENT}")
 endfunction ()
 

@@ -37,10 +37,7 @@
 
 vtkStandardNewMacro(vtkBezierWedge);
 
-vtkBezierWedge::vtkBezierWedge()
-  : vtkHigherOrderWedge()
-{
-}
+vtkBezierWedge::vtkBezierWedge() = default;
 
 vtkBezierWedge::~vtkBezierWedge() = default;
 
@@ -201,10 +198,9 @@ void vtkBezierWedge::InterpolateDerivs(const double pcoords[3], double* derivs)
 void vtkBezierWedge::SetRationalWeightsFromPointData(
   vtkPointData* point_data, const vtkIdType numPts)
 {
-  if (point_data->SetActiveAttribute(
-        "RationalWeights", vtkDataSetAttributes::AttributeTypes::RATIONALWEIGHTS) != -1)
+  vtkDataArray* v = point_data->GetRationalWeights();
+  if (v)
   {
-    vtkDataArray* v = point_data->GetRationalWeights();
     this->GetRationalWeights()->SetNumberOfTuples(numPts);
     for (vtkIdType i = 0; i < numPts; i++)
     {
@@ -219,19 +215,19 @@ vtkDoubleArray* vtkBezierWedge::GetRationalWeights()
 {
   return RationalWeights.Get();
 }
-vtkHigherOrderQuadrilateral* vtkBezierWedge::getBdyQuad()
+vtkHigherOrderQuadrilateral* vtkBezierWedge::GetBoundaryQuad()
 {
   return BdyQuad;
 };
-vtkHigherOrderTriangle* vtkBezierWedge::getBdyTri()
+vtkHigherOrderTriangle* vtkBezierWedge::GetBoundaryTri()
 {
   return BdyTri;
 };
-vtkHigherOrderCurve* vtkBezierWedge::getEdgeCell()
+vtkHigherOrderCurve* vtkBezierWedge::GetEdgeCell()
 {
   return EdgeCell;
 }
-vtkHigherOrderInterpolation* vtkBezierWedge::getInterp()
+vtkHigherOrderInterpolation* vtkBezierWedge::GetInterpolation()
 {
   return Interp;
 };

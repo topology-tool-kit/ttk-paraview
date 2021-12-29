@@ -58,12 +58,12 @@ class PQWIDGETS_EXPORT pqAnimationModel : public QGraphicsScene
   Q_PROPERTY(bool interactive READ interactive WRITE setInteractive)
 public:
   /**
-  * Real, Sequence or Custom mode
-  * Real mode shows no tick marks for timesteps
-  * Sequence mode shows evenly spaced ticks for teach timestep
-  *  where the number of ticks can be controlled by the ticks property
-  * Custom shows tick marks at the location indicated by the setTickMarks().
-  */
+   * Real, Sequence or Custom mode
+   * Real mode shows no tick marks for timesteps
+   * Sequence mode shows evenly spaced ticks for teach timestep
+   *  where the number of ticks can be controlled by the ticks property
+   * Custom shows tick marks at the location indicated by the setTickMarks().
+   */
   enum ModeType
   {
     Real,
@@ -71,51 +71,64 @@ public:
     Custom
   };
 
-  pqAnimationModel(QGraphicsView* p = 0);
+  pqAnimationModel(QGraphicsView* p = nullptr);
   ~pqAnimationModel() override;
 
   /**
-  * the number of tracks
-  */
+   * the number of tracks
+   */
   int count();
   /**
-  * get a track at an index
-  */
+   * get a track at an index
+   */
   pqAnimationTrack* track(int);
 
   /**
-  * add a track.
-  * If \c trackToAdd is NULL, we create a new pqAnimationTrack instance.
-  */
-  pqAnimationTrack* addTrack(pqAnimationTrack* trackToAdd = NULL);
+   * add a track.
+   * If \c trackToAdd is nullptr, we create a new pqAnimationTrack instance.
+   */
+  pqAnimationTrack* addTrack(pqAnimationTrack* trackToAdd = nullptr);
   /**
-  * remove a track
-  */
+   * remove a track
+   */
   void removeTrack(pqAnimationTrack* track);
 
   /**
-  * get the animation mode
-  */
+   * get the animation mode
+   */
   ModeType mode() const;
   /**
-  * get the number of ticks
-  */
+   * get the number of ticks
+   */
   int ticks() const;
   /**
-  * get the current time
-  */
+   * get the current time
+   */
   double currentTime() const;
   /**
-  * get the start time
-  */
+   * get the start time
+   */
   double startTime() const;
   /**
-  * get the end time
-  */
+   * get the end time
+   */
   double endTime() const;
   /**
-  * get whether this scene is interactive
-  */
+   * get the zoom start time
+   */
+  double zoomStartTime() const;
+  /**
+   * get the zoom end time
+   */
+  double zoomEndTime() const;
+  /**
+   * get the zoom factor
+   */
+  double zoomFactor() const;
+
+  /**
+   * get whether this scene is interactive
+   */
   bool interactive() const;
 
   QAbstractItemModel* header();
@@ -125,48 +138,52 @@ public:
   int rowHeight() const;
 
   /**
-  * provides access to the custom ticks set using
-  * setTickMarks() method.
-  */
+   * positions the zoom window with its beginning at zoomStartTime
+   */
+  void positionZoom(double zoomStartTime);
+
+  /**
+   * provides access to the custom ticks set using setTickMarks() method.
+   */
   const QList<double>& customTicks() const { return this->CustomTicks; }
 
   /**
-  * set the tooltip to use for the checkbox in the EnabledHeader.
-  * default is "Enable/Disable Track".
-  */
+   * set the tooltip to use for the checkbox in the EnabledHeader.
+   * default is "Enable/Disable Track".
+   */
   void setEnabledHeaderToolTip(const QString& val);
   const QString& enabledHeaderToolTip() const { return this->EnabledHeaderToolTip; }
 
 public Q_SLOTS:
 
   /**
-  * set the animation mode
-  */
+   * set the animation mode
+   */
   void setMode(ModeType);
   /**
-  * set the number of ticks
-  */
+   * set the number of ticks
+   */
   void setTicks(int);
   /**
-  * set the current time
-  */
+   * set the current time
+   */
   void setCurrentTime(double);
   /**
-  * set the start time
-  */
+   * set the start time
+   */
   void setStartTime(double);
   /**
-  * set the end time
-  */
+   * set the end time
+   */
   void setEndTime(double);
   /**
-  * set whether this scene is interactive
-  */
+   * set whether this scene is interactive
+   */
   void setInteractive(bool);
   /**
-  * set the locations for tick marks if Mode is Custom.
-  * This also results in a call to setTicks().
-  */
+   * set the locations for tick marks if Mode is Custom.
+   * This also results in a call to setTicks().
+   */
   void setTickMarks(int num, double* tick_marks);
   /**
    * Set the precision for time printing.
@@ -180,6 +197,11 @@ public Q_SLOTS:
    */
   void setTimeNotation(const QChar& notation);
 
+  /**
+   * Scales the drawing of the track to the current zoom.
+   */
+  void zoomTrack(pqAnimationTrack* track);
+
 Q_SIGNALS:
   // emitted when a track is double clicked on
   void trackSelected(pqAnimationTrack*);
@@ -187,6 +209,8 @@ Q_SIGNALS:
   void currentTimeSet(double);
   // emitted when the time of a keyframe was changed by this model
   void keyFrameTimeChanged(pqAnimationTrack* track, pqAnimationKeyFrame* kf, int end, double time);
+  // emitted when the zoom factor or position are changed
+  void zoomChanged();
 
 protected Q_SLOTS:
 
@@ -201,6 +225,16 @@ protected:
   double timeFromTick(int tick);
   int tickFromTime(double pos);
   void drawForeground(QPainter* painter, const QRectF& rect) override;
+
+  /**
+   * Draws a label for the specified time in the specified row of the timeline.
+   * The user can enter painter or metrics parameters to customize it.
+   * A list of priorities must be entered: they define the zones where the label can't be drawn.
+   */
+  QRectF drawTimeLabel(double time, const QRectF& row, QPainter* painter,
+    const QFontMetrics& metrics, QList<const QRectF*> const& priorities);
+
+  void updateNewTime(QGraphicsSceneMouseEvent* mouseEvent);
   bool hitTestCurrentTimePoly(const QPointF& pos);
   pqAnimationTrack* hitTestTracks(const QPointF& pos);
   pqAnimationKeyFrame* hitTestKeyFrame(pqAnimationTrack* t, const QPointF& pos);
@@ -211,33 +245,40 @@ protected:
   void mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
   void mouseMoveEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
   void mouseReleaseEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
+  void wheelEvent(QGraphicsSceneWheelEvent* wheelEvent) override;
 
   double timeToNormalizedTime(double) const;
   double normalizedTimeToTime(double) const;
 
   /**
-  * Based on this->Mode, this will either returns the number of custom ticks
-  * or return this->ticks().
-  */
+   * Based on this->Mode, this will either returns the number of custom ticks
+   * or return this->ticks().
+   */
   int currentTicks() const;
 
 private:
-  ModeType Mode;
-  int Ticks;
-  double CurrentTime;
-  double StartTime;
-  double EndTime;
+  ModeType Mode = Real;
+  int Ticks = 10;
+  double CurrentTime = 0;
+  double StartTime = 0;
+  double EndTime = 1;
+  double ZoomStartTime = 0;
+  double ZoomEndTime = 1;
+  double ZoomFactor = 1;
   int RowHeight;
-  bool Interactive;
+  bool Interactive = false;
 
   QList<double> CustomTicks;
 
   // vars to support interaction
-  bool CurrentTimeGrabbed;
-  double NewCurrentTime;
-  pqAnimationTrack* CurrentTrackGrabbed;
-  pqAnimationKeyFrame* CurrentKeyFrameGrabbed;
-  int CurrentKeyFrameEdge;
+  bool CurrentTimeGrabbed = false;
+  double NewCurrentTime = 0;
+  double TimeLineGrabbedPosition = 0;
+  double OldZoomStartTime = 0;
+  bool TimeLineGrabbed = false;
+  pqAnimationTrack* CurrentTrackGrabbed = nullptr;
+  pqAnimationKeyFrame* CurrentKeyFrameGrabbed = nullptr;
+  int CurrentKeyFrameEdge = 0;
   QPair<double, double> InteractiveRange;
   QList<double> SnapHints;
 
@@ -251,10 +292,10 @@ private:
 
   pqCheckBoxPixMaps* CheckBoxPixMaps;
 
-  QString EnabledHeaderToolTip;
+  QString EnabledHeaderToolTip = "Enable/Disable Track";
 
-  int TimePrecision;
-  QChar TimeNotation;
+  int TimePrecision = 6;
+  QChar TimeNotation = 'g';
 };
 
 #endif // pqAnimationModel_h

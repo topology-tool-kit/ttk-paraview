@@ -75,15 +75,15 @@ public:
   vtkTypeMacro(vtkDelimitedTextReader, vtkTableAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Specifies the delimited text file to be loaded.
    */
-  vtkGetStringMacro(FileName);
-  vtkSetStringMacro(FileName);
-  //@}
+  vtkGetFilePathMacro(FileName);
+  vtkSetFilePathMacro(FileName);
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Specify the InputString for use when reading from a character array.
    * Optionally include the length for binary strings. Note that a copy
@@ -98,9 +98,9 @@ public:
   {
     this->SetInputString(input.c_str(), static_cast<int>(input.length()));
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Enable reading from an InputString or InputArray instead of the default,
    * a file.
@@ -108,9 +108,9 @@ public:
   vtkSetMacro(ReadFromInputString, vtkTypeBool);
   vtkGetMacro(ReadFromInputString, vtkTypeBool);
   vtkBooleanMacro(ReadFromInputString, vtkTypeBool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Specifies the character set used in the input file.  Valid character set
    * names will be drawn from the list maintained by the Internet Assigned Name
@@ -124,9 +124,9 @@ public:
    */
   vtkGetStringMacro(UnicodeCharacterSet);
   vtkSetStringMacro(UnicodeCharacterSet);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Specify the character(s) that will be used to separate records.
    * The order of characters in the string does not matter.  Defaults
@@ -134,11 +134,13 @@ public:
    */
   void SetUTF8RecordDelimiters(const char* delimiters);
   const char* GetUTF8RecordDelimiters();
+  VTK_DEPRECATED_IN_9_1_0("Use void SetUTF8RecordDelimiters(const char* delimiters)")
   void SetUnicodeRecordDelimiters(const vtkUnicodeString& delimiters);
+  VTK_DEPRECATED_IN_9_1_0("Use const char* GetUTF8RecordDelimiters()")
   vtkUnicodeString GetUnicodeRecordDelimiters();
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Specify the character(s) that will be used to separate fields.  For
    * example, set this to "," for a comma-separated value file.  Set
@@ -148,14 +150,16 @@ public:
    */
   vtkSetStringMacro(FieldDelimiterCharacters);
   vtkGetStringMacro(FieldDelimiterCharacters);
-  //@}
+  ///@}
 
   void SetUTF8FieldDelimiters(const char* delimiters);
   const char* GetUTF8FieldDelimiters();
+  VTK_DEPRECATED_IN_9_1_0("Use void SetUTF8FieldDelimiters(const char* delimiters)")
   void SetUnicodeFieldDelimiters(const vtkUnicodeString& delimiters);
+  VTK_DEPRECATED_IN_9_1_0("Use const char* GetUTF8FieldDelimiters()")
   vtkUnicodeString GetUnicodeFieldDelimiters();
 
-  //@{
+  ///@{
   /**
    * Get/set the character that will begin and end strings.  Microsoft
    * Excel, for example, will export the following format:
@@ -167,32 +171,34 @@ public:
    */
   vtkGetMacro(StringDelimiter, char);
   vtkSetMacro(StringDelimiter, char);
-  //@}
+  ///@}
 
   void SetUTF8StringDelimiters(const char* delimiters);
   const char* GetUTF8StringDelimiters();
+  VTK_DEPRECATED_IN_9_1_0("Use void SetUTF8StringDelimiters(const char* delimiters)")
   void SetUnicodeStringDelimiters(const vtkUnicodeString& delimiters);
+  VTK_DEPRECATED_IN_9_1_0("Use const char* GetUTF8StringDelimiters()")
   vtkUnicodeString GetUnicodeStringDelimiters();
 
-  //@{
+  ///@{
   /**
    * Set/get whether to use the string delimiter.  Defaults to on.
    */
   vtkSetMacro(UseStringDelimiter, bool);
   vtkGetMacro(UseStringDelimiter, bool);
   vtkBooleanMacro(UseStringDelimiter, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/get whether to treat the first line of the file as headers.
    * The default is false (no headers).
    */
   vtkGetMacro(HaveHeaders, bool);
   vtkSetMacro(HaveHeaders, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/get whether to merge successive delimiters.  Use this if (for
    * example) your fields are separated by spaces but you don't know
@@ -201,18 +207,18 @@ public:
   vtkSetMacro(MergeConsecutiveDelimiters, bool);
   vtkGetMacro(MergeConsecutiveDelimiters, bool);
   vtkBooleanMacro(MergeConsecutiveDelimiters, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Specifies the maximum number of records to read from the file.  Limiting the
    * number of records to read is useful for previewing the contents of a file.
    */
   vtkGetMacro(MaxRecords, vtkIdType);
   vtkSetMacro(MaxRecords, vtkIdType);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * When set to true, the reader will detect numeric columns and create
    * vtkDoubleArray or vtkIntArray for those instead of vtkStringArray. Default
@@ -221,9 +227,9 @@ public:
   vtkSetMacro(DetectNumericColumns, bool);
   vtkGetMacro(DetectNumericColumns, bool);
   vtkBooleanMacro(DetectNumericColumns, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * When set to true and DetectNumericColumns is also true, forces all
    * numeric columns to vtkDoubleArray even if they contain only
@@ -232,9 +238,9 @@ public:
   vtkSetMacro(ForceDouble, bool);
   vtkGetMacro(ForceDouble, bool);
   vtkBooleanMacro(ForceDouble, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * When DetectNumericColumns is set to true, whether to trim whitespace from
    * strings prior to conversion to a numeric.
@@ -253,36 +259,36 @@ public:
   vtkSetMacro(TrimWhitespacePriorToNumericConversion, bool);
   vtkGetMacro(TrimWhitespacePriorToNumericConversion, bool);
   vtkBooleanMacro(TrimWhitespacePriorToNumericConversion, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * When DetectNumericColumns is set to true, the reader use this value to populate
    * the vtkIntArray where empty strings are found. Default is 0.
    */
   vtkSetMacro(DefaultIntegerValue, int);
   vtkGetMacro(DefaultIntegerValue, int);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * When DetectNumericColumns is set to true, the reader use this value to populate
    * the vtkDoubleArray where empty strings are found. Default is 0.0
    */
   vtkSetMacro(DefaultDoubleValue, double);
   vtkGetMacro(DefaultDoubleValue, double);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * The name of the array for generating or assigning pedigree ids
    * (default "id").
    */
   vtkSetStringMacro(PedigreeIdArrayName);
   vtkGetStringMacro(PedigreeIdArrayName);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * If on (default), generates pedigree ids automatically.
    * If off, assign one of the arrays to be the pedigree id.
@@ -290,27 +296,27 @@ public:
   vtkSetMacro(GeneratePedigreeIds, bool);
   vtkGetMacro(GeneratePedigreeIds, bool);
   vtkBooleanMacro(GeneratePedigreeIds, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * If on, assigns pedigree ids to output. Defaults to off.
    */
   vtkSetMacro(OutputPedigreeIds, bool);
   vtkGetMacro(OutputPedigreeIds, bool);
   vtkBooleanMacro(OutputPedigreeIds, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
-   * If on, also add in the tab (i.e. '\t') character as a field delimiter.
+   * If on, also add in the tab (i.e. \c '\\t') character as a field delimiter.
    * We add this specially since applications may have a more
    * difficult time doing this. Defaults to off.
    */
   vtkSetMacro(AddTabFieldDelimiter, bool);
   vtkGetMacro(AddTabFieldDelimiter, bool);
   vtkBooleanMacro(AddTabFieldDelimiter, bool);
-  //@}
+  ///@}
 
   /**
    * Returns a human-readable description of the most recent error, if any.
@@ -319,7 +325,7 @@ public:
    */
   vtkStdString GetLastError();
 
-  //@{
+  ///@{
   /**
    * Fallback character for use in the US-ASCII-WITH-FALLBACK
    * character set.  Any characters that have their 8th bit set will
@@ -327,7 +333,7 @@ public:
    */
   vtkSetMacro(ReplacementCharacter, vtkTypeUInt32);
   vtkGetMacro(ReplacementCharacter, vtkTypeUInt32);
-  //@}
+  ///@}
 
 protected:
   vtkDelimitedTextReader();

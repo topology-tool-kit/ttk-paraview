@@ -28,11 +28,11 @@
  *
  * Output files contain a problem statement line:
  *
- * p graph <num_verts> <num_edges>
+ * p graph \em num_verts \em num_edges
  *
  * Followed by |E| edge descriptor lines that are formatted as:
  *
- * e <source> <target> <weight>
+ * e \em source \em target \em weight
  *
  * Vertices are numbered from 1..n in DIMACS formatted files.
  *
@@ -59,13 +59,13 @@ public:
   vtkTypeMacro(vtkDIMACSGraphWriter, vtkDataWriter);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Get the input to this writer.
    */
   vtkGraph* GetInput();
   vtkGraph* GetInput(int port);
-  //@}
+  ///@}
 
 protected:
   vtkDIMACSGraphWriter() = default;

@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkBoostGraphAdapter.h
+  Module:    vtkBoostBetweennessClustering.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -103,12 +103,11 @@ vtkStandardNewMacro(vtkBoostBetweennessClustering);
 
 //------------------------------------------------------------------------------
 vtkBoostBetweennessClustering::vtkBoostBetweennessClustering()
-  : vtkGraphAlgorithm()
-  , Threshold(0)
+  : Threshold(0)
   , UseEdgeWeightArray(false)
   , InvertEdgeWeightArray(false)
-  , EdgeWeightArrayName(0)
-  , EdgeCentralityArrayName(0)
+  , EdgeWeightArrayName(nullptr)
+  , EdgeCentralityArrayName(nullptr)
 {
   this->SetNumberOfOutputPorts(2);
 }
@@ -116,8 +115,8 @@ vtkBoostBetweennessClustering::vtkBoostBetweennessClustering()
 //------------------------------------------------------------------------------
 vtkBoostBetweennessClustering::~vtkBoostBetweennessClustering()
 {
-  this->SetEdgeWeightArrayName(0);
-  this->SetEdgeCentralityArrayName(0);
+  this->SetEdgeWeightArrayName(nullptr);
+  this->SetEdgeCentralityArrayName(nullptr);
 }
 
 //------------------------------------------------------------------------------
@@ -204,7 +203,7 @@ int vtkBoostBetweennessClustering::RequestData(vtkInformation* vtkNotUsed(reques
 
   boost::vtkGraphEdgePropertyMapHelper<vtkFloatArray*> helper(edgeCM);
 
-  vtkSmartPointer<vtkDataArray> edgeWeight(0);
+  vtkSmartPointer<vtkDataArray> edgeWeight(nullptr);
   if (this->UseEdgeWeightArray && this->EdgeWeightArrayName)
   {
     if (!this->InvertEdgeWeightArray)
@@ -307,7 +306,7 @@ int vtkBoostBetweennessClustering::RequestData(vtkInformation* vtkNotUsed(reques
   vtkSmartPointer<vtkBoostConnectedComponents> bcc(
     vtkSmartPointer<vtkBoostConnectedComponents>::New());
 
-  vtkSmartPointer<vtkGraph> output2Copy(0);
+  vtkSmartPointer<vtkGraph> output2Copy(nullptr);
 
   if (isDirectedGraph)
   {
@@ -325,7 +324,7 @@ int vtkBoostBetweennessClustering::RequestData(vtkInformation* vtkNotUsed(reques
 
   vtkSmartPointer<vtkGraph> bccOut = bcc->GetOutput(0);
 
-  vtkSmartPointer<vtkAbstractArray> compArray(0);
+  vtkSmartPointer<vtkAbstractArray> compArray(nullptr);
   if (isDirectedGraph)
   {
     vtkSmartPointer<vtkDirectedGraph> out1(vtkSmartPointer<vtkDirectedGraph>::New());

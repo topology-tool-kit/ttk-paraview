@@ -65,11 +65,14 @@ if (NOT VTK_WHEEL_BUILD)
   endif ()
 endif ()
 
+set(_vtkmodules_all)
 set(_vtk_python_imports)
 foreach (_vtk_python_module IN LISTS vtk_python_wrapped_modules)
   get_property(_vtk_python_library_name
     TARGET    "${_vtk_python_module}"
     PROPERTY  "INTERFACE_vtk_module_library_name")
+  string(APPEND _vtkmodules_all
+    "    \'${_vtk_python_library_name}\',\n")
   string(APPEND _vtk_python_imports
     "from .${_vtk_python_library_name} import *\n")
 endforeach ()
@@ -93,12 +96,13 @@ list(APPEND _vtk_python_files
 if (BUILD_SHARED_LIBS)
   install(
     FILES       "${CMAKE_BINARY_DIR}/${VTK_PYTHON_SITE_PACKAGES_SUFFIX}/vtkmodules/all.py"
-    DESTINATION "${VTK_PYTHON_SITE_PACKAGES_SUFFIX}/vtkmodules")
+    DESTINATION "${VTK_PYTHON_SITE_PACKAGES_SUFFIX}/vtkmodules"
+    COMPONENT   "python")
 endif ()
 
 set(python_files
   vtk.py
-  vtkmodules/__init__.py
+  vtkmodules/__init__.py.in
   vtkmodules/gtk/GtkGLExtVTKRenderWindow.py
   vtkmodules/gtk/GtkGLExtVTKRenderWindowInteractor.py
   vtkmodules/gtk/GtkVTKRenderWindow.py
@@ -111,6 +115,7 @@ set(python_files
   vtkmodules/qt/QVTKRenderWindowInteractor.py
   vtkmodules/qt/__init__.py
   vtkmodules/test/BlackBox.py
+  vtkmodules/test/ErrorObserver.py
   vtkmodules/test/Testing.py
   vtkmodules/test/__init__.py
   vtkmodules/tk/__init__.py
@@ -134,27 +139,57 @@ set(python_files
   vtkmodules/wx/wxVTKRenderWindow.py
   vtkmodules/wx/wxVTKRenderWindowInteractor.py)
 
+foreach (python_file IN LISTS python_files)
+  # add submodules that don't begin with "_" to _vtkmodules_all
+  if (python_file MATCHES "^vtkmodules\/([A-Za-z][A-Za-z0-9_]*)(\/__init__)?[.]py")
+    string(APPEND _vtkmodules_all "    \'${CMAKE_MATCH_1}\',\n")
+  endif ()
+endforeach ()
+
 set(python_copied_modules)
 foreach (python_file IN LISTS python_files)
   set(output_python_file
     "${CMAKE_BINARY_DIR}/${VTK_PYTHON_SITE_PACKAGES_SUFFIX}/${python_file}")
-  add_custom_command(
-    OUTPUT  "${output_python_file}"
-    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${python_file}"
-    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-            "${CMAKE_CURRENT_SOURCE_DIR}/${python_file}"
-            "${output_python_file}"
-    COMMENT "Copying ${python_file} to the binary directory")
+  if (python_file MATCHES "\\.in$")
+    string(REPLACE ".in" "" output_python_file "${output_python_file}")
+    configure_file(
+      "${python_file}"
+      "${output_python_file}"
+      @ONLY)
+  else ()
+    add_custom_command(
+      OUTPUT  "${output_python_file}"
+      DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${python_file}"
+      COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+              "${CMAKE_CURRENT_SOURCE_DIR}/${python_file}"
+              "${output_python_file}"
+      COMMENT "Copying ${python_file} to the binary directory")
+  endif ()
   if (BUILD_SHARED_LIBS)
     get_filename_component(python_file_directory "${python_file}" DIRECTORY)
     install(
-      FILES       "${python_file}"
+      FILES       "${output_python_file}"
       DESTINATION "${VTK_PYTHON_SITE_PACKAGES_SUFFIX}/${python_file_directory}"
       COMPONENT   "python")
   endif ()
   list(APPEND python_copied_modules
     "${output_python_file}")
 endforeach ()
+
+set(vtk_build_paths_module
+  "${CMAKE_BINARY_DIR}/${VTK_PYTHON_SITE_PACKAGES_SUFFIX}/vtkmodules/_build_paths.py")
+if (WIN32 AND VTK_DLL_PATHS)
+  string(REPLACE ";" "',\n    '" vtk_dll_paths_python "${VTK_DLL_PATHS}")
+  file(WRITE "${vtk_build_paths_module}"
+    "paths = [\n    '${vtk_dll_paths_python}',\n]\n")
+  # Add the file to the zip only if required in the install tree.
+  if (NOT VTK_RELOCATABLE_INSTALL AND NOT VTK_UNIFIED_INSTALL_TREE)
+    list(APPEND _vtk_python_files
+      "${vtk_build_paths_module}")
+  endif ()
+elseif (EXISTS "${vtk_build_paths_module}")
+  file(REMOVE "${vtk_build_paths_module}")
+endif ()
 
 list(APPEND _vtk_python_files
   ${python_copied_modules})
@@ -179,3 +214,7 @@ add_custom_target(vtk_python_copy ALL
   DEPENDS
     ${python_copied_modules}
     ${_vtk_python_zip})
+
+if (VTK_BUILD_TESTING)
+  add_subdirectory(Testing)
+endif ()

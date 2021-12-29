@@ -1,46 +1,6 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
-// Copyright (c) 2014-2019, Lawrence Livermore National Security, LLC.
-// 
-// Produced at the Lawrence Livermore National Laboratory
-// 
-// LLNL-CODE-666778
-// 
-// All rights reserved.
-// 
-// This file is part of Conduit. 
-// 
-// For details, see: http://software.llnl.gov/conduit/.
-// 
-// Please also read conduit/LICENSE
-// 
-// Redistribution and use in source and binary forms, with or without 
-// modification, are permitted provided that the following conditions are met:
-// 
-// * Redistributions of source code must retain the above copyright notice, 
-//   this list of conditions and the disclaimer below.
-// 
-// * Redistributions in binary form must reproduce the above copyright notice,
-//   this list of conditions and the disclaimer (as noted below) in the
-//   documentation and/or other materials provided with the distribution.
-// 
-// * Neither the name of the LLNS/LLNL nor the names of its contributors may
-//   be used to endorse or promote products derived from this software without
-//   specific prior written permission.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY,
-// LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
-// DAMAGES  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-// OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, 
-// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
-// IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
-// POSSIBILITY OF SUCH DAMAGE.
-// 
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
+// Copyright (c) Lawrence Livermore National Security, LLC and other Conduit
+// Project developers. See top-level LICENSE AND COPYRIGHT files for dates and
+// other details. No copyright assignment is required to contribute to Conduit.
 
 //-----------------------------------------------------------------------------
 ///
@@ -51,13 +11,13 @@
 #include "conduit_error.hpp"
 
 //-----------------------------------------------------------------------------
-// -- standard lib includes -- 
+// -- standard lib includes --
 //-----------------------------------------------------------------------------
 
 // for sleep funcs
 #if defined(CONDUIT_PLATFORM_WINDOWS)
 #define NOMINMAX
-#include <Windows.h>
+#include <windows.h>
 #include <direct.h>
 #if (_MSC_VER && _MSC_VER < 1900)
     #define snprintf _snprintf
@@ -90,9 +50,12 @@
 
 static const std::string file_path_sep_string(CONDUIT_UTILS_FILE_PATH_SEPARATOR);
 
+#include "conduit.hpp"
+#include "conduit_fmt/conduit_fmt.h"
+
 
 //-----------------------------------------------------------------------------
-// -- libb64 includes -- 
+// -- libb64 includes --
 //-----------------------------------------------------------------------------
 #define BUFFERSIZE 65536
 #include "b64/encode.h"
@@ -114,7 +77,7 @@ namespace utils
 
 //-----------------------------------------------------------------------------
 // default info message handler callback, simply prints to std::cout.
-void 
+void
 default_info_handler(const std::string &msg,
                      const std::string &file,
                      int line)
@@ -142,6 +105,13 @@ set_info_handler(void(*on_info)
 }
 
 //-----------------------------------------------------------------------------
+conduit_info_handler
+info_handler()
+{
+    return conduit_on_info;
+}
+
+//-----------------------------------------------------------------------------
 void
 handle_info(const std::string &msg,
             const std::string &file,
@@ -152,7 +122,7 @@ handle_info(const std::string &msg,
 
 //-----------------------------------------------------------------------------
 // default warning handler callback, simply throws a conduit::Error exception.
-void 
+void
 default_warning_handler(const std::string &msg,
                         const std::string &file,
                         int line)
@@ -178,6 +148,13 @@ set_warning_handler(void(*on_warning)
 }
 
 //-----------------------------------------------------------------------------
+conduit_warning_handler
+warning_handler()
+{
+    return conduit_on_warning;
+}
+
+//-----------------------------------------------------------------------------
 void
 handle_warning(const std::string &msg,
                const std::string &file,
@@ -189,7 +166,7 @@ handle_warning(const std::string &msg,
 
 //-----------------------------------------------------------------------------
 // default error handler callback, simply throws a conduit::Error exception.
-void 
+void
 default_error_handler(const std::string &msg,
                       const std::string &file,
                       int line)
@@ -215,6 +192,13 @@ set_error_handler(void(*on_error)
 }
 
 //-----------------------------------------------------------------------------
+conduit_error_handler
+error_handler()
+{
+    return conduit_on_error;
+}
+
+//-----------------------------------------------------------------------------
 void
 handle_error(const std::string &msg,
              const std::string &file,
@@ -225,7 +209,7 @@ handle_error(const std::string &msg,
 
 
 //-----------------------------------------------------------------------------
-void     
+void
 split_string(const std::string &str,
              const std::string &sep,
              std::string &curr,
@@ -278,7 +262,7 @@ split_string(const std::string &str, char sep, std::vector<std::string> &sv)
 }
 
 //-----------------------------------------------------------------------------
-void     
+void
 rsplit_string(const std::string &str,
               const std::string &sep,
               std::string &curr,
@@ -301,7 +285,7 @@ rsplit_string(const std::string &str,
 }
 
 //-----------------------------------------------------------------------------
-void     
+void
 split_path(const std::string &path,
            std::string &curr,
            std::string &next)
@@ -313,7 +297,7 @@ split_path(const std::string &path,
 }
 
 //-----------------------------------------------------------------------------
-void     
+void
 rsplit_path(const std::string &path,
             std::string &curr,
             std::string &next)
@@ -325,12 +309,12 @@ rsplit_path(const std::string &path,
 }
 
 //-----------------------------------------------------------------------------
-std::string 
+std::string
 join_path(const std::string &left,
           const std::string &right)
 {
     std::string res = left;
-    if(res.size() > 0 && 
+    if(res.size() > 0 &&
        res[res.size()-1] != '/' &&
        right.size() > 0 )
     {
@@ -341,7 +325,7 @@ join_path(const std::string &left,
 }
 
 //-----------------------------------------------------------------------------
-std::string 
+std::string
 file_path_separator()
 {
     return file_path_sep_string;
@@ -384,9 +368,9 @@ split_file_path(const std::string &path,
     //
     // NOTE: We could if-def for windows, but its nice to be able
     // to run unit tests on other platforms.
-    if( sep == std::string(":") && 
-        path.size() > 2 && 
-        path[1] == ':' && 
+    if( sep == std::string(":") &&
+        path.size() > 2 &&
+        path[1] == ':' &&
         path[2] == '\\')
     {
         // eval w/o drive letter
@@ -431,9 +415,9 @@ rsplit_file_path(const std::string &path,
     //
     // NOTE: We could if-def for windows, but its nice to be able
     // to run unit tests on other platforms.
-    if( sep == std::string(":") && 
-        path.size() > 2 && 
-        path[1] == ':' && 
+    if( sep == std::string(":") &&
+        path.size() > 2 &&
+        path[1] == ':' &&
         path[2] == '\\')
     {
         // eval w/o drive letter
@@ -477,7 +461,7 @@ rsplit_file_path(const std::string &path,
 
 
 //-----------------------------------------------------------------------------
-std::string 
+std::string
 join_file_path(const std::string &left,
                const std::string &right)
 {
@@ -560,6 +544,26 @@ remove_directory(const std::string &path)
 
 
 //-----------------------------------------------------------------------------
+bool
+remove_path_if_exists(const std::string &path)
+{
+    if(utils::is_file(path))
+    {
+        return utils::remove_file(path);
+    }
+    else if(utils::is_directory(path))
+    {
+        return utils::remove_directory(path);
+    }
+    else
+    {
+        // nothing to do, report we didn't remove anything
+        return false;
+    }
+}
+
+
+//-----------------------------------------------------------------------------
 int
 system_execute(const std::string &cmd)
 {
@@ -568,12 +572,12 @@ system_execute(const std::string &cmd)
 
 
 //-----------------------------------------------------------------------------
-bool 
+bool
 check_word_char(const char v)
 {
-    bool res = ( ( 'A' <= v) && 
+    bool res = ( ( 'A' <= v) &&
                  (  v  <= 'Z') );
-    res = res || ( ( 'a' <= v) && 
+    res = res || ( ( 'a' <= v) &&
                  (  v  <= 'z') );
     res = res || v == '_';
     return res;
@@ -583,7 +587,7 @@ check_word_char(const char v)
 bool
 check_num_char(const char v)
 {
-    bool res = ( ( '0' <= v) && 
+    bool res = ( ( '0' <= v) &&
                  (  v  <= '9') );
     return res;
 }
@@ -597,7 +601,7 @@ json_sanitize(const std::string &json)
     /// Really wanted to use regexs to solve this
     /// but posix regs are greedy & it was hard for me to construct
     /// a viable regex, vs those that support non-greedy (Python + Perl style regex)
-    /// 
+    ///
     /// Here are regexs I was able to use in python:
     //  *comments*
     //     Remove '//' to end of line
@@ -606,7 +610,7 @@ json_sanitize(const std::string &json)
     //    find words not surrounded by quotes
     //    regex: (?<!"|\w)(\w+)(?!"|\w)
     //    and add quotes
-    
+
     //
     // for now, we use a simple char by char parser
     //
@@ -616,8 +620,8 @@ json_sanitize(const std::string &json)
     bool        in_string=false;
     bool        in_id =false;
     std::string cur_id = "";
-    
-    for(size_t i = 0; i < json.size(); ++i) 
+
+    for(size_t i = 0; i < json.size(); ++i)
     {
         bool emit = true;
         // check for start & end of a string
@@ -628,30 +632,30 @@ json_sanitize(const std::string &json)
             else
                 in_string = true;
         }
-        
+
         // handle two cases were we want to sanitize:
         // comments '//' to end of line & unquoted ids
         if(!in_string)
         {
             if(!in_comment)
             {
-                if( json[i] == '/'  && 
-                    i < (json.size()-1) && 
+                if( json[i] == '/'  &&
+                    i < (json.size()-1) &&
                     json[i+1] == '/')
                 {
                     in_comment = true;
                     emit = false;
                 }
             }
-            
+
             if(!in_comment)
             {
-                
+
                 if( !in_id && check_word_char(json[i]))
                 {
                     // ids can't start with numbers ,
                     // check the prior char if it exists
-                    if(i > 0 && 
+                    if(i > 0 &&
                        !check_num_char(json[i-1]) &&
                        json[i-1] != '.')
                     {
@@ -668,14 +672,14 @@ json_sanitize(const std::string &json)
                         in_id = true;
                         // accum id chars
                         cur_id += json[i];
-                        emit = false; 
+                        emit = false;
                     }
                     else
                     {
                         in_id = false;
-                        /// check for true, false, and null 
+                        /// check for true, false, and null
                         /// which we need to support in json
-                        if( !(cur_id == "true"  || 
+                        if( !(cur_id == "true"  ||
                               cur_id == "false" ||
                               cur_id == "null" ))
                         {
@@ -687,13 +691,13 @@ json_sanitize(const std::string &json)
                             /// don't escape true or false
                             res +=  cur_id;
                         }
-                        
+
                         cur_id = "";
                     }
                     // we will also emit this char
                 }
             }
-            
+
             if(in_comment)
             {
                 emit = false;
@@ -703,7 +707,7 @@ json_sanitize(const std::string &json)
                 }
             }
         }
-        
+
         if(emit)
             res += json[i];
     }
@@ -712,7 +716,7 @@ json_sanitize(const std::string &json)
 }
 
 //-----------------------------------------------------------------------------
-void 
+void
 indent(std::ostream &os,
        index_t indent,
        index_t depth,
@@ -749,7 +753,7 @@ std::string
 escape_special_chars(const std::string &input)
 {
     std::string res;
-    for(size_t i = 0; i < input.size(); ++i) 
+    for(size_t i = 0; i < input.size(); ++i)
     {
         char val = input[i];
         // supported special chars
@@ -793,7 +797,7 @@ escape_special_chars(const std::string &input)
                 res += "\\r";
                 break;
             }
-            
+
             default:
             {
                 res += val;
@@ -810,7 +814,7 @@ unescape_special_chars(const std::string &input)
 {
     std::string res;
     size_t input_size = input.size();
-    for(size_t i = 0; i < input_size; ++i) 
+    for(size_t i = 0; i < input_size; ++i)
     {
         // check for escape char
         if( input[i] == '\\' &&
@@ -824,7 +828,7 @@ unescape_special_chars(const std::string &input)
                 case '\\':
                 // even though we don't escape forward slashes
                 // we support unescaping them.
-                case '/': 
+                case '/':
                 {
                     res += val;
                     // skip escape char
@@ -902,7 +906,7 @@ base64_encode(const void *src,
     const char *src_ptr = (const char*)src;
     char *des_ptr       = (char*)dest;
     memset(des_ptr,0,(size_t)base64_encode_buffer_size(src_nbytes));
-    
+
     int code_len = base64_encode_block(src_ptr,
                                        nbytes,
                                        des_ptr,
@@ -916,7 +920,7 @@ base64_encode(const void *src,
 }
 
 //-----------------------------------------------------------------------------
-index_t 
+index_t
 base64_encode_buffer_size(index_t src_nbytes)
 {
      return  (4*src_nbytes) / 3 + 4 + 1;
@@ -948,14 +952,26 @@ base64_decode(const void *src,
 }
 
 //-----------------------------------------------------------------------------
+bool
+string_is_integer(const std::string &s)
+{
+    int v = -1;
+    std::istringstream iss(s);
+    iss >> v;
+
+    return !iss.fail();
+}
+
+
+//-----------------------------------------------------------------------------
 std::string
 float64_to_string(float64 value)
 {
-    char buffer[64];
+    char buffer[64] = {0};
     snprintf(buffer,64,"%.15g",value);
 
     std::string res(buffer);
-    
+
     // we check for inf or nan in string form.
     // std::isnan, isn't portable until c++11
     // http://stackoverflow.com/questions/570669/checking-if-a-double-or-float-is-nan-in-c
@@ -971,7 +987,487 @@ float64_to_string(float64 value)
     return res;
 }
 
-//----------------------------------------------------------------------------- 
+//-----------------------------------------------------------------------------
+/// fmt style string formatting helpers
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+std::string
+format(const std::string &pattern,
+       const conduit::Node &args)
+{
+    if( !args.dtype().is_object() &&
+        !args.dtype().is_list())
+    {
+        CONDUIT_ERROR("conduit::utils::format args Node must be "
+                      << " an `object`, or `list`.\n"
+                      << "Passed node type: "
+                      << "`" << args.dtype().name() << "`.");
+    }
+
+    // if we have an object, we used named args for fmt
+    // if we have an list, we don't use named args for fmt
+    bool is_obj = args.dtype().is_object();
+
+    conduit_fmt::dynamic_format_arg_store<conduit_fmt::format_context> store;
+    conduit::NodeConstIterator itr  = args.children();
+
+    while(itr.has_next())
+    {
+        const conduit::Node &curr = itr.next();
+        switch(curr.dtype().id())
+        {
+            /* ints */
+            case conduit::DataType::INT8_ID:
+            {
+                int8 val = curr.as_int8();
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            case conduit::DataType::INT16_ID:
+            {
+                int16 val = curr.as_int16();
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            case conduit::DataType::INT32_ID:
+            {
+                int32 val = curr.as_int32();
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            case conduit::DataType::INT64_ID:
+            {
+                int64 val = curr.as_int64();
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            /* uints */
+            case conduit::DataType::UINT8_ID:
+            {
+                uint8 val = curr.as_uint8();
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            case conduit::DataType::UINT16_ID:
+            {
+                uint16 val = curr.as_uint16();
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            case conduit::DataType::UINT32_ID:
+            {
+                uint32 val = curr.as_uint32();
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            case conduit::DataType::UINT64_ID:
+            {
+                uint64 val = curr.as_uint64();
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            /* floats */
+            case conduit::DataType::FLOAT32_ID:
+            {
+                float32 val = curr.as_float32();
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            case conduit::DataType::FLOAT64_ID:
+            {
+                float64 val = curr.as_float64();
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            // string case
+            case conduit::DataType::CHAR8_STR_ID:
+            {
+                std::string val = curr.as_string();
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+
+                break;
+            }
+            default:
+            {
+                // ERROR -- list, object, or empty
+                CONDUIT_ERROR("conduit::utils::format does not support"
+                              << " `object`, `list`, or `empty` Nodes"
+                              << " as arguments.\n"
+                              << "'" << itr.name() << "' type: "
+                              << "`" << curr.dtype().name() << "`.");
+            }
+        }
+    }
+
+    std::string res = "";
+
+    try
+    {
+        res = conduit_fmt::vformat(pattern,store);
+    }
+    catch(const std::runtime_error& re)
+    {
+        CONDUIT_ERROR("conduit::utils::format error: "
+                      << "fmt error message:\n"
+                      << re.what());
+    }
+
+    return res;
+}
+
+//-----------------------------------------------------------------------------
+std::string
+format(const std::string &pattern,
+       const conduit::Node &maps,
+       index_t map_index)
+{
+    // neg bounds check
+    if(map_index < 0)
+    {
+         CONDUIT_ERROR("conduit::utils::format map_index must be positive "
+                   << " (map_index = " << map_index <<  ")");
+    }
+
+    if( !maps.dtype().is_object() &&
+        !maps.dtype().is_list())
+    {
+        CONDUIT_ERROR("conduit::utils::format maps Node must be "
+                      << " an `object`, or `list`\n."
+                      << " Passed node type: "
+                      << "`" << maps.dtype().name() << "`.");
+    }
+
+    // if we have an object, we used named args for fmt
+    // if we have an list, we don't use named args for fmt
+    bool is_obj = maps.dtype().is_object();
+
+    conduit_fmt::dynamic_format_arg_store<conduit_fmt::format_context> store;
+    conduit::NodeConstIterator itr  = maps.children();
+    while(itr.has_next())
+    {
+        const conduit::Node &curr = itr.next();
+        // map bounds checks
+        if(curr.dtype().is_list())
+        {
+            if(map_index >= curr.number_of_children())
+            {
+                 CONDUIT_ERROR("conduit::utils::format map_index " 
+                               << "(value = " << map_index  << ")"
+                               << " for '" << itr.name() << "'"
+                               << " list map entry "
+                               << " is out of bounds."
+                               << " Number of children = " 
+                               << curr.number_of_children()
+                               << ". Valid range is [0," 
+                               << curr.number_of_children() << ").");
+            }
+        }
+        else if(curr.dtype().is_number())
+        {            
+            if(map_index >= curr.dtype().number_of_elements())
+            {
+                 CONDUIT_ERROR("conduit::utils::format map_index " 
+                               << "(value = " << map_index  << ")"
+                               << " for '" << itr.name() << "'"
+                               << " array map entry "
+                               << " is out of bounds."
+                               << " Number of elements = " 
+                               << curr.dtype().number_of_elements()
+                               << ". Valid range is [0," 
+                               << curr.dtype().number_of_elements() << ").");
+            }
+        }
+
+        switch(curr.dtype().id())
+        {
+            /* ints */
+            case conduit::DataType::INT8_ID:
+            {
+                int8 val = curr.as_int8_ptr()[map_index];
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            case conduit::DataType::INT16_ID:
+            {
+                int16 val = curr.as_int16_ptr()[map_index];
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            case conduit::DataType::INT32_ID:
+            {
+                int32 val = curr.as_int32_ptr()[map_index];
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            case conduit::DataType::INT64_ID:
+            {
+                int64 val = curr.as_int64_ptr()[map_index];
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            /* uints */
+            case conduit::DataType::UINT8_ID:
+            {
+                uint8 val = curr.as_uint8_ptr()[map_index];
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            case conduit::DataType::UINT16_ID:
+            {
+                uint16 val = curr.as_uint16_ptr()[map_index];
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            case conduit::DataType::UINT32_ID:
+            {
+                uint32 val = curr.as_uint32_ptr()[map_index];
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            case conduit::DataType::UINT64_ID:
+            {
+                uint64 val = curr.as_uint64_ptr()[map_index];
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            /* floats */
+            case conduit::DataType::FLOAT32_ID:
+            {
+                float32 val = curr.as_float32_ptr()[map_index];
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            case conduit::DataType::FLOAT64_ID:
+            {
+                float64 val = curr.as_float64_ptr()[map_index];
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                break;
+            }
+            // support lists of strings ONLY ... 
+            case conduit::DataType::LIST_ID:
+            {
+                const Node &lst_ent = curr[map_index];
+                if(!lst_ent.dtype().is_string())
+                {
+                    CONDUIT_ERROR("conduit::utils::format (maps) only supports "
+                                  << " the list maps case for strings."
+                                  << "'" << itr.name() << "' entry at index "
+                                  << map_index << " type: "
+                                   << "`" << lst_ent.dtype().name() << "`.");
+                }
+
+                std::string val = lst_ent.as_string();
+                if(is_obj)
+                {
+                    store.push_back(conduit_fmt::arg(itr.name().c_str(),
+                                                     val));
+                }
+                else
+                {
+                    store.push_back(val);
+                }
+                
+                break;
+            }
+            default:
+            {
+                // ERROR --  object, string, or empty
+                CONDUIT_ERROR("conduit::utils::format (maps) does not support"
+                              << " `object`, `string, or `empty` Nodes"
+                              << " as arguments."
+                              << "'" << itr.name() << "' type: "
+                              << "`" << curr.dtype().name() << "`.");
+            }
+        }
+    }
+
+    std::string res = "";
+
+    try
+    {
+        res = conduit_fmt::vformat(pattern,store);
+    }
+    catch(const std::runtime_error& re)
+    {
+        CONDUIT_ERROR("conduit::utils::format error: "
+                      << "fmt error message:\n"
+                      << re.what());
+    }
+
+    return res;
+}
+
+
+//-----------------------------------------------------------------------------
 // String hash functions
 //-----------------------------------------------------------------------------
 namespace hashing
@@ -979,7 +1475,7 @@ namespace hashing
 // NOTE: Borrowed from VisIt.
 
 // ****************************************************************************
-//  Function: Hash 
+//  Function: Hash
 //
 //  Purpose:
 //      Hash a variable length stream of bytes into a 32-bit value.
@@ -991,7 +1487,7 @@ namespace hashing
 //      use a bitmask.  For example, if you need only 10 bits, do
 //        h = (h & BJHashmask(10));
 //        In which case, the hash table should have hashsize(10) elements.
-//      
+//
 //        If you are hashing n strings (unsigned char **)k, do it like this:
 //          for (i=0, h=0; i<n; ++i) h = hash( k[i], len[i], h);
 //
@@ -1080,14 +1576,15 @@ hash(const char *k, unsigned int length, unsigned int initval)
 unsigned int
 hash(const char *k, unsigned int initval)
 {
-    return hashing::Hash((unsigned char const*)k, strlen(k), initval);
+    return hashing::Hash((unsigned char const*)k,
+                         (unsigned int)strlen(k), initval);
 }
 
 unsigned int
 hash(const std::string &k, unsigned int initval)
 {
-    return hashing::Hash((unsigned char const*)k.c_str(), 
-                         k.size(), initval);
+    return hashing::Hash((unsigned char const*)k.c_str(),
+                         (unsigned int)k.size(), initval);
 }
 
 }

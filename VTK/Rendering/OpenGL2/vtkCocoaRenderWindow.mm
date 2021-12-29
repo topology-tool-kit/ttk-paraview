@@ -21,7 +21,6 @@ PURPOSE.  See the above copyright notice for more information.
 #import "vtkCocoaMacOSXSDKCompatibility.h" // Needed to support old SDKs
 #import "vtkOpenGLRenderWindow.h"
 #import <Cocoa/Cocoa.h>
-#import <Foundation/Foundation.h>
 
 #import "vtkCocoaGLView.h"
 #import "vtkCocoaRenderWindow.h"
@@ -337,6 +336,12 @@ void vtkCocoaRenderWindow::MakeCurrent()
 }
 
 //----------------------------------------------------------------------------
+void vtkCocoaRenderWindow::ReleaseCurrent()
+{
+  [NSOpenGLContext clearCurrentContext];
+}
+
+//----------------------------------------------------------------------------
 void vtkCocoaRenderWindow::PushContext()
 {
   NSOpenGLContext* current = [NSOpenGLContext currentContext];
@@ -389,7 +394,10 @@ bool vtkCocoaRenderWindow::IsDrawable()
 
   // then check that the drawable is valid
   NSOpenGLContext* context = (NSOpenGLContext*)this->GetContextId();
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
   bool ok = [context view] != nil;
+#pragma clang diagnostic pop
 
   return win && ok;
 }
@@ -706,22 +714,21 @@ void vtkCocoaRenderWindow::CreateAWindow()
     (void)[app setActivationPolicy:NSApplicationActivationPolicyRegular];
 
     NSWindow* theWindow = nil;
-    NSScreen* screen = nil;
-    // Get the screen's size (in points).  (If there's no mainScreen, the
-    // rectangle will become all zeros and not used anyway.)
-    @try
-    {
-      screen = [[NSScreen screens] objectAtIndex:this->DisplayIndex];
-    }
-    @catch (NSException*)
-    {
-    }
 
-    if (!screen)
+    // Revert to main screen if specified screen isn't available.
+    NSScreen* screen;
+    NSArray* allScreens = [NSScreen screens];
+    if (this->DisplayIndex >= 0 && (NSUInteger)this->DisplayIndex < [allScreens count])
     {
-      // Revert to main screen if specified screen isn't available.
+      screen = [allScreens objectAtIndex:this->DisplayIndex];
+    }
+    else
+    {
       screen = [NSScreen mainScreen];
     }
+
+    // Get the screen's size (in points).  (If there's no screen, the
+    // rectangle will become all zeros and not used anyway.)
     NSRect screenRect = [screen frame];
 
     // Convert from points to pixels.
@@ -861,7 +868,10 @@ void vtkCocoaRenderWindow::CreateAWindow()
       // SetParentId() was added for) then the Tk superview handles the events.
       NSRect glRect = NSMakeRect(x, y, width, height);
       NSView* glView = [[NSView alloc] initWithFrame:glRect];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
       [glView setWantsBestResolutionOpenGLSurface:wantsBest];
+#pragma clang diagnostic pop
       [parent addSubview:glView];
       this->SetWindowId(glView);
       this->ViewCreated = 1;
@@ -881,7 +891,10 @@ void vtkCocoaRenderWindow::CreateAWindow()
 
       // Create a vtkCocoaGLView.
       vtkCocoaGLView* glView = [[vtkCocoaGLView alloc] initWithFrame:viewRect];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
       [glView setWantsBestResolutionOpenGLSurface:wantsBest];
+#pragma clang diagnostic pop
       [window setContentView:glView];
       // We have to set the frame's view rect again to work around rounding
       // that occurs when setting the window's content view.
@@ -902,7 +915,10 @@ void vtkCocoaRenderWindow::CreateAWindow()
   if (connectContextToNSView)
   {
     NSView* view = (NSView*)this->GetWindowId();
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     [context setView:view];
+#pragma clang diagnostic pop
   }
 
   // the error "invalid drawable" in the console from this call can appear
@@ -1024,7 +1040,10 @@ void vtkCocoaRenderWindow::CreateGLContext()
 
     // This syncs the OpenGL context to the VBL to prevent tearing
     GLint one = 1;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     [context setValues:&one forParameter:NSOpenGLCPSwapInterval];
+#pragma clang diagnostic pop
   }
 
   this->SetPixelFormat((void*)pixelFormat);
@@ -1060,7 +1079,10 @@ void vtkCocoaRenderWindow::Start()
     if (connectContextToNSView)
     {
       NSView* view = (NSView*)this->GetWindowId();
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
       [context setView:view];
+#pragma clang diagnostic pop
     }
 
     // the error "invalid drawable" in the console from this call can appear
@@ -1123,12 +1145,14 @@ int* vtkCocoaRenderWindow::GetScreenSize()
   // which CreateAWindow() also uses (it could be nil too).
   if (!screen)
   {
-    @try
+    NSArray* allScreens = [NSScreen screens];
+    if (this->DisplayIndex >= 0 && (NSUInteger)this->DisplayIndex < [allScreens count])
     {
-      screen = [[NSScreen screens] objectAtIndex:this->DisplayIndex];
+      screen = [allScreens objectAtIndex:this->DisplayIndex];
     }
-    @catch (NSException*)
+    else
     {
+      screen = [NSScreen mainScreen];
     }
   }
 

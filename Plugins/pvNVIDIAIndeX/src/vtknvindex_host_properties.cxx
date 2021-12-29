@@ -1,29 +1,29 @@
 /* Copyright 2021 NVIDIA Corporation. All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions
-* are met:
-*  * Redistributions of source code must retain the above copyright
-*    notice, this list of conditions and the following disclaimer.
-*  * Redistributions in binary form must reproduce the above copyright
-*    notice, this list of conditions and the following disclaimer in the
-*    documentation and/or other materials provided with the distribution.
-*  * Neither the name of NVIDIA CORPORATION nor the names of its
-*    contributors may be used to endorse or promote products derived
-*    from this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-* EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-* PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-* CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-* EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-* PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-* PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-* OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include "vtknvindex_host_properties.h"
 
@@ -143,7 +143,8 @@ inline bool bbox_interior_intersects(
 
 //-------------------------------------------------------------------------------------------------
 void vtknvindex_volume_neighbor_data::Neighbor_info::copy(mi::Uint8* dst_buffer,
-  const mi::math::Bbox<mi::Sint32, 3>& dst_buffer_bbox_global, mi::Size voxel_fmt_size) const
+  const mi::math::Bbox<mi::Sint32, 3>& dst_buffer_bbox_global, mi::Size voxel_fmt_size,
+  const std::string& source_scalar_type) const
 {
   const mi::Uint8* src_buffer;
   const mi::math::Bbox<mi::Sint32, 3>* src_buffer_bbox_global;
@@ -164,8 +165,18 @@ void vtknvindex_volume_neighbor_data::Neighbor_info::copy(mi::Uint8* dst_buffer,
     return; // no data available
   }
 
-  copy_brick(border_bbox, dst_buffer, dst_buffer_bbox_global, src_buffer, *src_buffer_bbox_global,
-    voxel_fmt_size);
+  if (data_buffer_is_local && source_scalar_type == "double")
+  {
+    // Data in local memory still needs to be converted from double to float, unlike data in shared
+    // memory or fetched from remote hosts
+    copy_brick_double_to_float(
+      border_bbox, dst_buffer, dst_buffer_bbox_global, src_buffer, *src_buffer_bbox_global);
+  }
+  else
+  {
+    copy_brick(border_bbox, dst_buffer, dst_buffer_bbox_global, src_buffer, *src_buffer_bbox_global,
+      voxel_fmt_size);
+  }
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -303,7 +314,8 @@ vtknvindex_volume_neighbor_data::vtknvindex_volume_neighbor_data(
           ni->border_bbox = border_bbox_clipped;
           ni->query_bbox = mi::math::Bbox<mi::Sint32, 3>(query_bbox);
           ni->data_bbox = data_bbox;
-          ni->data_buffer = nullptr; // will be filled by fetch_data()
+          ni->data_buffer = nullptr;        // will be filled by fetch_data()
+          ni->data_buffer_is_local = false; // will be filled by fetch_data()
           ni->host_id = shm_info->m_host_id;
           ni->rank_id = shm_info->m_rank_id;
 
@@ -335,10 +347,7 @@ vtknvindex_volume_neighbor_data::vtknvindex_volume_neighbor_data(
 }
 
 //-------------------------------------------------------------------------------------------------
-vtknvindex_volume_neighbor_data::vtknvindex_volume_neighbor_data()
-{
-  // empty
-}
+vtknvindex_volume_neighbor_data::vtknvindex_volume_neighbor_data() = default;
 
 //-------------------------------------------------------------------------------------------------
 vtknvindex_volume_neighbor_data::~vtknvindex_volume_neighbor_data()
@@ -365,8 +374,13 @@ void vtknvindex_volume_neighbor_data::fetch_data(
     if (neighbor->host_id == current_host)
     {
       // Data is available in local or shared memory
+      const vtknvindex_host_properties::shm_info* shm_info = nullptr;
       neighbor->data_buffer = host_props->get_subset_data_buffer(
-        mi::math::Bbox<mi::Float32, 3>(neighbor->query_bbox), time_step);
+        mi::math::Bbox<mi::Float32, 3>(neighbor->query_bbox), time_step, &shm_info);
+      if (neighbor->data_buffer && shm_info)
+      {
+        neighbor->data_buffer_is_local = (shm_info->m_subset_ptr != nullptr);
+      }
     }
     else if (neighbor->border_data_buffer)
     {
@@ -399,10 +413,7 @@ vtknvindex_host_properties::vtknvindex_host_properties(
 }
 
 // ------------------------------------------------------------------------------------------------
-vtknvindex_host_properties::~vtknvindex_host_properties()
-{
-  // empty
-}
+vtknvindex_host_properties::~vtknvindex_host_properties() = default;
 
 // ------------------------------------------------------------------------------------------------
 void vtknvindex_host_properties::shm_cleanup(bool reset)
@@ -475,7 +486,7 @@ void vtknvindex_host_properties::shm_cleanup(bool reset)
 void vtknvindex_host_properties::set_shminfo(mi::Uint32 time_step, mi::Sint32 rank_id,
   std::string shmname, mi::math::Bbox<mi::Float32, 3> shmbbox, mi::Uint64 shmsize, void* subset_ptr)
 {
-  std::map<mi::Uint32, std::vector<shm_info> >::iterator shmit = m_shmlist.find(time_step);
+  std::map<mi::Uint32, std::vector<shm_info>>::iterator shmit = m_shmlist.find(time_step);
   if (shmit == m_shmlist.end())
   {
     std::vector<shm_info> shmlist;
@@ -524,7 +535,7 @@ bool vtknvindex_host_properties::get_shminfo(const mi::math::Bbox<mi::Float32, 3
   std::string& shmname, mi::math::Bbox<mi::Float32, 3>& shmbbox, mi::Uint64& shmsize,
   void** subset_ptr, mi::Uint32 time_step)
 {
-  std::map<mi::Uint32, std::vector<shm_info> >::iterator shmit = m_shmlist.find(time_step);
+  std::map<mi::Uint32, std::vector<shm_info>>::iterator shmit = m_shmlist.find(time_step);
   if (shmit == m_shmlist.end())
   {
     ERROR_LOG << "The shared memory information in vtknvindex_host_properties::get_shminfo is not "
@@ -561,14 +572,14 @@ bool vtknvindex_host_properties::get_shminfo(const mi::math::Bbox<mi::Float32, 3
 vtknvindex_host_properties::shm_info* vtknvindex_host_properties::get_shminfo(
   const mi::math::Bbox<mi::Float32, 3>& bbox, mi::Uint32 time_step)
 {
-  std::map<mi::Uint32, std::vector<shm_info> >::iterator shmit = m_shmlist.find(time_step);
+  std::map<mi::Uint32, std::vector<shm_info>>::iterator shmit = m_shmlist.find(time_step);
   if (shmit == m_shmlist.end())
   {
     ERROR_LOG << "The shared memory information in vtknvindex_host_properties::get_shminfo is not "
                  "available for the time step: "
               << time_step << ".";
 
-    return NULL;
+    return nullptr;
   }
 
   std::vector<shm_info>& shmlist = shmit->second;
@@ -576,7 +587,7 @@ vtknvindex_host_properties::shm_info* vtknvindex_host_properties::get_shminfo(
   if (shmlist.empty())
   {
     ERROR_LOG << "The shared memory list in vtknvindex_host_properties::get_shminfo is empty.";
-    return NULL;
+    return nullptr;
   }
 
   for (mi::Uint32 i = 0; i < shmlist.size(); ++i)
@@ -588,7 +599,7 @@ vtknvindex_host_properties::shm_info* vtknvindex_host_properties::get_shminfo(
       return current_shm;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 // ------------------------------------------------------------------------------------------------

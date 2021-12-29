@@ -23,6 +23,7 @@
  */
 
 #include "vtkPythonOverload.h"
+#include "PyVTKReference.h"
 #include "vtkPythonUtil.h"
 
 #include "vtkObject.h"
@@ -122,7 +123,7 @@ bool vtkPythonOverloadHelper::next(const char** format, const char** classname)
 
   // check if the parameter has extended type information
   char c = *m_format;
-  if (c == '0' || c == 'V' || c == 'W' || c == 'Q' || c == 'E' || c == 'A' || c == 'P')
+  if (c == '0' || c == 'V' || c == 'W' || c == 'Q' || c == 'E' || c == 'A' || c == 'P' || c == 'T')
   {
     *classname = m_classname;
 
@@ -248,7 +249,6 @@ static int vtkPythonIntPenalty(PY_LONG_LONG tmpi, int penalty, char format)
 
 static int vtkPythonStringPenalty(PyObject* u, char format, int penalty)
 {
-#if PY_VERSION_HEX > 0x03030000
   int ascii = 0;
   if (PyUnicode_READY(u) != -1)
   {
@@ -268,17 +268,6 @@ static int vtkPythonStringPenalty(PyObject* u, char format, int penalty)
   {
     PyErr_Clear();
   }
-#else
-  PyObject* ascii = PyUnicode_AsASCIIString(u);
-  if (ascii == 0)
-  {
-    PyErr_Clear();
-  }
-  else
-  {
-    Py_DECREF(ascii);
-  }
-#endif
 
   if ((format == 'u') ^ (ascii == 0))
   {
@@ -505,7 +494,7 @@ int vtkPythonOverload::CheckArg(PyObject* arg, const char* format, const char* n
 
     case 'c':
       // penalize chars, they must be converted from strings
-#if PY_VERSION_HEX >= 0x03030000
+#ifdef VTK_PY3K
       if (PyUnicode_Check(arg) && PyUnicode_GetLength(arg) == 1)
 #else
       if (PyUnicode_Check(arg) && PyUnicode_GetSize(arg) == 1)
@@ -534,7 +523,6 @@ int vtkPythonOverload::CheckArg(PyObject* arg, const char* format, const char* n
           penalty = VTK_PYTHON_INCOMPATIBLE;
         }
       }
-#ifdef Py_USING_UNICODE
       else if (PyUnicode_Check(arg))
       {
 #ifdef VTK_PY3K
@@ -543,14 +531,19 @@ int vtkPythonOverload::CheckArg(PyObject* arg, const char* format, const char* n
         penalty = VTK_PYTHON_NEEDS_CONVERSION;
 #endif
       }
-#endif
       else if (!PyBytes_Check(arg) && !PyByteArray_Check(arg))
       {
         penalty = VTK_PYTHON_INCOMPATIBLE;
+#if PY_VERSION_HEX >= 0x03060000
+        // pathlike objects can be converted to strings
+        if (PyObject_HasAttrString(arg, "__fspath__"))
+        {
+          penalty = VTK_PYTHON_NEEDS_CONVERSION;
+        }
+#endif
       }
       break;
 
-#ifdef Py_USING_UNICODE
     case 'u':
       // unicode string
       if (!PyUnicode_Check(arg))
@@ -564,7 +557,6 @@ int vtkPythonOverload::CheckArg(PyObject* arg, const char* format, const char* n
       }
 #endif
       break;
-#endif
 
     case 'v':
       // memory buffer (void pointer)
@@ -821,6 +813,30 @@ int vtkPythonOverload::CheckArg(PyObject* arg, const char* format, const char* n
       else
       {
         badref = true;
+      }
+      break;
+
+    case 'T':
+      // std::vector<T>
+      if (PySequence_Check(arg))
+      {
+        Py_ssize_t m = PySequence_Size(arg);
+        if (m > 0)
+        {
+          // if sequence is not empty, check the type of its contents
+          PyObject* sarg = PySequence_GetItem(arg, 0);
+          penalty = vtkPythonOverload::CheckArg(sarg, classname, "");
+          Py_DECREF(sarg);
+        }
+        // always consider PySequence to std::vector as a conversion
+        if (penalty < VTK_PYTHON_NEEDS_CONVERSION)
+        {
+          penalty = VTK_PYTHON_NEEDS_CONVERSION;
+        }
+      }
+      else
+      {
+        penalty = VTK_PYTHON_INCOMPATIBLE;
       }
       break;
 

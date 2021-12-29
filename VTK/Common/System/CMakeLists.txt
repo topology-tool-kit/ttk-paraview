@@ -4,11 +4,14 @@ vtk_module_find_package(
 set(classes
   vtkClientSocket
   vtkDirectory
+  vtkExecutableRunner
   vtkServerSocket
   vtkSocket
   vtkSocketCollection
-  vtkThreadMessager
-  vtkTimerLog)
+  vtkTimerLog
+
+  # This class is deprecated.
+  vtkThreadMessager)
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/vtkTestSocketFeatures.cmake")
 

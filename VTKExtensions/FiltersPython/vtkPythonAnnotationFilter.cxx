@@ -16,12 +16,12 @@
 
 #include "vtkPythonAnnotationFilter.h"
 
-#include "vtkDataObjectTypes.h"
 #include "vtkIdTypeArray.h"
 #include "vtkInformation.h"
 #include "vtkInformationVector.h"
 #include "vtkMultiProcessController.h"
 #include "vtkObjectFactory.h"
+#include "vtkPVStringFormatter.h"
 #include "vtkPythonInterpreter.h"
 #include "vtkPythonUtil.h"
 #include "vtkSmartPyObject.h"
@@ -29,8 +29,7 @@
 #include "vtkStringArray.h"
 #include "vtkTable.h"
 
-#include <assert.h>
-#include <map>
+#include <cassert>
 #include <sstream>
 #include <vector>
 #include <vtksys/SystemTools.hxx>
@@ -50,17 +49,18 @@ bool CheckAndFlushPythonErrors()
 }
 
 vtkStandardNewMacro(vtkPythonAnnotationFilter);
+
 //----------------------------------------------------------------------------
 vtkPythonAnnotationFilter::vtkPythonAnnotationFilter()
-  : Expression(NULL)
-  , ComputedAnnotationValue(NULL)
+  : Expression(nullptr)
+  , ComputedAnnotationValue(nullptr)
   , ArrayAssociation(vtkDataObject::FIELD)
   , DataTimeValid(false)
   , DataTime(0.0)
   , NumberOfTimeSteps(0)
-  , TimeSteps(NULL)
+  , TimeSteps(nullptr)
   , TimeRangeValid(false)
-  , CurrentInputDataObject(NULL)
+  , CurrentInputDataObject(nullptr)
 {
   this->SetNumberOfInputPorts(1);
   this->TimeRange[0] = this->TimeRange[1] = 0.0;
@@ -69,15 +69,15 @@ vtkPythonAnnotationFilter::vtkPythonAnnotationFilter()
 //----------------------------------------------------------------------------
 vtkPythonAnnotationFilter::~vtkPythonAnnotationFilter()
 {
-  this->SetExpression(0);
-  this->SetComputedAnnotationValue(0);
+  this->SetExpression(nullptr);
+  this->SetComputedAnnotationValue(nullptr);
 }
 
 //----------------------------------------------------------------------------
 void vtkPythonAnnotationFilter::SetComputedAnnotationValue(const char* value)
 {
   delete[] this->ComputedAnnotationValue;
-  // SystemTools handles NULL strings.
+  // SystemTools handles nullptr strings.
   this->ComputedAnnotationValue = vtksys::SystemTools::DuplicateString(value);
   // don't call this->Modified. This method gets called in RequestData().
 }
@@ -87,20 +87,19 @@ int vtkPythonAnnotationFilter::RequestData(vtkInformation* vtkNotUsed(request),
   vtkInformationVector** inputVector, vtkInformationVector* outputVector)
 {
   vtkDataObject* input = vtkDataObject::GetData(inputVector[0], 0);
-  assert(input != NULL);
+  assert(input != nullptr);
 
   // initialize variables.
   this->DataTimeValid = false;
   this->DataTime = 0.0;
-  this->TimeSteps = NULL;
+  this->TimeSteps = nullptr;
   this->NumberOfTimeSteps = 0;
   this->TimeRangeValid = false;
   this->TimeRange[0] = this->TimeRange[1] = 0.0;
-  this->SetComputedAnnotationValue(NULL);
+  this->SetComputedAnnotationValue(nullptr);
   this->CurrentInputDataObject = input;
 
   // Extract time information
-  std::ostringstream timeInfo;
   if (vtkInformation* dataInformation = input->GetInformation())
   {
     if (dataInformation->Has(vtkDataObject::DATA_TIME_STEP()))
@@ -110,23 +109,57 @@ int vtkPythonAnnotationFilter::RequestData(vtkInformation* vtkNotUsed(request),
     }
   }
 
+  std::vector<double> timeSteps;
   vtkInformation* inputInfo = inputVector[0]->GetInformationObject(0);
   if (inputInfo->Has(vtkStreamingDemandDrivenPipeline::TIME_STEPS()))
   {
     this->NumberOfTimeSteps = inputInfo->Length(vtkStreamingDemandDrivenPipeline::TIME_STEPS());
     this->TimeSteps = inputInfo->Get(vtkStreamingDemandDrivenPipeline::TIME_STEPS());
+
+    timeSteps.insert(timeSteps.begin(), this->TimeSteps, this->TimeSteps + this->NumberOfTimeSteps);
   }
 
+  std::vector<double> timeRange;
   if (inputInfo->Has(vtkStreamingDemandDrivenPipeline::TIME_RANGE()))
   {
     this->TimeRangeValid = true;
     inputInfo->Get(vtkStreamingDemandDrivenPipeline::TIME_RANGE(), this->TimeRange);
+
+    timeRange.insert(timeRange.begin(), this->TimeRange, this->TimeRange + 2);
   }
+
+  int timeIndex = 0;
+  if (this->GetDataTimeValid() && this->GetNumberOfTimeSteps() > 0)
+  {
+    for (int i = 0; i < this->NumberOfTimeSteps; ++i)
+    {
+      if (timeSteps[i] == this->DataTime)
+      {
+        timeIndex = i;
+      }
+    }
+  }
+
+  // define annotate scope
+  PV_STRING_FORMATTER_NAMED_SCOPE("ANNOTATE", fmt::arg("timevalue", this->DataTime),
+    fmt::arg("timesteps", timeSteps), fmt::arg("timerange", timeRange),
+    fmt::arg("timeindex", timeIndex));
+
+  char* cachedExpression = vtksys::SystemTools::DuplicateString(this->Expression);
+
+  std::string formattableExpression = this->Expression ? this->Expression : std::string();
+  delete[] this->Expression;
+  this->Expression = vtksys::SystemTools::DuplicateString(
+    vtkPVStringFormatter::Format(formattableExpression).c_str());
 
   this->EvaluateExpression();
 
+  // restore cached expression
+  delete[] this->Expression;
+  this->Expression = vtksys::SystemTools::DuplicateString(cachedExpression);
+
   // Make sure a valid ComputedAnnotationValue is available
-  if (this->ComputedAnnotationValue == NULL)
+  if (this->ComputedAnnotationValue == nullptr)
   {
     this->SetComputedAnnotationValue("(error)");
   }
@@ -140,7 +173,7 @@ int vtkPythonAnnotationFilter::RequestData(vtkInformation* vtkNotUsed(request),
   vtkTable* output = vtkTable::GetData(outputVector);
   output->AddColumn(data);
   data->FastDelete();
-  this->CurrentInputDataObject = NULL;
+  this->CurrentInputDataObject = nullptr;
 
   if (vtkMultiProcessController::GetGlobalController() &&
     vtkMultiProcessController::GetGlobalController()->GetLocalProcessId() > 0)

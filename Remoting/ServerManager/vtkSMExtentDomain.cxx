@@ -21,17 +21,15 @@
 #include "vtkSMPropertyHelper.h"
 #include "vtkSMSourceProxy.h"
 
+#include <cmath>
+
 vtkStandardNewMacro(vtkSMExtentDomain);
 
 //---------------------------------------------------------------------------
-vtkSMExtentDomain::vtkSMExtentDomain()
-{
-}
+vtkSMExtentDomain::vtkSMExtentDomain() = default;
 
 //---------------------------------------------------------------------------
-vtkSMExtentDomain::~vtkSMExtentDomain()
-{
-}
+vtkSMExtentDomain::~vtkSMExtentDomain() = default;
 
 //---------------------------------------------------------------------------
 void vtkSMExtentDomain::Update(vtkSMProperty*)
@@ -64,6 +62,7 @@ void vtkSMExtentDomain::Update(vtkSMProxyProperty* pp)
       info->GetExtent(extent);
 
       std::vector<vtkEntry> entries;
+      entries.reserve(3);
       for (int j = 0; j < 3; j++)
       {
         entries.push_back(vtkEntry(extent[2 * j], extent[2 * j + 1]));

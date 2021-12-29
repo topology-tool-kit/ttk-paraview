@@ -18,7 +18,10 @@
  *
  * vtkPVMaterialLibrary helps ParaView to load visual material definition
  * files from known, generally process relative, locations on the sever.
-*/
+ *
+ * This class does nothing without raytracing (module VTK_MODULE_ENABLE_VTK_RenderingRayTracing
+ * disabled)
+ */
 
 #ifndef vtkPVMaterialLibrary_h
 #define vtkPVMaterialLibrary_h
@@ -26,6 +29,7 @@
 #include "vtkRemotingViewsModule.h" //needed for exports
 
 #include "vtkObject.h"
+
 class VTKREMOTINGVIEWS_EXPORT vtkPVMaterialLibrary : public vtkObject
 {
 public:

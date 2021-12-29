@@ -23,18 +23,20 @@
  *  = 4 (x,y,z,t) and NumberOfFunctions = 3 (u,v,w). As a concrete sub-class
  *  of vtkCompositeInterpolatedVelocityField, it adopts vtkAbstractCellLocator's
  *  sub-classes, e.g., vtkCellLocator and vtkModifiedBSPTree, without the use
- *  of vtkPointLocator ( employed by vtkDataSet/vtkPointSet::FindCell() in
- *  vtkInterpolatedVelocityField ). vtkCellLocatorInterpolatedVelocityField
- *  adopts one level of cell caching. Specifically, if the next point is still
- *  within the previous cell, cell location is then simply skipped and vtkCell::
- *  EvaluatePosition() is called to obtain the new parametric coordinates and
- *  weights that are used to interpolate the velocity function values across the
- *  vertices of this cell. Otherwise a global cell (the target containing the next
- *  point) location is instead directly invoked, without exploiting the clue that
- *  vtkInterpolatedVelocityField makes use of from the previous cell (an immediate
- *  neighbor). Although ignoring the neighbor cell may incur a relatively high
- *  computational cost, vtkCellLocatorInterpolatedVelocityField is more robust in
- *  locating the target cell than its sibling class vtkInterpolatedVelocityField.
+ *  of vtkPointLocator ( employed by vtkDataSet::FindCell() and
+ *  vtkPointSet::FindCell() in vtkInterpolatedVelocityField ).
+ *  vtkCellLocatorInterpolatedVelocityField adopts one level of cell caching.
+ *  Specifically, if the next point is still within the previous cell, cell
+ *  location is then simply skipped and vtkCell:: EvaluatePosition() is called
+ *  to obtain the new parametric coordinates and weights that are used to
+ *  interpolate the velocity function values across the vertices of this cell.
+ *  Otherwise a global cell (the target containing the next point) location is
+ *  instead directly invoked, without exploiting the clue that
+ *  vtkInterpolatedVelocityField makes use of from the previous cell (an
+ *  immediate neighbor). Although ignoring the neighbor cell may incur a
+ *  relatively high computational cost, vtkCellLocatorInterpolatedVelocityField
+ *  is more robust in locating the target cell than its sibling class
+ *  vtkInterpolatedVelocityField.
  *
  * @warning
  *  vtkCellLocatorInterpolatedVelocityField is not thread safe. A new instance
@@ -68,14 +70,14 @@ public:
    */
   static vtkCellLocatorInterpolatedVelocityField* New();
 
-  //@{
+  ///@{
   /**
    * Get the cell locator attached to the most recently visited dataset.
    */
   vtkGetObjectMacro(LastCellLocator, vtkAbstractCellLocator);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/Get the prototype of the cell locator that is used for interpolating
    * the velocity field during integration. The prototype is used to
@@ -85,7 +87,7 @@ public:
    */
   void SetCellLocatorPrototype(vtkAbstractCellLocator* prototype);
   vtkGetObjectMacro(CellLocatorPrototype, vtkAbstractCellLocator);
-  //@}
+  ///@}
 
   /**
    * Import parameters. Sub-classes can add more after chaining.

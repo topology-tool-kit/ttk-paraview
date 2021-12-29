@@ -15,7 +15,6 @@
 #include "QVTKOpenGLNativeWidget.h"
 
 #include <QApplication>
-#include <QDesktopWidget>
 #include <QOpenGLContext>
 #include <QOpenGLFramebufferObject>
 #include <QOpenGLFunctions>
@@ -39,6 +38,7 @@ QVTKOpenGLNativeWidget::QVTKOpenGLNativeWidget(QWidget* parentWdg, Qt::WindowFla
   : QVTKOpenGLNativeWidget(
       vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New().GetPointer(), parentWdg, f)
 {
+  this->setAttribute(Qt::WA_Hover);
 }
 
 //------------------------------------------------------------------------------
@@ -212,6 +212,11 @@ void QVTKOpenGLNativeWidget::initializeGL()
   {
     Q_ASSERT(this->RenderWindowAdapter.data() == nullptr);
 
+    auto ostate = this->RenderWindow->GetState();
+    ostate->Reset();
+    // By default, Qt sets the depth function to GL_LESS but VTK expects GL_LEQUAL
+    ostate->vtkglDepthFunc(GL_LEQUAL);
+
     // When a QOpenGLWidget is told to use a QSurfaceFormat with samples > 0,
     // QOpenGLWidget doesn't actually create a context with multi-samples and
     // internally changes the QSurfaceFormat to be samples=0. Thus, we can't
@@ -245,6 +250,11 @@ void QVTKOpenGLNativeWidget::paintGL()
   this->Superclass::paintGL();
   if (this->RenderWindow)
   {
+    auto ostate = this->RenderWindow->GetState();
+    ostate->Reset();
+    ostate->Push();
+    // By default, Qt sets the depth function to GL_LESS but VTK expects GL_LEQUAL
+    ostate->vtkglDepthFunc(GL_LEQUAL);
     Q_ASSERT(this->RenderWindowAdapter);
     this->RenderWindowAdapter->paint();
 
@@ -254,9 +264,6 @@ void QVTKOpenGLNativeWidget::paintGL()
     // before proceeding with blit-ing.
     this->makeCurrent();
 
-    auto ostate = this->RenderWindow->GetState();
-    ostate->Reset();
-    ostate->Push();
     const QSize deviceSize = this->size() * this->devicePixelRatioF();
     this->RenderWindowAdapter->blit(
       this->defaultFramebufferObject(), GL_COLOR_ATTACHMENT0, QRect(QPoint(0, 0), deviceSize));

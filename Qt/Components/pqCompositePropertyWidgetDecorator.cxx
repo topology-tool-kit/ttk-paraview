@@ -52,8 +52,8 @@ namespace
 
 struct BaseOperation
 {
-  std::vector<QPointer<pqPropertyWidgetDecorator> > Decorators;
-  std::vector<std::shared_ptr<BaseOperation> > Expressions;
+  std::vector<QPointer<pqPropertyWidgetDecorator>> Decorators;
+  std::vector<std::shared_ptr<BaseOperation>> Expressions;
 
   void add(std::shared_ptr<BaseOperation>& op) { this->Expressions.push_back(op); }
 
@@ -62,7 +62,7 @@ struct BaseOperation
   virtual bool canShowWidget(bool show_advanced) const = 0;
   virtual bool enableWidget() const = 0;
 
-  virtual ~BaseOperation() {}
+  virtual ~BaseOperation() = default;
 };
 
 template <typename BinaryOperation, bool init_value, bool default_value = init_value>
@@ -70,7 +70,7 @@ struct Operation : public BaseOperation
 {
   bool canShowWidget(bool show_advanced) const override
   {
-    if (this->Expressions.size() == 0 && this->Decorators.size() == 0)
+    if (this->Expressions.empty() && this->Decorators.empty())
     {
       return default_value;
     }
@@ -92,7 +92,7 @@ struct Operation : public BaseOperation
 
   bool enableWidget() const override
   {
-    if (this->Expressions.size() == 0 && this->Decorators.size() == 0)
+    if (this->Expressions.empty() && this->Decorators.empty())
     {
       return default_value;
     }
@@ -196,9 +196,7 @@ pqCompositePropertyWidgetDecorator::pqCompositePropertyWidgetDecorator(
 }
 
 //-----------------------------------------------------------------------------
-pqCompositePropertyWidgetDecorator::~pqCompositePropertyWidgetDecorator()
-{
-}
+pqCompositePropertyWidgetDecorator::~pqCompositePropertyWidgetDecorator() = default;
 
 //-----------------------------------------------------------------------------
 bool pqCompositePropertyWidgetDecorator::canShowWidget(bool show_advanced) const

@@ -280,8 +280,7 @@ vtkStandardNewMacro(vtkPSurfaceLICComposite);
 
 //------------------------------------------------------------------------------
 vtkPSurfaceLICComposite::vtkPSurfaceLICComposite()
-  : vtkSurfaceLICComposite()
-  , PainterComm(nullptr)
+  : PainterComm(nullptr)
   , PixelOps(nullptr)
   , CommRank(0)
   , CommSize(1)
@@ -301,7 +300,7 @@ vtkPSurfaceLICComposite::~vtkPSurfaceLICComposite()
   if (this->CompositeShader)
   {
     delete this->CompositeShader;
-    this->CompositeShader = 0;
+    this->CompositeShader = nullptr;
   }
   if (this->FBO)
   {
@@ -531,7 +530,7 @@ int vtkPSurfaceLICComposite::DecomposeExtent(
   list<vtkPixelExtent> splitExts;
 
   int dir = 0;
-  while (1)
+  while (true)
   {
     // stop when we have enough out or all out have unit size
     int nExts = static_cast<int>(out.size());
@@ -651,7 +650,7 @@ int vtkPSurfaceLICComposite::MakeDecompLocallyDisjoint(
   for (size_t r = 0; r < nr; ++r)
   {
     deque<vtkPixelExtent> tmp(in[r]);
-    this->MakeDecompDisjoint(tmp, out[r]);
+    vtkPSurfaceLICComposite::MakeDecompDisjoint(tmp, out[r]);
   }
   return 0;
 }
@@ -823,7 +822,7 @@ int vtkPSurfaceLICComposite::AddGuardPixels(const deque<deque<vtkPixelExtent>>& 
       guardExts[r] = tmpExts;
       // make sure it's disjoint
       disjointGuardExts[r].clear();
-      this->MakeDecompDisjoint(tmpExts, disjointGuardExts[r]);
+      vtkPSurfaceLICComposite::MakeDecompDisjoint(tmpExts, disjointGuardExts[r]);
     }
   }
   else
@@ -861,7 +860,7 @@ int vtkPSurfaceLICComposite::AddGuardPixels(const deque<deque<vtkPixelExtent>>& 
       guardExts[r] = tmpExts;
       // make sure it's disjoint
       disjointGuardExts[r].clear();
-      this->MakeDecompDisjoint(tmpExts, disjointGuardExts[r]);
+      vtkPSurfaceLICComposite::MakeDecompDisjoint(tmpExts, disjointGuardExts[r]);
     }
 #ifdef vtkSurfaceLICPainterTIME
     log->GetHeader() << "\n";
@@ -1041,8 +1040,8 @@ int vtkPSurfaceLICComposite::BuildProgram(float* vectors)
 
             if (!sharedExt.Empty())
             {
-              this->ScatterProgram.push_back(vtkPPixelTransfer(
-                srcRank, this->WindowExt, sharedExt, destRank, this->WindowExt, sharedExt, id));
+              this->ScatterProgram.emplace_back(
+                srcRank, this->WindowExt, sharedExt, destRank, this->WindowExt, sharedExt, id);
             }
             id += 1;
           }
@@ -1111,10 +1110,9 @@ int vtkPSurfaceLICComposite::BuildProgram(float* vectors)
           {
             // to move vectors for the LIC decomp
             // into a contiguous recv buffer
-            this->GatherProgram.push_back(
-              vtkPPixelTransfer(srcRank, this->WindowExt, sharedExt, destRank,
-                sharedExt, // dest ext
-                sharedExt, id));
+            this->GatherProgram.emplace_back(srcRank, this->WindowExt, sharedExt, destRank,
+              sharedExt, // dest ext
+              sharedExt, id);
           }
 
           id += 1;
@@ -1652,7 +1650,7 @@ int vtkPSurfaceLICComposite::Scatter(
 //------------------------------------------------------------------------------
 void vtkPSurfaceLICComposite::PrintSelf(ostream& os, vtkIndent indent)
 {
-  vtkObject::PrintSelf(os, indent);
+  Superclass::PrintSelf(os, indent);
   os << *this << endl;
 }
 

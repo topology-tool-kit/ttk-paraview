@@ -41,6 +41,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <QtDebug>
 
+#include <cmath>
+
 //-----------------------------------------------------------------------------
 pqGlyphScaleFactorPropertyWidget::pqGlyphScaleFactorPropertyWidget(
   vtkSMProxy* smproxy, vtkSMProperty* smproperty, QWidget* parentObject)
@@ -55,9 +57,7 @@ pqGlyphScaleFactorPropertyWidget::pqGlyphScaleFactorPropertyWidget(
 }
 
 //-----------------------------------------------------------------------------
-pqGlyphScaleFactorPropertyWidget::~pqGlyphScaleFactorPropertyWidget()
-{
-}
+pqGlyphScaleFactorPropertyWidget::~pqGlyphScaleFactorPropertyWidget() = default;
 
 //-----------------------------------------------------------------------------
 void pqGlyphScaleFactorPropertyWidget::resetButtonClicked()

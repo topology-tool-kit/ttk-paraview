@@ -50,11 +50,9 @@ pqFileDialogFilter::pqFileDialogFilter(pqFileDialogModel* model, QObject* Parent
   this->setSortCaseSensitivity(Qt::CaseInsensitive);
 }
 
-pqFileDialogFilter::~pqFileDialogFilter()
-{
-}
+pqFileDialogFilter::~pqFileDialogFilter() = default;
 
-#include <stdio.h>
+#include <cstdio>
 
 void pqFileDialogFilter::setFilter(const QString& filter)
 {
@@ -107,11 +105,11 @@ void pqFileDialogFilter::setFilter(const QString& filter)
     QString postExtFileSeries("(\\.?\\d+)?$"); // match the .0001 component
     QString extGroup = ".*\\.(?:" % extensions % ")" % postExtFileSeries;
     QString fileGroup = "(?:" % filepatterns % ")" % postExtFileSeries;
-    if (extensions_list.size() > 0 && filepatterns_list.size() > 0)
+    if (!extensions_list.empty() && !filepatterns_list.empty())
     {
       pattern = "(?:" % fileGroup % "|" % extGroup % ")";
     }
-    else if (extensions_list.size() > 0)
+    else if (!extensions_list.empty())
     {
       pattern = extGroup;
     }
@@ -177,8 +175,8 @@ bool pqFileDialogFilter::lessThan(const QModelIndex& left, const QModelIndex& ri
   // Sanity Check
   if ((leftType != rightType) ||
     ((left.parent().isValid() && right.parent().isValid() && left.parent() != right.parent()) ||
-        (left.parent().isValid() && !right.parent().isValid()) ||
-        (!left.parent().isValid() && right.parent().isValid())))
+      (left.parent().isValid() && !right.parent().isValid()) ||
+      (!left.parent().isValid() && right.parent().isValid())))
   {
     return false;
   }

@@ -31,10 +31,10 @@
 class vtkSMTimeKeeper::vtkInternal
 {
 public:
-  typedef std::set<vtkSmartPointer<vtkSMProxy> > ViewsType;
+  typedef std::set<vtkSmartPointer<vtkSMProxy>> ViewsType;
   ViewsType Views;
 
-  typedef std::set<vtkSmartPointer<vtkSMSourceProxy> > SourcesType;
+  typedef std::set<vtkSmartPointer<vtkSMSourceProxy>> SourcesType;
 
   // Add sources added using AddTimeSource as saved in these two sets. Those
   // that have timesteps are saved in "Sources" while those that don't are saved
@@ -78,9 +78,9 @@ vtkSMTimeKeeper::vtkSMTimeKeeper()
 {
   this->Time = 0.0;
   this->Internal = new vtkInternal();
-  this->TimestepValuesProperty = 0;
-  this->TimeRangeProperty = 0;
-  this->TimeLabelProperty = 0;
+  this->TimestepValuesProperty = nullptr;
+  this->TimeRangeProperty = nullptr;
+  this->TimeLabelProperty = nullptr;
   this->DeferUpdateTimeSteps = false;
 }
 
@@ -89,9 +89,9 @@ vtkSMTimeKeeper::~vtkSMTimeKeeper()
 {
   delete this->Internal;
 
-  this->SetTimestepValuesProperty(0);
-  this->SetTimeRangeProperty(0);
-  this->SetTimeLabelProperty(0);
+  this->SetTimestepValuesProperty(nullptr);
+  this->SetTimeRangeProperty(nullptr);
+  this->SetTimeLabelProperty(nullptr);
 }
 
 //----------------------------------------------------------------------------
@@ -229,7 +229,7 @@ void vtkSMTimeKeeper::UpdateTimeSteps()
 
   std::set<double> timesteps;
   double timerange[2] = { VTK_DOUBLE_MAX, VTK_DOUBLE_MIN };
-  const char* label = NULL;
+  const char* label = nullptr;
   int nbDiffCustomLabel = 0;
 
   vtkInternal::SourcesType::iterator iter;
@@ -271,7 +271,7 @@ void vtkSMTimeKeeper::UpdateTimeSteps()
       iter->GetPointer()->GetProperty("TimeLabelAnnotation"));
     if (svp && svp->GetNumberOfElements() > 0)
     {
-      if (label && strcmp(label, svp->GetElement(0)))
+      if (label && strcmp(label, svp->GetElement(0)) != 0)
       {
         nbDiffCustomLabel++;
       }
@@ -290,7 +290,7 @@ void vtkSMTimeKeeper::UpdateTimeSteps()
 
   std::vector<double> timesteps_vector;
   timesteps_vector.insert(timesteps_vector.begin(), timesteps.begin(), timesteps.end());
-  if (timesteps_vector.size() > 0)
+  if (!timesteps_vector.empty())
   {
     vtkSMDoubleVectorProperty::SafeDownCast(this->TimestepValuesProperty)
       ->SetElements(&timesteps_vector[0], static_cast<unsigned int>(timesteps_vector.size()));
@@ -303,7 +303,7 @@ void vtkSMTimeKeeper::UpdateTimeSteps()
   // Make sure the label is valid and if several source try to override that
   // label in a different manner, we simply rollback to the default "Time :" value
   vtkSMStringVectorProperty::SafeDownCast(this->TimeLabelProperty)
-    ->SetElement(0, (nbDiffCustomLabel > 0 || label == NULL) ? "Time" : label);
+    ->SetElement(0, (nbDiffCustomLabel > 0 || label == nullptr) ? "Time" : label);
 }
 
 //----------------------------------------------------------------------------

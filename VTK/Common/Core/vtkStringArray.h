@@ -167,7 +167,13 @@ public:
   vtkTypeBool Allocate(vtkIdType sz, vtkIdType ext = 1000) override;
 
   /**
-   * Get the data at a particular index.
+   * Read-access of string at a particular index.
+   */
+  const vtkStdString& GetValue(vtkIdType id) const
+    VTK_EXPECTS(0 <= id && id < this->GetNumberOfValues());
+
+  /**
+   * Get the string at a particular index.
    */
   vtkStdString& GetValue(vtkIdType id) VTK_EXPECTS(0 <= id && id < this->GetNumberOfValues());
 
@@ -194,7 +200,10 @@ public:
     this->SetNumberOfValues(this->NumberOfComponents * number);
   }
 
-  vtkIdType GetNumberOfValues() { return this->MaxId + 1; }
+  /**
+   * Return the number of values in the array.
+   */
+  vtkIdType GetNumberOfValues() const { return (this->MaxId + 1); }
 
   int GetNumberOfElementComponents() { return 0; }
   int GetElementComponentSize() const override
@@ -302,13 +311,13 @@ public:
    */
   vtkIdType GetDataSize() const override;
 
-  //@{
+  ///@{
   /**
    * Return the indices where a specific value appears.
    */
   vtkIdType LookupValue(vtkVariant value) override;
   void LookupValue(vtkVariant value, vtkIdList* ids) override;
-  //@}
+  ///@}
 
   vtkIdType LookupValue(const vtkStdString& value);
   void LookupValue(const vtkStdString& value, vtkIdList* ids);

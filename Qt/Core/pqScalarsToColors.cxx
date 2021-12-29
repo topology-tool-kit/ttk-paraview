@@ -66,7 +66,7 @@ public:
 
 //-----------------------------------------------------------------------------
 pqScalarsToColors::pqScalarsToColors(const QString& group, const QString& name, vtkSMProxy* proxy,
-  pqServer* server, QObject* _parent /*=NULL*/)
+  pqServer* server, QObject* _parent /*=nullptr*/)
   : pqProxy(group, name, proxy, server, _parent)
 {
   this->Internal = new pqScalarsToColorsInternal;
@@ -99,7 +99,7 @@ pqScalarBarRepresentation* pqScalarsToColors::getScalarBar(pqRenderViewBase* ren
   vtkSMProxy* proxy =
     vtkSMTransferFunctionProxy::FindScalarBarRepresentation(this->getProxy(), ren->getProxy());
   pqServerManagerModel* smmodel = pqApplicationCore::instance()->getServerManagerModel();
-  return proxy ? smmodel->findItem<pqScalarBarRepresentation*>(proxy) : NULL;
+  return proxy ? smmodel->findItem<pqScalarBarRepresentation*>(proxy) : nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -226,7 +226,7 @@ QPair<double, double> pqScalarsToColors::getScalarRange() const
     vtkSMDoubleVectorProperty::SafeDownCast(this->getProxy()->GetProperty("RGBPoints"));
   QList<QVariant> controlPoints = pqSMAdaptor::getMultipleElementProperty(dvp);
 
-  if (controlPoints.size() == 0)
+  if (controlPoints.empty())
   {
     return QPair<double, double>(0, 0);
   }

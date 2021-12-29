@@ -1,34 +1,8 @@
-// Copyright(C) 1999-2017, 2020 National Technology & Engineering Solutions
+// Copyright(C) 1999-2021 National Technology & Engineering Solutions
 // of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
 // NTESS, the U.S. Government retains certain rights in this software.
 //
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-//     * Redistributions of source code must retain the above copyright
-//       notice, this list of conditions and the following disclaimer.
-//
-//     * Redistributions in binary form must reproduce the above
-//       copyright notice, this list of conditions and the following
-//       disclaimer in the documentation and/or other materials provided
-//       with the distribution.
-//
-//     * Neither the name of NTESS nor the names of its
-//       contributors may be used to endorse or promote products derived
-//       from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// See packages/seacas/LICENSE for details
 
 #include <Ioss_BoundingBox.h>
 #include <Ioss_CodeTypes.h>
@@ -47,6 +21,7 @@
 #include <Ioss_SerializeIO.h>
 #include <Ioss_SideBlock.h>
 #include <Ioss_SideSet.h>
+#include <Ioss_Sort.h>
 #include <Ioss_State.h>
 #include <Ioss_StructuredBlock.h>
 #include <Ioss_SurfaceSplit.h>
@@ -62,7 +37,6 @@
 #include <iterator>
 #include <set>
 #include <string>
-#include <sys/stat.h>
 #include <tokenize.h>
 #include <utility>
 #include <vector>
@@ -74,11 +48,11 @@ extern "C" {
 #endif
 
 namespace {
-  auto initial_time = std::chrono::high_resolution_clock::now();
+  auto initial_time = std::chrono::steady_clock::now();
 
-  void log_time(std::chrono::time_point<std::chrono::high_resolution_clock> &start,
-                std::chrono::time_point<std::chrono::high_resolution_clock> &finish,
-                int current_state, double state_time, bool is_input, bool single_proc_only,
+  void log_time(std::chrono::time_point<std::chrono::steady_clock> &start,
+                std::chrono::time_point<std::chrono::steady_clock> &finish, int current_state,
+                double state_time, bool is_input, bool single_proc_only,
                 const Ioss::ParallelUtils &util);
 
   void log_field(const char *symbol, const Ioss::GroupingEntity *entity, const Ioss::Field &field,
@@ -100,8 +74,10 @@ namespace {
     if (max_hash != min_hash) {
       const std::string &ge_name = ge->name();
       fmt::print(Ioss::WARNING(),
-                 "Parallel inconsistency detected for {} field '{}' on entity '{}'\n",
-                 in_out == 0 ? "writing" : "reading", field_name, ge_name);
+                 "[{}] Parallel inconsistency detected for {} field '{}' on entity '{}'. (Hash: {} "
+                 "{} {})\n",
+                 in_out == 0 ? "writing" : "reading", util.parallel_rank(), field_name, ge_name,
+                 hash_code, min_hash, max_hash);
       return false;
     }
     return true;
@@ -152,12 +128,48 @@ namespace {
       ymin = ymax = 0.0;
     }
   }
+
+  void calc_bounding_box(size_t ndim, size_t node_count, std::vector<double> &coordinates,
+                         double &xmin, double &ymin, double &zmin, double &xmax, double &ymax,
+                         double &zmax)
+  {
+    xmin = DBL_MAX;
+    ymin = DBL_MAX;
+    zmin = DBL_MAX;
+
+    xmax = -DBL_MAX;
+    ymax = -DBL_MAX;
+    zmax = -DBL_MAX;
+
+    for (size_t i = 0; i < node_count; i++) {
+      xmin = my_min(xmin, coordinates[ndim * i + 0]);
+      xmax = my_max(xmax, coordinates[ndim * i + 0]);
+
+      if (ndim > 1) {
+        ymin = my_min(ymin, coordinates[ndim * i + 1]);
+        ymax = my_max(ymax, coordinates[ndim * i + 1]);
+      }
+
+      if (ndim > 2) {
+        zmin = my_min(zmin, coordinates[ndim * i + 2]);
+        zmax = my_max(zmax, coordinates[ndim * i + 2]);
+      }
+    }
+    if (ndim < 3) {
+      zmin = zmax = 0.0;
+    }
+    if (ndim < 2) {
+      ymin = ymax = 0.0;
+    }
+  }
 } // namespace
 
 namespace Ioss {
   DatabaseIO::DatabaseIO(Region *region, std::string filename, DatabaseUsage db_usage,
                          MPI_Comm communicator, const PropertyManager &props)
-      : properties(props), DBFilename(std::move(filename)), dbUsage(db_usage), util_(communicator),
+      : properties(props), DBFilename(std::move(filename)), dbUsage(db_usage),
+        util_(db_usage == WRITE_HISTORY || db_usage == WRITE_HEARTBEAT ? MPI_COMM_SELF
+                                                                       : communicator),
         region_(region), isInput(is_input_event(db_usage)),
         singleProcOnly(db_usage == WRITE_HISTORY || db_usage == WRITE_HEARTBEAT ||
                        SerializeIO::isEnabled())
@@ -364,12 +376,12 @@ namespace Ioss {
   void DatabaseIO::closeDW() const
   {
     if (using_dw()) {
-      if (!using_parallel_io() || (using_parallel_io() && myProcessor == 0)) {
+      if (!using_parallel_io() || myProcessor == 0) {
 #if defined SEACAS_HAVE_DATAWARP
         int complete = 0, pending = 0, deferred = 0, failed = 0;
         dw_query_file_stage(get_dwname().c_str(), &complete, &pending, &deferred, &failed);
 #if IOSS_DEBUG_OUTPUT
-        auto initial = std::chrono::high_resolution_clock::now();
+        auto initial = std::chrono::steady_clock::now();
         fmt::print(Ioss::DEBUG(), "Query: {}, {}, {}, {}\n", complete, pending, deferred, failed);
 #endif
         if (pending > 0) {
@@ -394,7 +406,7 @@ namespace Ioss {
             dw_stage_file_out(get_dwname().c_str(), get_pfsname().c_str(), DW_STAGE_IMMEDIATE);
 
 #if IOSS_DEBUG_OUTPUT
-        auto                          time_now = std::chrono::high_resolution_clock::now();
+        auto                          time_now = std::chrono::steady_clock::now();
         std::chrono::duration<double> diff     = time_now - initial;
         fmt::print(Ioss::DEBUG(), "\nDW: END dw_stage_file_out({})\n", diff.count());
 #endif
@@ -467,7 +479,7 @@ namespace Ioss {
   {
     IOSS_FUNC_ENTER(m_);
     if (m_timeStateInOut) {
-      m_stateStart = std::chrono::high_resolution_clock::now();
+      m_stateStart = std::chrono::steady_clock::now();
     }
     return begin_state__(state, time);
   }
@@ -476,7 +488,7 @@ namespace Ioss {
     IOSS_FUNC_ENTER(m_);
     bool res = end_state__(state, time);
     if (m_timeStateInOut) {
-      auto finish = std::chrono::high_resolution_clock::now();
+      auto finish = std::chrono::steady_clock::now();
       log_time(m_stateStart, finish, state, time, is_input(), singleProcOnly, util_);
     }
     return res;
@@ -577,7 +589,7 @@ namespace Ioss {
         for (auto &sbold : side_blocks) {
           size_t  side_count = sbold->entity_count();
           auto    sbnew      = new SideBlock(this, sbold->name(), sbold->topology()->name(),
-                                     sbold->parent_element_topology()->name(), side_count);
+                                             sbold->parent_element_topology()->name(), side_count);
           int64_t id         = sbold->get_property("id").get_int();
           sbnew->property_add(Property("set_offset", entity_count));
           sbnew->property_add(Property("set_df_offset", df_count));
@@ -614,7 +626,7 @@ namespace Ioss {
   // have to check each face (or group of faces) individually.
   void DatabaseIO::set_common_side_topology() const
   {
-    DatabaseIO *new_this = const_cast<DatabaseIO *>(this);
+    auto *new_this = const_cast<DatabaseIO *>(this);
 
     bool                         first          = true;
     const ElementBlockContainer &element_blocks = get_region()->get_element_blocks();
@@ -681,11 +693,11 @@ namespace Ioss {
   {
     if (!omissions.empty()) {
       blockOmissions.assign(omissions.cbegin(), omissions.cend());
-      std::sort(blockOmissions.begin(), blockOmissions.end());
+      Ioss::sort(blockOmissions.begin(), blockOmissions.end());
     }
     if (!inclusions.empty()) {
       blockInclusions.assign(inclusions.cbegin(), inclusions.cend());
-      std::sort(blockInclusions.begin(), blockInclusions.end());
+      Ioss::sort(blockInclusions.begin(), blockInclusions.end());
     }
   }
 
@@ -704,7 +716,6 @@ namespace Ioss {
     // This is used in other code speed up some tests.
 
     // Spheres and Circle have no faces/edges, so handle them special...
-    bool all_sphere = true;
 
     if (sideTopology.empty()) {
       // Set contains (parent_element, boundary_topology) pairs...
@@ -712,6 +723,7 @@ namespace Ioss {
 
       const ElementBlockContainer &element_blocks = get_region()->get_element_blocks();
 
+      bool all_sphere = true;
       for (auto &block : element_blocks) {
         const ElementTopology *elem_type = block->topology();
         const ElementTopology *side_type = elem_type->boundary_type();
@@ -745,7 +757,7 @@ namespace Ioss {
       assert(!side_topo.empty());
       assert(sideTopology.empty());
       // Copy into the sideTopology container...
-      DatabaseIO *new_this = const_cast<DatabaseIO *>(this);
+      auto *new_this = const_cast<DatabaseIO *>(this);
       std::copy(side_topo.cbegin(), side_topo.cend(), std::back_inserter(new_this->sideTopology));
     }
     assert(!sideTopology.empty());
@@ -831,7 +843,7 @@ namespace Ioss {
         if (int_byte_size_api() == 8) {
           std::vector<int64_t> conn;
           eb->get_field_data("connectivity_raw", conn);
-          for (auto node : conn) {
+          for (auto &node : conn) {
             assert(node > 0 && node - 1 < nodeCount);
             node_used[node - 1] = blk_position + 1;
           }
@@ -839,7 +851,7 @@ namespace Ioss {
         else {
           std::vector<int> conn;
           eb->get_field_data("connectivity_raw", conn);
-          for (auto node : conn) {
+          for (auto &node : conn) {
             assert(node > 0 && node - 1 < nodeCount);
             node_used[node - 1] = blk_position + 1;
           }
@@ -872,7 +884,7 @@ namespace Ioss {
       }
 
       // Now sort by increasing processor number.
-      std::sort(proc_node.begin(), proc_node.end());
+      Ioss::sort(proc_node.begin(), proc_node.end());
 
       // Pack the data: global_node_id, bits for each block, ...
       // Use 'int' as basic type...
@@ -1064,10 +1076,10 @@ namespace Ioss {
     if (elementBlockBoundingBoxes.empty()) {
       // Calculate the bounding boxes for all element blocks...
       std::vector<double> coordinates;
-      Ioss::NodeBlock *   nb = get_region()->get_node_blocks()[0];
+      Ioss::NodeBlock    *nb = get_region()->get_node_blocks()[0];
       nb->get_field_data("mesh_model_coordinates", coordinates);
-      ssize_t nnode = nb->entity_count();
-      ssize_t ndim  = nb->get_property("component_degree").get_int();
+      ioss_ssize_t nnode = nb->entity_count();
+      ioss_ssize_t ndim  = nb->get_property("component_degree").get_int();
 
       const Ioss::ElementBlockContainer &element_blocks = get_region()->get_element_blocks();
       size_t                             nblock         = element_blocks.size();
@@ -1100,8 +1112,8 @@ namespace Ioss {
       util().global_array_minmax(minmax, Ioss::ParallelUtils::DO_MIN);
 
       for (size_t i = 0; i < element_blocks.size(); i++) {
-        Ioss::ElementBlock *   block = element_blocks[i];
-        const std::string &    name  = block->name();
+        Ioss::ElementBlock    *block = element_blocks[i];
+        const std::string     &name  = block->name();
         AxisAlignedBoundingBox bbox(minmax[6 * i + 0], minmax[6 * i + 1], minmax[6 * i + 2],
                                     -minmax[6 * i + 3], -minmax[6 * i + 4], -minmax[6 * i + 5]);
         elementBlockBoundingBoxes[name] = bbox;
@@ -1110,9 +1122,35 @@ namespace Ioss {
     return elementBlockBoundingBoxes[eb->name()];
   }
 
+  AxisAlignedBoundingBox DatabaseIO::get_bounding_box(const Ioss::NodeBlock *nb) const
+  {
+    std::vector<double> coordinates;
+    nb->get_field_data("mesh_model_coordinates", coordinates);
+    ioss_ssize_t nnode = nb->entity_count();
+    ioss_ssize_t ndim  = nb->get_property("component_degree").get_int();
+
+    double xmin, ymin, zmin, xmax, ymax, zmax;
+    calc_bounding_box(ndim, nnode, coordinates, xmin, ymin, zmin, xmax, ymax, zmax);
+
+    std::vector<double> minmax;
+    minmax.reserve(6);
+    minmax.push_back(xmin);
+    minmax.push_back(ymin);
+    minmax.push_back(zmin);
+    minmax.push_back(-xmax);
+    minmax.push_back(-ymax);
+    minmax.push_back(-zmax);
+
+    util().global_array_minmax(minmax, Ioss::ParallelUtils::DO_MIN);
+
+    AxisAlignedBoundingBox bbox(minmax[0], minmax[1], minmax[2], -minmax[3], -minmax[4],
+                                -minmax[5]);
+    return bbox;
+  }
+
   AxisAlignedBoundingBox DatabaseIO::get_bounding_box(const Ioss::StructuredBlock *sb) const
   {
-    ssize_t ndim = sb->get_property("component_degree").get_int();
+    ioss_ssize_t ndim = sb->get_property("component_degree").get_int();
 
     std::pair<double, double> xx;
     std::pair<double, double> yy;
@@ -1135,14 +1173,14 @@ namespace Ioss {
       zz     = std::make_pair(*(z.first), *(z.second));
     }
 
-    return AxisAlignedBoundingBox(xx.first, yy.first, zz.first, xx.second, yy.second, zz.second);
+    return {xx.first, yy.first, zz.first, xx.second, yy.second, zz.second};
   }
 } // namespace Ioss
 
 namespace {
-  void log_time(std::chrono::time_point<std::chrono::high_resolution_clock> &start,
-                std::chrono::time_point<std::chrono::high_resolution_clock> &finish,
-                int current_state, double state_time, bool is_input, bool single_proc_only,
+  void log_time(std::chrono::time_point<std::chrono::steady_clock> &start,
+                std::chrono::time_point<std::chrono::steady_clock> &finish, int current_state,
+                double state_time, bool is_input, bool single_proc_only,
                 const Ioss::ParallelUtils &util)
   {
     std::vector<double> all_times;
@@ -1169,7 +1207,7 @@ namespace {
         fmt::print(strm, "{} (ms)\n", total);
       }
       else if (util.parallel_size() > 4) {
-        std::sort(all_times.begin(), all_times.end());
+        Ioss::sort(all_times.begin(), all_times.end());
         fmt::print(strm, " Min: {}\tMax: {}\tMed: {}", all_times.front(), all_times.back(),
                    all_times[all_times.size() / 2]);
       }
@@ -1199,9 +1237,9 @@ namespace {
       }
 
       if (util.parallel_rank() == 0 || single_proc_only) {
-        const std::string &           name = entity->name();
+        const std::string            &name = entity->name();
         std::ostringstream            strm;
-        auto                          now  = std::chrono::high_resolution_clock::now();
+        auto                          now  = std::chrono::steady_clock::now();
         std::chrono::duration<double> diff = now - initial_time;
         fmt::print(strm, "{} [{:.3f}]\t", symbol, diff.count());
 
@@ -1232,7 +1270,7 @@ namespace {
         util.barrier();
       }
       if (util.parallel_rank() == 0 || single_proc_only) {
-        auto                          time_now = std::chrono::high_resolution_clock::now();
+        auto                          time_now = std::chrono::steady_clock::now();
         std::chrono::duration<double> diff     = time_now - initial_time;
         fmt::print("{} [{:.3f}]\n", symbol, diff.count());
       }

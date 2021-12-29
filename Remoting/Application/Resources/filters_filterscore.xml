@@ -240,16 +240,8 @@
       <ProxyProperty command="SetCutFunction"
                      label="Slice Type"
                      name="CutFunction">
-        <ProxyGroupDomain name="groups">
-          <Group name="implicit_functions" />
-        </ProxyGroupDomain>
         <ProxyListDomain name="proxy_list">
-          <Proxy group="implicit_functions"
-                 name="Plane" />
-          <Proxy group="implicit_functions"
-                 name="Box" />
-          <Proxy group="implicit_functions"
-                 name="Sphere" />
+          <Proxy name="slice_implicit_functions" default="Plane" />
         </ProxyListDomain>
         <Documentation>This property sets the parameters of the slice
         function.</Documentation>
@@ -1545,6 +1537,29 @@ found and the point will be rejected.</Documentation>
         <BooleanDomain name="bool" />
       </IntVectorProperty>
 
+      <IntVectorProperty command="SetPassPartialArrays"
+                         default_values="0"
+                         name="PassPartialArrays"
+                         number_of_elements="1"
+                         panel_visibility="advanced">
+        <Documentation>
+        Set whether to partial data arrays from the Input i.e. the input
+        providing the geometry to the output. Off by default.
+        </Documentation>
+        <BooleanDomain name="bool" />
+        <Hints>
+          <PropertyWidgetDecorator type="CompositeDecorator">
+            <Expression type="or">
+              <PropertyWidgetDecorator type="GenericDecorator" mode="enabled_state" property="PassCellArrays" value="1" inverse="0" />
+              <PropertyWidgetDecorator type="GenericDecorator" mode="enabled_state" property="PassPointArrays" value="1" inverse="0" />
+              <PropertyWidgetDecorator type="GenericDecorator" mode="enabled_state" property="PassFieldArrays" value="1" inverse="0" />
+            </Expression>
+          </PropertyWidgetDecorator>
+          <!-- show this widget when PassCellArrays, PassPointArrays, or PassFieldArrays is on -->
+
+        </Hints>
+      </IntVectorProperty>
+
       <IntVectorProperty command="SetComputeTolerance"
                          default_values="1"
                          name="ComputeTolerance"
@@ -1588,16 +1603,8 @@ found and the point will be rejected.</Documentation>
                      label="Cell Locator"
                      name="CellLocator"
                      panel_visibility="advanced">
-        <ProxyGroupDomain name="groups">
-          <Group name="cell_locators" />
-        </ProxyGroupDomain>
         <ProxyListDomain name="proxy_list">
-          <Proxy group="cell_locators"
-                 name="StaticCellLocator" />
-          <Proxy group="cell_locators"
-                 name="CellTreeLocator" />
-          <Proxy group="cell_locators"
-                 name="CellLocator" />
+          <Group name="cell_locators" default="StaticCellLocator" />
         </ProxyListDomain>
         <Documentation>The cell locator to use for finding cells for probing.
         </Documentation>
@@ -1605,6 +1612,50 @@ found and the point will be rejected.</Documentation>
       <!-- cell locator end -->
 
       <!-- End vtkResampleToImage -->
+    </SourceProxy>
+
+    <!-- ==================================================================== -->
+    <SourceProxy class="vtkReverseSense"
+      label="Reverse Sense"
+      name="ReverseSense">
+      <Documentation short_help="Reverse the ordering of vertices in polygons.">
+          This filter reverses vertex ordering or normals for cells. In graphics 2d cells
+          have a notion of front or back face. If you use the right hand rule and wind
+          the vertices of a cell counter-clockwise (how your right fungers coil) then
+          the front face is in the direction of your thumb (the normal aligns with
+          your right thumb). If you need to reverse the normals, or change the winding
+          order of a polydata this filter can be used.
+      </Documentation>
+      <InputProperty command="SetInputConnection"
+        name="Input">
+        <ProxyGroupDomain name="groups">
+          <Group name="sources" />
+          <Group name="filters" />
+        </ProxyGroupDomain>
+        <DataTypeDomain name="input_type">
+          <DataType value="vtkPolyData" />
+        </DataTypeDomain>
+        <Documentation>Set the input to the ReverseSense filter.</Documentation>
+      </InputProperty>
+      <IntVectorProperty name="ReverseCells"
+        label="Reverse Cells"
+        command="SetReverseCells"
+        number_of_elements="1"
+        default_values="1">
+        <BooleanDomain name="bool" />
+        <Documentation>Flag controls whether to reverse cell ordering.
+        </Documentation>
+      </IntVectorProperty>
+      <IntVectorProperty name="ReverseNormals"
+        label="Reverse Normals"
+        command="SetReverseNormals"
+        number_of_elements="1"
+        default_values="0">
+        <BooleanDomain name="bool" />
+        <Documentation>Flag controls whether to reverse normal orientation.
+        </Documentation>
+      </IntVectorProperty>
+      <!-- End ReverseSense -->
     </SourceProxy>
 
     <!-- ==================================================================== -->
@@ -2128,6 +2179,56 @@ found and the point will be rejected.</Documentation>
         vector array (SelectInputVectors property).</Documentation>
       </DoubleVectorProperty>
       <!-- End TubeFilter -->
+    </SourceProxy>
+
+    <!-- ==================================================================== -->
+    <SourceProxy class="vtkConvertToMultiBlockDataSet"
+      name="ConvertToMultiBlock"
+      label="Convert To MultiBlock">
+      <Documentation>
+        Convert any dataset to vtkMultiBlockDataSet.
+      </Documentation>
+      <InputProperty command="SetInputConnection" name="Input">
+        <Documentation>
+          Specify the input.
+        </Documentation>
+        <ProxyGroupDomain name="groups">
+          <Group name="sources" />
+          <Group name="filters" />
+        </ProxyGroupDomain>
+        <DataTypeDomain name="input_type">
+          <DataType value="vtkCompositeDataSet" />
+          <DataType value="vtkDataSet" />
+          <DataType value="vtkTable" />
+          <DataType value="vtkGraph" />
+        </DataTypeDomain>
+        <Documentation>The input.</Documentation>
+      </InputProperty>
+    </SourceProxy>
+
+    <!-- ==================================================================== -->
+    <SourceProxy class="vtkConvertToPartitionedDataSetCollection"
+      name="ConvertToPartitionedDataSetCollection"
+      label="Convert To PartitionedDataSetCollection">
+      <Documentation>
+        Convert any dataset to vtkPartitionedDataSetCollection.
+      </Documentation>
+      <InputProperty command="SetInputConnection" name="Input">
+        <Documentation>
+          Specify the input.
+        </Documentation>
+        <ProxyGroupDomain name="groups">
+          <Group name="sources" />
+          <Group name="filters" />
+        </ProxyGroupDomain>
+        <DataTypeDomain name="input_type">
+          <DataType value="vtkCompositeDataSet" />
+          <DataType value="vtkDataSet" />
+          <DataType value="vtkTable" />
+          <DataType value="vtkGraph" />
+        </DataTypeDomain>
+        <Documentation>The input.</Documentation>
+      </InputProperty>
     </SourceProxy>
 
   </ProxyGroup>

@@ -29,6 +29,7 @@
 #
 #==========================================================================
 set(classes
+  vtkCLIOptions
   vtkCommandOptions
   vtkCommandOptionsXMLParser
   vtkCommunicationErrorCatcher
@@ -37,6 +38,7 @@ set(classes
   vtkLogRecorder
   vtkMultiProcessControllerHelper
   vtkPVCompositeDataPipeline
+  vtkPVDataUtilities
   vtkPVInformationKeys
   vtkPVLogger
   vtkPVNullSource
@@ -47,7 +49,6 @@ set(classes
   vtkPVXMLElement
   vtkPVXMLParser
   vtkStringList
-  vtkSubsetInclusionLattice
   vtkUndoElement
   vtkUndoSet
   vtkUndoStack)
@@ -55,9 +56,17 @@ set(classes
 set(headers
   vtkMemberFunctionCommand.h)
 
+set(private_headers
+  vtkUndoStackInternal.h)
+
+set(nowrap_classes
+  vtkPVStringFormatter)
+
 vtk_module_add_module(ParaView::VTKExtensionsCore
   CLASSES ${classes}
-  HEADERS ${headers})
+  NOWRAP_CLASSES ${nowrap_classes}
+  HEADERS ${headers}
+  PRIVATE_HEADERS ${private_headers})
 
 paraview_add_server_manager_xmls(
   XMLS  Resources/core_sources.xml)

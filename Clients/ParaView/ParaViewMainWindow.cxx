@@ -29,7 +29,7 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ========================================================================*/
-#ifdef PARAVIEW_USE_PYTHON
+#if PARAVIEW_USE_PYTHON
 #include "pvpythonmodules.h"
 #endif
 
@@ -43,7 +43,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqCoreUtilities.h"
 #include "pqDeleteReaction.h"
 #include "pqMainWindowEventManager.h"
-#include "pqOptions.h"
 #include "pqParaViewBehaviors.h"
 #include "pqParaViewMenuBuilders.h"
 #include "pqSaveStateReaction.h"
@@ -53,6 +52,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkCommand.h"
 #include "vtkPVGeneralSettings.h"
 #include "vtkProcessModule.h"
+#include "vtkRemotingCoreConfiguration.h"
 #include "vtkSMSettings.h"
 #include "vtksys/SystemTools.hxx"
 
@@ -66,11 +66,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QTextCodec>
 #include <QtDebug>
 
-#ifdef PARAVIEW_ENABLE_EMBEDDED_DOCUMENTATION
+#if PARAVIEW_ENABLE_EMBEDDED_DOCUMENTATION
 #include "ParaViewDocumentationInitializer.h"
 #endif
 
-#ifdef PARAVIEW_USE_PYTHON
+#if PARAVIEW_USE_MATERIALEDITOR
+#include "pqMaterialEditor.h"
+#endif
+
+#if PARAVIEW_USE_PYTHON
 #include "pqPythonDebugLeaksView.h"
 #include "pqPythonShell.h"
 typedef pqPythonDebugLeaksView DebugLeaksViewType;
@@ -108,11 +112,11 @@ ParaViewMainWindow::ParaViewMainWindow()
     leaksView->show();
   }
 
-#ifdef PARAVIEW_USE_PYTHON
+#if PARAVIEW_USE_PYTHON
   pvpythonmodules_load();
 #endif
 
-#ifdef PARAVIEW_ENABLE_EMBEDDED_DOCUMENTATION
+#if PARAVIEW_ENABLE_EMBEDDED_DOCUMENTATION
   // init the ParaView embedded documentation.
   paraview_documentation_initialize();
 #endif
@@ -121,7 +125,8 @@ ParaViewMainWindow::ParaViewMainWindow()
   this->Internals->setupUi(this);
   this->Internals->outputWidgetDock->hide();
   this->Internals->pythonShellDock->hide();
-#ifdef PARAVIEW_USE_PYTHON
+  this->Internals->materialEditorDock->hide();
+#if PARAVIEW_USE_PYTHON
   pqPythonShell* shell = new pqPythonShell(this);
   shell->setObjectName("pythonShell");
   this->Internals->pythonShellDock->setWidget(shell);
@@ -129,6 +134,12 @@ ParaViewMainWindow::ParaViewMainWindow()
   {
     leaksView->setShell(shell);
   }
+#endif
+
+#if PARAVIEW_USE_MATERIALEDITOR
+  pqMaterialEditor* materialEditor = new pqMaterialEditor(this);
+  materialEditor->setObjectName("materialEditorPanel");
+  this->Internals->materialEditorDock->setWidget(materialEditor);
 #endif
 
   // show output widget if we received an error message.
@@ -149,8 +160,11 @@ ParaViewMainWindow::ParaViewMainWindow()
   this->tabifyDockWidget(
     this->Internals->colorMapEditorDock, this->Internals->collaborationPanelDock);
   this->tabifyDockWidget(this->Internals->colorMapEditorDock, this->Internals->lightInspectorDock);
+  this->tabifyDockWidget(this->Internals->colorMapEditorDock, this->Internals->findDataDock);
+  this->tabifyDockWidget(
+    this->Internals->colorMapEditorDock, this->Internals->multiBlockInspectorDock);
 
-  this->Internals->selectionDisplayDock->hide();
+  this->Internals->findDataDock->hide();
   this->Internals->animationViewDock->hide();
   this->Internals->statisticsDock->hide();
   this->Internals->comparativePanelDock->hide();
@@ -169,7 +183,6 @@ ParaViewMainWindow::ParaViewMainWindow()
   this->tabifyDockWidget(this->Internals->propertiesDock, this->Internals->viewPropertiesDock);
   this->tabifyDockWidget(this->Internals->propertiesDock, this->Internals->displayPropertiesDock);
   this->tabifyDockWidget(this->Internals->propertiesDock, this->Internals->informationDock);
-  this->tabifyDockWidget(this->Internals->propertiesDock, this->Internals->multiBlockInspectorDock);
 
   vtkSMSettings* settings = vtkSMSettings::GetInstance();
 
@@ -180,8 +193,8 @@ ParaViewMainWindow::ParaViewMainWindow()
     case vtkPVGeneralSettings::SEPARATE_DISPLAY_PROPERTIES:
       delete this->Internals->viewPropertiesPanel;
       delete this->Internals->viewPropertiesDock;
-      this->Internals->viewPropertiesPanel = NULL;
-      this->Internals->viewPropertiesDock = NULL;
+      this->Internals->viewPropertiesPanel = nullptr;
+      this->Internals->viewPropertiesDock = nullptr;
 
       this->Internals->propertiesPanel->setPanelMode(
         pqPropertiesPanel::SOURCE_PROPERTIES | pqPropertiesPanel::VIEW_PROPERTIES);
@@ -190,8 +203,8 @@ ParaViewMainWindow::ParaViewMainWindow()
     case vtkPVGeneralSettings::SEPARATE_VIEW_PROPERTIES:
       delete this->Internals->displayPropertiesPanel;
       delete this->Internals->displayPropertiesDock;
-      this->Internals->displayPropertiesPanel = NULL;
-      this->Internals->displayPropertiesDock = NULL;
+      this->Internals->displayPropertiesPanel = nullptr;
+      this->Internals->displayPropertiesDock = nullptr;
 
       this->Internals->propertiesPanel->setPanelMode(
         pqPropertiesPanel::SOURCE_PROPERTIES | pqPropertiesPanel::DISPLAY_PROPERTIES);
@@ -205,13 +218,13 @@ ParaViewMainWindow::ParaViewMainWindow()
     default:
       delete this->Internals->viewPropertiesPanel;
       delete this->Internals->viewPropertiesDock;
-      this->Internals->viewPropertiesPanel = NULL;
-      this->Internals->viewPropertiesDock = NULL;
+      this->Internals->viewPropertiesPanel = nullptr;
+      this->Internals->viewPropertiesDock = nullptr;
 
       delete this->Internals->displayPropertiesPanel;
       delete this->Internals->displayPropertiesDock;
-      this->Internals->displayPropertiesPanel = NULL;
-      this->Internals->displayPropertiesDock = NULL;
+      this->Internals->displayPropertiesPanel = nullptr;
+      this->Internals->displayPropertiesDock = nullptr;
       break;
   }
 
@@ -239,6 +252,9 @@ ParaViewMainWindow::ParaViewMainWindow()
   /// Provide access to the color-editor panel for the application.
   pqApplicationCore::instance()->registerManager(
     "COLOR_EDITOR_PANEL", this->Internals->colorMapEditorDock);
+
+  // Provide access to the find data panel for the application.
+  pqApplicationCore::instance()->registerManager("FIND_DATA_PANEL", this->Internals->findDataDock);
 
   // Populate application menus with actions.
   pqParaViewMenuBuilders::buildFileMenu(*this->Internals->menu_File);
@@ -319,9 +335,9 @@ void ParaViewMainWindow::showEvent(QShowEvent* evt)
   if (this->Internals->FirstShow)
   {
     this->Internals->FirstShow = false;
-    pqApplicationCore* core = pqApplicationCore::instance();
-    if (!core->getOptions()->GetDisableRegistry())
+    if (!vtkRemotingCoreConfiguration::GetInstance()->GetDisableRegistry())
     {
+      auto core = pqApplicationCore::instance();
       if (core->settings()->value("GeneralSettings.ShowWelcomeDialog", true).toBool())
       {
         pqTimer::singleShot(1000, this, SLOT(showWelcomeDialog()));
@@ -372,7 +388,7 @@ void ParaViewMainWindow::updateFontSize()
   }
 
 // Console font size
-#ifdef PARAVIEW_USE_PYTHON
+#if PARAVIEW_USE_PYTHON
   pqPythonShell* shell = qobject_cast<pqPythonShell*>(this->Internals->pythonShellDock->widget());
   shell->setFontSize(fontSize);
 #endif

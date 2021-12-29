@@ -18,6 +18,14 @@
  *
  * vtkLinearTransform provides a generic interface for linear
  * (affine or 12 degree-of-freedom) geometric transformations.
+ *
+ * @warning
+ * Portions of this class (i.e., when transforming arrays of points and/or
+ * associated attributes such as normals and vectors) has been threaded with
+ * vtkSMPTools. Using TBB or other non-sequential type (set in the CMake
+ * variable VTK_SMP_IMPLEMENTATION_TYPE) may improve performance
+ * significantly.
+ *
  * @sa
  * vtkTransform vtkIdentityTransform
  */
@@ -67,7 +75,7 @@ public:
     return this->TransformDoubleNormal(normal[0], normal[1], normal[2]);
   }
 
-  //@{
+  ///@{
   /**
    * Apply the transformation to an (x,y,z) normal.
    * Use this if you are programming in python or Java.
@@ -84,9 +92,9 @@ public:
   {
     return this->TransformFloatNormal(normal[0], normal[1], normal[2]);
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Apply the transformation to a double-precision (x,y,z) normal.
    * Use this if you are programming in python or Java.
@@ -103,7 +111,7 @@ public:
   {
     return this->TransformDoubleNormal(normal[0], normal[1], normal[2]);
   }
-  //@}
+  ///@}
 
   /**
    * Synonymous with TransformDoubleVector(x,y,z).
@@ -138,7 +146,7 @@ public:
     this->InternalTransformVector(in, out);
   }
 
-  //@{
+  ///@{
   /**
    * Apply the transformation to an (x,y,z) vector.
    * Use this if you are programming in python or Java.
@@ -155,9 +163,9 @@ public:
   {
     return this->TransformFloatVector(vec[0], vec[1], vec[2]);
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Apply the transformation to a double-precision (x,y,z) vector.
    * Use this if you are programming in python or Java.
@@ -174,7 +182,7 @@ public:
   {
     return this->TransformDoubleVector(vec[0], vec[1], vec[2]);
   }
-  //@}
+  ///@}
 
   /**
    * Apply the transformation to a series of points, and append the
@@ -211,34 +219,34 @@ public:
     return static_cast<vtkLinearTransform*>(this->GetInverse());
   }
 
-  //@{
+  ///@{
   /**
    * This will calculate the transformation without calling Update.
    * Meant for use only within other VTK classes.
    */
   void InternalTransformPoint(const float in[3], float out[3]) override;
   void InternalTransformPoint(const double in[3], double out[3]) override;
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * This will calculate the transformation without calling Update.
    * Meant for use only within other VTK classes.
    */
   virtual void InternalTransformNormal(const float in[3], float out[3]);
   virtual void InternalTransformNormal(const double in[3], double out[3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * This will calculate the transformation without calling Update.
    * Meant for use only within other VTK classes.
    */
   virtual void InternalTransformVector(const float in[3], float out[3]);
   virtual void InternalTransformVector(const double in[3], double out[3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * This will calculate the transformation as well as its derivative
    * without calling Update.  Meant for use only within other VTK
@@ -248,7 +256,7 @@ public:
     const float in[3], float out[3], float derivative[3][3]) override;
   void InternalTransformDerivative(
     const double in[3], double out[3], double derivative[3][3]) override;
-  //@}
+  ///@}
 
 protected:
   vtkLinearTransform() = default;

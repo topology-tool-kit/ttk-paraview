@@ -92,8 +92,10 @@ protected:
   //ETX
 
   bool ShouldReadDataSet(const int &index);
-  bool IsEvenlySpacedDataArray(vtkDataArray *data);
 
+  int RequestInformation(vtkInformation* request,
+                         vtkInformationVector** inputVector,
+                         vtkInformationVector* outputVector) override;
 
   unsigned int UpdatePiece;
   unsigned int UpdateNumPieces;
@@ -102,7 +104,6 @@ private:
   vtkAvtSTMDFileFormatAlgorithm(const vtkAvtSTMDFileFormatAlgorithm&);
   void operator = (const vtkAvtSTMDFileFormatAlgorithm&);
 
-  
   struct vtkAvtSTMDFileFormatAlgorithmInternal;
   vtkAvtSTMDFileFormatAlgorithmInternal *Internal;
 };

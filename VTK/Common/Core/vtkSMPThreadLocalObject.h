@@ -18,7 +18,7 @@
  *
  * This class essentially does the same thing as vtkSMPThreadLocal with
  * 2 additional functions:
- * - Local() allocates an object of the template argument type using ::New
+ * - Local() allocates an object of the template argument type using New()
  * - The destructor calls Delete() on all objects created with Local().
  *
  * @warning
@@ -116,10 +116,10 @@ public:
     }
   }
 
-  //@{
+  ///@{
   /**
    * Returns an object local to the current thread.
-   * This object is allocated with ::New() and will
+   * This object is allocated with T::New() and will
    * be deleted in the destructor of vtkSMPThreadLocalObject.
    */
   T*& Local()
@@ -138,14 +138,14 @@ public:
     }
     return vtkobject;
   }
-  //@}
+  ///@}
 
   /**
    * Return the number of thread local objects that have been initialized
    */
   size_t size() const { return this->Internal.size(); }
 
-  //@{
+  ///@{
   /**
    * Subset of the standard iterator API.
    * The most common design pattern is to use iterators in a sequential
@@ -160,7 +160,7 @@ public:
       ++this->Iter;
       return *this;
     }
-    //@}
+    ///@}
 
     iterator operator++(int)
     {

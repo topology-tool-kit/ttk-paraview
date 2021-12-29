@@ -48,7 +48,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QPushButton>
 
 #define CrashRecoveryStateFile ".PVCrashRecoveryState.pvsm"
-#include <stdlib.h> /* EXIT_FAILURE */
+#include <cstdlib> /* EXIT_FAILURE */
 #if !defined(_WIN32)
 #include <unistd.h> /* _exit */
 #endif
@@ -144,7 +144,7 @@ void pqCrashRecoveryBehavior::onServerDisconnect()
   }
   inQuit = true;
 
-  if (vtksys::SystemTools::GetEnv("DASHBOARD_TEST_FROM_CTEST") == NULL)
+  if (vtksys::SystemTools::GetEnv("DASHBOARD_TEST_FROM_CTEST") == nullptr)
   {
     // enable user interaction (BUG #17155).
     pqProgressManager* pgm = pqApplicationCore::instance()->getProgressManager();

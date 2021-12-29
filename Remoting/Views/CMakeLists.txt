@@ -151,6 +151,7 @@ set(classes
   vtkSMPVMoleculeRepresentationProxy
   vtkSMPVRepresentationProxy
   vtkSMRangedTransferFunctionDomain
+  vtkSMRecolorableImageExtractWriterProxy
   vtkSMRendererDomain
   vtkSMRenderViewProxy
   vtkSMRepresentationProxy
@@ -160,7 +161,6 @@ set(classes
   vtkSMScalarBarWidgetRepresentationProxy
   vtkSMSelectionHelper
   vtkSMSelectionLink
-  vtkSMSpreadSheetRepresentationInitializationHelper
   vtkSMSpreadSheetRepresentationProxy
   vtkSMSpreadSheetViewProxy
   vtkSMTextWidgetRepresentationProxy
@@ -192,6 +192,7 @@ set(private_headers
 set(headers
   vtkStreamingPriorityQueue.h)
 set(sources)
+
 if (TARGET ParaView::icet)
   list(APPEND classes
     vtkIceTCompositePass

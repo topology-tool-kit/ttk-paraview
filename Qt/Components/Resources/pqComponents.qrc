@@ -25,6 +25,7 @@
         <file>Icons/pqBundle32.png</file>
         <file>Icons/pqCalculator.svg</file>
         <file>Icons/pqCamera.svg</file>
+        <file>Icons/pqCameraManipulationIllustration.png</file>
         <file>Icons/pqCancel.svg</file>
         <file>Icons/pqCaptureScreenshot.svg</file>
         <file>Icons/pqCatalyst.svg</file>
@@ -50,6 +51,7 @@
         <file>Icons/pqElemSetData.svg</file>
         <file>Icons/pqExitApp.svg</file>
         <file>Icons/pqExponential24.png</file>
+        <file>Icons/pqExportAnimatedScene.svg</file>
         <file>Icons/pqExportScene.svg</file>
         <file>Icons/pqExtractGrid.svg</file>
         <file>Icons/pqExtractSelection.svg</file>
@@ -126,6 +128,7 @@
         <file>Icons/pqReloadFile.svg</file>
         <file>Icons/pqReset.svg</file>
         <file>Icons/pqResetCamera.svg</file>
+        <file>Icons/pqResetCameraClosest.svg</file>
         <file>Icons/pqResetCenter.svg</file>
         <file>Icons/pqResetRange.svg</file>
         <file>Icons/pqResetRangeCustom.svg</file>
@@ -183,10 +186,13 @@
         <file>Icons/pqSurfaceSelectionPointDataInteractive.svg</file>
         <file>Icons/pqSurfaceSelectionPointInteractive.svg</file>
         <file>Icons/pqSurfaceSelectionPoint.svg</file>
-        <file>Icons/pqTextAlignRight16.png</file>
-        <file>Icons/pqTextAlignLeft16.png</file>
-        <file>Icons/pqTextAlignCenter16.png</file>
-        <file>Icons/pqTextAlignJustified16.png</file>
+        <file>Icons/pqTextAlignRight.svg</file>
+        <file>Icons/pqTextAlignLeft.svg</file>
+        <file>Icons/pqTextAlignCenter.svg</file>
+        <file>Icons/pqTextAlignJustified.svg</file>
+        <file>Icons/pqTextVerticalAlignCenter.svg</file>
+        <file>Icons/pqTextVerticalAlignTop.svg</file>
+        <file>Icons/pqTextVerticalAlignBottom.svg</file>
         <file>Icons/pqThreshold.svg</file>
         <file>Icons/pqToggleLock.svg</file>
         <file>Icons/pqToolbar.svg</file>
@@ -217,6 +223,7 @@
         <file>Icons/pqZMinus.svg</file>
         <file>Icons/pqZPlus.svg</file>
         <file>Icons/pqZoomToData.svg</file>
+        <file>Icons/pqZoomClosestToData.svg</file>
         <file>Icons/pqZoomToSelection.svg</file>
         <file>Icons/warning.png</file>
         <file>Icons/pvIcon.svg</file>

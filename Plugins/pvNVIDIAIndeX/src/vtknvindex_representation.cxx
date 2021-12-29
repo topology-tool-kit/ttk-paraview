@@ -1,29 +1,29 @@
 /* Copyright 2021 NVIDIA Corporation. All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions
-* are met:
-*  * Redistributions of source code must retain the above copyright
-*    notice, this list of conditions and the following disclaimer.
-*  * Redistributions in binary form must reproduce the above copyright
-*    notice, this list of conditions and the following disclaimer in the
-*    documentation and/or other materials provided with the distribution.
-*  * Neither the name of NVIDIA CORPORATION nor the names of its
-*    contributors may be used to endorse or promote products derived
-*    from this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-* EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-* PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-* CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-* EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-* PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-* PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-* OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -61,6 +61,7 @@
 // Enable ghosting in VTK to provide border data for regular volumes
 // #define VTKNVINDEX_REGULAR_VOLUME_FORCE_VTK_GHOSTING
 
+// NOLINTNEXTLINE(modernize-use-equals-default)
 vtknvindex_representation_initializer::vtknvindex_representation_initializer()
 {
 #ifdef VTKNVINDEX_REGULAR_VOLUME_FORCE_VTK_GHOSTING
@@ -76,9 +77,7 @@ vtknvindex_representation_initializer::vtknvindex_representation_initializer()
 #endif // VTKNVINDEX_REGULAR_VOLUME_FORCE_VTK_GHOSTING
 }
 
-vtknvindex_representation_initializer::~vtknvindex_representation_initializer()
-{
-}
+vtknvindex_representation_initializer::~vtknvindex_representation_initializer() = default;
 
 vtkStandardNewMacro(vtknvindex_representation);
 
@@ -152,14 +151,14 @@ vtknvindex_representation::vtknvindex_representation()
   static_cast<vtknvindex_volumemapper*>(this->VolumeMapper.GetPointer())
     ->set_cluster_properties(m_cluster_properties);
 
-  // TODO: These values should be communicated by ParaView.
-  //       Currently there is no way to do this.
+  // Deprecated
   m_roi_range_I[0] = -100.0;
   m_roi_range_I[1] = 100.0;
   m_roi_range_J[0] = -100.0;
   m_roi_range_J[1] = 100.0;
   m_roi_range_K[0] = -100.0;
   m_roi_range_K[1] = 100.0;
+  m_roi_gui = mi::math::Bbox<mi::Float32, 3>(0.f, 0.f, 0.f, 1.f, 1.f, 1.f);
 
   m_still_image_reduction_factor = 1;
   m_interactive_image_reduction_factor = 2;
@@ -358,7 +357,7 @@ int vtknvindex_representation::RequestData(
     return 1;
   }
 
-  // Cache IndeX timse series animation params.
+  // Cache IndeX time series animation params.
   vtkPolyData* polyData = this->OutlineGeometry;
   vtkNew<vtkIntArray> index_animation_params;
   index_animation_params->SetName("index_animation_params");
@@ -409,12 +408,12 @@ int vtknvindex_representation::RequestData(
 
   vtkDataObject* input = vtkDataObject::GetData(inputVector[0], 0);
   (void)input;
-  assert(input != NULL);
+  assert(input != nullptr);
 
   vtknvindex_cached_bounds* cached_bounds =
-    has_time_steps ? get_cached_bounds(cur_time_step) : NULL;
+    has_time_steps ? get_cached_bounds(cur_time_step) : nullptr;
 
-  bool using_cache = (cached_bounds != NULL); // this->CacheKeeper->GetCachingEnabled();
+  bool using_cache = (cached_bounds != nullptr); // this->CacheKeeper->GetCachingEnabled();
 
   static_cast<vtknvindex_volumemapper*>(this->VolumeMapper.GetPointer())->is_caching(using_cache);
   static_cast<vtknvindex_lod_volume*>(this->Actor.GetPointer())->set_caching_pass(using_cache);
@@ -462,7 +461,7 @@ int vtknvindex_representation::RequestData(
     {
       ds->GetBounds(this->DataBounds);
 
-      // Calculate global extends by gathering extents of all the pieces.
+      // Calculate global extents by gathering extents of all the pieces.
       // mi::Sint32 num_processes = m_controller->GetNumberOfProcesses();
       mi::Float64* all_rank_bounds = new mi::Float64[6 * num_processes];
 
@@ -523,8 +522,6 @@ int vtknvindex_representation::RequestData(
       // Cache bounds only for time varying datasets.
       if (has_time_steps)
         set_cached_bounds(cur_time_step);
-
-      update_index_roi();
     }
   }
   else
@@ -603,8 +600,6 @@ void vtknvindex_representation::SetInputArrayToProcess(
 void vtknvindex_representation::SetVisibility(bool val)
 {
   static_cast<vtknvindex_volumemapper*>(this->VolumeMapper.GetPointer())->set_visibility(val);
-  update_index_roi();
-
   this->Superclass::SetVisibility(val);
 }
 
@@ -621,7 +616,7 @@ vtknvindex_cached_bounds* vtknvindex_representation::get_cached_bounds(mi::Sint3
   std::map<mi::Sint32, vtknvindex_cached_bounds>::iterator it = m_time_to_cached_bounds.find(time);
 
   if (it == m_time_to_cached_bounds.end())
-    return NULL;
+    return nullptr;
 
   return &(it->second);
 }
@@ -726,18 +721,8 @@ void vtknvindex_representation::set_opacity_reference(double opacity_reference)
 //----------------------------------------------------------------------------
 void vtknvindex_representation::update_index_roi()
 {
-  // Set region of interest.
-  mi::math::Bbox<mi::Float32, 3> roi;
-
-  roi.min.x = (m_volume_size.x - 1) * m_roi_gui.min.x;
-  roi.max.x = (m_volume_size.x - 1) * m_roi_gui.max.x;
-  roi.min.y = (m_volume_size.y - 1) * m_roi_gui.min.y;
-  roi.max.y = (m_volume_size.y - 1) * m_roi_gui.max.y;
-  roi.min.z = (m_volume_size.z - 1) * m_roi_gui.min.z;
-  roi.max.z = (m_volume_size.z - 1) * m_roi_gui.max.z;
-
-  m_app_config_settings->set_region_of_interest(roi);
-  static_cast<vtknvindex_volumemapper*>(this->VolumeMapper.GetPointer())->config_settings_changed();
+  static_cast<vtknvindex_volumemapper*>(this->VolumeMapper.GetPointer())
+    ->set_region_of_interest_deprecated(m_roi_gui);
 }
 
 //----------------------------------------------------------------------------
@@ -783,20 +768,6 @@ void vtknvindex_representation::set_roi_maxK(double val)
 }
 
 //----------------------------------------------------------------------------
-void vtknvindex_representation::set_log_performance(bool is_log)
-{
-  m_app_config_settings->set_log_performance(is_log);
-  static_cast<vtknvindex_volumemapper*>(this->VolumeMapper.GetPointer())->config_settings_changed();
-}
-
-//----------------------------------------------------------------------------
-void vtknvindex_representation::set_dump_internal_state(bool is_dump)
-{
-  m_app_config_settings->set_dump_internal_state(is_dump);
-  static_cast<vtknvindex_volumemapper*>(this->VolumeMapper.GetPointer())->config_settings_changed();
-}
-
-//----------------------------------------------------------------------------
 void vtknvindex_representation::show_volume(bool enable)
 {
   m_app_config_settings->enable_volume(enable);
@@ -804,9 +775,7 @@ void vtknvindex_representation::show_volume(bool enable)
 }
 
 //----------------------------------------------------------------------------
-void vtknvindex_representation::set_selected_slice(int /*selected_slice*/)
-{
-}
+void vtknvindex_representation::set_selected_slice(int /*selected_slice*/) {}
 
 //----------------------------------------------------------------------------
 void vtknvindex_representation::enable_slice1(bool enable)
@@ -872,45 +841,74 @@ void vtknvindex_representation::set_slice_pos3(double pos)
 }
 
 //----------------------------------------------------------------------------
-void vtknvindex_representation::update_current_kernel()
+bool vtknvindex_representation::update_current_kernel()
 {
+  vtknvindex_volumemapper* mapper =
+    static_cast<vtknvindex_volumemapper*>(this->VolumeMapper.GetPointer());
+  bool force_render = false;
+
   switch (m_app_config_settings->get_rtc_kernel())
   {
     case RTC_KERNELS_ISOSURFACE:
-      static_cast<vtknvindex_volumemapper*>(this->VolumeMapper.GetPointer())
-        ->rtc_kernel_changed(RTC_KERNELS_ISOSURFACE, KERNEL_ISOSURFACE_STRING,
-          reinterpret_cast<void*>(&m_isosurface_params), sizeof(m_isosurface_params));
+      mapper->rtc_kernel_changed(RTC_KERNELS_ISOSURFACE, KERNEL_ISOSURFACE_STRING,
+        reinterpret_cast<void*>(&m_isosurface_params), sizeof(m_isosurface_params));
       break;
 
     case RTC_KERNELS_DEPTH_ENHANCEMENT:
-      static_cast<vtknvindex_volumemapper*>(this->VolumeMapper.GetPointer())
-        ->rtc_kernel_changed(RTC_KERNELS_DEPTH_ENHANCEMENT, KERNEL_DEPTH_ENHANCEMENT_STRING,
-          reinterpret_cast<void*>(&m_depth_enhancement_params), sizeof(m_depth_enhancement_params));
+      mapper->rtc_kernel_changed(RTC_KERNELS_DEPTH_ENHANCEMENT, KERNEL_DEPTH_ENHANCEMENT_STRING,
+        reinterpret_cast<void*>(&m_depth_enhancement_params), sizeof(m_depth_enhancement_params));
       break;
 
     case RTC_KERNELS_EDGE_ENHANCEMENT:
-      static_cast<vtknvindex_volumemapper*>(this->VolumeMapper.GetPointer())
-        ->rtc_kernel_changed(RTC_KERNELS_EDGE_ENHANCEMENT, KERNEL_EDGE_ENHANCEMENT_STRING,
-          reinterpret_cast<void*>(&m_edge_enhancement_params), sizeof(m_edge_enhancement_params));
+      mapper->rtc_kernel_changed(RTC_KERNELS_EDGE_ENHANCEMENT, KERNEL_EDGE_ENHANCEMENT_STRING,
+        reinterpret_cast<void*>(&m_edge_enhancement_params), sizeof(m_edge_enhancement_params));
       break;
 
     case RTC_KERNELS_GRADIENT:
-      static_cast<vtknvindex_volumemapper*>(this->VolumeMapper.GetPointer())
-        ->rtc_kernel_changed(RTC_KERNELS_GRADIENT, KERNEL_GRADIENT_STRING,
-          reinterpret_cast<void*>(&m_gradient_params), sizeof(m_gradient_params));
+      mapper->rtc_kernel_changed(RTC_KERNELS_GRADIENT, KERNEL_GRADIENT_STRING,
+        reinterpret_cast<void*>(&m_gradient_params), sizeof(m_gradient_params));
       break;
 
     case RTC_KERNELS_CUSTOM:
-      static_cast<vtknvindex_volumemapper*>(this->VolumeMapper.GetPointer())
-        ->rtc_kernel_changed(RTC_KERNELS_CUSTOM, m_custom_kernel_program,
-          reinterpret_cast<void*>(&m_custom_params), sizeof(m_custom_params));
+      force_render = mapper->rtc_kernel_changed(RTC_KERNELS_CUSTOM, m_custom_kernel_program,
+        reinterpret_cast<void*>(&m_custom_params), sizeof(m_custom_params));
       break;
 
     case RTC_KERNELS_NONE:
     default:
-      static_cast<vtknvindex_volumemapper*>(this->VolumeMapper.GetPointer())
-        ->rtc_kernel_changed(RTC_KERNELS_NONE, "", 0, 0);
+      mapper->rtc_kernel_changed(RTC_KERNELS_NONE, "", nullptr, 0);
       break;
+  }
+
+  return force_render;
+}
+
+//----------------------------------------------------------------------------
+void vtknvindex_representation::update_current_kernel_source(bool need_force_render)
+{
+  if (m_custom_kernel_filename.empty())
+  {
+    m_custom_kernel_program.clear();
+  }
+  else
+  {
+    std::ifstream is(m_custom_kernel_filename);
+    m_custom_kernel_program =
+      std::string((std::istreambuf_iterator<char>(is)), std::istreambuf_iterator<char>());
+  }
+
+  if (m_app_config_settings->get_rtc_kernel() == RTC_KERNELS_CUSTOM)
+  {
+    if (update_current_kernel() && need_force_render)
+    {
+      // Pressing the "Update kernel" button does not update the property and therefore does not
+      // trigger rendering, hence do that explicitly here.
+      vtkPVRenderView* rview = vtkPVRenderView::SafeDownCast(this->GetView());
+      if (rview)
+      {
+        rview->StillRender();
+      }
+    }
   }
 }
 
@@ -1128,18 +1126,14 @@ void vtknvindex_representation::set_gradient_scale(double gradient_scale)
 //----------------------------------------------------------------------------
 void vtknvindex_representation::set_kernel_filename(const char* kernel_filename)
 {
-  m_custom_kernel_filename = std::string(kernel_filename);
-  set_kernel_update();
+  m_custom_kernel_filename = kernel_filename;
+  update_current_kernel_source();
 }
 
 //----------------------------------------------------------------------------
 void vtknvindex_representation::set_kernel_update()
 {
-  std::ifstream is(m_custom_kernel_filename);
-  m_custom_kernel_program =
-    std::string((std::istreambuf_iterator<char>(is)), std::istreambuf_iterator<char>());
-  if (m_app_config_settings->get_rtc_kernel() == RTC_KERNELS_CUSTOM)
-    update_current_kernel();
+  update_current_kernel_source(true);
 }
 
 //----------------------------------------------------------------------------

@@ -174,6 +174,10 @@ def CreateView(view_xml_name, detachedFromLayout=None, **params):
         # layout.
         controller.AssignViewToLayout(view)
 
+    if paraview.compatibility.GetVersion() <= 5.9:
+        if hasattr(view, "UseColorPaletteForBackground"):
+            view.UseColorPaletteForBackground = 0
+
     # setup an interactor if current process support interaction if an
     # interactor hasn't already been set. This overcomes the problem where VTK
     # segfaults if the interactor is created after the window was created.
@@ -188,7 +192,7 @@ def CreateView(view_xml_name, detachedFromLayout=None, **params):
 # -----------------------------------------------------------------------------
 
 def CreateRenderView(detachedFromLayout=False, **params):
-    """"Create standard 3D render view.
+    """Create standard 3D render view.
     See CreateView for arguments documentation"""
     return CreateView("RenderView", detachedFromLayout, **params)
 
@@ -210,42 +214,42 @@ def CreateXYPointPlotView(detachedFromLayout=False, **params):
 
 
 def CreateBarChartView(detachedFromLayout=False, **params):
-    """"Create Bar Chart view.
+    """Create Bar Chart view.
     See CreateView for arguments documentation"""
     return CreateView("XYBarChartView", detachedFromLayout, **params)
 
 # -----------------------------------------------------------------------------
 
 def CreateComparativeRenderView(detachedFromLayout=False, **params):
-    """"Create Comparative view.
+    """Create Comparative view.
     See CreateView for arguments documentation"""
     return CreateView("ComparativeRenderView", detachedFromLayout, **params)
 
 # -----------------------------------------------------------------------------
 
 def CreateComparativeXYPlotView(detachedFromLayout=False, **params):
-    """"Create comparative XY plot Chart view.
+    """Create comparative XY plot Chart view.
     See CreateView for arguments documentation"""
     return CreateView("ComparativeXYPlotView", detachedFromLayout, **params)
 
 # -----------------------------------------------------------------------------
 
 def CreateComparativeBarChartView(detachedFromLayout=False, **params):
-    """"Create comparative Bar Chart view.
+    """Create comparative Bar Chart view.
     See CreateView for arguments documentation"""
     return CreateView("ComparativeBarChartView", detachedFromLayout, **params)
 
 # -----------------------------------------------------------------------------
 
 def CreateParallelCoordinatesChartView(detachedFromLayout=False, **params):
-    """"Create Parallele coordinate Chart view.
+    """Create Parallele coordinate Chart view.
     See CreateView for arguments documentation"""
     return CreateView("ParallelCoordinatesChartView", detachedFromLayout, **params)
 
 # -----------------------------------------------------------------------------
 
 def Create2DRenderView(detachedFromLayout=False, **params):
-    """"Create the standard 3D render view with the 2D interaction mode turned ON.
+    """Create the standard 3D render view with the 2D interaction mode turned ON.
     See CreateView for arguments documentation"""
     return CreateView("2DRenderView", detachedFromLayout, **params)
 
@@ -554,6 +558,11 @@ def SaveExtracts(**kwargs):
     # that the animation is updated based on timesteps in data by explicitly
     # calling UpdateAnimationUsingDataTimeSteps.
     scene = GetAnimationScene()
+    if not scene:
+        from . import print_warning
+        print_warning("This Edition does not support animations. Cannot save extracts.")
+        return False
+
     scene.UpdateAnimationUsingDataTimeSteps()
 
     pxm = servermanager.ProxyManager()
@@ -561,28 +570,119 @@ def SaveExtracts(**kwargs):
     SetProperties(proxy, **kwargs)
     return proxy.SaveExtracts()
 
+
+def CreateSteerableParameters(steerable_proxy_type_name,
+                              steerable_proxy_registration_name=
+                              "SteeringParameters",
+                              result_mesh_name="steerable"):
+    pxm = servermanager.ProxyManager()
+    steerable_proxy = pxm.NewProxy("sources", steerable_proxy_type_name)
+    pxm.RegisterProxy("sources", steerable_proxy_registration_name,
+                      steerable_proxy)
+    steerable_proxy_wrapper = servermanager._getPyProxy(steerable_proxy)
+    UpdateSteerableParameters(steerable_proxy_wrapper, result_mesh_name)
+    return steerable_proxy_wrapper
+
+
+def UpdateSteerableParameters(steerable_proxy, steerable_source_name):
+    helper = paraview.modules.vtkPVInSitu.vtkInSituInitializationHelper
+    helper.UpdateSteerableParameters(steerable_proxy.SMProxy,
+                                     steerable_source_name)
+
 #==============================================================================
 # XML State management
 #==============================================================================
 
-def LoadState(filename, connection=None, **extraArgs):
+def LoadState(statefile, data_directory = None, restrict_to_data_directory = False,
+        filenames = None, *args, **kwargs):
+    """
+    Load PVSM state file.
+
+    This will load the state specified in the `statefile`.
+
+    ParaView can update absolute paths for data-files used in the state which
+    can be useful to portably load state file across different systems.
+
+    If `data_directory` is not None, then ParaView searches for files matching
+    those used in the state under the specified directory and if found, replaces
+    the state to use the found files instead. If `restrict_to_data_directory` is True,
+    if a file is not found under the `data_directory`, it will raise an error,
+    otherwise it is left unchanged.
+
+    Alternatively, `filenames` can be used to specify a list of updated
+    filesnames explicitly. This must be list of the following form:
+
+        [
+            {
+              # either 'name' or 'id' are required. if both are provided, 'id'
+              # is checked first.
+              "name" : "[reader name shown in pipeline browser]",
+              "id"   : "[reader id used in the pvsm state file]",
+
+              # all modified filename-like properties on this reader
+              "FileName" : ...
+              ....
+            },
+
+            ...
+        ]
+
+    Presence of other positional or keyword arguments is used to indicate that this
+    invocation uses the legacy signature of this function and forwards to
+    `_LoadStateLegacy`.
+    """
+    if kwargs:
+        return _LoadStateLegacy(statefile, *args, **kwargs)
+
     RemoveViewsAndLayouts()
 
     pxm = servermanager.ProxyManager()
-    smproxy = pxm.SMProxyManager.NewProxy('options', 'LoadStateOptions')
-    smproxy.UnRegister(None)
+    pyproxy = servermanager._getPyProxy(pxm.NewProxy('options', 'LoadStateOptions'))
+    if pyproxy.PrepareToLoad(statefile):
+        pyproxy.LoadStateDataFileOptions = pyproxy.SMProxy.USE_FILES_FROM_STATE
+        if pyproxy.HasDataFiles():
+            if data_directory is not None:
+                pyproxy.LoadStateDataFileOptions = pyproxy.SMProxy.USE_DATA_DIRECTORY
+                pyproxy.DataDirectory = data_directory
+                if restrict_to_data_directory:
+                    pyproxy.OnlyUseFilesInDataDirectory = 1
+            elif filenames is not None:
+                pyproxy.LoadStateDataFileOptions = pyproxy.SMProxy.CHOOSE_FILES_EXPLICITLY
+                for item in filenames:
+                    for pname in item.keys():
+                        if pname == "name" or pname == "id":
+                            continue
+                        smprop = pyproxy.FindProperty(item.get("name"), int(item.get("id")), pname)
+                        if not smprop:
+                            raise RuntimeError("Invalid item specified in 'filenames': %s", item)
+                        prop = servermanager._wrap_property(pyproxy, smprop)
+                        prop.SetData(item[pname])
+        pyproxy.Load()
 
-    if (smproxy is not None) and smproxy.PrepareToLoad(filename):
-        if smproxy.HasDataFiles() and (extraArgs is not None):
-            # always create a brand new class since the properties
-            # may change based on the state file being loaded.
-            customclass = servermanager._createClass(smproxy.GetXMLGroup(),
-                    smproxy.GetXMLName(), prototype=smproxy)
-            pyproxy = customclass(proxy=smproxy)
-            SetProperties(pyproxy, **extraArgs)
-            del pyproxy
-            del customclass
-        smproxy.Load()
+    # Try to set the new view active
+    if len(GetRenderViews()) > 0:
+        SetActiveView(GetRenderViews()[0])
+
+def _LoadStateLegacy(filename, connection=None, **extraArgs):
+    """Python scripts from version < 5.9 used a different signature. This
+    function supports that.
+    """
+    RemoveViewsAndLayouts()
+
+    pxm = servermanager.ProxyManager()
+    pyproxy = servermanager._getPyProxy(pxm.NewProxy('options', 'LoadStateOptions'))
+    if (pyproxy is not None) and pyproxy.PrepareToLoad(filename):
+        if pyproxy.HasDataFiles() and (extraArgs is not None):
+            for pname, value in extraArgs.items():
+                smprop = pyproxy.FindLegacyProperty(pname)
+                if smprop:
+                    if not smprop:
+                        raise RuntimeError("Invalid argument '%s'", pname)
+                    prop = servermanager._wrap_property(pyproxy, smprop)
+                    prop.SetData(value)
+                else:
+                    pyproxy.__setattr__(pname, value)
+        pyproxy.Load()
 
     # Try to set the new view active
     if len(GetRenderViews()) > 0:
@@ -598,7 +698,7 @@ def SaveState(filename):
 #==============================================================================
 
 def GetRepresentation(proxy=None, view=None):
-    """"Given a pipeline object and view, returns the corresponding representation object.
+    """Given a pipeline object and view, returns the corresponding representation object.
     If pipeline object and view are not specified, active objects are used."""
     if not view:
         view = active_objects.view
@@ -616,7 +716,7 @@ def GetRepresentation(proxy=None, view=None):
 
 # -----------------------------------------------------------------------------
 def GetDisplayProperties(proxy=None, view=None):
-    """"Given a pipeline object and view, returns the corresponding representation object.
+    """Given a pipeline object and view, returns the corresponding representation object.
     If pipeline object and/or view are not specified, active objects are used."""
     return GetRepresentation(proxy, view)
 
@@ -847,7 +947,7 @@ def GetViewProperty(*arguments, **keywords):
 
 # -----------------------------------------------------------------------------
 def GetViewProperties(view=None):
-    """"Same as GetActiveView(), this API is provided just for consistency with
+    """Same as GetActiveView(), this API is provided just for consistency with
     GetDisplayProperties()."""
     return GetActiveView()
 
@@ -1586,6 +1686,62 @@ def WriteAnimationGeometry(filename, view=None):
     writer.SetViewModule(view.SMProxy)
     writer.Save()
 
+def FetchData(proxy=None, **kwargs):
+    """Fetches data from the specified data producer for processing locally. Use this
+    function with caution since this can cause large amounts of data to be
+    gathered and delivered to the client.
+
+    If no producer is specified, the active source is used.
+
+    **Basic Usage**
+
+
+        # to fetch data from port 0
+        dataMap = FetchData(producer)
+
+        # to fetch data from a specific port
+        dataMap = FetchData(OutputPort(producer, 1))
+
+
+    `FetchData()` does not explicitly update the pipeline. It is expected that the
+    pipeline is already updated. This will simply deliver the current data.
+
+    Returns a map where the key is an integer representing a rank and value is
+    the dataset fetched from that rank.
+
+    **Keyword Parameters**
+
+    The following keyword parameters can be used to customize the fetchs.
+
+        GatherOnAllRanks (bool/int, optional):
+            This is used only in symmetric batch (or ParaView-Catalyst) mode.
+            If True, then FetchData() will gather the data on all ranks. Default
+            is to only gather the data on the root node.
+
+        SourceRanks (list(int), optional):
+            List of ints to specity explicitly the ranks from which to fetch
+            data. By default, data from all ranks is fetched.
+    """
+    if proxy is None:
+        proxy = GetActiveSource()
+
+    if not proxy:
+        raise RuntimeError("Cannot fetch data from invalid proxy")
+
+    dataMover = servermanager.misc.DataMover()
+    dataMover.Producer = proxy
+    dataMover.PortNumber = proxy.Port
+    # set properties on dataMover
+    SetProperties(dataMover, **kwargs)
+    dataMover.SMProxy.InvokeCommand("Execute")
+
+    vtkObj = dataMover.GetClientSideObject()
+    result = {}
+    for i in range(vtkObj.GetNumberOfDataSets()):
+        result[vtkObj.GetDataSetRank(i)] = vtkObj.GetDataSetAtIndex(i)
+    del dataMover
+    return result
+
 #==============================================================================
 # Lookup Table / Scalarbar methods
 #==============================================================================
@@ -1806,14 +1962,18 @@ def CreateScalarBar(**params):
     It is possible to pass the lookup table (and other properties) as arguments
     to this method::
 
-        lt = MakeBlueToRedLt(3.5, 7.5)
+        lt = MakeBlueToRedLT(3.5, 7.5)
         bar = CreateScalarBar(LookupTable=lt, Title="Velocity")
         GetRenderView().Representations.append(bar)
 
     By default the returned widget is selectable and resizable.
+    ::deprecated:: 5.10
+    Use :func:`GetScalarBar` instead.
     """
+    import warnings
+    warnings.warn("`CreateScalarBar` is deprecated in ParaView 5.10. Use `GetScalarBar` instead",
+        DeprecationWarning)
     sb = servermanager.rendering.ScalarBarWidgetRepresentation()
-    servermanager.Register(sb)
     sb.Selectable = 1
     sb.Resizable = 1
     sb.Enabled = 1
@@ -1836,6 +1996,14 @@ def MakeBlueToRedLT(min, max):
     return CreateLookupTable(RGBPoints=rgbPoints, ColorSpace="HSV")
 
 #==============================================================================
+# General puprpose links methods
+#==============================================================================
+
+def RemoveLink(linkName):
+    """Remove a link with the given name."""
+    servermanager.ProxyManager().UnRegisterLink(linkName)
+
+#==============================================================================
 # CameraLink methods
 #==============================================================================
 
@@ -1856,7 +2024,32 @@ def AddCameraLink(viewProxy, viewProxyOther, linkName):
 
 def RemoveCameraLink(linkName):
     """Remove a camera link with the given name."""
-    servermanager.ProxyManager().UnRegisterLink(linkName)
+    RemoveLink(linkName)
+
+#==============================================================================
+# SelectionLink methods
+#==============================================================================
+
+def AddSelectionLink(objProxy, objProxyOther, linkName, convertToIndices = True):
+    """Create a selection link between two filters proxies.
+    A name must be given so that the link can be referred to by name.
+    If a link with the given name already exists it will be removed first."""
+    if not objProxyOther:
+        objProxyOther = GetActiveSource()
+    link = servermanager.vtkSMSelectionLink()
+    link.SetConvertToIndices(convertToIndices)
+    link.AddLinkedSelection(objProxy.SMProxy, 2)
+    link.AddLinkedSelection(objProxyOther.SMProxy, 2)
+    link.AddLinkedSelection(objProxyOther.SMProxy, 1)
+    link.AddLinkedSelection(objProxy.SMProxy, 1)
+    RemoveSelectionLink(linkName)
+    servermanager.ProxyManager().RegisterLink(linkName, link)
+
+# -----------------------------------------------------------------------------
+
+def RemoveSelectionLink(linkName):
+    """Remove a selection link with the given name."""
+    RemoveLink(linkName)
 
 #==============================================================================
 # Animation methods
@@ -2101,7 +2294,7 @@ def LoadDistributedPlugin(pluginname, remote=True, ns=None):
         info = plm.GetLocalInformation()
     for cc in range(0, info.GetNumberOfPlugins()):
         if info.GetPluginName(cc) == pluginname:
-            return LoadPlugin(info.GetPluginFileName(cc), do_remote, ns)
+            return LoadPlugin(info.GetPluginFileName(cc), remote=do_remote, ns=ns)
     raise RuntimeError ("Plugin '%s' not found" % pluginname)
 
 #==============================================================================
@@ -2131,9 +2324,17 @@ def _select(seltype, query=None, proxy=None):
         # This ends up being true for all cells.
         query = "id >= 0"
 
+    from paraview.vtk import vtkDataObject
+
     # Note, selSource is not registered with the proxy manager.
     selSource = servermanager.sources.SelectionQuerySource()
-    selSource.FieldType = seltype
+    if seltype.lower() == "point":
+        elementType = vtkDataObject.POINT
+    elif seltype.lower() == "cell":
+        elementType = vtkDataObject.CELL
+    else:
+        elementType = seltype
+    selSource.ElementType = elementType
     selSource.QueryString = str(query)
     proxy.SMProxy.SetSelectionInput(proxy.Port, selSource.SMProxy, 0)
     return selSource
@@ -2493,6 +2694,8 @@ def _create_func(key, module, skipRegisteration=False):
                controller.RegisterAnimationProxy(px)
         return px
 
+    # add special tag to detect these functions in _remove_functions
+    CreateObject.__paraview_create_object_tag = True
     return CreateObject
 
 # -----------------------------------------------------------------------------
@@ -2526,8 +2729,8 @@ def _get_proxymodules_to_import(connection):
     used in _add_functions, _get_generated_proxies, and _remove_functions to get
     modules to import proxies from.
     """
-    if connection and connection.Modules:
-        modules = connection.Modules
+    if connection and connection.ProxiesNS:
+        modules = connection.ProxiesNS
         return [modules.filters, modules.sources, modules.writers, modules.animation]
     else:
         return []
@@ -2536,41 +2739,34 @@ def _add_functions(g):
     if not servermanager.ActiveConnection:
         return
 
-    activeModule = servermanager.ActiveConnection.Modules
+    activeModule = servermanager.ActiveConnection.ProxiesNS
     for m in _get_proxymodules_to_import(servermanager.ActiveConnection):
         # Skip registering proxies in certain modules (currently only writers)
         skipRegisteration = m is activeModule.writers
-        dt = m.__dict__
-        for key in dt.keys():
-            cl = dt[key]
-            if not isinstance(cl, str):
-                if not key in g and _func_name_valid(key):
-                    #print "add %s function" % key
-                    g[key] = _create_func(key, m, skipRegisteration)
-                    exec ("g[key].__doc__ = _create_doc(m.%s.__doc__, g[key].__doc__)" % key)
+        for key in dir(m):
+            if not key in g and _func_name_valid(key):
+                #print "add %s function" % key
+                f = _create_func(key, m, skipRegisteration)
+                f.__name__ = key
+                f.__doc__ = _create_doc(m.getDocumentation(key), f.__doc__)
+                g[key] = f
 
 # -----------------------------------------------------------------------------
 
 def _get_generated_proxies():
     proxies = []
     for m in _get_proxymodules_to_import(servermanager.ActiveConnection):
-        dt = m.__dict__
-        for key in dt.keys():
-            cl = dt[key]
-            if not isinstance(cl, str):
-                if _func_name_valid(key):
-                    proxies.append(key)
+        for key in dir(m):
+            proxies.append(key)
     return proxies
 # -----------------------------------------------------------------------------
 
 def _remove_functions(g):
-    for m in _get_proxymodules_to_import(servermanager.ActiveConnection):
-        dt = m.__dict__
-        for key in dt.keys():
-            cl = dt[key]
-            if not isinstance(cl, str) and key in g:
-                g.pop(key)
-                #print "remove %s function" % key
+    to_remove = [item[0] for item in g.items() \
+            if hasattr(item[1], '__paraview_create_object_tag')]
+    for key in to_remove:
+        del g[key]
+        # paraview.print_info("remove %s", key)
 
 # -----------------------------------------------------------------------------
 

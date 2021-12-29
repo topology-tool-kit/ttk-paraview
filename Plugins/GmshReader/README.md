@@ -9,6 +9,9 @@ these files along with ParaViewGMSHReaderPlugin.
 -For more information on Gmsh see http://geuz.org/gmsh/
 -For more information on ParaView see http://paraview.org/
 
+WARNING: this reader is deprecated in the favor of the GmshIO plugin.
+---------------------------------------------------------
+
 Contact Info:
 ------------
 
@@ -51,7 +54,7 @@ Building GmshReader Plugin at compilation of ParaView:
 
 Configure ParaView's CMake with the following additional recommended options:
 
- -DPARAVIEW_BUILD_PLUGIN_GMSHReader=ON
+ -DPARAVIEW_PLUGIN_ENABLE_GMSHReader=ON
  -DGmsh_INCLUDE_DIR=/path_to_gmsh_install_dir/include/gmsh
  -DGmsh_LIBRARY=/path_to_install_dir/lib64/libgmsh.so
 

@@ -62,7 +62,7 @@ class pqProxyInternal
 {
 public:
   pqProxyInternal() { this->Connection = vtkSmartPointer<vtkEventQtSlotConnect>::New(); }
-  typedef QMap<QString, QList<vtkSmartPointer<vtkSMProxy> > > ProxyListsType;
+  typedef QMap<QString, QList<vtkSmartPointer<vtkSMProxy>>> ProxyListsType;
   ProxyListsType ProxyLists;
   vtkSmartPointer<vtkSMProxy> Proxy;
   vtkSmartPointer<vtkEventQtSlotConnect> Connection;
@@ -86,7 +86,7 @@ public:
 
 //-----------------------------------------------------------------------------
 pqProxy::pqProxy(const QString& group, const QString& name, vtkSMProxy* proxy, pqServer* server,
-  QObject* _parent /*=NULL*/)
+  QObject* _parent /*=nullptr*/)
   : pqServerManagerModelItem(_parent)
   , Server(server)
   , SMName(name)
@@ -138,7 +138,7 @@ void pqProxy::addHelperProxy(const QString& key, vtkSMProxy* proxy)
       QString("pq_helper_proxies.%1").arg(this->getProxy()->GetGlobalIDAsString());
 
     vtkSMSessionProxyManager* pxm = this->proxyManager();
-    pxm->RegisterProxy(groupname.toLocal8Bit().data(), key.toLocal8Bit().data(), proxy);
+    pxm->RegisterProxy(groupname.toUtf8().data(), key.toUtf8().data(), proxy);
   }
 }
 
@@ -159,10 +159,10 @@ void pqProxy::removeHelperProxy(const QString& key, vtkSMProxy* proxy)
     QString groupname =
       QString("pq_helper_proxies.%1").arg(this->getProxy()->GetGlobalIDAsString());
     vtkSMSessionProxyManager* pxm = this->proxyManager();
-    const char* name = pxm->GetProxyName(groupname.toLocal8Bit().data(), proxy);
+    const char* name = pxm->GetProxyName(groupname.toUtf8().data(), proxy);
     if (name)
     {
-      pxm->UnRegisterProxy(groupname.toLocal8Bit().data(), name, proxy);
+      pxm->UnRegisterProxy(groupname.toUtf8().data(), name, proxy);
     }
   }
 }
@@ -174,7 +174,7 @@ void pqProxy::updateHelperProxies() const
   vtkSMProxyIterator* iter = vtkSMProxyIterator::New();
   iter->SetModeToOneGroup();
   iter->SetSession(this->getProxy()->GetSession());
-  for (iter->Begin(groupname.toLocal8Bit().data()); !iter->IsAtEnd(); iter->Next())
+  for (iter->Begin(groupname.toUtf8().data()); !iter->IsAtEnd(); iter->Next())
   {
     this->addInternalHelperProxy(QString(iter->GetKey()), iter->GetProxy());
   }
@@ -228,7 +228,7 @@ pqProxy* pqProxy::findProxyWithHelper(vtkSMProxy* aproxy, QString& key)
 {
   if (!aproxy)
   {
-    return NULL;
+    return nullptr;
   }
   pqServerManagerModel* smmodel = pqApplicationCore::instance()->getServerManagerModel();
   pqServer* server = smmodel->findServer(aproxy->GetSession());
@@ -240,7 +240,7 @@ pqProxy* pqProxy::findProxyWithHelper(vtkSMProxy* aproxy, QString& key)
       return pqproxy;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -251,9 +251,9 @@ void pqProxy::rename(const QString& newname)
     SM_SCOPED_TRACE(RenameProxy).arg("proxy", this->getProxy());
     vtkSMSessionProxyManager* pxm = this->proxyManager();
     pxm->RegisterProxy(
-      this->getSMGroup().toLocal8Bit().data(), newname.toLocal8Bit().data(), this->getProxy());
-    pxm->UnRegisterProxy(this->getSMGroup().toLocal8Bit().data(),
-      this->getSMName().toLocal8Bit().data(), this->getProxy());
+      this->getSMGroup().toUtf8().data(), newname.toUtf8().data(), this->getProxy());
+    pxm->UnRegisterProxy(
+      this->getSMGroup().toUtf8().data(), this->getSMName().toUtf8().data(), this->getProxy());
     this->SMName = newname;
     this->UserModifiedSMName = true;
   }
@@ -306,7 +306,7 @@ void pqProxy::setModifiedState(ModifiedState modified)
 //-----------------------------------------------------------------------------
 vtkSMSessionProxyManager* pqProxy::proxyManager() const
 {
-  return this->Internal->Proxy ? this->Internal->Proxy->GetSessionProxyManager() : NULL;
+  return this->Internal->Proxy ? this->Internal->Proxy->GetSessionProxyManager() : nullptr;
 }
 //-----------------------------------------------------------------------------
 void pqProxy::initialize()
@@ -414,8 +414,8 @@ std::string pqProxy::rstToHtml(const char* rstStr)
       const char* s = htmlStr.c_str();
       std::string listItem(s + re.start(1), re.end(1) - re.start(1));
       std::string afterList(s + re.start(2), re.end(2) - re.start(2));
-      htmlStr.replace(
-        re.start(0), re.end(0) - re.start(0), std::string("<li>") + listItem + "</ul>" + afterList);
+      htmlStr.replace(re.start(0), re.end(0) - re.start(0),
+        std::string("<li>").append(listItem).append("</ul>").append(afterList));
     }
   }
   {

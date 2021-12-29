@@ -44,7 +44,7 @@ class PQCORE_EXPORT pqAnimationCue : public pqProxy
 
 public:
   pqAnimationCue(const QString& group, const QString& name, vtkSMProxy* proxy, pqServer* server,
-    QObject* parent = NULL);
+    QObject* parent = nullptr);
   ~pqAnimationCue() override;
 
   // Returns the number of keyframes in this cue.
@@ -57,7 +57,7 @@ public:
   // The time for the key frame is computed using the times
   // for the neighbouring keyframes if any.
   // Returns the newly created keyframe proxy on success,
-  // NULL otherwise.
+  // nullptr otherwise.
   vtkSMProxy* insertKeyFrame(int index);
 
   // Deletes the keyframe at the given index.
@@ -65,7 +65,7 @@ public:
   void deleteKeyFrame(int index);
 
   // Returns keyframe at a given index, if one exists,
-  // NULL otherwise.
+  // nullptr otherwise.
   vtkSMProxy* getKeyFrame(int index) const;
 
   // Returns the animated proxy, if any.
@@ -78,20 +78,20 @@ public:
   int getAnimatedPropertyIndex() const;
 
   /**
-  * Set the type of the keyframe created by default.
-  * default is CompositeKeyFrame.
-  */
+   * Set the type of the keyframe created by default.
+   * default is CompositeKeyFrame.
+   */
   void setKeyFrameType(const QString& type) { this->KeyFrameType = type; }
 
   /**
-  * Used by editors to trigger keyframesModified() signal after bulk of
-  * modifications have been made to the cue/key frames.
-  */
+   * Used by editors to trigger keyframesModified() signal after bulk of
+   * modifications have been made to the cue/key frames.
+   */
   void triggerKeyFramesModified() { Q_EMIT this->keyframesModified(); }
 
   /**
-  * Get/Set the enabled state for the cue.
-  */
+   * Get/Set the enabled state for the cue.
+   */
   void setEnabled(bool enable);
   bool isEnabled() const;
 
@@ -104,22 +104,22 @@ Q_SIGNALS:
   void modified();
 
   /**
-  * Fired when the enabled-state of the cue changes.
-  */
+   * Fired when the enabled-state of the cue changes.
+   */
   void enabled(bool);
 
 private Q_SLOTS:
   /**
-  * Called when the "Enabled" property is changed.
-  */
+   * Called when the "Enabled" property is changed.
+   */
   void onEnabledModified();
 
 private:
   Q_DISABLE_COPY(pqAnimationCue)
 
   /**
-  * Methods used to register/unregister keyframe proxies.
-  */
+   * Methods used to register/unregister keyframe proxies.
+   */
   void addKeyFrameInternal(vtkSMProxy*);
   void removeKeyFrameInternal(vtkSMProxy*);
   QString KeyFrameType;

@@ -31,9 +31,9 @@ vtkCTHDataArray::vtkCTHDataArray()
   this->ExtentsSet = false;
   this->PointerTime = 0;
 
-  this->Data = 0;
-  this->CopiedData = 0;
-  this->Tuple = 0;
+  this->Data = nullptr;
+  this->CopiedData = nullptr;
+  this->Tuple = nullptr;
   this->TupleSize = 0;
 
   this->Fallback = vtkDoubleArray::New();
@@ -56,7 +56,7 @@ void vtkCTHDataArray::Initialize()
   if (this->Fallback)
   {
     this->Fallback->Delete();
-    this->Fallback = 0;
+    this->Fallback = nullptr;
   }
 
   if (this->Data)
@@ -70,18 +70,12 @@ void vtkCTHDataArray::Initialize()
     }
     delete[] this->Data;
   }
-  this->Data = 0;
+  this->Data = nullptr;
 
-  if (this->CopiedData)
-  {
-    delete[] this->CopiedData;
-  }
-  this->CopiedData = 0;
+  delete[] this->CopiedData;
+  this->CopiedData = nullptr;
 
-  if (this->Tuple)
-  {
-    delete[] this->Tuple;
-  }
+  delete[] this->Tuple;
 }
 
 // This one sets the size for the data pointers
@@ -90,7 +84,7 @@ void vtkCTHDataArray::SetDimensions(int x, int y, int z)
   if (this->Fallback)
   {
     this->Fallback->Delete();
-    this->Fallback = 0;
+    this->Fallback = nullptr;
   }
 
   this->Dimensions[0] = x;
@@ -185,7 +179,7 @@ double* vtkCTHDataArray::GetTuple(vtkIdType i)
     if (this->Tuple)
     {
       delete[] this->Tuple;
-      this->Tuple = 0;
+      this->Tuple = nullptr;
     }
     // fall through to the next if(), i.e. the initial case
   }

@@ -32,7 +32,7 @@
 #include "vtkStringList.h"
 
 #include <algorithm>
-#include <assert.h>
+#include <cassert>
 #include <list>
 #include <set>
 #include <sstream>
@@ -54,7 +54,7 @@ static void string_replace(std::string& string, char c, std::string str)
 class vtkSMReaderFactory::vtkInternals
 {
 public:
-  static std::set<std::pair<std::string, std::string> > ReaderWhitelist;
+  static std::set<std::pair<std::string, std::string>> ReaderWhitelist;
   struct vtkValue
   {
     vtkWeakPointer<vtkSMSession> Session;
@@ -71,7 +71,7 @@ public:
     };
     std::vector<FileEntryHint> FileEntryHints;
 
-    vtkValue() {}
+    vtkValue() = default;
 
     vtkSMSessionProxyManager* GetProxyManager(vtkSMSession* session)
     {
@@ -125,7 +125,7 @@ public:
           {
             ::string_replace(item, '.', "\\.");
             ::string_replace(item, '?', ".");
-            ::string_replace(item, '*', ".?");
+            ::string_replace(item, '*', ".*");
             hint.FilenameRegExs.emplace_back(vtksys::RegularExpression(item.c_str()));
           }
         }
@@ -151,7 +151,7 @@ public:
     // support that.
     bool CanCreatePrototype(vtkSMSession* session)
     {
-      return (this->GetPrototypeProxy(session, this->Group.c_str(), this->Name.c_str()) != NULL);
+      return (this->GetPrototypeProxy(session, this->Group.c_str(), this->Name.c_str()) != nullptr);
     }
 
     // Returns true if the reader can read the file. More correctly, it returns
@@ -179,12 +179,12 @@ public:
     // gz
     // in that order.
     std::string extension = vtksys::SystemTools::GetFilenameExtension(filename);
-    if (extension.size() > 0)
+    if (!extension.empty())
     {
       extension.erase(extension.begin()); // remove the first "."
     }
     std::vector<std::string> parts;
-    vtksys::SystemTools::Split(extension.c_str(), parts, '.');
+    vtksys::SystemTools::Split(extension, parts, '.');
     int num_parts = static_cast<int>(parts.size());
     for (int cc = num_parts - 1; cc >= 0; cc--)
     {
@@ -193,7 +193,7 @@ public:
         std::string cur_string;
         for (int ii = kk; ii <= cc; ii++)
         {
-          if (parts[ii].size() == 0)
+          if (parts[ii].empty())
           {
             continue; // skip empty parts.
           }
@@ -218,7 +218,7 @@ public:
   // included.
   std::set<std::string> Groups;
 };
-std::set<std::pair<std::string, std::string> > vtkSMReaderFactory::vtkInternals::ReaderWhitelist;
+std::set<std::pair<std::string, std::string>> vtkSMReaderFactory::vtkInternals::ReaderWhitelist;
 
 //----------------------------------------------------------------------------
 bool vtkSMReaderFactory::vtkInternals::vtkValue::ExtensionTest(
@@ -306,18 +306,18 @@ vtkSMReaderFactory::vtkSMReaderFactory()
   this->Internals = new vtkInternals();
   this->Internals->Groups.insert("sources");
   this->Readers = vtkStringList::New();
-  this->ReaderName = 0;
-  this->ReaderGroup = 0;
+  this->ReaderName = nullptr;
+  this->ReaderGroup = nullptr;
 }
 
 //----------------------------------------------------------------------------
 vtkSMReaderFactory::~vtkSMReaderFactory()
 {
   delete this->Internals;
-  this->SetReaderName(0);
-  this->SetReaderGroup(0);
+  this->SetReaderName(nullptr);
+  this->SetReaderGroup(nullptr);
   this->Readers->Delete();
-  this->Readers = 0;
+  this->Readers = nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -415,7 +415,7 @@ void vtkSMReaderFactory::RegisterPrototype(const char* xmlgroup, const char* xml
 //----------------------------------------------------------------------------
 vtkStringList* vtkSMReaderFactory::GetReaders(vtkSMSession* session)
 {
-  return this->GetPossibleReaders(NULL, session);
+  return this->GetPossibleReaders(nullptr, session);
 }
 
 //----------------------------------------------------------------------------
@@ -483,8 +483,8 @@ vtkStringList* vtkSMReaderFactory::GetPossibleReaders(const char* filename, vtkS
 //----------------------------------------------------------------------------
 bool vtkSMReaderFactory::CanReadFile(const char* filename, vtkSMSession* session)
 {
-  this->SetReaderGroup(0);
-  this->SetReaderName(0);
+  this->SetReaderGroup(nullptr);
+  this->SetReaderName(nullptr);
 
   if (!filename || filename[0] == 0)
   {
@@ -545,15 +545,15 @@ const char* vtkSMReaderFactory::GetSupportedFileTypes(vtkSMSession* session)
       for (auto& hint : proto.second.FileEntryHints)
       {
         std::string ext_list;
-        if (hint.Extensions.size() > 0)
+        if (!hint.Extensions.empty())
         {
           ext_list = ::vtkJoin(hint.Extensions, "*.", " ");
         }
 
-        if (hint.FilenameRegExs.size() > 0)
+        if (!hint.FilenameRegExs.empty())
         {
           std::string ext_join = ::vtkJoin(hint.FilenamePatterns, "", " ");
-          if (ext_list.size() > 0)
+          if (!ext_list.empty())
           {
             ext_list += " ";
             ext_list += ext_join;
@@ -563,7 +563,7 @@ const char* vtkSMReaderFactory::GetSupportedFileTypes(vtkSMSession* session)
             ext_list = ext_join;
           }
         }
-        if (ext_list.size() > 0)
+        if (!ext_list.empty())
         {
           std::ostringstream stream;
           stream << hint.Description << " (" << ext_list << ")";
@@ -575,7 +575,7 @@ const char* vtkSMReaderFactory::GetSupportedFileTypes(vtkSMSession* session)
   }
   all_types << ")";
 
-  for (auto types : sorted_types)
+  for (const auto& types : sorted_types)
   {
     all_types << ";;" << types;
   }
@@ -689,7 +689,7 @@ void vtkSMReaderFactory::PrintSelf(ostream& os, vtkIndent indent)
 //----------------------------------------------------------------------------
 void vtkSMReaderFactory::AddReaderToWhitelist(const char* readerxmlgroup, const char* readerxmlname)
 {
-  if (readerxmlgroup != NULL && readerxmlname != NULL)
+  if (readerxmlgroup != nullptr && readerxmlname != nullptr)
   {
     vtkSMReaderFactory::vtkInternals::ReaderWhitelist.insert(
       std::pair<std::string, std::string>(readerxmlgroup, readerxmlname));

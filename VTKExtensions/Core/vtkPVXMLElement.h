@@ -17,7 +17,7 @@
  *
  * This is used by vtkPVXMLParser to represent an XML document starting
  * at the root element.
-*/
+ */
 
 #ifndef vtkPVXMLElement_h
 #define vtkPVXMLElement_h
@@ -58,9 +58,9 @@ public:
 
   /**
    * Get the attribute with the given name.  If it doesn't exist,
-   * returns NULL.
+   * returns nullptr.
    */
-  const char* GetAttribute(const char* name) { return this->GetAttributeOrDefault(name, NULL); }
+  const char* GetAttribute(const char* name) { return this->GetAttributeOrDefault(name, nullptr); }
 
   /**
    * Get the attribute with the given name.  If it doesn't exist,

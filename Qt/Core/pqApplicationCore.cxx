@@ -49,6 +49,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // ParaView includes.
 #include "pqAnimationScene.h"
+#include "pqCoreConfiguration.h"
 #include "pqCoreInit.h"
 #include "pqCoreTestUtility.h"
 #include "pqCoreUtilities.h"
@@ -58,7 +59,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqLinksModel.h"
 #include "pqMainWindowEventManager.h"
 #include "pqObjectBuilder.h"
-#include "pqOptions.h"
 #include "pqPipelineFilter.h"
 #include "pqPluginManager.h"
 #include "pqProgressManager.h"
@@ -73,6 +73,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqStandardServerManagerModelInterface.h"
 #include "pqUndoStack.h"
 #include "pqXMLUtil.h"
+#include "vtkCLIOptions.h"
 #include "vtkCommand.h"
 #include "vtkInitializationHelper.h"
 #include "vtkPVGeneralSettings.h"
@@ -82,7 +83,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkPVXMLElement.h"
 #include "vtkPVXMLParser.h"
 #include "vtkProcessModule.h"
-#include "vtkProcessModuleAutoMPI.h"
+#include "vtkRemotingCoreConfiguration.h"
 #include "vtkSMProperty.h"
 #include "vtkSMPropertyHelper.h"
 #include "vtkSMPropertyIterator.h"
@@ -96,15 +97,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <cassert>
 
+#if !defined(VTK_LEGACY_REMOVE)
+#include "pqOptions.h"
+#endif
+
 //-----------------------------------------------------------------------------
 class pqApplicationCore::pqInternals
 {
 public:
-  QMap<QString, QPointer<QObject> > RegisteredManagers;
+  QMap<QString, QPointer<QObject>> RegisteredManagers;
 };
 
 //-----------------------------------------------------------------------------
-pqApplicationCore* pqApplicationCore::Instance = 0;
+pqApplicationCore* pqApplicationCore::Instance = nullptr;
 
 //-----------------------------------------------------------------------------
 pqApplicationCore* pqApplicationCore::instance()
@@ -113,23 +118,57 @@ pqApplicationCore* pqApplicationCore::instance()
 }
 
 //-----------------------------------------------------------------------------
+#if !defined(VTK_LEGACY_REMOVE)
 pqApplicationCore::pqApplicationCore(
   int& argc, char** argv, pqOptions* options, QObject* parentObject)
+  : pqApplicationCore(argc, argv, static_cast<vtkCLIOptions*>(nullptr), true, parentObject)
+{
+  this->setOptions(options);
+}
+#endif
+
+#if !defined(VTK_LEGACY_REMOVE)
+//-----------------------------------------------------------------------------
+void pqApplicationCore::setOptions(pqOptions* options)
+{
+  this->Options = options;
+  vtkProcessModule::GetProcessModule()->SetOptions(this->Options);
+}
+
+#endif
+
+//-----------------------------------------------------------------------------
+pqApplicationCore::pqApplicationCore(int& argc, char** argv, vtkCLIOptions* options /*=nullptr*/,
+  bool addStandardArgs /*=true*/, QObject* parentObject /*=nullptr*/)
   : QObject(parentObject)
 {
-  vtkPVView::SetUseGenericOpenGLRenderWindow(true);
-
-  vtkSmartPointer<pqOptions> defaultOptions;
-  if (!options)
+  auto cliOptions = vtk::MakeSmartPointer(options);
+  if (!cliOptions)
   {
-    defaultOptions = vtkSmartPointer<pqOptions>::New();
-    options = defaultOptions;
+    cliOptions = vtk::TakeSmartPointer(vtkCLIOptions::New());
   }
-  this->Options = options;
 
+  if (addStandardArgs)
+  {
+    // fill up with pqCoreConfiguration options.
+    pqCoreConfiguration::instance()->populateOptions(cliOptions);
+  }
+
+  vtkPVView::SetUseGenericOpenGLRenderWindow(true);
   vtkInitializationHelper::SetOrganizationName(QApplication::organizationName().toStdString());
   vtkInitializationHelper::SetApplicationName(QApplication::applicationName().toStdString());
-  vtkInitializationHelper::Initialize(argc, argv, vtkProcessModule::PROCESS_CLIENT, options);
+  if (!vtkInitializationHelper::Initialize(
+        argc, argv, vtkProcessModule::PROCESS_CLIENT, cliOptions, addStandardArgs))
+  {
+    // initialization short-circuited. throw exception to exit the application.
+    throw pqApplicationCoreExitCode(vtkInitializationHelper::GetExitCode());
+  }
+
+#if !defined(VTK_LEGACY_REMOVE)
+  this->Options = vtk::TakeSmartPointer(pqOptions::New());
+  vtkProcessModule::GetProcessModule()->SetOptions(this->Options);
+#endif
+
   this->constructor();
 }
 
@@ -137,15 +176,15 @@ pqApplicationCore::pqApplicationCore(
 void pqApplicationCore::constructor()
 {
   // Only 1 pqApplicationCore instance can be created.
-  assert(pqApplicationCore::Instance == NULL);
+  assert(pqApplicationCore::Instance == nullptr);
   pqApplicationCore::Instance = this;
 
-  this->UndoStack = NULL;
-  this->RecentlyUsedResourcesList = NULL;
-  this->ServerConfigurations = NULL;
-  this->Settings = NULL;
+  this->UndoStack = nullptr;
+  this->RecentlyUsedResourcesList = nullptr;
+  this->ServerConfigurations = nullptr;
+  this->Settings = nullptr;
 #ifdef PARAVIEW_USE_QTHELP
-  this->HelpEngine = NULL;
+  this->HelpEngine = nullptr;
 #endif
 
   // initialize statics in case we're a static library
@@ -208,38 +247,38 @@ pqApplicationCore::~pqApplicationCore()
 {
   // Ensure that startup plugins get a chance to cleanup before pqApplicationCore is gone.
   delete this->PluginManager;
-  this->PluginManager = 0;
+  this->PluginManager = nullptr;
 
   delete this->InterfaceTracker;
-  this->InterfaceTracker = 0;
+  this->InterfaceTracker = nullptr;
 
   // give chance to save before pqApplicationCore is gone
   delete this->ServerConfigurations;
-  this->ServerConfigurations = 0;
+  this->ServerConfigurations = nullptr;
 
   delete this->LinksModel;
-  this->LinksModel = 0;
+  this->LinksModel = nullptr;
 
   delete this->MainWindowEventManager;
-  this->MainWindowEventManager = 0;
+  this->MainWindowEventManager = nullptr;
 
   delete this->ObjectBuilder;
-  this->ObjectBuilder = 0;
+  this->ObjectBuilder = nullptr;
 
   delete this->ProgressManager;
-  this->ProgressManager = 0;
+  this->ProgressManager = nullptr;
 
   delete this->ServerManagerModel;
-  this->ServerManagerModel = 0;
+  this->ServerManagerModel = nullptr;
 
   delete this->ServerManagerObserver;
-  this->ServerManagerObserver = 0;
+  this->ServerManagerObserver = nullptr;
 
   delete this->RecentlyUsedResourcesList;
-  this->RecentlyUsedResourcesList = 0;
+  this->RecentlyUsedResourcesList = nullptr;
 
   delete this->Settings;
-  this->Settings = 0;
+  this->Settings = nullptr;
 
 #ifdef PARAVIEW_USE_QTHELP
   if (this->HelpEngine)
@@ -248,13 +287,13 @@ pqApplicationCore::~pqApplicationCore()
     delete this->HelpEngine;
     QFile::remove(collectionFile);
   }
-  this->HelpEngine = NULL;
+  this->HelpEngine = nullptr;
 #endif
 
   // We don't call delete on these since we have already setup parent on these
   // correctly so they will be deleted. It's possible that the user calls delete
   // on these explicitly in which case we end up with segfaults.
-  this->UndoStack = 0;
+  this->UndoStack = nullptr;
 
   // Delete all children, which clears up all managers etc. before the server
   // manager application is finalized.
@@ -264,11 +303,20 @@ pqApplicationCore::~pqApplicationCore()
 
   if (pqApplicationCore::Instance == this)
   {
-    pqApplicationCore::Instance = 0;
+    pqApplicationCore::Instance = nullptr;
   }
 
   vtkInitializationHelper::Finalize();
 }
+
+//-----------------------------------------------------------------------------
+#if !defined(VTK_LEGACY_REMOVE)
+pqOptions* pqApplicationCore::getOptions() const
+{
+  VTK_LEGACY_BODY(pqApplicationCore::getOptions, "ParaView 5.10");
+  return this->Options;
+}
+#endif
 
 //-----------------------------------------------------------------------------
 void pqApplicationCore::setUndoStack(pqUndoStack* stack)
@@ -288,7 +336,7 @@ void pqApplicationCore::setUndoStack(pqUndoStack* stack)
 void pqApplicationCore::registerManager(const QString& function, QObject* _manager)
 {
   if (this->Internal->RegisteredManagers.contains(function) &&
-    this->Internal->RegisteredManagers[function] != 0)
+    this->Internal->RegisteredManagers[function] != nullptr)
   {
     qDebug() << "Replacing existing manager for function : " << function;
   }
@@ -304,13 +352,13 @@ void pqApplicationCore::unRegisterManager(const QString& function)
 //-----------------------------------------------------------------------------
 QObject* pqApplicationCore::manager(const QString& function)
 {
-  QMap<QString, QPointer<QObject> >::iterator iter =
+  QMap<QString, QPointer<QObject>>::iterator iter =
     this->Internal->RegisteredManagers.find(function);
   if (iter != this->Internal->RegisteredManagers.end())
   {
     return iter.value();
   }
-  return 0;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -320,7 +368,7 @@ bool pqApplicationCore::saveState(const QString& filename)
   vtkSMSessionProxyManager* pxm =
     vtkSMProxyManager::GetProxyManager()->GetActiveSessionProxyManager();
 
-  return pxm->SaveXMLState(filename.toLocal8Bit().data());
+  return pxm->SaveXMLState(filename.toUtf8().data());
 }
 
 //-----------------------------------------------------------------------------
@@ -371,7 +419,7 @@ void pqApplicationCore::clearViewsForLoadingState(pqServer* server)
   // In anycase, the stack will be cleared, why bother recording something...
   BEGIN_UNDO_EXCLUDE();
   QList<pqProxy*> proxies = this->ServerManagerModel->findItems<pqProxy*>(server);
-  QList<QPointer<pqProxy> > to_destroy;
+  QList<QPointer<pqProxy>> to_destroy;
   foreach (pqProxy* proxy, proxies)
   {
     pqView* view = qobject_cast<pqView*>(proxy);
@@ -421,7 +469,7 @@ void pqApplicationCore::loadStateIncremental(
     return;
   }
   vtkPVXMLParser* parser = vtkPVXMLParser::New();
-  parser->SetFileName(filename.toLocal8Bit().data());
+  parser->SetFileName(filename.toUtf8().data());
   parser->Parse();
   this->loadStateIncremental(parser->GetRootElement(), server, loader);
   parser->Delete();
@@ -465,7 +513,7 @@ void pqApplicationCore::onStateSaved(vtkPVXMLElement* root)
   {
     // Change root element to match the application name.
     QString valid_name = QApplication::applicationName().replace(QRegExp("\\W"), "_");
-    root->SetName(valid_name.toLocal8Bit().data());
+    root->SetName(valid_name.toUtf8().data());
   }
   Q_EMIT this->stateSaved(root);
 }
@@ -497,8 +545,7 @@ pqSettings* pqApplicationCore::settings()
 {
   if (!this->Settings)
   {
-    auto options = pqOptions::SafeDownCast(vtkProcessModule::GetProcessModule()->GetOptions());
-    bool disable_settings = (options && options->GetDisableRegistry());
+    const bool disable_settings = vtkRemotingCoreConfiguration::GetInstance()->GetDisableRegistry();
 
     const QString settingsOrg = QApplication::organizationName();
     const QString settingsApp =
@@ -517,16 +564,11 @@ pqSettings* pqApplicationCore::settings()
     else
     {
       vtkVLogF(PARAVIEW_LOG_APPLICATION_VERBOSITY(), "loading Qt settings from '%s'",
-        settings->fileName().toLocal8Bit().data());
+        settings->fileName().toUtf8().data());
     }
     // now settings are ready!
 
     this->Settings = settings;
-
-    vtkProcessModuleAutoMPI::SetEnableAutoMPI(
-      this->Settings->value("GeneralSettings.EnableAutoMPI").toBool());
-    vtkProcessModuleAutoMPI::SetNumberOfCores(
-      this->Settings->value("GeneralSettings.AutoMPILimit").toInt());
   }
   return this->Settings;
 }
@@ -718,8 +760,7 @@ void pqApplicationCore::generalSettingsChanged()
 {
   if (auto pvsettings = vtkPVGeneralSettings::GetInstance())
   {
-    pqDoubleLineEdit::setGlobalPrecisionAndNotation(
-      pvsettings->GetRealNumberDisplayedPrecision(),
+    pqDoubleLineEdit::setGlobalPrecisionAndNotation(pvsettings->GetRealNumberDisplayedPrecision(),
       static_cast<pqDoubleLineEdit::RealNumberNotation>(
         pvsettings->GetRealNumberDisplayedNotation()));
   }

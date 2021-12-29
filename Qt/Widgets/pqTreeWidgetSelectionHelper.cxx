@@ -54,9 +54,7 @@ pqTreeWidgetSelectionHelper::pqTreeWidgetSelectionHelper(QTreeWidget* tree)
 }
 
 //-----------------------------------------------------------------------------
-pqTreeWidgetSelectionHelper::~pqTreeWidgetSelectionHelper()
-{
-}
+pqTreeWidgetSelectionHelper::~pqTreeWidgetSelectionHelper() = default;
 
 //-----------------------------------------------------------------------------
 void pqTreeWidgetSelectionHelper::onItemPressed(QTreeWidgetItem* item, int)
@@ -89,7 +87,7 @@ void pqTreeWidgetSelectionHelper::setSelectedItemsCheckState(Qt::CheckState stat
 //-----------------------------------------------------------------------------
 void pqTreeWidgetSelectionHelper::showContextMenu(const QPoint& pos)
 {
-  if (this->TreeWidget->selectionModel()->selectedIndexes().size() > 0)
+  if (!this->TreeWidget->selectionModel()->selectedIndexes().empty())
   {
     QMenu menu;
     menu.setObjectName("TreeWidgetCheckMenu");

@@ -22,14 +22,10 @@ using namespace vtksys;
 
 vtkStandardNewMacro(vtkLoadStateOptions);
 //----------------------------------------------------------------------------
-vtkLoadStateOptions::vtkLoadStateOptions()
-{
-}
+vtkLoadStateOptions::vtkLoadStateOptions() = default;
 
 //----------------------------------------------------------------------------
-vtkLoadStateOptions::~vtkLoadStateOptions()
-{
-}
+vtkLoadStateOptions::~vtkLoadStateOptions() = default;
 
 //----------------------------------------------------------------------------
 void vtkLoadStateOptions::PrintSelf(ostream& os, vtkIndent indent)
@@ -40,7 +36,7 @@ void vtkLoadStateOptions::PrintSelf(ostream& os, vtkIndent indent)
 //----------------------------------------------------------------------------
 std::string vtkLoadStateOptions::LocateFileInDirectory(const std::string& filepath, int isPath)
 {
-  std::string result = "";
+  std::string result;
   std::string modifiedDataDirectory = this->DataDirectory;
   std::vector<std::string> directoryPathComponents;
 
@@ -74,7 +70,7 @@ std::string vtkLoadStateOptions::LocateFileInDirectory(const std::string& filepa
   SystemTools::SplitPath(SystemTools::GetParentDirectory(filepath), pathComponents);
   size_t insertIndex = directoryPathComponents.size();
 
-  while (pathComponents.size() >= 1)
+  while (!pathComponents.empty())
   {
     std::string searchPath = SystemTools::JoinPath(directoryPathComponents);
 

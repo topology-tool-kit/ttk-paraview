@@ -36,6 +36,7 @@ vtkCxxSetObjectMacro(vtkPhastaReader, CachedGrid, vtkUnstructuredGrid);
 #include <map>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 struct vtkPhastaReaderInternal
@@ -52,8 +53,6 @@ struct vtkPhastaReaderInternal
       : StartIndexInPhastaArray(-1)
       , NumberOfComponents(-1)
       , DataDependency(-1)
-      , DataType("")
-      , PhastaFieldTag("")
     {
     }
   };
@@ -63,13 +62,6 @@ struct vtkPhastaReaderInternal
 };
 
 // Begin of copy from phastaIO
-
-#define swap_char(A, B)                                                                            \
-  {                                                                                                \
-    ucTmp = A;                                                                                     \
-    A = B;                                                                                         \
-    B = ucTmp;                                                                                     \
-  }
 
 std::map<int, char*> LastHeaderKey;
 std::vector<FILE*> fileArray;
@@ -179,7 +171,7 @@ namespace
 {
 void xfgets(char* str, int num, FILE* stream)
 {
-  if (fgets(str, num, stream) == NULL)
+  if (fgets(str, num, stream) == nullptr)
   {
     vtkGenericWarningMacro(<< "Could not read or end of file" << endl);
   }
@@ -227,15 +219,15 @@ int vtkPhastaReader::readHeader(FILE* fileObject, const char phrase[], int* para
     {
       text_header = new char[real_length + 1];
       strncpy(text_header, Line, real_length);
-      text_header[real_length] = static_cast<char>(NULL);
+      text_header[real_length] = static_cast<char>(0);
       token = strtok(text_header, ":");
       if (cscompare(phrase, token))
       {
         FOUND = 1;
-        token = strtok(NULL, " ,;<>");
+        token = strtok(nullptr, " ,;<>");
         skip_size = atoi(token);
         int i;
-        for (i = 0; i < expect && (token = strtok(NULL, " ,;<>")); i++)
+        for (i = 0; i < expect && (token = strtok(nullptr, " ,;<>")); i++)
         {
           params[i] = atoi(token);
         }
@@ -263,7 +255,7 @@ int vtkPhastaReader::readHeader(FILE* fileObject, const char phrase[], int* para
       else
       {
         /* some other header, so just skip over */
-        token = strtok(NULL, " ,;<>");
+        token = strtok(nullptr, " ,;<>");
         skip_size = atoi(token);
         if (binary_format)
         {
@@ -305,14 +297,13 @@ void vtkPhastaReader::SwapArrayByteOrder(void* array, int nbytes, int nItems)
   /* This swaps the byte order for the array of nItems each
      of size nbytes , This will be called only locally  */
   int i, j;
-  unsigned char ucTmp;
   unsigned char* ucDst = (unsigned char*)array;
 
   for (i = 0; i < nItems; i++)
   {
     for (j = 0; j < (nbytes / 2); j++)
     {
-      swap_char(ucDst[j], ucDst[(nbytes - 1) - j]);
+      std::swap(ucDst[j], ucDst[(nbytes - 1) - j]);
     }
     ucDst += nbytes;
   }
@@ -320,7 +311,7 @@ void vtkPhastaReader::SwapArrayByteOrder(void* array, int nbytes, int nItems)
 
 void vtkPhastaReader::openfile(const char filename[], const char mode[], int* fileDescriptor)
 {
-  FILE* file = NULL;
+  FILE* file = nullptr;
   *fileDescriptor = 0;
   // Stripping a filename is not correct, since
   // filenames can certainly have spaces.
@@ -405,8 +396,6 @@ void vtkPhastaReader::readheader(int* fileDescriptor, const char keyphrase[], vo
   {
     LastHeaderNotFound = 1;
   }
-
-  return;
 }
 
 void vtkPhastaReader::readdatablock(int* fileDescriptor, const char keyphrase[], void* valueArray,
@@ -482,33 +471,25 @@ void vtkPhastaReader::readdatablock(int* fileDescriptor, const char keyphrase[],
     }
     delete[] ts1;
   }
-
-  return;
 }
 
 // End of copy from phastaIO
 
 vtkPhastaReader::vtkPhastaReader()
 {
-  this->GeometryFileName = NULL;
-  this->FieldFileName = NULL;
+  this->GeometryFileName = nullptr;
+  this->FieldFileName = nullptr;
   this->SetNumberOfInputPorts(0);
   this->Internal = new vtkPhastaReaderInternal;
-  this->CachedGrid = 0;
+  this->CachedGrid = nullptr;
 }
 
 vtkPhastaReader::~vtkPhastaReader()
 {
-  if (this->GeometryFileName)
-  {
-    delete[] this->GeometryFileName;
-  }
-  if (this->FieldFileName)
-  {
-    delete[] this->FieldFileName;
-  }
+  delete[] this->GeometryFileName;
+  delete[] this->FieldFileName;
   delete this->Internal;
-  this->SetCachedGrid(0);
+  this->SetCachedGrid(nullptr);
 }
 
 void vtkPhastaReader::ClearFieldInfo()
@@ -575,7 +556,7 @@ int vtkPhastaReader::RequestData(
     points->Delete();
   }
 
-  if (!this->Internal->FieldInfoMap.size())
+  if (this->Internal->FieldInfoMap.empty())
   {
     vtkDataSetAttributes* field = output->GetPointData();
     this->ReadFieldFile(this->FieldFileName, fvn, field, noOfNodes);
@@ -637,7 +618,7 @@ void vtkPhastaReader::ReadGeomFile(
   // int *nlworkdata;
   /* element information */
   int num_elems, num_vertices, num_per_line;
-  int* connectivity = NULL;
+  int* connectivity = nullptr;
 
   /* misc variables*/
   int i, j, k, item;
@@ -691,14 +672,14 @@ void vtkPhastaReader::ReadGeomFile(
   /* read the coordinates */
 
   coordinates = new double[dim];
-  if (coordinates == NULL)
+  if (coordinates == nullptr)
   {
     vtkErrorMacro(<< "Unable to allocate memory for nodal info");
     return;
   }
 
   pos = new double[num_nodes * dim];
-  if (pos == NULL)
+  if (pos == nullptr)
   {
     vtkErrorMacro(<< "Unable to allocate memory for nodal info");
     delete[] coordinates;
@@ -744,7 +725,7 @@ void vtkPhastaReader::ReadGeomFile(
     num_per_line = array[3];
     connectivity = new int[num_elems * num_per_line];
 
-    if (connectivity == NULL)
+    if (connectivity == nullptr)
     {
       vtkErrorMacro(<< "Unable to allocate memory for connectivity info");
       return;
@@ -840,11 +821,11 @@ void vtkPhastaReader::ReadFieldFile(
   vtkDoubleArray* sArrays[4];
   for (i = 0; i < 4; i++)
   {
-    sArrays[i] = 0;
+    sArrays[i] = nullptr;
   }
   item = noOfNodes * this->NumberOfVariables;
   data = new double[item];
-  if (data == NULL)
+  if (data == nullptr)
   {
     vtkErrorMacro(<< "Unable to allocate memory for field info");
     return;
@@ -993,7 +974,7 @@ void vtkPhastaReader::ReadFieldFile(
       double* data;
       data = new double[item];
 
-      if (data == NULL)
+      if (data == nullptr)
       {
         vtkErrorMacro(<< "Unable to allocate memory for field info");
 
@@ -1070,7 +1051,7 @@ void vtkPhastaReader::ReadFieldFile(
       float* data;
       data = new float[item];
 
-      if (data == NULL)
+      if (data == nullptr)
       {
         vtkErrorMacro(<< "Unable to allocate memory for field info");
 

@@ -25,9 +25,15 @@
 #include <vtkm/cont/UncertainArrayHandle.h>
 #include <vtkm/cont/UnknownArrayHandle.h>
 
+#include <sstream>
+
 #ifndef VTKM_NO_DEPRECATED_VIRTUAL
 #include <vtkm/cont/ArrayHandleVirtual.h>
 #endif //VTKM_NO_DEPRECATED_VIRTUAL
+
+// This is a deprecated class. Don't warn about deprecation while implementing
+// deprecated functionality.
+VTKM_DEPRECATED_SUPPRESS_BEGIN
 
 namespace vtkm
 {
@@ -40,7 +46,6 @@ namespace internal
 namespace variant
 {
 
-VTKM_DEPRECATED_SUPPRESS_BEGIN
 struct ForceCastToVirtual
 {
   template <typename SrcValueType, typename Storage, typename DstValueType>
@@ -89,7 +94,19 @@ private:
     throw vtkm::cont::ErrorBadType(str.str());
   }
 };
-VTKM_DEPRECATED_SUPPRESS_END
+
+template <typename S>
+struct NoCastStorageTransformImpl
+{
+  using type = S;
+};
+template <typename T, typename S>
+struct NoCastStorageTransformImpl<vtkm::cont::StorageTagCast<T, S>>
+{
+  using type = S;
+};
+template <typename S>
+using NoCastStorageTransform = typename NoCastStorageTransformImpl<S>::type;
 
 }
 } // namespace internal::variant
@@ -104,7 +121,10 @@ VTKM_DEPRECATED_SUPPRESS_END
 ///
 /// See the documentation of `VariantArrayHandleBase` for more information.
 ///
-class VTKM_ALWAYS_EXPORT VariantArrayHandleCommon : public vtkm::cont::UnknownArrayHandle
+class VTKM_ALWAYS_EXPORT VTKM_DEPRECATED(
+  1.7,
+  "VariantArrayHandle classes replaced with UnknownArrayHandle and UncertainArrayHandle.")
+  VariantArrayHandleCommon : public vtkm::cont::UnknownArrayHandle
 {
   using Superclass = vtkm::cont::UnknownArrayHandle;
 
@@ -118,14 +138,6 @@ public:
   {
   }
 
-  // MSVC will issue deprecation warnings here if this template is instantiated with
-  // a deprecated class even if the template is used from a section of code where
-  // deprecation warnings are suppressed. This is annoying behavior since this template
-  // has no control over what class it is used with. To get around it, we have to
-  // suppress all deprecation warnings here.
-#ifdef VTKM_MSVC
-  VTKM_DEPRECATED_SUPPRESS_BEGIN
-#endif
   /// Returns this array cast to the given \c ArrayHandle type. Throws \c
   /// ErrorBadType if the cast does not work. Use \c IsType
   /// to check if the cast can happen.
@@ -135,9 +147,6 @@ public:
   {
     return this->AsArrayHandle<ArrayHandleType>();
   }
-#ifdef VTKM_MSVC
-  VTKM_DEPRECATED_SUPPRESS_END
-#endif
 
   /// \brief Call a functor using the underlying array type.
   ///
@@ -163,7 +172,6 @@ public:
   /// the CastAndCall. You can also specify a list of types to try as the optional
   /// third template argument.
   ///
-  VTKM_DEPRECATED_SUPPRESS_BEGIN
   template <typename T,
             typename StorageList = VTKM_DEFAULT_STORAGE_LIST,
             typename TypeList = vtkm::List<T>>
@@ -172,12 +180,14 @@ public:
   {
     VTKM_IS_LIST(StorageList);
     VTKM_IS_LIST(TypeList);
+    // Remove cast storage from storage list because we take care of casting elsewhere
+    using CleanStorageList =
+      vtkm::ListTransform<StorageList, vtkm::cont::internal::variant::NoCastStorageTransform>;
     vtkm::cont::internal::variant::ForceCastToVirtual caster;
     vtkm::cont::ArrayHandleVirtual<T> output;
-    this->CastAndCall<TypeList, StorageList>(caster, output);
+    this->CastAndCall<TypeList, CleanStorageList>(caster, output);
     return output;
   }
-  VTKM_DEPRECATED_SUPPRESS_END
 #endif //VTKM_NO_DEPRECATED_VIRTUAL
 
   /// Returns this array cast to a `ArrayHandleMultiplexer` of the given type.
@@ -262,7 +272,10 @@ public:
 /// component types.
 ///
 template <typename TypeList>
-class VTKM_ALWAYS_EXPORT VariantArrayHandleBase : public VariantArrayHandleCommon
+class VTKM_ALWAYS_EXPORT VTKM_DEPRECATED(
+  1.7,
+  "VariantArrayHandle classes replaced with UnknownArrayHandle and UncertainArrayHandle.")
+  VariantArrayHandleBase : public VariantArrayHandleCommon
 {
   VTKM_STATIC_ASSERT_MSG((!std::is_same<TypeList, vtkm::ListUniversal>::value),
                          "Cannot use vtkm::ListUniversal with VariantArrayHandle.");
@@ -284,14 +297,7 @@ public:
   {
   }
 
-  VTKM_CONT explicit VariantArrayHandleBase(const vtkm::cont::UnknownArrayHandle& src)
-    : Superclass(src)
-  {
-  }
-
-  template <typename StorageList>
-  VTKM_CONT VariantArrayHandleBase(
-    const vtkm::cont::UncertainArrayHandle<TypeList, StorageList>& src)
+  VTKM_CONT VariantArrayHandleBase(const vtkm::cont::UnknownArrayHandle& src)
     : Superclass(src)
   {
   }
@@ -324,14 +330,12 @@ public:
   /// be specified in the second template parameter, which will be passed to
   /// the CastAndCall.
   ///
-  VTKM_DEPRECATED_SUPPRESS_BEGIN
   template <typename T, typename StorageList = VTKM_DEFAULT_STORAGE_LIST>
   VTKM_CONT VTKM_DEPRECATED(1.6, "ArrayHandleVirtual is no longer suported.")
     vtkm::cont::ArrayHandleVirtual<T> AsVirtual() const
   {
     return this->Superclass::AsVirtual<T, StorageList, TypeList>();
   }
-  VTKM_DEPRECATED_SUPPRESS_END
 #endif //VTKM_NO_DEPRECATED_VIRTUAL
 
   /// Changes the types to try casting to when resolving this variant array,
@@ -411,7 +415,10 @@ private:
   }
 };
 
-using VariantArrayHandle = vtkm::cont::VariantArrayHandleBase<VTKM_DEFAULT_TYPE_LIST>;
+using VariantArrayHandle VTKM_DEPRECATED(
+  1.7,
+  "VariantArrayHandle classes replaced with UnknownArrayHandle and UncertainArrayHandle.") =
+  vtkm::cont::VariantArrayHandleBase<VTKM_DEFAULT_TYPE_LIST>;
 
 
 //=============================================================================
@@ -477,6 +484,8 @@ public:
 
 } // diy
 /// @endcond SERIALIZATION
+
+VTKM_DEPRECATED_SUPPRESS_END
 
 
 #endif //vtk_m_virts_VariantArrayHandle_h

@@ -192,7 +192,7 @@ public:
    */
   vtkTypeBool Resize(vtkIdType numTuples) override;
 
-  //@{
+  ///@{
   /**
    * This method lets the user specify data to be held by the array.  The
    * array argument is a pointer to the data.  size is the size of
@@ -203,7 +203,7 @@ public:
    */
   void SetVoidArray(void* arr, vtkIdType size, int save) override;
   void SetVoidArray(void* arr, vtkIdType size, int save, int deleteM) override;
-  //@}
+  ///@}
 
   /**
    * Return the memory in kibibytes (1024 bytes) consumed by this data array. Used to
@@ -287,15 +287,15 @@ public:
   /**
    * Return the number of values in the array.
    */
-  vtkIdType GetNumberOfValues() { return this->MaxId + 1; }
+  vtkIdType GetNumberOfValues() const { return (this->MaxId + 1); }
 
-  //@{
+  ///@{
   /**
    * Return the indices where a specific value appears.
    */
   vtkIdType LookupValue(vtkVariant value) override;
   void LookupValue(vtkVariant value, vtkIdList* ids) override;
-  //@}
+  ///@}
 
   /**
    * Tell the array explicitly that the data has changed.

@@ -57,12 +57,11 @@ vtkStandardNewMacro(vtkXMLPVDWriter);
 class vtkXMLPVDWriterInternals
 {
 public:
-  std::vector<vtkSmartPointer<vtkXMLWriter> > Writers;
+  std::vector<vtkSmartPointer<vtkXMLWriter>> Writers;
   std::string FilePath;
   std::string FilePrefix;
   std::vector<std::string> Entries;
-  std::string CreatePieceFileName(
-    const int index, const bool addTimeIndex, const int currentTimeIndex);
+  std::string CreatePieceFileName(int index, bool addTimeIndex, int currentTimeIndex);
 };
 
 //----------------------------------------------------------------------------
@@ -259,7 +258,7 @@ int vtkXMLPVDWriter::RequestData(
             (this->WriteAllTimeSteps != 0 && this->NumberOfTimeSteps > 1), this->CurrentTimeIndex);
           full = this->Internal->FilePath;
           full += fname;
-          vtksys::SystemTools::RemoveFile(full.c_str());
+          vtksys::SystemTools::RemoveFile(full);
         }
         this->RemoveADirectory(subdir.c_str());
         this->SetErrorCode(vtkErrorCode::OutOfDiskSpaceError);
@@ -620,7 +619,7 @@ vtkXMLWriter* vtkXMLPVDWriter::GetWriter(int index)
   {
     return this->Internal->Writers[index].GetPointer();
   }
-  return 0;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -644,7 +643,7 @@ void vtkXMLPVDWriter::SplitFileName()
   }
 
   // Split the extension from the file name.
-  pos = name.find_last_of(".");
+  pos = name.find_last_of('.');
   if (pos != name.npos)
   {
     this->Internal->FilePrefix = name.substr(0, pos);
@@ -709,7 +708,7 @@ void vtkXMLPVDWriter::DeleteAllEntries()
 
 //----------------------------------------------------------------------------
 std::string vtkXMLPVDWriterInternals::CreatePieceFileName(
-  const int index, const bool addTimeIndex, const int currentTimeIndex)
+  int index, bool addTimeIndex, int currentTimeIndex)
 {
   std::string fname;
   std::ostringstream fn_with_warning_C4701;

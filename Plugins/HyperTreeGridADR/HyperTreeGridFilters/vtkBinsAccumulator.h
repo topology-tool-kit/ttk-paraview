@@ -35,9 +35,8 @@
 #include "vtkAbstractAccumulator.h"
 #include "vtkFiltersHyperTreeGridADRModule.h" // For export macro
 
-#include <memory>
-#include <string>
-#include <unordered_map>
+#include <memory>        // for std::shared_ptr
+#include <unordered_map> // for std::unordered_map
 
 template <typename FunctorT>
 class VTKFILTERSHYPERTREEGRIDADR_EXPORT vtkBinsAccumulator : public vtkAbstractAccumulator
@@ -83,12 +82,12 @@ public:
   /**
    * ShallowCopy implementation, both object then share the same Bins.
    */
-  void DeepCopy(vtkDataObject* accumulator) override;
+  void DeepCopy(vtkObject* accumulator) override;
 
   /**
    * DeepCopy implementation.
    */
-  void ShallowCopy(vtkDataObject* accumulator) override;
+  void ShallowCopy(vtkObject* accumulator) override;
 
   /**
    * Returns true if the parameters of accumulator is the same as the ones of this
@@ -141,6 +140,8 @@ private:
   void operator=(vtkBinsAccumulator<FunctorT>&) = delete;
 };
 
-#include "vtkBinsAccumulator.txx"
+#include "vtkBinsAccumulator.txx" // template implementations
 
 #endif
+
+// VTK-HeaderTest-Exclude: vtkBinsAccumulator.h

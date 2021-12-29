@@ -21,7 +21,7 @@
  * various configurable parameters used by vtkPVRenderView.
  * All class to vtkPVRenderViewSettings::New() returns a reference to the
  * singleton instance.
-*/
+ */
 
 #ifndef vtkPVRenderViewSettings_h
 #define vtkPVRenderViewSettings_h
@@ -113,6 +113,17 @@ public:
   vtkGetMacro(EnableFastPreselection, bool);
   //@}
 
+  ///@{
+  /**
+   * Used by vtkPVRenderView and other views to determine background color.
+   */
+  vtkSetVector3Macro(BackgroundColor, double);
+  vtkGetVector3Macro(BackgroundColor, double);
+  vtkSetVector3Macro(Background2Color, double);
+  vtkGetVector3Macro(Background2Color, double);
+  vtkSetMacro(BackgroundColorMode, int);
+  vtkGetMacro(BackgroundColorMode, int);
+  ///@}
 protected:
   vtkPVRenderViewSettings();
   ~vtkPVRenderViewSettings() override;
@@ -122,6 +133,10 @@ protected:
   int PointPickingRadius;
   bool DisableIceT;
   bool EnableFastPreselection;
+
+  double BackgroundColor[3];
+  double Background2Color[3];
+  int BackgroundColorMode;
 
 private:
   vtkPVRenderViewSettings(const vtkPVRenderViewSettings&) = delete;

@@ -71,7 +71,7 @@
  * provided. GetProxySettings() sets the values of proxy properties that are
  * defined in the setting collections. SetProxySettings() saves the non-default
  * proxy properties in the highest-priority collection.
-*/
+ */
 
 #ifndef vtkSMSettings_h
 #define vtkSMSettings_h
@@ -241,7 +241,7 @@ public:
    * skip serializing properties that have domains whose values change at
    * runtime.
    */
-  void SetProxySettings(vtkSMProxy* proxy, vtkSMPropertyIterator* propertyIt = NULL,
+  void SetProxySettings(vtkSMProxy* proxy, vtkSMPropertyIterator* propertyIt = nullptr,
     bool skipPropertiesWithDynamicDomains = true);
 
   /**
@@ -254,7 +254,7 @@ public:
    * runtime.
    */
   void SetProxySettings(const char* prefix, vtkSMProxy* proxy,
-    vtkSMPropertyIterator* propertyIt = NULL, bool skipPropertiesWithDynamicDomains = true);
+    vtkSMPropertyIterator* propertyIt = nullptr, bool skipPropertiesWithDynamicDomains = true);
 
   /**
    * Set the description of a setting.
@@ -265,7 +265,7 @@ public:
    * Saves the state of the proxy as JSON. The implementation simply
    * converts the state XML to JSON.
    */
-  static Json::Value SerializeAsJSON(vtkSMProxy* proxy, vtkSMPropertyIterator* iter = NULL);
+  static Json::Value SerializeAsJSON(vtkSMProxy* proxy, vtkSMPropertyIterator* iter = nullptr);
 
   /**
    * Restores a proxy state using the JSON equivalent. The implementation

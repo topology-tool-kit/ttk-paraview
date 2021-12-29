@@ -24,14 +24,13 @@
 #define vtkExodusIIReaderParser_h
 
 #include "vtkIOExodusModule.h" // For export macro
-#include "vtkSmartPointer.h"
+#include "vtkSmartPointer.h"   // for ivars
 #include "vtkXMLParser.h"
 
-#include <map>
-#include <set>
-#include <sstream>
-#include <string>
-#include <vector>
+#include <map>    // for std::map
+#include <set>    // for std::set
+#include <string> // for std::string
+#include <vector> // for std::vector
 
 class vtkMutableDirectedGraph;
 class vtkStringArray;
@@ -44,18 +43,18 @@ public:
   vtkTypeMacro(vtkExodusIIReaderParser, vtkXMLParser);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Returns the SIL.
    * This is valid only after Go().
    */
   vtkGetObjectMacro(SIL, vtkMutableDirectedGraph);
-  //@}
+  ///@}
 
   /**
    * Trigger parsing of the XML file.
    */
-  void Go(const char* filename);
+  void Go(VTK_FILEPATH const char* filename);
 
   // Returns if the parser has some information about the block with given "id".
   // This is valid only after Go().
@@ -70,7 +69,7 @@ public:
    */
   std::string GetBlockName(int id);
 
-  //@{
+  ///@{
   /**
    * Fills up the blockIdsSet with the block ids referred to by the XML.
    * This is valid only after Go().
@@ -83,7 +82,7 @@ public:
       blockIdsSet.insert(iter->first);
     }
   }
-  //@}
+  ///@}
 
 protected:
   vtkExodusIIReaderParser();
@@ -174,5 +173,3 @@ private:
 };
 
 #endif
-
-// VTK-HeaderTest-Exclude: vtkExodusIIReaderParser.h

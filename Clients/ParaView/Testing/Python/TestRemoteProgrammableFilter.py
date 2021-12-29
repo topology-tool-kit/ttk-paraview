@@ -24,6 +24,8 @@ def testScript(programmableFilter, script):
     programmableFilter.Script = script + textwrap.dedent('''
         passedArray = vtk.vtkIntArray()
         passedArray.SetName('%s')
+        passedArray.SetNumberOfTuples(1)
+        passedArray.SetValue(0, 1)
         self.GetOutput().GetFieldData().AddArray(passedArray)''' % arrayName)
 
     programmableFilter.UpdatePipeline()
@@ -32,7 +34,7 @@ def testScript(programmableFilter, script):
 
 def runTest():
 
-    options = servermanager.vtkProcessModule.GetProcessModule().GetOptions()
+    options = servermanager.vtkRemotingCoreConfiguration.GetInstance()
     url = options.GetServerURL()
 
     smp.Connect(getHost(url), getPort(url))

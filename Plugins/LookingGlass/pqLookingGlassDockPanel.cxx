@@ -25,6 +25,8 @@
 
 #include "QVTKOpenGLWindow.h"
 #include <QDebug>
+#include <QFileDialog>
+#include <QMessageBox>
 #include <QOpenGLContext>
 #include <QOpenGLExtraFunctions>
 
@@ -44,6 +46,8 @@
 #include "vtkSMSession.h"
 #include "vtkSMSessionProxyManager.h"
 #include "vtkTextureObject.h"
+
+#include <cmath>
 
 namespace
 {
@@ -120,15 +124,24 @@ void pqLookingGlassDockPanel::constructor()
   this->connect(ui.PushFocalPlaneBackButton, SIGNAL(clicked(bool)), SLOT(pushFocalPlaneBack()));
   this->connect(
     ui.PullFocalPlaneForwardButton, SIGNAL(clicked(bool)), SLOT(pullFocalPlaneForward()));
+  this->connect(ui.SaveQuilt, SIGNAL(clicked(bool)), SLOT(saveQuilt()));
+  this->connect(ui.RecordQuilt, SIGNAL(clicked(bool)), SLOT(onRecordQuiltClicked()));
 
   this->connect(activeObjects, SIGNAL(serverChanged(pqServer*)), SLOT(reset()));
 
   // Disable button if active view is not compatible with LG
   this->connect(activeObjects, SIGNAL(viewChanged(pqView*)), SLOT(activeViewChanged(pqView*)));
+
+  this->updateSaveRecordVisibility();
 }
 
 pqLookingGlassDockPanel::~pqLookingGlassDockPanel()
 {
+  if (this->IsRecording)
+  {
+    this->stopRecordingQuilt();
+  }
+
   this->freeDisplayWindowResources();
 
   auto pxm = pqActiveObjects::instance().proxyManager();
@@ -275,6 +288,12 @@ void pqLookingGlassDockPanel::onRender()
     endObserver->CopyTexture = this->CopyTexture;
     this->EndObserver = endObserver;
     this->DisplayWindow->AddObserver(vtkCommand::RenderEvent, this->EndObserver);
+
+    this->updateSaveRecordVisibility();
+
+    // Update the GUI with the interface values
+    auto& ui = this->Internal->Ui;
+    ui.QuiltExportMagnification->setValue(this->Interface->GetQuiltExportMagnification());
   }
 
   vtkCollectionSimpleIterator rsit;
@@ -381,6 +400,11 @@ void pqLookingGlassDockPanel::onRender()
       destPos[0] + renderSize[0], destPos[1] + renderSize[1], GL_COLOR_BUFFER_BIT, GL_LINEAR);
   }
 
+  if (this->IsRecording)
+  {
+    this->Interface->WriteQuiltMovieFrame();
+  }
+
   // restore the original size
   srcWin->SetSize(origSize[0], origSize[1]);
   srcWin->UseOffScreenBuffersOff();
@@ -413,7 +437,7 @@ void pqLookingGlassDockPanel::onRenderOnLookingGlassClicked()
 
   // See if we have a settings proxy yet
   auto pxm = view->getProxy()->GetSession()->GetSessionProxyManager();
-  bool firstRender = pxm->GetProxy("looking_glass", qPrintable(settingsName)) == nullptr;
+  bool firstRender = pxm->GetProxy("looking_glass", settingsName.toUtf8().data()) == nullptr;
 
   this->setView(view);
   this->RenderNextFrame = true;
@@ -538,6 +562,178 @@ void pqLookingGlassDockPanel::pullFocalPlaneForward()
   this->View->render();
 }
 
+void pqLookingGlassDockPanel::updateSaveRecordVisibility()
+{
+  bool visible = this->Interface && this->DisplayWindow;
+
+  auto& ui = this->Internal->Ui;
+  ui.SaveQuilt->setVisible(visible);
+  ui.RecordQuilt->setVisible(visible);
+  ui.QuiltExportMagnificationLabel->setVisible(visible);
+  ui.QuiltExportMagnification->setVisible(visible);
+}
+
+QString pqLookingGlassDockPanel::getQuiltFileSuffix()
+{
+  int tiles[2];
+  this->Interface->GetQuiltTiles(tiles);
+
+  return QString("_qs%1x%2").arg(tiles[0]).arg(tiles[1]);
+}
+
+void pqLookingGlassDockPanel::saveQuilt()
+{
+  // Don't confirm overwrite, since we will be checking that later, after
+  // we ensure the right suffix is attached...
+  QString extension = ".png";
+  auto filepath = QFileDialog::getSaveFileName(this, "Save Quilt Image", "",
+    QString("Images (*%1)").arg(extension), nullptr, QFileDialog::DontConfirmOverwrite);
+  if (filepath.isEmpty())
+  {
+    // User canceled
+    return;
+  }
+
+  auto suffix = this->getQuiltFileSuffix() + extension;
+  if (!filepath.endsWith(suffix))
+  {
+    // We will add the suffix
+    if (filepath.endsWith(extension))
+    {
+      // Remove the extension, if it exists
+      filepath.chop(extension.size());
+    }
+    // Add the suffix
+    filepath += suffix;
+  }
+
+  if (QFile(filepath).exists())
+  {
+    auto title = QString("Overwrite file?");
+    auto text = QString("\"%1\" already exists.\n\n"
+                        "Would you like to overwrite it?")
+                  .arg(filepath);
+    if (QMessageBox::question(this, title, text) == QMessageBox::No)
+    {
+      // User does not want to over-write the file...
+      return;
+    }
+  }
+
+  // Update the interface with the GUI values
+  auto& ui = this->Internal->Ui;
+  this->Interface->SetQuiltExportMagnification(ui.QuiltExportMagnification->value());
+
+  this->Interface->SaveQuilt(this->DisplayWindow, filepath.toUtf8().data());
+
+  auto text = QString("Saved to \"%1\"").arg(filepath);
+  QMessageBox::information(this, "Quilt Saved", filepath);
+}
+
+void pqLookingGlassDockPanel::onRecordQuiltClicked()
+{
+  auto& ui = this->Internal->Ui;
+
+  if (!this->IsRecording)
+  {
+    this->startRecordingQuilt();
+  }
+  else
+  {
+    this->stopRecordingQuilt();
+  }
+
+  // Update the text in a separate logic block, so we can see
+  // if the recording state actually changed.
+  if (this->IsRecording)
+  {
+    ui.RecordQuilt->setText("Stop Recording Quilt");
+  }
+  else
+  {
+    ui.RecordQuilt->setText("Record Quilt");
+  }
+}
+
+void pqLookingGlassDockPanel::startRecordingQuilt()
+{
+  if (!this->Interface || !this->DisplayWindow || this->IsRecording)
+  {
+    return;
+  }
+
+  auto extension = QString(".%1").arg(this->Interface->MovieFileExtension());
+
+  // Don't confirm overwrite, since we will be checking that later, after
+  // we ensure the right suffix is attached...
+  auto filepath = QFileDialog::getSaveFileName(this, "Save Quilt Movie", "",
+    QString("Movies (*%1)").arg(extension), nullptr, QFileDialog::DontConfirmOverwrite);
+  if (filepath.isEmpty())
+  {
+    // User canceled
+    return;
+  }
+
+  auto suffix = this->getQuiltFileSuffix() + extension;
+  if (!filepath.endsWith(suffix))
+  {
+    // We will add the suffix
+    if (filepath.endsWith(extension))
+    {
+      // Remove the extension, if it exists
+      filepath.chop(extension.size());
+    }
+    // Add the suffix
+    filepath += suffix;
+  }
+
+  if (QFile(filepath).exists())
+  {
+    auto title = QString("Overwrite file?");
+    auto text = QString("\"%1\" already exists.\n\n"
+                        "Would you like to overwrite it?")
+                  .arg(filepath);
+    if (QMessageBox::question(this, title, text) == QMessageBox::No)
+    {
+      // User does not want to over-write the file...
+      return;
+    }
+  }
+
+  // Update the interface with the GUI values
+  auto& ui = this->Internal->Ui;
+  this->Interface->SetQuiltExportMagnification(ui.QuiltExportMagnification->value());
+  ui.QuiltExportMagnificationLabel->setEnabled(false);
+  ui.QuiltExportMagnification->setEnabled(false);
+
+  this->Interface->StartRecordingQuilt(this->DisplayWindow, filepath.toUtf8().data());
+  this->IsRecording = true;
+  this->MovieFilepath = filepath;
+
+  // Record the first frame...
+  onRender();
+}
+
+void pqLookingGlassDockPanel::stopRecordingQuilt()
+{
+  if (!this->Interface || !this->IsRecording)
+  {
+    return;
+  }
+
+  auto& ui = this->Internal->Ui;
+  ui.QuiltExportMagnificationLabel->setEnabled(true);
+  ui.QuiltExportMagnification->setEnabled(true);
+
+  this->Interface->StopRecordingQuilt();
+  this->IsRecording = false;
+  auto filepath = this->MovieFilepath;
+  this->MovieFilepath.clear();
+
+  auto text = QString("Saved to \"%1\"").arg(filepath);
+  QMessageBox::information(this, "Quilt Saved", text);
+}
+
 vtkSMProxy* pqLookingGlassDockPanel::getActiveCamera()
 {
   if (!this->View)
@@ -584,7 +780,7 @@ vtkSMProxy* pqLookingGlassDockPanel::getSettingsForView(pqRenderView* view)
 
   // See if we have a settings proxy yet
   auto pxm = view->getProxy()->GetSession()->GetSessionProxyManager();
-  auto settings = pxm->GetProxy("looking_glass", qPrintable(settingsName));
+  auto settings = pxm->GetProxy("looking_glass", settingsName.toUtf8().data());
   if (!settings)
   {
     // Create a Looking Glass settings proxy for this view
@@ -596,7 +792,7 @@ vtkSMProxy* pqLookingGlassDockPanel::getSettingsForView(pqRenderView* view)
     controller->PreInitializeProxy(settings);
     vtkSMPropertyHelper(settings, "View").Set(view->getProxy());
     controller->PostInitializeProxy(settings);
-    pxm->RegisterProxy("looking_glass", qPrintable(settingsName), settings);
+    pxm->RegisterProxy("looking_glass", settingsName.toUtf8().data(), settings);
 
     // Set up a connection to remove the settings when the associated view is deleted
     pqServerManagerModel* smmodel = pqApplicationCore::instance()->getServerManagerModel();

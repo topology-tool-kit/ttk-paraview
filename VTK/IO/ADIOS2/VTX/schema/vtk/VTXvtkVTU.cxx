@@ -48,7 +48,7 @@ VTXvtkVTU::VTXvtkVTU(const std::string& schema, adios2::IO& io, adios2::Engine& 
   InitTimes();
 }
 
-VTXvtkVTU::~VTXvtkVTU() {}
+VTXvtkVTU::~VTXvtkVTU() = default;
 
 // PRIVATE
 void VTXvtkVTU::DoFill(vtkMultiBlockDataSet* multiBlock, const size_t step)
@@ -92,7 +92,7 @@ void VTXvtkVTU::ReadPiece(const size_t step, const size_t pieceID)
     for (auto& dataArrayPair : dataSet)
     {
       const std::string& variableName = dataArrayPair.first;
-      if (this->TIMENames.count(variableName) == 1)
+      if (VTXvtkVTU::TIMENames.count(variableName) == 1)
       {
         continue;
       }
@@ -219,7 +219,7 @@ void VTXvtkVTU::Init()
     const std::string nodeName = DataSetType(type);
     const pugi::xml_node dataSetNode = helper::XMLNode(
       nodeName, pieceNode, true, "when reading " + nodeName + " node in ImageData", false);
-    types::DataSet dataSet = helper::XMLInitDataSet(dataSetNode, this->SpecialNames);
+    types::DataSet dataSet = helper::XMLInitDataSet(dataSetNode, VTXvtkVTU::SpecialNames);
     piece[type] = dataSet;
   };
 

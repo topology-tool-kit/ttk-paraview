@@ -60,11 +60,11 @@ public:
   }
 
   vtkPlot* NewPlot(vtkXYChartRepresentation* self, const std::string& tableName,
-    const std::string& columnName, const std::string& role) override
+    const std::string& columnName, const std::string& role, unsigned int block = 0) override
   {
     if (role == "minmax" || role == "q1q3")
     {
-      vtkPlot* plot = this->Superclass::NewPlot(self, tableName, columnName, role);
+      vtkPlot* plot = this->Superclass::NewPlot(self, tableName, columnName, role, block);
       if (vtkPlotArea* aplot = vtkPlotArea::SafeDownCast(plot))
       {
         aplot->SetLegendVisibility(false);
@@ -78,9 +78,9 @@ public:
       vtkChartXY* chartXY = self->GetChart();
 
       assert(chartXY);
-      return chartXY->AddPlot(vtkChart::LINE);
+      return chartXY->AddPlot(vtkChart::LINE, block);
     }
-    return NULL;
+    return nullptr;
   }
 
   //---------------------------------------------------------------------------
@@ -129,7 +129,7 @@ public:
         std::string columnName = plotInfo.ColumnName;
         vtkTable* table = plot->GetInput();
         vtkDataArray* xarray = self->GetUseIndexForXAxis()
-          ? NULL
+          ? nullptr
           : vtkDataArray::SafeDownCast(table->GetColumnByName(self->GetXAxisSeriesName()));
 
         if (role == "minmax" || role == "q1q3")
@@ -140,7 +140,7 @@ public:
           const std::string label = this->GetSeriesParameter(
             self, tableName, columnName, role, this->Labels, default_label);
 
-          std::vector<std::pair<std::string, std::string> > yNames;
+          std::vector<std::pair<std::string, std::string>> yNames;
           if (role == "minmax")
           {
             yNames.push_back(std::make_pair(columnName.replace(0, 3, "min"), "min " + label));
@@ -155,7 +155,8 @@ public:
           for (const auto& apair : yNames)
           {
             vtkAbstractArray* yarray = table->GetColumnByName(apair.first.c_str());
-            if (yarray != NULL && added_column_names.find(apair.second) == added_column_names.end())
+            if (yarray != nullptr &&
+              added_column_names.find(apair.second) == added_column_names.end())
             {
               added_column_names.insert(apair.second);
               exporter->AddColumn(yarray, apair.second.c_str(), xarray);
@@ -165,7 +166,8 @@ public:
         }
 
         vtkAbstractArray* yarray = table->GetColumnByName(columnName.c_str());
-        if (yarray != NULL && added_column_names.find(plot->GetLabel()) == added_column_names.end())
+        if (yarray != nullptr &&
+          added_column_names.find(plot->GetLabel()) == added_column_names.end())
         {
           added_column_names.insert(plot->GetLabel());
           exporter->AddColumn(yarray, plot->GetLabel().c_str(), xarray);
@@ -248,9 +250,7 @@ vtkQuartileChartRepresentation::vtkQuartileChartRepresentation()
 }
 
 //----------------------------------------------------------------------------
-vtkQuartileChartRepresentation::~vtkQuartileChartRepresentation()
-{
-}
+vtkQuartileChartRepresentation::~vtkQuartileChartRepresentation() = default;
 
 //----------------------------------------------------------------------------
 std::string vtkQuartileChartRepresentation::GetDefaultSeriesLabel(
@@ -277,7 +277,7 @@ void vtkQuartileChartRepresentation::PrepareForRendering()
   this->HasOnlyOnePoint = false;
   for (auto itr = tables.begin(); itr != tables.end(); ++itr)
   {
-    vtkTable* table = itr->second;
+    vtkTable* table = itr->second.first;
     vtkAbstractArray* column = table->GetColumnByName("N");
     if (column)
     {

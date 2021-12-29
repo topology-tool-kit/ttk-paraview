@@ -13,16 +13,16 @@
 
 =========================================================================*/
 
-#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
 #include <vtksys/Base64.h>
+#include <vtksys/FStream.hxx>
 #include <vtksys/RegularExpression.hxx>
 #include <vtksys/SystemTools.hxx>
 
-#include <assert.h>
+#include <cassert>
 #include <cstring>
 
 class Output
@@ -34,7 +34,7 @@ public:
     this->CurrentPosition = 0;
     this->UseBase64Encoding = false;
   }
-  ~Output() {}
+  ~Output() = default;
   Output(const Output&) {}
   void operator=(const Output&) {}
   std::ostringstream Stream;
@@ -67,8 +67,9 @@ public:
 
   int ProcessFile(const char* file, const char* title)
   {
-    std::ifstream ifs(file,
-      this->UseBase64Encoding ? (std::ifstream::in | std::ifstream::binary) : std::ifstream::in);
+    vtksys::ifstream ifs(file,
+      this->UseBase64Encoding ? (vtksys::ifstream::in | vtksys::ifstream::binary)
+                              : vtksys::ifstream::in);
     if (!ifs)
     {
       std::cerr << "Cannot open file: " << file << std::endl;
@@ -215,7 +216,7 @@ public:
 
 static bool read_option_file(std::vector<std::string>& strings, const char* fname)
 {
-  std::ifstream fp(fname);
+  vtksys::ifstream fp(fname);
   if (!fp)
   {
     return false;
@@ -278,7 +279,7 @@ int main(int argc, char* argv[])
             << "#ifndef " << output_file_name << "_h" << std::endl
             << "#define " << output_file_name << "_h" << std::endl
             << std::endl
-            << "#include <string.h>" << std::endl
+            << "#include <cstring>" << std::endl
             << "#include <cassert>" << std::endl
             << "#include <algorithm>" << std::endl
             << std::endl;
@@ -288,9 +289,9 @@ int main(int argc, char* argv[])
   {
     std::string fname = args[argv_offset + cc];
     std::string moduleName = vtksys::SystemTools::GetFilenameWithoutLastExtension(fname);
-    if (moduleName.size() == 0)
+    if (moduleName.empty())
     {
-      std::cerr << "Cannot extract module name from the file: " << args[argv_offset + cc].c_str()
+      std::cerr << "Cannot extract module name from the file: " << args[argv_offset + cc]
                 << std::endl;
       return 1;
     }
@@ -316,7 +317,7 @@ int main(int argc, char* argv[])
                    << ", res + offset); offset += len" << kk << ";" << std::endl;
     }
     ot.Stream << "// Get single string" << std::endl
-              << "char* " << ot.Prefix << moduleName << args[argv_offset + 4].c_str() << "()"
+              << "inline char* " << ot.Prefix << moduleName << args[argv_offset + 4] << "()"
               << std::endl
               << "{" << std::endl
               << prelenstr.str() << std::endl
@@ -331,13 +332,13 @@ int main(int argc, char* argv[])
   }
 
   ot.Stream << std::endl << std::endl << "#endif" << std::endl;
-  FILE* fp = fopen(output.c_str(), "w");
-  if (!fp)
+  vtksys::ofstream fout(output.c_str());
+  if (!fout)
   {
     std::cerr << "Cannot open output file: " << output << std::endl;
     return 1;
   }
-  fprintf(fp, "%s", ot.Stream.str().c_str());
-  fclose(fp);
+  fout << ot.Stream.str();
+  fout.close();
   return 0;
 }

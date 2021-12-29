@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <QRegExpValidator>
 
+#include "pqQtDeprecated.h"
 #include "pqUndoStack.h"
 #include "vtkEventQtSlotConnect.h"
 #include "vtkPVComparativeAnimationCue.h"
@@ -63,7 +64,7 @@ public:
 std::vector<double> getValues(const QString& str)
 {
   std::vector<double> values;
-  QStringList parts = str.split(',', QString::SkipEmptyParts);
+  QStringList parts = str.split(',', PV_QT_SKIP_EMPTY_PARTS);
   foreach (QString part, parts)
   {
     values.push_back(QVariant(part).toDouble());
@@ -92,7 +93,7 @@ pqComparativeCueWidget::~pqComparativeCueWidget()
 {
   this->VTKConnect->Disconnect();
   this->VTKConnect->Delete();
-  this->VTKConnect = 0;
+  this->VTKConnect = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -111,7 +112,7 @@ void pqComparativeCueWidget::setCue(vtkSMProxy* _cue)
       this->Cue, vtkCommand::PropertyModifiedEvent, this, SLOT(updateGUIOnIdle()));
   }
   this->updateGUI();
-  this->setEnabled(this->Cue != NULL);
+  this->setEnabled(this->Cue != nullptr);
 }
 
 //-----------------------------------------------------------------------------
@@ -150,7 +151,7 @@ void pqComparativeCueWidget::updateGUI()
   {
     char a = 'A';
     a += cc;
-    hlabels.push_back(QString::fromLocal8Bit(&a, 1));
+    hlabels.push_back(QString::fromUtf8(&a, 1));
   }
   this->setHorizontalHeaderLabels(hlabels);
 
@@ -197,8 +198,8 @@ void pqComparativeCueWidget::onCellChanged(int rowno, int colno)
   QString text = this->item(rowno, colno)->text();
   if (this->acceptsMultipleValues())
   {
-    QStringList parts = text.split(',', QString::SkipEmptyParts);
-    if (parts.size() > 0)
+    QStringList parts = text.split(',', PV_QT_SKIP_EMPTY_PARTS);
+    if (!parts.empty())
     {
       double* newvalues = new double[parts.size()];
       double* ptr = newvalues;

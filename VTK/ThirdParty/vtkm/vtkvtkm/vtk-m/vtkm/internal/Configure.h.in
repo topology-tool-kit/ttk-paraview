@@ -20,6 +20,11 @@
 #define VTKM_CUDA_DEVICE_PASS
 #endif
 
+// Defined when compiling for the HIP language.
+#ifdef __HIP__
+#define VTKM_HIP
+#endif
+
 #if defined(_MSC_VER)
 //MSVC 2015+ can use a clang frontend, so we want to label it only as MSVC
 //and not MSVC and clang
@@ -34,6 +39,10 @@
 // PGI reports as GNUC as it generates the same ABI, so we need to check for
 // it before gcc.
 #define VTKM_PGI
+
+#elif defined(__ibmxl__)
+//Check for xl before GCC and clang, as xl claims it is many things
+#define VTKM_XL
 
 #elif defined(__clang__)
 //Check for clang before GCC, as clang says it is GNUC since it has ABI
@@ -64,6 +73,10 @@
 
 #if !defined(VTKM_NO_ASSERT_CUDA)
 #cmakedefine VTKM_NO_ASSERT_CUDA
+#endif
+
+#if !defined(VTKM_NO_ASSERT_HIP)
+#cmakedefine VTKM_NO_ASSERT_HIP
 #endif
 
 #if !defined(VTKM_USE_DOUBLE_PRECISION) && !defined(VTKM_NO_DOUBLE_PRECISION)
@@ -277,6 +290,10 @@
 //Mark if Kokkos has Cuda backend enabled
 #ifndef VTKM_KOKKOS_CUDA
 #cmakedefine VTKM_KOKKOS_CUDA
+#endif
+//Mark if Kokkos has HIP backend enabled
+#ifndef VTKM_KOKKOS_HIP
+#cmakedefine VTKM_KOKKOS_HIP
 #endif
 
 //Mark if we are building with MPI enabled.

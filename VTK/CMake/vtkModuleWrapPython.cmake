@@ -6,7 +6,7 @@
 @file vtkModuleWrapPython.cmake
 @brief APIs for wrapping modules for Python
 
-@section Limitations
+@section python-wrapping-limitations Limitations
 
 Known limitations include:
 
@@ -121,7 +121,17 @@ function (_vtk_module_wrap_python_sources module sources classes)
   _vtk_module_get_module_property("${module}"
     PROPERTY  "private_depends"
     VARIABLE  _vtk_python_private_depends)
-  list(APPEND _vtk_python_hierarchy_depends ${_vtk_python_private_depends})
+  list(APPEND _vtk_python_hierarchy_depends
+    ${_vtk_python_private_depends})
+  _vtk_module_get_module_property("${module}"
+    PROPERTY  "optional_depends"
+    VARIABLE  _vtk_python_optional_depends)
+  foreach (_vtk_python_optional_depend IN LISTS _vtk_python_optional_depends)
+    if (TARGET "${_vtk_python_optional_depend}")
+      list(APPEND _vtk_python_hierarchy_depends
+        "${_vtk_python_optional_depend}")
+    endif ()
+  endforeach ()
 
   set(_vtk_python_command_depends)
   foreach (_vtk_python_hierarchy_depend IN LISTS _vtk_python_hierarchy_depends)
@@ -430,16 +440,15 @@ extern PyObject* PyInit_${_vtk_python_library_name}();
     add_library("${name}" MODULE
       ${_vtk_python_library_sources})
     if (WIN32 AND NOT CYGWIN)
-      # XXX(python-debug): This is disabled out because there's no reliable way
-      # to tell whether we're using a debug build of Python or not. Since using
-      # a debug Python build is so rare, just assume we're always using a
-      # non-debug build of Python itself.
+      # This is enabled explicitly by the USE_DEBUG_SUFFIX argument because
+      # there's no reliable way to detect whether we're using a debug build of
+      # Python or not.
       #
       # The proper fix is to dig around and ask the backing `PythonN::Python`
       # target used by `VTK::Python` for its properties to find out, per
       # configuration, whether it is a debug build. If it is, add the postfix
       # (regardless of VTK's build type). Otherwise, no postfix.
-      if (FALSE)
+      if (_vtk_python_USE_DEBUG_SUFFIX)
         set_property(TARGET "${name}"
           APPEND_STRING
           PROPERTY
@@ -528,6 +537,7 @@ vtk_module_wrap_python(
 
   [PYTHON_PACKAGE <package>]
   [SOABI <soabi>]
+  [USE_DEBUG_SUFFIX <ON|OFF>]
 
   [INSTALL_EXPORT <export>]
   [COMPONENT <component>])
@@ -574,6 +584,9 @@ vtk_module_wrap_python(
     `package.subpackage`).
   * `SOABI`: (Required for wheel support): If given, generate libraries with
     the SOABI tag in the module filename.
+  * `USE_DEBUG_SUFFIX` (Defaults to `OFF`): If `ON`, Windows modules will have
+    a `_d` suffix appended to the module name. This is intended for use with
+    debug Python builds.
   * `INSTALL_EXPORT`: If provided, static installs will add the installed
     libraries to the provided export set.
   * `COMPONENT`: Defaults to `python`. All install rules created by this
@@ -582,8 +595,8 @@ vtk_module_wrap_python(
 function (vtk_module_wrap_python)
   cmake_parse_arguments(PARSE_ARGV 0 _vtk_python
     ""
-    "MODULE_DESTINATION;STATIC_MODULE_DESTINATION;LIBRARY_DESTINATION;PYTHON_PACKAGE;BUILD_STATIC;INSTALL_HEADERS;INSTALL_EXPORT;TARGET_SPECIFIC_COMPONENTS;TARGET;COMPONENT;WRAPPED_MODULES;CMAKE_DESTINATION;DEPENDS;SOABI"
-    "MODULES")
+    "MODULE_DESTINATION;STATIC_MODULE_DESTINATION;LIBRARY_DESTINATION;PYTHON_PACKAGE;BUILD_STATIC;INSTALL_HEADERS;INSTALL_EXPORT;TARGET_SPECIFIC_COMPONENTS;TARGET;COMPONENT;WRAPPED_MODULES;CMAKE_DESTINATION;SOABI;USE_DEBUG_SUFFIX"
+    "DEPENDS;MODULES")
 
   if (_vtk_python_UNPARSED_ARGUMENTS)
     message(FATAL_ERROR
@@ -616,6 +629,10 @@ function (vtk_module_wrap_python)
 
   if (NOT DEFINED _vtk_python_TARGET_SPECIFIC_COMPONENTS)
     set(_vtk_python_TARGET_SPECIFIC_COMPONENTS OFF)
+  endif ()
+
+  if (NOT DEFINED _vtk_python_USE_DEBUG_SUFFIX)
+    set(_vtk_python_USE_DEBUG_SUFFIX OFF)
   endif ()
 
   if (_vtk_python_SOABI)

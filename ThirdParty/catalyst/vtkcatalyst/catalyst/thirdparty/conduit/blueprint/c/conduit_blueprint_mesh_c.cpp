@@ -1,46 +1,6 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
-// Copyright (c) 2014-2019, Lawrence Livermore National Security, LLC.
-// 
-// Produced at the Lawrence Livermore National Laboratory
-// 
-// LLNL-CODE-666778
-// 
-// All rights reserved.
-// 
-// This file is part of Conduit. 
-// 
-// For details, see: http://software.llnl.gov/conduit/.
-// 
-// Please also read conduit/LICENSE
-// 
-// Redistribution and use in source and binary forms, with or without 
-// modification, are permitted provided that the following conditions are met:
-// 
-// * Redistributions of source code must retain the above copyright notice, 
-//   this list of conditions and the disclaimer below.
-// 
-// * Redistributions in binary form must reproduce the above copyright notice,
-//   this list of conditions and the disclaimer (as noted below) in the
-//   documentation and/or other materials provided with the distribution.
-// 
-// * Neither the name of the LLNS/LLNL nor the names of its contributors may
-//   be used to endorse or promote products derived from this software without
-//   specific prior written permission.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY,
-// LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
-// DAMAGES  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-// OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, 
-// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
-// IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
-// POSSIBILITY OF SUCH DAMAGE.
-// 
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
+// Copyright (c) Lawrence Livermore National Security, LLC and other Conduit
+// Project developers. See top-level LICENSE AND COPYRIGHT files for dates and
+// other details. No copyright assignment is required to contribute to Conduit.
 
 //-----------------------------------------------------------------------------
 ///
@@ -111,6 +71,19 @@ conduit_blueprint_mesh_generate_index(const conduit_node *cmesh,
 /// Interface to generate example data
 //-----------------------------------------------------------------------------
 void
+conduit_blueprint_mesh_examples_basic(const char *mesh_type,
+                                      conduit_index_t nx,
+                                      conduit_index_t ny,
+                                      conduit_index_t nz,
+                                      conduit_node *cres)
+{
+    Node &res = cpp_node_ref(cres);
+    blueprint::mesh::examples::basic(std::string(mesh_type),
+                                     nx,ny,nz,
+                                     res);
+}
+
+void
 conduit_blueprint_mesh_examples_braid(const char *mesh_type,
                                       conduit_index_t nx,
                                       conduit_index_t ny,
@@ -121,6 +94,56 @@ conduit_blueprint_mesh_examples_braid(const char *mesh_type,
     blueprint::mesh::examples::braid(std::string(mesh_type),
                                      nx,ny,nz,
                                      res);
+}
+
+void
+conduit_blueprint_mesh_examples_julia(conduit_index_t nx,
+                                      conduit_index_t ny,
+                                      conduit_float64 x_min,
+                                      conduit_float64 x_max,
+                                      conduit_float64 y_min,
+                                      conduit_float64 y_max,
+                                      conduit_float64 c_re,
+                                      conduit_float64 c_im,
+                                      conduit_node *cres)
+{
+    Node &res = cpp_node_ref(cres);
+    blueprint::mesh::examples::julia(nx,ny,
+                                     x_min,x_max,
+                                     y_min,y_max,
+                                     c_re,c_im,
+                                     res);
+}
+
+void
+conduit_blueprint_mesh_examples_spiral(conduit_index_t ndomains,
+                                       conduit_node *cres)
+{
+    Node &res = cpp_node_ref(cres);
+    blueprint::mesh::examples::spiral(ndomains,
+                                      res);
+}
+
+void
+conduit_blueprint_mesh_examples_polytess(conduit_index_t nlevels,
+                                         conduit_node *cres)
+{
+    Node &res = cpp_node_ref(cres);
+    blueprint::mesh::examples::polytess(nlevels,
+                                        res);
+}
+
+void
+conduit_blueprint_mesh_examples_misc(const char *mesh_type,
+                                     conduit_index_t nx,
+                                     conduit_index_t ny,
+                                     conduit_index_t nz,
+                                     conduit_node *cres)
+{
+    Node &res = cpp_node_ref(cres);
+    blueprint::mesh::examples::misc(std::string(mesh_type),
+                                    nx,ny,nz,
+                                    res);
 }
 
 

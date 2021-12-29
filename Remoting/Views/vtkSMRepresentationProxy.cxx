@@ -292,11 +292,17 @@ void vtkSMRepresentationProxy::ViewUpdated(vtkSMProxy* view)
       this->MarkInputsAsDirty();
     }
 
+    const bool repr_updated = this->VTKRepresentationUpdated;
     const bool using_cache = this->VTKRepresentationUpdateSkipped;
     this->VTKRepresentationUpdateSkipped = false;
     this->VTKRepresentationUpdated = false;
     this->VTKRepresentationUpdateTimeChanged = false;
-    this->PostUpdateData(using_cache);
+    if (repr_updated || using_cache)
+    {
+      // Don't call PostUpdateData, unless representation was updated or cache
+      // was used. This is necessary to avoid #20133.
+      this->PostUpdateData(using_cache);
+    }
   }
 
   // If this class has sub-representations, we need to tell those that the view
@@ -350,7 +356,7 @@ vtkPVProminentValuesInformation* vtkSMRepresentationProxy::GetProminentValuesInf
     this->ProminentValuesInformation->GetNumberOfComponents() != numComponents ||
     this->ProminentValuesInformation->GetFieldName() != name ||
     strcmp(this->ProminentValuesInformation->GetFieldAssociation(),
-      vtkDataObject::GetAssociationTypeAsString(fieldAssoc));
+      vtkDataObject::GetAssociationTypeAsString(fieldAssoc)) != 0;
   bool invalid = this->ProminentValuesFraction < 0. || this->ProminentValuesUncertainty < 0. ||
     this->ProminentValuesFraction > 1. || this->ProminentValuesUncertainty > 1.;
   bool largerFractionOrLessCertain = this->ProminentValuesFraction < fraction ||
@@ -409,7 +415,7 @@ vtkTypeUInt32 vtkSMRepresentationProxy::GetGlobalID()
 {
   bool has_gid = this->HasGlobalID();
 
-  if (!has_gid && this->Session != NULL)
+  if (!has_gid && this->Session != nullptr)
   {
     // reserve 1+MAX_NUMBER_OF_INTERNAL_REPRESENTATIONS contiguous IDs for the source proxies and
     // possible extract
@@ -427,7 +433,7 @@ bool vtkSMRepresentationProxy::SetRepresentationType(const char* type)
   {
     auto sld = property->FindDomain<vtkSMStringListDomain>();
     unsigned int tmp;
-    if (sld != NULL && sld->IsInDomain(type, tmp) == 0)
+    if (sld != nullptr && sld->IsInDomain(type, tmp) == 0)
     {
       // Let's not warn about this. Let the caller decide if this is an
       // error/warning.

@@ -100,9 +100,7 @@ vtkTemporalRanges::vtkTemporalRanges()
   this->CurrentTimeIndex = 0;
 }
 
-vtkTemporalRanges::~vtkTemporalRanges()
-{
-}
+vtkTemporalRanges::~vtkTemporalRanges() = default;
 
 void vtkTemporalRanges::PrintSelf(ostream& os, vtkIndent indent)
 {
@@ -269,10 +267,10 @@ void vtkTemporalRanges::AccumulateArray(vtkDataArray* field, vtkTable* output)
 {
   int numComponents = field->GetNumberOfComponents();
   vtkIdType numTuples = field->GetNumberOfTuples();
-  vtkDoubleArray* magnitudeColumn = NULL;
+  vtkDoubleArray* magnitudeColumn = nullptr;
   std::vector<vtkDoubleArray*> componentColumns(numComponents);
   VTK_CREATE(vtkDoubleArray, magnitudeAccumulate);
-  std::vector<vtkSmartPointer<vtkDoubleArray> > componentAccumulate(numComponents);
+  std::vector<vtkSmartPointer<vtkDoubleArray>> componentAccumulate(numComponents);
   if (numComponents > 1)
   {
     magnitudeColumn = this->GetColumn(output, field->GetName(), -1);
@@ -309,8 +307,9 @@ void vtkTemporalRanges::AccumulateArray(vtkDataArray* field, vtkTable* output)
 
   for (int j = 0; j < numComponents; j++)
   {
-    componentAccumulate[j]->SetValue(AVERAGE_ROW, (componentAccumulate[j]->GetValue(AVERAGE_ROW) /
-                                                    componentAccumulate[j]->GetValue(COUNT_ROW)));
+    componentAccumulate[j]->SetValue(AVERAGE_ROW,
+      (componentAccumulate[j]->GetValue(AVERAGE_ROW) /
+        componentAccumulate[j]->GetValue(COUNT_ROW)));
     AccumulateColumn(componentAccumulate[j], componentColumns[j]);
   }
   if (magnitudeColumn)

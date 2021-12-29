@@ -34,6 +34,11 @@ public:
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /**
+   * Returns `VTK_ABSTRACT_ELECTRONIC_DATA`.
+   */
+  int GetDataObjectType() override { return VTK_ABSTRACT_ELECTRONIC_DATA; }
+
+  /**
    * Returns the number of molecular orbitals available.
    */
   virtual vtkIdType GetNumberOfMOs() = 0;
@@ -95,13 +100,13 @@ public:
    */
   void DeepCopy(vtkDataObject* obj) override;
 
-  //@{
+  ///@{
   /**
    * Get the padding between the molecule and the cube boundaries. This is
    * used to determine the dataset's bounds.
    */
   vtkGetMacro(Padding, double);
-  //@}
+  ///@}
 
 protected:
   vtkAbstractElectronicData();

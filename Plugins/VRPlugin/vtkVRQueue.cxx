@@ -1,7 +1,7 @@
 /*=========================================================================
 
    Program: ParaView
-   Module:    vtkVRQueue.cxx
+   Module:  vtkVRQueue.cxx
 
    Copyright (c) 2005,2006 Sandia Corporation, Kitware Inc.
    All rights reserved.
@@ -39,21 +39,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 vtkStandardNewMacro(vtkVRQueue);
 
 //----------------------------------------------------------------------------
-vtkVRQueue::vtkVRQueue()
-  : Superclass()
-{
-}
+vtkVRQueue::vtkVRQueue() = default;
 
 //----------------------------------------------------------------------------
-vtkVRQueue::~vtkVRQueue()
-{
-}
+vtkVRQueue::~vtkVRQueue() = default;
 
 //----------------------------------------------------------------------------
-void vtkVRQueue::Enqueue(const vtkVREventData& data)
+void vtkVRQueue::Enqueue(const vtkVREvent& event)
 {
   this->Mutex->Lock();
-  this->Queue.push(data);
+  this->Queue.push(event);
   this->Mutex->Unlock();
   this->CondVar->Signal();
 }
@@ -68,14 +63,14 @@ bool vtkVRQueue::IsEmpty() const
 }
 
 //----------------------------------------------------------------------------
-bool vtkVRQueue::TryDequeue(vtkVREventData& data)
+bool vtkVRQueue::TryDequeue(vtkVREvent& event)
 {
   this->Mutex->Lock();
   bool result = false;
   if (!this->Queue.empty())
   {
     result = true;
-    data = this->Queue.front();
+    event = this->Queue.front();
     this->Queue.pop();
   }
   this->Mutex->Unlock();
@@ -84,7 +79,7 @@ bool vtkVRQueue::TryDequeue(vtkVREventData& data)
 }
 
 //----------------------------------------------------------------------------
-void vtkVRQueue::Dequeue(vtkVREventData& data)
+void vtkVRQueue::Dequeue(vtkVREvent& event)
 {
   this->Mutex->Lock();
   while (this->Queue.empty())
@@ -92,18 +87,18 @@ void vtkVRQueue::Dequeue(vtkVREventData& data)
     this->CondVar->Wait(this->Mutex.GetPointer());
   }
 
-  data = this->Queue.front();
+  event = this->Queue.front();
   this->Queue.pop();
   this->Mutex->Unlock();
 }
 
 //----------------------------------------------------------------------------
-bool vtkVRQueue::TryDequeue(std::queue<vtkVREventData>& data)
+bool vtkVRQueue::TryDequeue(std::queue<vtkVREvent>& event)
 {
   this->Mutex->Lock();
   if (!this->Queue.empty())
   {
-    data = this->Queue;
+    event = this->Queue;
     while (!this->Queue.empty())
     {
       this->Queue.pop();
@@ -111,6 +106,7 @@ bool vtkVRQueue::TryDequeue(std::queue<vtkVREventData>& data)
   }
   this->Mutex->Unlock();
   return true;
+  return true; // WRS-TODO: for the other TryDequeue, we return the result.  Why not here? */
 }
 
 //----------------------------------------------------------------------------

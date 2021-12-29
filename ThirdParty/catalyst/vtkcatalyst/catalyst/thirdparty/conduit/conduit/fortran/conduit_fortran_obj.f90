@@ -1,46 +1,6 @@
-!*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*!
-!* Copyright (c) 2014-2019, Lawrence Livermore National Security, LLC.
-!* 
-!* Produced at the Lawrence Livermore National Laboratory
-!* 
-!* LLNL-CODE-666778
-!* 
-!* All rights reserved.
-!* 
-!* This file is part of Conduit. 
-!* 
-!* For details, see: http://software.llnl.gov/conduit/.
-!* 
-!* Please also read conduit/LICENSE
-!* 
-!* Redistribution and use in source and binary forms, with or without 
-!* modification, are permitted provided that the following conditions are met:
-!* 
-!* * Redistributions of source code must retain the above copyright notice, 
-!*   this list of conditions and the disclaimer below.
-!* 
-!* * Redistributions in binary form must reproduce the above copyright notice,
-!*   this list of conditions and the disclaimer (as noted below) in the
-!*   documentation and/or other materials provided with the distribution.
-!* 
-!* * Neither the name of the LLNS/LLNL nor the names of its contributors may
-!*   be used to endorse or promote products derived from this software without
-!*   specific prior written permission.
-!* 
-!* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-!* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-!* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-!* ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY,
-!* LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY
-!* DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
-!* DAMAGES  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-!* OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-!* HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, 
-!* STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
-!* IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
-!* POSSIBILITY OF SUCH DAMAGE.
-!* 
-!*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*!
+!* Copyright (c) Lawrence Livermore National Security, LLC and other Conduit
+!* Project developers. See top-level LICENSE AND COPYRIGHT files for dates and
+!* other details. No copyright assignment is required to contribute to Conduit.
 
 !------------------------------------------------------------------------------
 ! conduit_fortran_obj.f
@@ -60,8 +20,10 @@ module conduit_obj
 
         !----------------------------------------------------------------------
         procedure :: fetch  => conduit_node_obj_fetch
+        procedure :: fetch_existing  => conduit_node_obj_fetch_existing
         procedure :: append => conduit_node_obj_append
-        procedure :: child  => conduit_node_obj_child
+        procedure :: child_by_index => conduit_node_obj_child
+        procedure :: child_by_name  => conduit_node_obj_child_by_name
         procedure :: parent => conduit_node_obj_parent
         procedure :: info   => conduit_node_obj_info
         !----------------------------------------------------------------------
@@ -98,13 +60,15 @@ module conduit_obj
         procedure :: load  => conduit_node_obj_load
 
         !----------------------------------------------------------------------
+        procedure :: add_child  => conduit_node_obj_add_child
         procedure :: has_child  => conduit_node_obj_has_child
         procedure :: has_path   => conduit_node_obj_has_path
         procedure :: rename_child => conduit_node_obj_rename_child
 
         !----------------------------------------------------------------------
         procedure :: remove_path  => conduit_node_obj_remove_path
-        procedure :: remove_child => conduit_node_obj_remove_child
+        procedure :: remove_child_by_index => conduit_node_obj_remove_child
+        procedure :: remove_child_by_name  => conduit_node_obj_remove_child_by_name
 
         !----------------------------------------------------------------------
         !----------------------------------------------------------------------
@@ -231,8 +195,11 @@ module conduit_obj
 
         !----------------------------------------------------------------------
         
-        generic :: remove  => remove_path, &
-                              remove_child
+        generic :: remove  => remove_path
+
+        generic :: remove_child  => remove_child_by_index, &
+                                    remove_child_by_name
+
 
         generic :: set  => set_node, &
                            set_int32, &
@@ -240,6 +207,9 @@ module conduit_obj
                            set_float32, &
                            set_float64, &
                            set_char8_str
+
+        generic :: child  => child_by_index, &
+                             child_by_name
 
         generic :: set_ptr  => set_int32_ptr, &
                                set_int64_ptr, &
@@ -451,6 +421,16 @@ contains
      end function conduit_node_obj_fetch
 
     !--------------------------------------------------------------------------
+    function conduit_node_obj_fetch_existing(obj, path) result(res)
+        use iso_c_binding
+        implicit none
+        class(node) :: obj
+        character(*) :: path
+        type(node) :: res
+        res%cnode = conduit_node_fetch_existing(obj%cnode, trim(path) // C_NULL_CHAR)
+    end function conduit_node_obj_fetch_existing
+
+    !--------------------------------------------------------------------------
     function conduit_node_obj_append(obj) result(res)
         use iso_c_binding
         implicit none
@@ -458,6 +438,16 @@ contains
         type(node) :: res
         res%cnode = conduit_node_append(obj%cnode)
     end function conduit_node_obj_append
+
+    !--------------------------------------------------------------------------
+    function conduit_node_obj_add_child(obj, name) result(res)
+        use iso_c_binding
+        implicit none
+        class(node) :: obj
+        character(*) :: name
+        type(node) :: res
+        res%cnode = conduit_node_add_child(obj%cnode, name)
+    end function conduit_node_obj_add_child
 
     !--------------------------------------------------------------------------
     function conduit_node_obj_child(obj, idx) result(res)
@@ -468,6 +458,16 @@ contains
         type(node) :: res
         res%cnode = conduit_node_child(obj%cnode, idx)
     end function conduit_node_obj_child
+
+    !--------------------------------------------------------------------------
+    function conduit_node_obj_child_by_name(obj, name) result(res)
+        use iso_c_binding
+        implicit none
+        class(node) :: obj
+        character(*) :: name
+        type(node) :: res
+        res%cnode = conduit_node_child_by_name(obj%cnode, name)
+    end function conduit_node_obj_child_by_name
 
     !--------------------------------------------------------------------------
     function conduit_node_obj_has_child(obj, name) result(res)
@@ -506,6 +506,15 @@ contains
         integer(C_SIZE_T) :: idx
         call conduit_node_remove_child(obj%cnode, idx)
     end subroutine conduit_node_obj_remove_child
+
+    !--------------------------------------------------------------------------
+    subroutine conduit_node_obj_remove_child_by_name(obj, name)
+        use iso_c_binding
+        implicit none
+        class(node) :: obj
+        character(*) :: name
+        call conduit_node_remove_child_by_name(obj%cnode, name)
+    end subroutine conduit_node_obj_remove_child_by_name
 
     !--------------------------------------------------------------------------
     subroutine conduit_node_obj_rename_child(obj, old_name, new_name)

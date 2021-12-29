@@ -60,7 +60,7 @@ public:
   void PrintSelf(ostream& os, vtkIndent indent) override;
   static ostream& PrintPolynomial(ostream& os, double* P, int degP);
 
-  //@{
+  ///@{
   /**
    * Finds all REAL roots (within tolerance \a tol) of the \a d -th degree polynomial
    * \f[
@@ -68,7 +68,7 @@ public:
    * \f]
    * in ]\a a[0] ; \a a[1]] using the Habicht sequence (polynomial
    * coefficients are REAL) and returns the count \a nr. All roots are bracketed
-   * in the \nr first ]\a upperBnds[i] - \a tol ; \a upperBnds[i]] intervals.
+   * in the \a nr first ]\a upperBnds[i] - \a tol ; \a upperBnds[i]] intervals.
    * Returns -1 if anything went wrong (such as: polynomial does not have
    * degree \a d, the interval provided by the other is absurd, etc.).
 
@@ -97,7 +97,7 @@ public:
    * Warning: it is the user's responsibility to make sure the \a upperBnds
    * array is large enough to contain the maximal number of expected roots.
    * Note that \a nr is smaller or equal to the actual number of roots in
-   * ]\a a[0] ; \a a[1]] since roots within \tol are lumped in the same bracket.
+   * ]\a a[0] ; \a a[1]] since roots within \a tol are lumped in the same bracket.
    * array is large enough to contain the maximal number of expected upper bounds.
    */
   static int HabichtBisectionSolve(double* P, int d, double* a, double* upperBnds, double tol);
@@ -105,15 +105,15 @@ public:
     double* P, int d, double* a, double* upperBnds, double tol, int intervalType);
   static int HabichtBisectionSolve(
     double* P, int d, double* a, double* upperBnds, double tol, int intervalType, bool divideGCD);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Finds all REAL roots (within tolerance \a tol) of the \a d -th degree polynomial
    * P[0] X^d + ... + P[d-1] X + P[d]
    * in ]\a a[0] ; \a a[1]] using Sturm's theorem ( polynomial
    * coefficients are REAL ) and returns the count \a nr. All roots are bracketed
-   * in the \nr first ]\a upperBnds[i] - \a tol ; \a upperBnds[i]] intervals.
+   * in the \a nr first ]\a upperBnds[i] - \a tol ; \a upperBnds[i]] intervals.
    * Returns -1 if anything went wrong (such as: polynomial does not have
    * degree \a d, the interval provided by the other is absurd, etc.).
 
@@ -135,7 +135,7 @@ public:
    * Warning: it is the user's responsibility to make sure the \a upperBnds
    * array is large enough to contain the maximal number of expected roots.
    * Note that \a nr is smaller or equal to the actual number of roots in
-   * ]\a a[0] ; \a a[1]] since roots within \tol are lumped in the same bracket.
+   * ]\a a[0] ; \a a[1]] since roots within \a tol are lumped in the same bracket.
    * array is large enough to contain the maximal number of expected upper bounds.
    */
   static int SturmBisectionSolve(double* P, int d, double* a, double* upperBnds, double tol);
@@ -143,7 +143,7 @@ public:
     double* P, int d, double* a, double* upperBnds, double tol, int intervalType);
   static int SturmBisectionSolve(
     double* P, int d, double* a, double* upperBnds, double tol, int intervalType, bool divideGCD);
-  //@}
+  ///@}
 
   /**
    * This uses the derivative sequence to filter possible roots of a polynomial.
@@ -266,7 +266,7 @@ public:
    */
   static int SolveLinear(double c0, double c1, double* r1, int* num_roots);
 
-  //@{
+  ///@{
   /**
    * Set/get the tolerance used when performing polynomial Euclidean division
    * to find polynomial roots. This tolerance is used to decide whether the
@@ -275,7 +275,7 @@ public:
    */
   static void SetDivisionTolerance(double tol);
   static double GetDivisionTolerance();
-  //@}
+  ///@}
 
 protected:
   vtkPolynomialSolversUnivariate() = default;

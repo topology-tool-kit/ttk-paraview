@@ -1,7 +1,7 @@
 /*=========================================================================
 
    Program: ParaView
-   Module:    $RCSfile$
+   Module:  pqVRAddConnectionDialog.cxx
 
    Copyright (c) 2005,2006 Sandia Corporation, Kitware Inc.
    All rights reserved.
@@ -147,11 +147,11 @@ pqVRAddConnectionDialog::pqVRAddConnectionDialog(QWidget* parentObject, Qt::Wind
   this->Internals->setupUi(this);
   this->Internals->Type = pqInternals::None;
 #if PARAVIEW_PLUGIN_VRPlugin_USE_VRPN
-  this->Internals->VRPNConn = NULL;
+  this->Internals->VRPNConn = nullptr;
   this->Internals->connectionType->addItem("VRPN");
 #endif
 #if PARAVIEW_PLUGIN_VRPlugin_USE_VRUI
-  this->Internals->VRUIConn = NULL;
+  this->Internals->VRUIConn = nullptr;
   this->Internals->connectionType->addItem("VRUI");
 #endif
   this->connectionTypeChanged();
@@ -159,7 +159,7 @@ pqVRAddConnectionDialog::pqVRAddConnectionDialog(QWidget* parentObject, Qt::Wind
   // Restrict input in some line edits
   QRegExpValidator* connNameValidator = new QRegExpValidator(QRegExp("[0-9a-zA-Z]+"), this);
   QRegExpValidator* addressValidator =
-    new QRegExpValidator(QRegExp("([0-9a-zA-Z.]+@)?([a-zA-Z]+://)?[0-9a-zA-Z.]+"), this);
+    new QRegExpValidator(QRegExp("([0-9a-zA-Z.]+@)?[0-9a-zA-Z.:]+"), this);
   QRegExpValidator* inputIdValidator = new QRegExpValidator(QRegExp("[0-9]+"), this);
   QRegExpValidator* inputNameValidator = new QRegExpValidator(QRegExp("[0-9a-zA-Z]+"), this);
   this->Internals->connectionName->setValidator(connNameValidator);
@@ -202,7 +202,7 @@ pqVRPNConnection* pqVRAddConnectionDialog::getVRPNConnection()
   {
     return this->Internals->VRPNConn;
   }
-  return NULL;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -236,7 +236,7 @@ pqVRUIConnection* pqVRAddConnectionDialog::getVRUIConnection()
   {
     return this->Internals->VRUIConn;
   }
-  return NULL;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -303,25 +303,26 @@ void pqVRAddConnectionDialog::accept()
 }
 
 //-----------------------------------------------------------------------------
-void pqVRAddConnectionDialog::keyPressEvent(QKeyEvent* e)
+void pqVRAddConnectionDialog::keyPressEvent(QKeyEvent* event)
 {
   // Disable the default behavior of clicking "Ok" when enter is pressed
-  if (!e->modifiers() || (e->modifiers() & Qt::KeypadModifier && e->key() == Qt::Key_Enter))
+  if (!event->modifiers() ||
+    (event->modifiers() & Qt::KeypadModifier && event->key() == Qt::Key_Enter))
   {
-    switch (e->key())
+    switch (event->key())
     {
       case Qt::Key_Enter:
       case Qt::Key_Return:
         if (this->Internals->insertInput->hasFocus())
         {
           this->Internals->insertInput->click();
-          e->accept();
+          event->accept();
           return;
         }
         return;
     }
   }
-  QDialog::keyPressEvent(e);
+  QDialog::keyPressEvent(event);
 }
 
 //-----------------------------------------------------------------------------

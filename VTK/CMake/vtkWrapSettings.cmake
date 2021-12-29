@@ -12,13 +12,13 @@ set_property(CACHE VTK_PYTHON_VERSION
   PROPERTY
     STRINGS "2;3")
 
-# Force reset of hints file location in cache if it was moved
-if(VTK_WRAP_HINTS AND NOT EXISTS ${VTK_WRAP_HINTS})
-  unset(VTK_WRAP_HINTS CACHE)
-  unset(VTK_WRAP_HINTS)
-endif()
+if (VTK_PYTHON_VERSION STREQUAL "3")
+  set(VTK_DLL_PATHS ""
+    CACHE STRING "DLL paths to use during Python module loading.")
+  mark_as_advanced(VTK_DLL_PATHS)
+endif ()
 
-if(BUILD_TESTING OR VTK_WRAP_PYTHON)
+if (VTK_BUILD_TESTING OR VTK_WRAP_PYTHON)
   # VTK only supports a single Python version at a time, so make artifact
   # finding interactive.
   set("Python${VTK_PYTHON_VERSION}_ARTIFACTS_INTERACTIVE" ON)

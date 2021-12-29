@@ -32,6 +32,7 @@
 
 #include "limits.h" // UINT_MAX
 
+#include <cmath>  // std::round
 #include <memory> // std::shared_ptr
 
 #include "vtkCommonDataModelModule.h" // For export macro
@@ -60,22 +61,22 @@ public:
 
   void Initialize() override;
 
-  //@{
+  ///@{
   /**
    * Set/Get origin of grid
    */
   vtkSetVector3Macro(Origin, double);
   vtkGetVector3Macro(Origin, double);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/Get scale of root cells along each direction
    */
   void SetGridScale(double, double, double);
   void SetGridScale(double*);
   vtkGetVector3Macro(GridScale, double);
-  //@}
+  ///@}
 
   /**
    * Set all scales at once when root cells are d-cubes
@@ -89,7 +90,7 @@ public:
    */
   double* GetBounds() VTK_SIZEHINT(6) override;
 
-  //@{
+  ///@{
   /**
    * Set/Get the grid coordinates in the x-direction.
    * NB: Set method deactivated in the case of uniform grids.
@@ -102,9 +103,9 @@ public:
     throw std::domain_error("Cannot use GetZCoordinates on UniformHyperTreeGrid");
   }
   */
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/Get the grid coordinates in the y-direction.
    * NB: Set method deactivated in the case of uniform grids.
@@ -117,9 +118,9 @@ public:
     throw std::domain_error("Cannot use GetZCoordinates on UniformHyperTreeGrid");
   }
   */
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/Get the grid coordinates in the z-direction.
    * NB: Set method deactivated in the case of uniform grids.
@@ -133,15 +134,15 @@ public:
   }
   */
   // JB A faire pour les autre Get !
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * JB Augented services on Coordinates.
    */
   void CopyCoordinates(const vtkHyperTreeGrid* output) override;
   void SetFixedCoordinates(unsigned int axis, double value) override;
-  //@}
+  ///@}
 
   /**
    * Convert the global index of a root to its Spacial coordinates origin and size.
@@ -195,14 +196,14 @@ protected:
    */
   double GridScale[3];
 
-  //@{
+  ///@{
   /**
    * Keep track of whether coordinates have been explicitly computed
    */
   bool ComputedXCoordinates;
   bool ComputedYCoordinates;
   bool ComputedZCoordinates;
-  //@}
+  ///@}
 
   unsigned int FindDichotomicX(double value) const override
   {
@@ -211,7 +212,7 @@ protected:
     {
       return UINT_MAX;
     }
-    return round((value - this->Origin[0]) / this->GridScale[0]);
+    return std::round((value - this->Origin[0]) / this->GridScale[0]);
   }
   unsigned int FindDichotomicY(double value) const override
   {
@@ -220,7 +221,7 @@ protected:
     {
       return UINT_MAX;
     }
-    return round((value - this->Origin[1]) / this->GridScale[1]);
+    return std::round((value - this->Origin[1]) / this->GridScale[1]);
   }
   unsigned int FindDichotomicZ(double value) const override
   {
@@ -229,7 +230,7 @@ protected:
     {
       return UINT_MAX;
     }
-    return round((value - this->Origin[2]) / this->GridScale[2]);
+    return std::round((value - this->Origin[2]) / this->GridScale[2]);
   }
 
   /**

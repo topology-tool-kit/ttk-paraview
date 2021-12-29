@@ -42,6 +42,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkSMProxy.h"
 #include "vtkSMProxyDefinitionManager.h"
 #include "vtkSMSessionProxyManager.h"
+#include "vtkSMSettings.h"
 #include "vtkSMTrace.h"
 #include "vtkSmartPointer.h"
 
@@ -66,7 +67,7 @@ pqLoadPaletteReaction::~pqLoadPaletteReaction()
 {
   if (QAction* pa = this->parentAction())
   {
-    pa->setMenu(NULL);
+    pa->setMenu(nullptr);
   }
   delete this->Menu;
 }
@@ -74,7 +75,7 @@ pqLoadPaletteReaction::~pqLoadPaletteReaction()
 //-----------------------------------------------------------------------------
 void pqLoadPaletteReaction::updateEnableState()
 {
-  this->parentAction()->setEnabled(pqActiveObjects::instance().activeServer() != NULL);
+  this->parentAction()->setEnabled(pqActiveObjects::instance().activeServer() != nullptr);
 }
 
 //-----------------------------------------------------------------------------
@@ -126,18 +127,22 @@ void pqLoadPaletteReaction::actionTriggered(QAction* actn)
 
     vtkSMProxy* paletteProxy = pxm->GetProxy("settings", "ColorPalette");
 
-    vtkSMProxy* palettePrototype = pxm->GetPrototypeProxy(
-      "palettes", actn->property("PV_XML_NAME").toString().toLocal8Bit().data());
+    vtkSMProxy* palettePrototype =
+      pxm->GetPrototypeProxy("palettes", actn->property("PV_XML_NAME").toString().toUtf8().data());
     assert(palettePrototype);
 
     BEGIN_UNDO_SET("Load color palette");
     SM_SCOPED_TRACE(CallFunction)
       .arg("LoadPalette")
-      .arg("paletteName", actn->property("PV_XML_NAME").toString().toLocal8Bit().data());
+      .arg("paletteName", actn->property("PV_XML_NAME").toString().toUtf8().data());
     paletteProxy->Copy(palettePrototype);
     paletteProxy->UpdateVTKObjects();
     END_UNDO_SET();
 
+    // Also save to settings to ensure the palette loaded is preserved on
+    // restart.
+    vtkSMSettings* settings = vtkSMSettings::GetInstance();
+    settings->SetProxySettings(paletteProxy, nullptr);
     pqApplicationCore::instance()->render();
   }
   else

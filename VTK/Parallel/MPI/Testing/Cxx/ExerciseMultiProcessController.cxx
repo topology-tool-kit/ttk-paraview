@@ -25,12 +25,17 @@
 #include "vtkImageData.h"
 #include "vtkImageGaussianSource.h"
 #include "vtkIntArray.h"
+#include "vtkLogger.h"
 #include "vtkMath.h"
 #include "vtkMultiProcessController.h"
+#include "vtkNew.h"
+#include "vtkPartitionedDataSetCollection.h"
+#include "vtkPartitionedDataSetCollectionSource.h"
 #include "vtkPointData.h"
 #include "vtkPoints.h"
 #include "vtkPolyData.h"
 #include "vtkProcessGroup.h"
+#include "vtkSmartPointer.h"
 #include "vtkSphereSource.h"
 #include "vtkTypeTraits.h"
 #include "vtkUnsignedCharArray.h"
@@ -40,13 +45,8 @@
 #include <time.h>
 #include <vector>
 
-#include "vtkSmartPointer.h"
-#define VTK_CREATE(type, name) vtkSmartPointer<type> name = vtkSmartPointer<type>::New()
-
 // Update progress only on root node.
-#define COUT(msg)                                                                                  \
-  if (controller->GetLocalProcessId() == 0)                                                        \
-    cout << "" msg << endl;
+#define COUT(msg) vtkLogIf(INFO, controller->GetLocalProcessId() == 0, "" msg);
 
 //=============================================================================
 // A simple structure for passing data in and out of the parallel function.
@@ -102,14 +102,14 @@ void MatrixMultArray(const float* A, float* B, vtkIdType length)
 class MatrixMultOperation : public vtkCommunicator::Operation
 {
 public:
-  void Function(const void* A, void* B, vtkIdType length, int type)
+  void Function(const void* A, void* B, vtkIdType length, int type) override
   {
     switch (type)
     {
       vtkTemplateMacro(MatrixMultArray((const VTK_TT*)A, (VTK_TT*)B, length));
     }
   }
-  int Commutative() { return 0; }
+  int Commutative() override { return 0; }
 };
 
 //=============================================================================
@@ -246,24 +246,58 @@ static int CompareDataObjects(vtkDataObject* obj1, vtkDataObject* obj2)
 {
   if (obj1->GetDataObjectType() != obj2->GetDataObjectType())
   {
-    vtkGenericWarningMacro("Data objects are not of the same tyep.");
-    return 0;
+    if (obj2->IsA(obj1->GetClassName()))
+    {
+      vtkLogF(WARNING,
+        "Data type was elevated in this transfer. "
+        "`vtkImageData` is known to have this issue :(");
+    }
+    else
+    {
+      vtkLogF(WARNING, "Data objects are not of the same type: '%s' != '%s'", obj1->GetClassName(),
+        obj2->GetClassName());
+      return 0;
+    }
   }
 
   if (!CompareFieldData(obj1->GetFieldData(), obj2->GetFieldData()))
+  {
     return 0;
+  }
+
+  if (vtkCompositeDataSet::SafeDownCast(obj1))
+  {
+    auto datasets1 = vtkCompositeDataSet::GetDataSets(obj1);
+    auto datasets2 = vtkCompositeDataSet::GetDataSets(obj2);
+
+    if (datasets1.size() != datasets2.size())
+    {
+      vtkLogF(ERROR, "Composite dataset leaf nodes don't agree!");
+      return 0;
+    }
+
+    for (size_t cc = 0; cc < datasets1.size(); ++cc)
+    {
+      if (!::CompareDataObjects(datasets1[cc], datasets2[cc]))
+      {
+        return 0;
+      }
+    }
+
+    return 1;
+  }
 
   vtkDataSet* ds1 = vtkDataSet::SafeDownCast(obj1);
   vtkDataSet* ds2 = vtkDataSet::SafeDownCast(obj2);
 
   if (ds1->GetNumberOfPoints() != ds2->GetNumberOfPoints())
   {
-    vtkGenericWarningMacro("Point counts do not agree.");
+    vtkLogF(ERROR, "Point counts do not agree.");
     return 0;
   }
   if (ds1->GetNumberOfCells() != ds2->GetNumberOfCells())
   {
-    vtkGenericWarningMacro("Cell counts do not agree.");
+    vtkLogF(ERROR, "Cell counts do not agree.");
     return 0;
   }
 
@@ -285,7 +319,7 @@ static int CompareDataObjects(vtkDataObject* obj1, vtkDataObject* obj2)
       (id1->GetDimensions()[1] != id2->GetDimensions()[1]) ||
       (id1->GetDimensions()[2] != id2->GetDimensions()[2]))
     {
-      vtkGenericWarningMacro("Dimensions of image data do not agree.");
+      vtkLogF(ERROR, "Dimensions of image data do not agree.");
       return 0;
     }
 
@@ -379,8 +413,8 @@ void ExerciseType(vtkMultiProcessController* controller)
     }
   }
 
-  VTK_CREATE(arrayType, buffer);
-  VTK_CREATE(arrayType, tmpSource);
+  vtkNew<arrayType> buffer;
+  vtkNew<arrayType> tmpSource;
 
   COUT("Basic send and receive.");
   result = 1;
@@ -612,7 +646,7 @@ void ExerciseType(vtkMultiProcessController* controller)
   result = 1;
   controller->Reduce(
     sourceArrays[rank]->GetPointer(0), buffer->GetPointer(0), arraySize, &operation, destProcessId);
-  VTK_CREATE(arrayType, totalArray);
+  vtkNew<arrayType> totalArray;
   totalArray->DeepCopy(sourceArrays[numProc - 1]);
   for (i = numProc - 2; i >= 0; i--)
   {
@@ -1006,14 +1040,13 @@ static void ExerciseDataObject(
 {
   COUT("---- Exercising " << source->GetClassName());
 
-  int rank = controller->GetLocalProcessId();
-  int numProc = controller->GetNumberOfProcesses();
+  const int rank = controller->GetLocalProcessId();
+  const int numProc = controller->GetNumberOfProcesses();
   int result;
-  int i;
 
   COUT("Basic send and receive with vtkDataObject.");
   result = 1;
-  for (i = 0; i < numProc; i++)
+  for (int i = 0; i < numProc; i++)
   {
     if (i < rank)
     {
@@ -1035,7 +1068,7 @@ static void ExerciseDataObject(
   COUT("Send and receive vtkDataObject with ANY_SOURCE as source.");
   if (rank == 0)
   {
-    for (i = 1; i < numProc; i++)
+    for (int i = 1; i < numProc; i++)
     {
       buffer->Initialize();
       controller->Receive(buffer, vtkMultiProcessController::ANY_SOURCE, 3462);
@@ -1057,6 +1090,51 @@ static void ExerciseDataObject(
   }
   controller->Broadcast(buffer, srcProcessId);
   result = CompareDataObjects(source, buffer);
+  CheckSuccess(controller, result);
+
+  COUT("AllGather with vtkDataObject");
+  std::vector<vtkSmartPointer<vtkDataObject>> bufferVec;
+  controller->AllGather(source, bufferVec);
+  if (static_cast<int>(bufferVec.size()) != numProc)
+  {
+    vtkGenericWarningMacro("Incorrect vector size " << bufferVec.size());
+    result &= 0;
+  }
+  else
+  {
+    for (auto& dobj : bufferVec)
+    {
+      result &= CompareDataObjects(source, dobj);
+    }
+  }
+
+  COUT("Gather with vtkDataObject");
+  bufferVec.clear();
+  const int destProcessId = static_cast<int>(vtkMath::Random(0.0, numProc - 0.01));
+  controller->Gather(source, bufferVec, destProcessId);
+  if (rank == destProcessId)
+  {
+    if (static_cast<int>(bufferVec.size()) != numProc)
+    {
+      vtkGenericWarningMacro("Incorrect vector size " << bufferVec.size());
+      result &= 0;
+    }
+    else
+    {
+      for (auto& dobj : bufferVec)
+      {
+        result &= CompareDataObjects(source, dobj);
+      }
+    }
+  }
+  else
+  {
+    if (!bufferVec.empty())
+    {
+      vtkGenericWarningMacro("Expected empty vector!");
+      result &= 0;
+    }
+  }
   CheckSuccess(controller, result);
 }
 
@@ -1081,14 +1159,20 @@ static void Run(vtkMultiProcessController* controller, void* _args)
     ExerciseType<double, vtkDoubleArray>(controller);
     ExerciseType<vtkIdType, vtkIdTypeArray>(controller);
 
-    VTK_CREATE(vtkImageGaussianSource, imageSource);
+    vtkNew<vtkImageGaussianSource> imageSource;
     imageSource->SetWholeExtent(-10, 10, -10, 10, -10, 10);
     imageSource->Update();
     ExerciseDataObject(controller, imageSource->GetOutput(), vtkSmartPointer<vtkImageData>::New());
 
-    VTK_CREATE(vtkSphereSource, polySource);
+    vtkNew<vtkSphereSource> polySource;
     polySource->Update();
     ExerciseDataObject(controller, polySource->GetOutput(), vtkSmartPointer<vtkPolyData>::New());
+
+    vtkNew<vtkPartitionedDataSetCollectionSource> pdcSource;
+    pdcSource->SetNumberOfShapes(12);
+    pdcSource->Update();
+    ExerciseDataObject(
+      controller, pdcSource->GetOutput(), vtkSmartPointer<vtkPartitionedDataSetCollection>::New());
   }
   catch (ExerciseMultiProcessControllerError)
   {
@@ -1118,8 +1202,8 @@ int ExerciseMultiProcessController(vtkMultiProcessController* controller)
 
   // Run the same tests, except this time on a subgroup of processes.
   // We make sure that each subgroup has at least one process in it.
-  VTK_CREATE(vtkProcessGroup, group1);
-  VTK_CREATE(vtkProcessGroup, group2);
+  vtkNew<vtkProcessGroup> group1;
+  vtkNew<vtkProcessGroup> group2;
   group1->Initialize(controller);
   group1->RemoveProcessId(controller->GetNumberOfProcesses() - 1);
   group2->Initialize(controller);

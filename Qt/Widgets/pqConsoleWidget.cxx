@@ -275,7 +275,7 @@ public:
   /// overridden to handle middle-button click pasting in *nix
   void mouseReleaseEvent(QMouseEvent* e) override
   {
-    if (e->button() == Qt::MidButton)
+    if (e->button() == Qt::MiddleButton)
     {
       QTextEdit::mouseReleaseEvent(e);
       checkForPastedText();
@@ -289,7 +289,7 @@ public:
   void checkForPastedText()
   {
     QString pastedCommand = this->toPlainText().mid(this->InteractivePosition);
-    if (this->CommandHistory.size() > 0)
+    if (!this->CommandHistory.empty())
     {
       this->commandBuffer() = pastedCommand;
     }
@@ -397,7 +397,7 @@ public:
   {
     if (this->Completer)
     {
-      this->Completer->setWidget(0);
+      this->Completer->setWidget(nullptr);
       QObject::disconnect(this->Completer, SIGNAL(activated(const QString&)), &this->Parent,
         SLOT(insertCompletion(const QString&)));
     }

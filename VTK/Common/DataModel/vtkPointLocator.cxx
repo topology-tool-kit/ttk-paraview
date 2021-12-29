@@ -890,7 +890,8 @@ void vtkPointLocator::BuildLocator()
 
   // Allocate the bins/buckets and initialize
   this->HashTable = new vtkIdListPtr[numBuckets];
-  memset(this->HashTable, 0, numBuckets * sizeof(vtkIdListPtr));
+  // NOLINTNEXTLINE(bugprone-sizeof-expression)
+  memset(this->HashTable, 0, numBuckets * sizeof(*this->HashTable));
 
   // Compute local variables (for performance reasons)
   // Setup internal data members for more efficient processing.
@@ -1159,7 +1160,8 @@ int vtkPointLocator::InitPointInsertion(
 
   // Initialize bins/buckets
   this->HashTable = new vtkIdListPtr[this->NumberOfBuckets];
-  memset(this->HashTable, 0, this->NumberOfBuckets * sizeof(vtkIdListPtr));
+  // NOLINTNEXTLINE(bugprone-sizeof-expression)
+  memset(this->HashTable, 0, this->NumberOfBuckets * sizeof(*this->HashTable));
 
   //  Compute width of bucket in three directions
   //
@@ -1344,7 +1346,7 @@ vtkIdType vtkPointLocator::FindClosestInsertedPoint(const double x[3])
   //  points in this bucket, search 1st level neighbors, and so on,
   //  until closest point found.
   //
-  for (closest = 0, minDist2 = VTK_DOUBLE_MAX, level = 0; (closest == 0) &&
+  for (closest = -1, minDist2 = VTK_DOUBLE_MAX, level = 0; (closest == -1) &&
        (level < this->Divisions[0] || level < this->Divisions[1] || level < this->Divisions[2]);
        level++)
   {

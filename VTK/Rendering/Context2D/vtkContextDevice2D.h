@@ -26,6 +26,7 @@
 #ifndef vtkContextDevice2D_h
 #define vtkContextDevice2D_h
 
+#include "vtkDeprecation.h" // for deprecation macros
 #include "vtkObject.h"
 #include "vtkRect.h"                     // For vtkRecti ivar
 #include "vtkRenderingContext2DModule.h" // For export macro
@@ -84,6 +85,9 @@ public:
    * Draw a series of point sprites, images centred at the points supplied.
    * The supplied vtkImageData is the sprite to be drawn, only squares will be
    * drawn and the size is set using SetPointSize.
+   * \param sprite the image to draw
+   * \param points where to draw the sprites
+   * \param n the number of points
    * \param colors is an optional array of colors.
    * \param nc_comps is the number of components for the color.
    */
@@ -98,6 +102,10 @@ public:
    * - VTK_MARKER_SQUARE
    * - VTK_MARKER_CIRCLE
    * - VTK_MARKER_DIAMOND
+   * \param shape the shape of the marker
+   * \param highlight whether to highlight the marker or not
+   * \param points where to draw the sprites
+   * \param n the number of points
    * \param colors is an optional array of colors.
    * \param nc_comps is the number of components for the color.
    */
@@ -163,6 +171,7 @@ public:
   /**
    * Draw some text to the screen.
    */
+  VTK_DEPRECATED_IN_9_1_0("Use void DrawString(float* point, const vtkStdString& string)")
   virtual void DrawString(float* point, const vtkUnicodeString& string) = 0;
 
   /**
@@ -172,6 +181,8 @@ public:
    * bounding box.
    * NOTE: This function does not take account of the text rotation or justification.
    */
+  VTK_DEPRECATED_IN_9_1_0(
+    "Use void ComputeStringBounds(const vtkStdString& string, float bounds[4])")
   virtual void ComputeStringBounds(const vtkUnicodeString& string, float bounds[4]) = 0;
 
   /**
@@ -234,14 +245,14 @@ public:
    */
   virtual void ApplyPen(vtkPen* pen);
 
-  //@{
+  ///@{
   /**
    * Get the pen which controls the outlines of shapes, as well as lines,
    * points and related primitives. This object can be modified and the changes
    * will be reflected in subsequent drawing operations.
    */
   vtkGetObjectMacro(Pen, vtkPen);
-  //@}
+  ///@}
 
   /**
    * Apply the supplied brush which controls the outlines of shapes, as well as
@@ -250,13 +261,13 @@ public:
    */
   virtual void ApplyBrush(vtkBrush* brush);
 
-  //@{
+  ///@{
   /**
    * Get the pen which controls the outlines of shapes as well as lines, points
    * and related primitives.
    */
   vtkGetObjectMacro(Brush, vtkBrush);
-  //@}
+  ///@}
 
   /**
    * Apply the supplied text property which controls how text is rendered.
@@ -265,12 +276,12 @@ public:
    */
   virtual void ApplyTextProp(vtkTextProperty* prop);
 
-  //@{
+  ///@{
   /**
    * Get the text properties object for the vtkContext2D.
    */
   vtkGetObjectMacro(TextProp, vtkTextProperty);
-  //@}
+  ///@}
 
   /**
    * Set the color for the device using unsigned char of length 4, RGBA.

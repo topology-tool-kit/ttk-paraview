@@ -75,8 +75,15 @@ constexpr vtkm::Id IS_ASCENDING = std::numeric_limits<vtkm::Id>::max() / 16 + 1;
 constexpr vtkm::Id INDEX_MASK = std::numeric_limits<vtkm::Id>::max() / 16; //0x07FFFFFF || 0x07FFFFFFFFFFFFFF
 constexpr vtkm::Id CV_OTHER_FLAG = std::numeric_limits<vtkm::Id>::max() / 8 + 1; //0x10000000 || 0x1000000000000000
 constexpr vtkm::Id ELEMENT_EXISTS = std::numeric_limits<vtkm::Id>::max() / 4 + 1; //0x20000000 || 0x2000000000000000 , same as IS_SUPERNODE
-// clang-format on
 
+// flags for testing regular vertices
+constexpr vtkm::Id IS_LOWER_LEAF = static_cast<vtkm::Id>(0);
+constexpr vtkm::Id IS_UPPER_LEAF = static_cast<vtkm::Id>(1);
+constexpr vtkm::Id IS_REGULAR = static_cast<vtkm::Id>(2);
+constexpr vtkm::Id IS_SADDLE = static_cast<vtkm::Id>(3);
+constexpr vtkm::Id IS_ATTACHMENT = static_cast<vtkm::Id>(4);
+
+// clang-format on
 using IdArrayType = vtkm::cont::ArrayHandle<vtkm::Id>;
 
 using EdgePair = vtkm::Pair<vtkm::Id, vtkm::Id>; // here EdgePair.first=low and EdgePair.second=high
@@ -249,44 +256,29 @@ public:
 /// to determine the rows, cols, slices parameters from the
 /// datasets so we can call the contour tree worklet properly.
 ///
-struct GetRowsColsSlices
+struct GetPointDimensions
 {
   //@{
   /// Get the number of rows, cols, and slices of a vtkm::cont::CellSetStructured
   /// @param[in] cells  The input vtkm::cont::CellSetStructured
-  /// @param[out] nRows  Number of rows (x) in the cell set
-  /// @param[out[ nCols  Number of columns (y) in the cell set
-  /// @param[out] nSlices Number of slices (z) in the cell set
-  void operator()(const vtkm::cont::CellSetStructured<2>& cells,
-                  vtkm::Id& nRows,
-                  vtkm::Id& nCols,
-                  vtkm::Id& nSlices) const
+  /// @param[out] pointDimensions mesh size (#cols, #rows #slices in old notation) with last dimension having a value of 1 for 2D data
+  void operator()(const vtkm::cont::CellSetStructured<2>& cells, vtkm::Id3& pointDimensions) const
   {
-    vtkm::Id2 pointDimensions = cells.GetPointDimensions();
-    nRows = pointDimensions[0];
-    nCols = pointDimensions[1];
-    nSlices = 1;
+    vtkm::Id2 pointDimensions2D = cells.GetPointDimensions();
+    pointDimensions[0] = pointDimensions2D[0];
+    pointDimensions[1] = pointDimensions2D[1];
+    pointDimensions[2] = 1;
   }
-  void operator()(const vtkm::cont::CellSetStructured<3>& cells,
-                  vtkm::Id& nRows,
-                  vtkm::Id& nCols,
-                  vtkm::Id& nSlices) const
+  void operator()(const vtkm::cont::CellSetStructured<3>& cells, vtkm::Id3& pointDimensions) const
   {
-    vtkm::Id3 pointDimensions = cells.GetPointDimensions();
-    nRows = pointDimensions[0];
-    nCols = pointDimensions[1];
-    nSlices = pointDimensions[2];
+    pointDimensions = cells.GetPointDimensions();
   }
   //@}
 
   ///  Raise ErrorBadValue if the input cell set is not a vtkm::cont::CellSetStructured<2> or <3>
   template <typename T>
-  void operator()(const T& cells, vtkm::Id& nRows, vtkm::Id& nCols, vtkm::Id& nSlices) const
+  void operator()(const T&, vtkm::Id3&) const
   {
-    (void)nRows;
-    (void)nCols;
-    (void)nSlices;
-    (void)cells;
     throw vtkm::cont::ErrorBadValue("Expected 2D or 3D structured cell cet! ");
   }
 };

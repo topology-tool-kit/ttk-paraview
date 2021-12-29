@@ -47,15 +47,10 @@
 vtkStandardNewMacro(vtkPVContourFilter);
 
 //-----------------------------------------------------------------------------
-vtkPVContourFilter::vtkPVContourFilter()
-  : vtkContourFilter()
-{
-}
+vtkPVContourFilter::vtkPVContourFilter() = default;
 
 //-----------------------------------------------------------------------------
-vtkPVContourFilter::~vtkPVContourFilter()
-{
-}
+vtkPVContourFilter::~vtkPVContourFilter() = default;
 
 //-----------------------------------------------------------------------------
 void vtkPVContourFilter::PrintSelf(ostream& os, vtkIndent indent)

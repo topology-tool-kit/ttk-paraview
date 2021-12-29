@@ -1,34 +1,8 @@
-// Copyright(C) 1999-2017, 2020 National Technology & Engineering Solutions
+// Copyright(C) 1999-2021 National Technology & Engineering Solutions
 // of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
 // NTESS, the U.S. Government retains certain rights in this software.
 //
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-//     * Redistributions of source code must retain the above copyright
-//       notice, this list of conditions and the following disclaimer.
-//
-//     * Redistributions in binary form must reproduce the above
-//       copyright notice, this list of conditions and the following
-//       disclaimer in the documentation and/or other materials provided
-//       with the distribution.
-//
-//     * Neither the name of NTESS nor the names of its
-//       contributors may be used to endorse or promote products derived
-//       from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// See packages/seacas/LICENSE for details
 
 #include "Ioss_CommSet.h"      // for CommSet
 #include "Ioss_DBUsage.h"      // for DatabaseUsage
@@ -106,7 +80,7 @@ namespace {
 
   void fill_constant_data(const Ioss::Field &field, void *data, double value)
   {
-    auto * rdata           = reinterpret_cast<double *>(data);
+    auto  *rdata           = reinterpret_cast<double *>(data);
     size_t count           = field.raw_count();
     size_t component_count = field.raw_storage()->component_count();
     for (size_t i = 0; i < count * component_count; i++) {
@@ -151,7 +125,10 @@ namespace Iogn {
     }
   }
 
-  DatabaseIO::~DatabaseIO() { delete m_generatedMesh; }
+  void DatabaseIO::setGeneratedMesh(Iogn::GeneratedMesh *generatedMesh)
+  {
+    m_generatedMesh.reset(generatedMesh);
+  }
 
   void DatabaseIO::read_meta_data__()
   {
@@ -163,8 +140,8 @@ namespace Iogn {
         IOSS_ERROR(errmsg);
       }
       else {
-        m_generatedMesh =
-            new GeneratedMesh(get_filename(), util().parallel_size(), util().parallel_rank());
+        m_generatedMesh.reset(new Iogn::GeneratedMesh(
+            get_filename(), util().parallel_size(), util().parallel_rank()));
       }
     }
 
@@ -182,8 +159,8 @@ namespace Iogn {
         int_byte_size_api() == 4) {
       std::ostringstream errmsg;
       fmt::print(errmsg,
-                 "ERROR: The node count is {:n} and the element count is {:n}.\n"
-                 "       This exceeds the capacity of the 32-bit integers ({:n})\n"
+                 "ERROR: The node count is {:L} and the element count is {:L}.\n"
+                 "       This exceeds the capacity of the 32-bit integers ({:L})\n"
                  "       which are being requested by the client.\n"
                  "       The mesh requires 64-bit integers which can be requested by setting the "
                  "`INTEGER_SIZE_API=8` property.",
@@ -318,7 +295,7 @@ namespace Iogn {
           }
         }
         else {
-          int64_t *connect = static_cast<int64_t *>(data);
+          auto *connect = static_cast<int64_t *>(data);
           m_generatedMesh->connectivity(id, connect);
           if (field.get_name() == "connectivity_raw") {
             map_global_to_local(get_node_map(),
@@ -392,7 +369,7 @@ namespace Iogn {
           }
         }
         else {
-          int64_t *ids = static_cast<int64_t *>(data);
+          auto *ids = static_cast<int64_t *>(data);
           for (size_t i = 0; i < num_to_get; i++) {
             ids[i] = 10 * elem_side[2 * i + 0] + elem_side[2 * i + 1] + 1;
           }
@@ -419,7 +396,7 @@ namespace Iogn {
           }
         }
         else {
-          int64_t *element_side = static_cast<int64_t *>(data);
+          auto *element_side = static_cast<int64_t *>(data);
           for (size_t i = 0; i < num_to_get; i++) {
             element_side[2 * i + 0] = elem_side[2 * i + 0];
             element_side[2 * i + 1] = elem_side[2 * i + 1] + 1;
@@ -480,7 +457,7 @@ namespace Iogn {
 #endif
         }
         else {
-          int64_t *ids = static_cast<int64_t *>(data);
+          auto *ids = static_cast<int64_t *>(data);
           std::copy(nodes.begin(), nodes.end(), ids);
         }
       }
@@ -580,7 +557,7 @@ namespace Iogn {
           }
         }
         else {
-          int64_t *entity_proc = static_cast<int64_t *>(data);
+          auto *entity_proc = static_cast<int64_t *>(data);
 
           size_t j = 0;
           for (size_t i = 0; i < entity_count; i++) {
@@ -721,8 +698,8 @@ namespace Iogn {
 
   void DatabaseIO::get_step_times__()
   {
-    int64_t time_step_count = m_generatedMesh->timestep_count();
-    for (int64_t i = 0; i < time_step_count; i++) {
+    auto time_step_count = m_generatedMesh->timestep_count();
+    for (int i = 0; i < time_step_count; i++) {
       get_region()->add_state(i);
     }
   }
@@ -739,8 +716,8 @@ namespace Iogn {
     // -- number of faces per element (derivable from type)
     // -- number of edges per element (derivable from type)
 
-    int64_t block_count = m_generatedMesh->block_count();
-    for (int64_t i = 0; i < block_count; i++) {
+    auto block_count = m_generatedMesh->block_count();
+    for (int i = 0; i < block_count; i++) {
       std::string name          = Ioss::Utils::encode_entity_name("block", i + 1);
       std::string type          = m_generatedMesh->topology_type(i + 1).first;
       size_t      element_count = m_generatedMesh->element_count_proc(i + 1);
@@ -810,10 +787,12 @@ namespace Iogn {
 
       std::vector<std::string> touching_blocks = m_generatedMesh->sideset_touching_blocks(ifs + 1);
       if (touching_blocks.size() == 1) {
-        std::string ef_block_name  = name + "_" + face_topo;
-        std::string side_topo_name = face_topo;
-        std::string elem_topo_name = "unknown";
-        int64_t     number_faces   = m_generatedMesh->sideset_side_count_proc(ifs + 1);
+        std::string ef_block_name = name;
+        ef_block_name += "_";
+        ef_block_name += face_topo;
+        const std::string &side_topo_name = face_topo;
+        std::string        elem_topo_name = "unknown";
+        int64_t            number_faces   = m_generatedMesh->sideset_side_count_proc(ifs + 1);
 
         auto ef_block =
             new Ioss::SideBlock(this, ef_block_name, side_topo_name, elem_topo_name, number_faces);
@@ -835,9 +814,9 @@ namespace Iogn {
         for (auto &touching_block : touching_blocks) {
           std::string ef_block_name =
               "surface_" + touching_block + "_edge2_" + std::to_string(ifs + 1);
-          std::string side_topo_name = face_topo;
-          std::string elem_topo_name = "unknown";
-          int64_t     number_faces   = m_generatedMesh->sideset_side_count_proc(ifs + 1);
+          const std::string &side_topo_name = face_topo;
+          std::string        elem_topo_name = "unknown";
+          int64_t            number_faces   = m_generatedMesh->sideset_side_count_proc(ifs + 1);
 
           auto ef_block = new Ioss::SideBlock(this, ef_block_name, side_topo_name, elem_topo_name,
                                               number_faces);
@@ -866,7 +845,7 @@ namespace Iogn {
       size_t my_node_count = m_generatedMesh->communication_node_count_proc();
 
       // Create a single node commset
-      Ioss::CommSet *commset = new Ioss::CommSet(this, "commset_node", "node", my_node_count);
+      auto *commset = new Ioss::CommSet(this, "commset_node", "node", my_node_count);
       commset->property_add(Ioss::Property("id", 1));
       commset->property_add(Ioss::Property("guid", util().generate_guid(1)));
       get_region()->add(commset);

@@ -57,18 +57,18 @@ public:
   vtkTypeMacro(vtkFixedWidthTextReader, vtkTableAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  vtkGetStringMacro(FileName);
-  vtkSetStringMacro(FileName);
+  vtkGetFilePathMacro(FileName);
+  vtkSetFilePathMacro(FileName);
 
-  //@{
+  ///@{
   /**
    * Set/get the field width
    */
   vtkSetMacro(FieldWidth, int);
   vtkGetMacro(FieldWidth, int);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * If set, this flag will cause the reader to strip whitespace from
    * the beginning and ending of each field.  Defaults to off.
@@ -76,25 +76,25 @@ public:
   vtkSetMacro(StripWhiteSpace, bool);
   vtkGetMacro(StripWhiteSpace, bool);
   vtkBooleanMacro(StripWhiteSpace, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/get whether to treat the first line of the file as headers.
    */
   vtkGetMacro(HaveHeaders, bool);
   vtkSetMacro(HaveHeaders, bool);
   vtkBooleanMacro(HaveHeaders, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/get the ErrorObserver for the internal vtkTable
    * This is useful for applications that want to catch error messages.
    */
   void SetTableErrorObserver(vtkCommand*);
   vtkGetObjectMacro(TableErrorObserver, vtkCommand);
-  //@}
+  ///@}
 
 protected:
   vtkFixedWidthTextReader();

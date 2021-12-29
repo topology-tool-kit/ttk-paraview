@@ -355,6 +355,13 @@
   </ProxyGroup>
   <ProxyGroup name="properties">
     <Proxy class="vtkTextProperty" name="TextPropertyBase" processes="client|dataserver|renderserver" >
+      <DoubleVectorProperty command="SetBackgroundRGBA"
+                            default_values="0.0 0.0 0.0 0.0"
+                            name="BackgroundRGBA"
+                            number_of_elements="4">
+        <DoubleRangeDomain max="1 1 1 1" min="0 0 0 0" name="range" />
+      </DoubleVectorProperty>
+
       <DoubleVectorProperty animateable="0"
                             command="SetOpacity"
                             default_values="1.0"
@@ -427,11 +434,42 @@
                             default_values="0"
                             name="Orientation"
                             number_of_elements="1"></DoubleVectorProperty>
-      <DoubleVectorProperty animateable="0"
-                            command="SetLineOffset"
-                            default_values="0"
-                            name="LineOffset"
-                            number_of_elements="1"></DoubleVectorProperty>
+
+      <DoubleVectorProperty command="SetLineSpacing"
+                            default_values="1.0"
+                            name="LineSpacing"
+                            number_of_elements="1"
+                            panel_visibility="advanced">
+        <DoubleRangeDomain max="10"
+                           min="0"
+                           name="range" />
+        <Documentation>Set the extra spacing between lines, expressed as a text height multiplication factor.</Documentation>
+      </DoubleVectorProperty>
+
+      <IntVectorProperty  command="SetLineOffset"
+                          default_values="0.0"
+                          name="LineOffset"
+                          number_of_elements="1"
+                          panel_visibility="advanced">
+        <IntRangeDomain max="500"
+                        min="0"
+                        name="range"
+                        resolution="2" />
+        <Documentation>Set the offset between two lines in pixels unit.</Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty  command="SetCellOffset"
+                          default_values="0.0"
+                          name="CellOffset"
+                          number_of_elements="1"
+                          panel_visibility="advanced">
+        <IntRangeDomain max="500"
+                        min="0"
+                        name="range"
+                        resolution="2" />
+        <Documentation>Set the offset between two cells in pixels unit.</Documentation>
+      </IntVectorProperty>
+
       <IntVectorProperty animateable="0"
                          command="SetJustification"
                          default_values="0"
@@ -495,6 +533,29 @@
                             number_of_elements="3">
         <DoubleRangeDomain max="1 1 1" min="0 0 0" name="range" />
       </DoubleVectorProperty>
+    </Proxy>
+
+    <Proxy class="vtkTextProperty" name="TextPropertyCentered"
+           base_proxygroup="properties"
+           base_proxyname="TextProperty"
+           processes="client|dataserver|renderserver">
+      <!-- inherit TextProperty with a vertical justification defaulted to centered -->
+      <IntVectorProperty animateable="0"
+                         command="SetVerticalJustification"
+                         default_values="1"
+                         name="VerticalJustification"
+                         number_of_elements="1"
+                         override="1">
+        <EnumerationDomain name="enum">
+          <Entry text="Bottom"
+                 value="0" />
+          <Entry text="Center"
+                 value="1" />
+          <Entry text="Top"
+                 value="2" />
+        </EnumerationDomain>
+      </IntVectorProperty>
+
     </Proxy>
 
   </ProxyGroup>
@@ -704,13 +765,14 @@
     <MaterialLibraryProxy class="vtkPVMaterialLibrary"
                  name="MaterialLibrary"
                  processes="client|renderserver|dataserver">
-      <StringVectorProperty
-                 default_values=""
-                 label="Load Materials"
-                 name="LoadMaterials"
-                 number_of_elements="1"
-                 panel_visibility="never">
+      <StringVectorProperty name="LoadMaterials"
+        default_values=""
+        label="Load Materials"
+        number_of_elements="1"
+        panel_visibility="never">
       </StringVectorProperty>
     </MaterialLibraryProxy>
   </ProxyGroup>
+
+
 </ServerManagerConfiguration>

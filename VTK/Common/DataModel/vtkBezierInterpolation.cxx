@@ -12,6 +12,10 @@
   PURPOSE.  See the above copyright notice for more information.
 
   =========================================================================*/
+
+// Hide VTK_DEPRECATED_IN_9_1_0() warnings for this class.
+#define VTK_DEPRECATION_LEVEL 0
+
 #include "vtkBezierInterpolation.h"
 #include <array>
 #include <functional>
@@ -29,10 +33,7 @@
 
 vtkStandardNewMacro(vtkBezierInterpolation);
 
-vtkBezierInterpolation::vtkBezierInterpolation()
-  : vtkHigherOrderInterpolation()
-{
-}
+vtkBezierInterpolation::vtkBezierInterpolation() = default;
 
 vtkBezierInterpolation::~vtkBezierInterpolation() = default;
 
@@ -118,6 +119,13 @@ static vtkVector3i unflattenTetrahedron(const int deg, const vtkIdType flat)
 
 int vtkBezierInterpolation::flattenSimplex(const int dim, const int deg, const vtkVector3i coord)
 {
+  VTK_LEGACY_REPLACED_BODY(
+    vtkBezierInterpolation::flattenSimplex, "VTK 9.1", vtkBezierInterpolation::FlattenSimplex);
+  return vtkBezierInterpolation::FlattenSimplex(dim, deg, coord);
+}
+
+int vtkBezierInterpolation::FlattenSimplex(const int dim, const int deg, const vtkVector3i coord)
+{
   switch (dim)
   {
     case 2:
@@ -131,7 +139,7 @@ int vtkBezierInterpolation::flattenSimplex(const int dim, const int deg, const v
       {
         num_before_level += NumberOfSimplexFunctions(2, deg - i);
       }
-      return num_before_level + flattenSimplex(2, deg - coord[2], coord);
+      return num_before_level + FlattenSimplex(2, deg - coord[2], coord);
     }
     default:
       throw "flattenSimplex unsupported dim";
@@ -139,6 +147,14 @@ int vtkBezierInterpolation::flattenSimplex(const int dim, const int deg, const v
 }
 
 vtkVector3i vtkBezierInterpolation::unflattenSimplex(
+  const int dim, const int deg, const vtkIdType flat)
+{
+  VTK_LEGACY_REPLACED_BODY(
+    vtkBezierInterpolation::unFlattenSimplex, "VTK 9.1", vtkBezierInterpolation::UnFlattenSimplex);
+  return vtkBezierInterpolation::UnFlattenSimplex(dim, deg, flat);
+}
+
+vtkVector3i vtkBezierInterpolation::UnFlattenSimplex(
   const int dim, const int deg, const vtkIdType flat)
 {
   switch (dim)
@@ -169,7 +185,7 @@ void iterateSimplex(
     {
       for (int i = 0, nfuncs = ((deg + 1) * (deg + 2) / 2); i < nfuncs; ++i)
       {
-        callback(vtkBezierInterpolation::unflattenSimplex(2, deg, i), i);
+        callback(vtkBezierInterpolation::UnFlattenSimplex(2, deg, i), i);
       }
     }
     break;
@@ -177,15 +193,23 @@ void iterateSimplex(
     {
       for (int i = 0, nfuncs = ((deg + 1) * (deg + 2) * (deg + 3) / 6); i < nfuncs; ++i)
       {
-        callback(vtkBezierInterpolation::unflattenSimplex(3, deg, i), i);
+        callback(vtkBezierInterpolation::UnFlattenSimplex(3, deg, i), i);
       }
     }
     break;
   }
 }
 
-// FIXME this could be greatly optimized
 void vtkBezierInterpolation::deCasteljauSimplex(
+  const int dim, const int deg, const double pcoords[3], double* weights)
+{
+  VTK_LEGACY_REPLACED_BODY(vtkBezierInterpolation::deCasteljauSimplex, "VTK 9.1",
+    vtkBezierInterpolation::DeCasteljauSimplex);
+  vtkBezierInterpolation::DeCasteljauSimplex(dim, deg, pcoords, weights);
+}
+
+// FIXME this could be greatly optimized
+void vtkBezierInterpolation::DeCasteljauSimplex(
   const int dim, const int deg, const double pcoords[3], double* weights)
 {
   const int basis_func_n = NumberOfSimplexFunctions(dim, deg);
@@ -217,7 +241,7 @@ void vtkBezierInterpolation::deCasteljauSimplex(
             const vtkVector3i one_higher_coord = { sub_degree_coord[0] + lin_degree_coord[0],
               sub_degree_coord[1] + lin_degree_coord[1],
               sub_degree_coord[2] + lin_degree_coord[2] };
-            const int idx = flattenSimplex(dim, sub_degree + 1, one_higher_coord);
+            const int idx = FlattenSimplex(dim, sub_degree + 1, one_higher_coord);
             shape_funcs[lin_index] = coeffs[idx] * linear_basis[lin_index];
           });
         sub_coeffs[sub_index] = std::accumulate(shape_funcs.begin(), shape_funcs.end(), 0.);
@@ -234,19 +258,27 @@ void vtkBezierInterpolation::deCasteljauSimplex(
 void vtkBezierInterpolation::deCasteljauSimplexDeriv(
   const int dim, const int deg, const double pcoords[3], double* weights)
 {
+  VTK_LEGACY_REPLACED_BODY(vtkBezierInterpolation::deCasteljauSimplexDeriv, "VTK 9.1",
+    vtkBezierInterpolation::DeCasteljauSimplexDeriv);
+  vtkBezierInterpolation::DeCasteljauSimplexDeriv(dim, deg, pcoords, weights);
+}
+
+void vtkBezierInterpolation::DeCasteljauSimplexDeriv(
+  const int dim, const int deg, const double pcoords[3], double* weights)
+{
   const int num_funcs = NumberOfSimplexFunctions(dim, deg - 1);
   std::vector<double> evals(num_funcs);
-  deCasteljauSimplex(dim, deg - 1, pcoords, &evals[0]);
+  DeCasteljauSimplex(dim, deg - 1, pcoords, &evals[0]);
   for (int idim = 0; idim < dim; ++idim)
   {
     for (int ifunc = 0; ifunc < num_funcs; ++ifunc)
     {
-      const vtkVector3i coord = unflattenSimplex(dim, deg - 1, ifunc);
+      const vtkVector3i coord = UnFlattenSimplex(dim, deg - 1, ifunc);
       vtkVector3i next_coord = coord;
       next_coord[idim] += 1;
 
-      const int flat_coord = flattenSimplex(dim, deg, coord);
-      const int flat_next_coord = flattenSimplex(dim, deg, next_coord);
+      const int flat_coord = FlattenSimplex(dim, deg, coord);
+      const int flat_next_coord = FlattenSimplex(dim, deg, next_coord);
       weights[(num_funcs * idim) + ifunc] = deg * (evals[flat_next_coord] - evals[flat_coord]);
     }
   }

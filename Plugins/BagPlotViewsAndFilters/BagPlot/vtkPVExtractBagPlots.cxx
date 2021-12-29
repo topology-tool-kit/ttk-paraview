@@ -18,6 +18,7 @@
 #include "vtkTransposeTable.h"
 
 #include <algorithm>
+#include <cmath>
 #include <set>
 #include <sstream>
 #include <string>
@@ -249,7 +250,7 @@ int vtkPVExtractBagPlots::RequestData(
   for (vtkIdType i = 0; i < inputTable->GetNumberOfColumns(); i++)
   {
     vtkAbstractArray* arr = inputTable->GetColumn(i);
-    if (strcmp(arr->GetName(), "ColName"))
+    if (strcmp(arr->GetName(), "ColName") != 0)
     {
       pca->EnableAttributeArray(arr->GetName());
     }
@@ -483,7 +484,7 @@ int vtkPVExtractBagPlots::RequestData(
   outTable = ebp->GetOutput();
 
   double maxHdr = VTK_DOUBLE_MIN;
-  std::string maxHdrCName = "";
+  std::string maxHdrCName;
   vtkDataArray* seriesHdr =
     vtkDataArray::SafeDownCast(outputHDRTable->GetColumnByName("HDR (x1,x0)"));
   vtkStringArray* seriesColName =
@@ -516,7 +517,6 @@ int vtkPVExtractBagPlots::RequestData(
   vtkSmartPointer<vtkDataArray> medianArray;
   medianArray.TakeReference(vtkDataArray::CreateDataArray(maxHdrColumn->GetDataType()));
   medianArray->DeepCopy(maxHdrColumn);
-  outTable->RemoveColumnByName(medianArray->GetName());
   outTable->AddColumn(medianArray);
   std::stringstream medianColumnName;
   medianColumnName << medianArray->GetName() << "_median";

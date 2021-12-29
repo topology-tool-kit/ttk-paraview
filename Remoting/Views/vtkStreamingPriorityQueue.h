@@ -20,18 +20,17 @@
  * vtkStreamingPriorityQueue provides a data-structure for building priority
  * queue for steraming based on block bounds. This used by
  * vtkAMRStreamingPriorityQueue.
-*/
+ */
 
 #ifndef vtkStreamingPriorityQueue_h
 #define vtkStreamingPriorityQueue_h
 #ifndef VTK_WRAPPING_CXX
 
-#include "vtkBoundingBox.h"
-#include "vtkMath.h"
-#include "vtkWrappingHints.h"
+#include "vtkBoundingBox.h"   // for vtkBoundingBox
+#include "vtkMath.h"          // for vtkMath
+#include "vtkWrappingHints.h" // for wrapping attributes
 
-#include <algorithm>
-#include <queue>
+#include <queue> // for std::priority_queue
 
 //*****************************************************************************
 namespace
@@ -55,9 +54,10 @@ double vtkComputeScreenCoverage(const double planes[24], const double bounds[6],
   center[0] = (bounds[0] + bounds[1]) / 2.0;
   center[1] = (bounds[2] + bounds[3]) / 2.0;
   center[2] = (bounds[4] + bounds[5]) / 2.0;
-  double radius = 0.5 * sqrt((bounds[1] - bounds[0]) * (bounds[1] - bounds[0]) +
-                          (bounds[3] - bounds[2]) * (bounds[3] - bounds[2]) +
-                          (bounds[5] - bounds[4]) * (bounds[5] - bounds[4]));
+  double radius = 0.5 *
+    sqrt((bounds[1] - bounds[0]) * (bounds[1] - bounds[0]) +
+      (bounds[3] - bounds[2]) * (bounds[3] - bounds[2]) +
+      (bounds[5] - bounds[4]) * (bounds[5] - bounds[4]));
   for (int i = 0; i < 6; i++)
   {
     // Compute how far the center of the sphere is from this plane
@@ -274,5 +274,4 @@ public:
 };
 #endif
 #endif
-
 // VTK-HeaderTest-Exclude: vtkStreamingPriorityQueue.h

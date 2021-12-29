@@ -138,7 +138,7 @@ public:
   };
 
   typedef std::set<vtkIdType> SetOfIDs;
-  typedef std::vector<IDType> SetOfIDType;
+  typedef std::set<IDType> SetOfIDType;
   typedef std::set<CompositeIDType> SetOfCompositeIDType;
   typedef std::set<HierarchicalIDType> SetOfHierarchicalIDType;
   typedef std::set<PedigreeIDType> SetOfPedigreeIDType;
@@ -155,6 +155,7 @@ public:
   SetOfPedigreeStringIDType PedigreeStringIDs;
   VectorOfDoubles Locations;
   VectorOfDoubles Thresholds;
+  std::vector<std::string> BlockSelectors;
 };
 
 vtkStandardNewMacro(vtkPVSelectionSource);
@@ -168,7 +169,7 @@ vtkPVSelectionSource::vtkPVSelectionSource()
   this->Mode = ID;
   this->ContainingCells = 1;
   this->Inverse = 0;
-  this->ArrayName = NULL;
+  this->ArrayName = nullptr;
   for (int cc = 0; cc < 32; cc++)
   {
     this->Frustum[cc] = 0;
@@ -180,7 +181,7 @@ vtkPVSelectionSource::vtkPVSelectionSource()
 //----------------------------------------------------------------------------
 vtkPVSelectionSource::~vtkPVSelectionSource()
 {
-  this->SetArrayName(0);
+  this->SetArrayName(nullptr);
   delete this->Internal;
 }
 
@@ -248,18 +249,7 @@ void vtkPVSelectionSource::AddID(vtkIdType piece, vtkIdType id)
     piece = -1;
   }
   this->Mode = ID;
-
-  bool inThere = false;
-  for(int i = 0; i < (int) this->Internal->IDs.size(); i++){
-    if(this->Internal->IDs[i].ID == vtkInternal::IDType(piece, id).ID){
-      inThere = true;
-      break;
-    }
-  }
-  if(!inThere){
-    // no duplicated entry
-    this->Internal->IDs.push_back(vtkInternal::IDType(piece, id));
-  }
+  this->Internal->IDs.insert(vtkInternal::IDType(piece, id));
   this->Modified();
 }
 
@@ -279,18 +269,7 @@ void vtkPVSelectionSource::AddValue(vtkIdType piece, vtkIdType value)
     piece = -1;
   }
   this->Mode = VALUES;
-  bool inThere = false;
-  for(int i = 0; i < (int) this->Internal->Values.size(); i++){
-    if(this->Internal->Values[i].ID == vtkInternal::IDType(piece, value).ID){
-      inThere = true;
-      break;
-    }
-  }
-  if(!inThere){
-    // no duplicated entry
-    this->Internal->Values.push_back(vtkInternal::IDType(piece, value));
-  }
-
+  this->Internal->Values.insert(vtkInternal::IDType(piece, value));
   this->Modified();
 }
 
@@ -374,36 +353,6 @@ void vtkPVSelectionSource::RemoveAllThresholds()
 }
 
 //----------------------------------------------------------------------------
-void vtkPVSelectionSource::SetArrayName(const char* arrayName)
-{
-  if (this->ArrayName == NULL && arrayName == NULL)
-  {
-    return;
-  }
-
-  if (this->ArrayName && arrayName && strcmp(this->ArrayName, arrayName) == 0)
-  {
-    return;
-  }
-
-  delete[] this->ArrayName;
-  this->ArrayName = 0;
-  if (arrayName)
-  {
-    size_t n = strlen(arrayName) + 1;
-    char* cp1 = new char[n];
-    const char* cp2 = (arrayName);
-    this->ArrayName = cp1;
-    do
-    {
-      *cp1++ = *cp2++;
-    } while (--n);
-  }
-
-  this->Modified();
-}
-
-//----------------------------------------------------------------------------
 void vtkPVSelectionSource::AddLocation(double x, double y, double z)
 {
   this->Mode = LOCATIONS;
@@ -418,6 +367,24 @@ void vtkPVSelectionSource::RemoveAllLocations()
 {
   this->Mode = LOCATIONS;
   this->Internal->Locations.clear();
+  this->Modified();
+}
+
+//----------------------------------------------------------------------------
+void vtkPVSelectionSource::AddBlockSelector(const char* selector)
+{
+  if (selector)
+  {
+    this->Mode = BLOCK_SELECTORS;
+    this->Internal->BlockSelectors.push_back(selector);
+    this->Modified();
+  }
+}
+
+//----------------------------------------------------------------------------
+void vtkPVSelectionSource::RemoveAllBlockSelectors()
+{
+  this->Internal->BlockSelectors.clear();
   this->Modified();
 }
 
@@ -508,7 +475,7 @@ int vtkPVSelectionSource::RequestData(vtkInformation* vtkNotUsed(request),
         }
         source->AddID(-1, iter->ID);
       }
-      if (this->Internal->PedigreeIDs.size() > 0)
+      if (!this->Internal->PedigreeIDs.empty())
       {
         source->UpdatePiece(piece, npieces, 0);
         vtkSelectionNode* clone = vtkSelectionNode::New();
@@ -542,7 +509,7 @@ int vtkPVSelectionSource::RequestData(vtkInformation* vtkNotUsed(request),
         }
         source->AddStringID(-1, siter->ID.c_str());
       }
-      if (this->Internal->PedigreeStringIDs.size() > 0)
+      if (!this->Internal->PedigreeStringIDs.empty())
       {
         source->UpdatePiece(piece, npieces, 0);
         vtkSelectionNode* clone = vtkSelectionNode::New();
@@ -578,7 +545,7 @@ int vtkPVSelectionSource::RequestData(vtkInformation* vtkNotUsed(request),
         }
         source->AddID(iter->Piece, iter->ID);
       }
-      if (this->Internal->CompositeIDs.size() > 0)
+      if (!this->Internal->CompositeIDs.empty())
       {
         source->UpdatePiece(piece, npieces, 0);
         vtkSelectionNode* clone = vtkSelectionNode::New();
@@ -614,7 +581,7 @@ int vtkPVSelectionSource::RequestData(vtkInformation* vtkNotUsed(request),
         }
         source->AddID(-1, iter->ID);
       }
-      if (this->Internal->HierarchicalIDs.size() > 0)
+      if (!this->Internal->HierarchicalIDs.empty())
       {
         source->UpdatePiece(piece, npieces, 0);
         vtkSelectionNode* clone = vtkSelectionNode::New();
@@ -669,6 +636,18 @@ int vtkPVSelectionSource::RequestData(vtkInformation* vtkNotUsed(request),
       for (iter = this->Internal->Blocks.begin(); iter != this->Internal->Blocks.end(); ++iter)
       {
         source->AddBlock(*iter);
+      }
+      source->UpdatePiece(piece, npieces, 0);
+      output->ShallowCopy(source->GetOutput());
+    }
+    break;
+
+    case BLOCK_SELECTORS:
+    {
+      source->SetContentType(vtkSelectionNode::BLOCK_SELECTORS);
+      for (const auto& selector : this->Internal->BlockSelectors)
+      {
+        source->AddBlockSelector(selector.c_str());
       }
       source->UpdatePiece(piece, npieces, 0);
       output->ShallowCopy(source->GetOutput());

@@ -24,7 +24,7 @@
 class vtkClientServerInterpreterInitializer::vtkInternals
 {
 public:
-  typedef std::vector<vtkWeakPointer<vtkClientServerInterpreter> > VectorOfInterpreters;
+  typedef std::vector<vtkWeakPointer<vtkClientServerInterpreter>> VectorOfInterpreters;
   VectorOfInterpreters Interpreters;
   typedef std::vector<vtkClientServerInterpreterInitializer::InterpreterInitializationCallback>
     VectorOfCallbacks;
@@ -116,7 +116,7 @@ void vtkClientServerInterpreterInitializer::RegisterCallback(
   for (iter = this->Internals->Interpreters.begin(); iter != this->Internals->Interpreters.end();
        ++iter)
   {
-    if (iter->GetPointer() != NULL)
+    if (iter->GetPointer() != nullptr)
     {
       (*callback)(iter->GetPointer());
     }

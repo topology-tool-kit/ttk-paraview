@@ -59,7 +59,7 @@ public:
    */
   int SetDescription(const char* name, const char* desc);
 
-  //@{
+  ///@{
   /**
    * These methods have to be called once on all processors
    * before and after invoking any logging events.
@@ -67,16 +67,16 @@ public:
    * See mpe documentation for file formats.
    */
   static void InitializeLogging();
-  static void FinalizeLogging(const char* fileName);
-  //@}
+  static void FinalizeLogging(VTK_FILEPATH const char* fileName);
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Issue start and stop events for this log entry.
    */
   void StartLogging();
   void StopLogging();
-  //@}
+  ///@}
 
   void PrintSelf(ostream& os, vtkIndent indent) override;
 

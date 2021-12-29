@@ -41,14 +41,14 @@
 class VTKCOMMONCORE_EXPORT vtkMinimalStandardRandomSequence : public vtkRandomSequence
 {
 public:
-  //@{
+  ///@{
   /**
    * Standard methods for instantiation, type information, and printing.
    */
   static vtkMinimalStandardRandomSequence* New();
   vtkTypeMacro(vtkMinimalStandardRandomSequence, vtkRandomSequence);
   void PrintSelf(ostream& os, vtkIndent indent) override;
-  //@}
+  ///@}
 
   /**
    * Satisfy general API of vtkRandomSequence superclass. Initialize the
@@ -115,6 +115,13 @@ public:
    * || (rangeMax<=rangeMin && result>=rangeMax && result<=rangeMin)
    */
   virtual double GetRangeValue(double rangeMin, double rangeMax);
+
+  /**
+   * Get the next value in the sequence within a range.
+   *
+   * \see vtkMinimalStandardRandomSequence::GetRangeValue
+   */
+  double GetNextRangeValue(double rangeMin, double rangeMax);
 
 protected:
   vtkMinimalStandardRandomSequence();

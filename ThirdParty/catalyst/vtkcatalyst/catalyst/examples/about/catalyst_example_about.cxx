@@ -32,9 +32,18 @@ conduit_node* create_mesh(double time)
 int main(int argc, char* argv[])
 {
   auto node = conduit_node_create();
+  conduit_node_set_path_char8_str(node, "catalyst_load/implementation", "stub");
   conduit_node_set_path_char8_str(node, "catalyst/paraview/scripts/sample", "/tmp/sample.py");
-  catalyst_initialize(node);
-  catalyst_about(node);
+  if (catalyst_initialize(node) != catalyst_status_ok)
+  {
+    conduit_node_destroy(node);
+    return EXIT_FAILURE;
+  }
+  if (catalyst_about(node) != catalyst_status_ok)
+  {
+    conduit_node_destroy(node);
+    return EXIT_FAILURE;
+  }
   // conduit_node_print_detailed(node);
 
   const int max = 10;

@@ -38,33 +38,33 @@ public:
   // \c server:- server on which the proxy is created.
   // \c parent:- QObject parent.
   pqPythonView(const QString& type, const QString& group, const QString& name,
-    vtkSMViewProxy* renModule, pqServer* server, QObject* parent = NULL);
+    vtkSMViewProxy* renModule, pqServer* server, QObject* parent = nullptr);
 
   // Destructor.
   ~pqPythonView() override;
 
   /**
-  * Set/get the Python script
-  */
+   * Set/get the Python script
+   */
   void setPythonScript(QString& script);
   QString getPythonScript();
 
   /**
-  * Get the view proxy as a vtkSMPythonViewProxy
-  */
+   * Get the view proxy as a vtkSMPythonViewProxy
+   */
   vtkSMPythonViewProxy* getPythonViewProxy();
 
 protected:
   /**
-  * Overridden to popup the context menu, if some actions have been added
-  * using addMenuAction.
-  */
+   * Overridden to popup the context menu, if some actions have been added
+   * using addMenuAction.
+   */
   bool eventFilter(QObject* caller, QEvent* e) override;
 
   /**
-  * Creates a new instance of the QWidget subclass to be used to show this
-  * view.
-  */
+   * Creates a new instance of the QWidget subclass to be used to show this
+   * view.
+   */
   QWidget* createWidget() override;
 
 private:

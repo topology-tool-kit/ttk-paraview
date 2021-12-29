@@ -18,18 +18,18 @@
  *
  * This file provides some common utility functions that are used in the
  * implementation of GenericIO readers.
-*/
+ */
 
 #ifndef vtkGenericIOUtilities_h
 #define vtkGenericIOUtilities_h
 
-#include "vtkType.h"
+#include "vtkType.h" // for vtkIdType
 
-#include <algorithm>
-#include <functional>
-#include <string>
+#include <algorithm>  // for std::find_if
+#include <functional> // for std::ptr_fun
+#include <string>     // for std::string
 
-#include "vtk_mpi.h"
+#include "vtk_mpi.h" // MPI
 
 class vtkMultiProcessController;
 class vtkDataArray;
@@ -127,16 +127,16 @@ gio::GenericIOWriter* GetWriter(MPI_Comm comm, const std::string& fileName);
 //==============================================================================
 //@{
 /**
- * If the pointer given is non-null this function deletes the string and
- * set the pointer to NULL.  This sets the pointer variable in the calling
+ * If the pointer given is non-nullptr this function deletes the string and
+ * set the pointer to nullptr.  This sets the pointer variable in the calling
  * function since the pointer is passed by reference.
  */
 inline void SafeDeleteString(char*& str)
 {
-  if (str != NULL)
+  if (str != nullptr)
   {
     delete[] str;
-    str = NULL;
+    str = nullptr;
   }
 }
 //@}

@@ -1,82 +1,32 @@
-find_package(Qt5 REQUIRED COMPONENTS Widgets Network)
+cmake_minimum_required(VERSION 3.8)
+project(OpenVRPlugin)
 
-set(interfaces)
-set(sources
-  pqOpenVRControls.cxx
-  pqOpenVRControls.h
-  pqOpenVRDockPanel.cxx
-  pqOpenVRDockPanel.h
-  vtkPVOpenVRCollaborationClient.cxx
-  vtkPVOpenVRCollaborationClient.h
-  vtkPVOpenVRHelper.cxx
-  vtkPVOpenVRHelper.h)
+find_package(ParaView REQUIRED)
 
+option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 
-# if we build the openvr plugin then look to add collaboration
-# for collaboration we leverage mineview.
-#-----------------------------------------------------------------------------
-if (WIN32 AND PARAVIEW_PLUGIN_ENABLE_OpenVR AND PARAVIEW_MINEVIEW_SOURCE_DIR)
-  list(APPEND sources "${PARAVIEW_MINEVIEW_SOURCE_DIR}/mvCollaborationClient.cxx")
-endif()
+include(GNUInstallDirs)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
 
-paraview_plugin_add_dock_window(
-  CLASS_NAME pqOpenVRDockPanel
-  DOCK_AREA Right
-  INTERFACES dock_interfaces
-  SOURCES dock_sources)
-list(APPEND interfaces
-  ${dock_interfaces})
-list(APPEND sources
-  ${dock_sources})
+set("_paraview_plugin_default_${CMAKE_PROJECT_NAME}" ON)
+paraview_plugin_scan(
+  PLUGIN_FILES      "${CMAKE_CURRENT_SOURCE_DIR}/Plugin/paraview.plugin"
+  PROVIDES_PLUGINS  plugins
+  REQUIRES_MODULES  required_modules)
 
-  paraview_add_plugin(OpenVR
-  VERSION "1.2"
-  UI_FILES pqOpenVRDockPanel.ui pqOpenVRControls.ui
-  UI_INTERFACES ${interfaces}
-  SOURCES ${sources}
-  )
+foreach (module IN LISTS required_modules)
+  if (NOT TARGET "${module}")
+    message(#FATAL_ERROR
+      "Skipping example ${CMAKE_PROJECT_NAME}: Missing required module: "
+      "${module}")
+    return ()
+  endif ()
+endforeach ()
 
-
-#-----------------------------------------------------------------------------
-if (WIN32 AND PARAVIEW_PLUGIN_ENABLE_OpenVR)
-  option(PARAVIEW_OpenVR_COLLABORATION
-    "Turn on collaboration support for the openVR plugin, requires mineview source tree" OFF)
-  mark_as_advanced(PARAVIEW_OpenVR_COLLABORATION)
-endif()
-
-if (PARAVIEW_OpenVR_COLLABORATION)
-  find_path(PARAVIEW_MINEVIEW_SOURCE_DIR mvLobby.h
-    DOC "Location of your mineview source tree. See https://gitlab.kitware.com/ken-martin/mineview")
-endif()
-
-if (PARAVIEW_OpenVR_COLLABORATION AND PARAVIEW_MINEVIEW_SOURCE_DIR)
-  set_property(TARGET OpenVR APPEND PROPERTY INCLUDE_DIRECTORIES
-    "${PARAVIEW_MINEVIEW_SOURCE_DIR}/zeromq/release"
-    "${PARAVIEW_MINEVIEW_SOURCE_DIR}"
-    )
-  set_property(TARGET OpenVR APPEND PROPERTY LINK_LIBRARIES
-    "${PARAVIEW_MINEVIEW_SOURCE_DIR}/zeromq/release/libzmq-mt-4_3_1.lib"
-    )
-  set_property(SOURCE vtkPVOpenVRCollaborationClient.cxx APPEND PROPERTY
-    COMPILE_DEFINITIONS OPENVR_HAS_COLLABORATION
-    )
-endif()
-
-target_link_libraries(OpenVR
-  PRIVATE
-    ParaView::pqApplicationComponents
-    ParaView::RemotingCore
-    ParaView::RemotingServerManager
-    ParaView::RemotingViews
-    VTK::CommonCore
-    VTK::CommonDataModel
-    VTK::CommonSystem
-    VTK::IOCore
-    VTK::IOImage
-    VTK::IOXML
-    VTK::IOXMLParser
-    VTK::InteractionWidgets
-    VTK::RenderingCore
-    VTK::RenderingOpenGL2
-    VTK::RenderingOpenVR
-    VTK::ViewsCore)
+paraview_plugin_build(
+  RUNTIME_DESTINATION "${CMAKE_INSTALL_BINDIR}"
+  LIBRARY_DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+  LIBRARY_SUBDIRECTORY "${PARAVIEW_PLUGIN_SUBDIR}"
+  PLUGINS ${plugins})

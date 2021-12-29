@@ -110,7 +110,7 @@ public:
   {
   }
 
-  ~Model() override {}
+  ~Model() override = default;
 
   void addPixmap(const QString& key, QIcon&& pixmap)
   {
@@ -282,7 +282,7 @@ private:
   QVariant status(const QString& key) const
   {
     auto iter = this->GroupedItemsMap.find(key);
-    if (iter == this->GroupedItemsMap.end() || iter->second.size() == 0)
+    if (iter == this->GroupedItemsMap.end() || iter->second.empty())
     {
       return QVariant();
     }
@@ -294,7 +294,7 @@ private:
       return QVariant(iter->second.begin()->second->checkState() == Qt::Checked ? 1 : 0);
     }
 
-    QList<QList<QVariant> > values;
+    QList<QList<QVariant>> values;
     for (const auto& pair : iter->second)
     {
       values.push_back(QList<QVariant>{
@@ -358,7 +358,7 @@ private:
     Q_EMIT this->headerDataChanged(Qt::Horizontal, 0, 0);
   }
 
-  std::map<QString, std::map<QString, QStandardItem*> > GroupedItemsMap;
+  std::map<QString, std::map<QString, QStandardItem*>> GroupedItemsMap;
   mutable QVariant HeaderCheckState;
 };
 
@@ -382,9 +382,7 @@ pqArraySelectionWidget::pqArraySelectionWidget(QWidget* parentObject)
 }
 
 //-----------------------------------------------------------------------------
-pqArraySelectionWidget::~pqArraySelectionWidget()
-{
-}
+pqArraySelectionWidget::~pqArraySelectionWidget() = default;
 
 //-----------------------------------------------------------------------------
 void pqArraySelectionWidget::setIconType(const QString& pname, const QString& icon_type)
@@ -487,7 +485,7 @@ void pqArraySelectionWidget::propertyChanged(const QString& pname)
   auto amodel = this->realModel();
   assert(amodel);
 
-  QVariant value = this->property(pname.toLocal8Bit().data());
+  QVariant value = this->property(pname.toUtf8().data());
   if (!value.isValid())
   {
     // dynamic property is being removed, clear it from the model.
@@ -509,7 +507,7 @@ void pqArraySelectionWidget::propertyChanged(const QString& pname)
   }
   else
   {
-    const QList<QList<QVariant> > status_values = value.value<QList<QList<QVariant> > >();
+    const QList<QList<QVariant>> status_values = value.value<QList<QList<QVariant>>>();
     std::map<QString, bool> statuses;
     for (const QList<QVariant>& tuple : status_values)
     {
@@ -528,7 +526,7 @@ void pqArraySelectionWidget::updateProperty(const QString& pname, const QVariant
   // for scope
   {
     QScopedValueRollback<bool> rollback(this->UpdatingProperty, true);
-    this->setProperty(pname.toLocal8Bit().data(), value);
+    this->setProperty(pname.toUtf8().data(), value);
   }
   Q_EMIT this->widgetModified();
 }

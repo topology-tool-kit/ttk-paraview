@@ -18,17 +18,19 @@
 #include "vtkBoundingBox.h"
 #include "vtkCameraPass.h"
 #include "vtkCaveSynchronizedRenderers.h"
+#include "vtkFXAAOptions.h"
 #include "vtkImageProcessingPass.h"
 #include "vtkObjectFactory.h"
+#include "vtkOpenGLFXAAPass.h"
 #include "vtkOpenGLRenderer.h"
 #include "vtkPVClientServerSynchronizedRenderers.h"
 #include "vtkPVConfig.h"
 #include "vtkPVDefaultPass.h"
-#include "vtkPVOptions.h"
 #include "vtkPVRenderViewSettings.h"
 #include "vtkPVServerInformation.h"
 #include "vtkPVSession.h"
 #include "vtkProcessModule.h"
+#include "vtkRemotingCoreConfiguration.h"
 #include "vtkRenderer.h"
 #include "vtkSocketController.h"
 
@@ -78,13 +80,8 @@ void vtkPVSynchronizedRenderer::Initialize(vtkPVSession* session)
 
   auto serverInfo = session->GetServerInformation();
 
-  int tile_dims[2] = { 0, 0 };
-  int tile_mullions[2] = { 0, 0 };
-  serverInfo->GetTileDimensions(tile_dims);
-  serverInfo->GetTileMullions(tile_mullions);
-
-  this->InTileDisplayMode = (tile_dims[0] > 0 || tile_dims[1] > 0);
-  this->InCAVEMode = !this->InTileDisplayMode ? (serverInfo->GetNumberOfMachines() > 0) : false;
+  this->InTileDisplayMode = serverInfo->GetIsInTileDisplay();
+  this->InCAVEMode = serverInfo->GetIsInCave();
 
   switch (pm->GetProcessType())
   {
@@ -127,6 +124,11 @@ void vtkPVSynchronizedRenderer::Initialize(vtkPVSession* session)
 #if VTK_MODULE_ENABLE_ParaView_icet
         if (!this->DisableIceT)
         {
+          auto localConfig = vtkRemotingCoreConfiguration::GetInstance();
+          int tile_dims[2], tile_mullions[2];
+          localConfig->GetTileDimensions(tile_dims);
+          localConfig->GetTileMullions(tile_mullions);
+
           vtkIceTSynchronizedRenderers* isr = vtkIceTSynchronizedRenderers::New();
           isr->SetTileDimensions(std::max(tile_dims[0], 1), std::max(tile_dims[1], 1));
           isr->SetTileMullions(tile_mullions[0], tile_mullions[1]);
@@ -208,19 +210,20 @@ void vtkPVSynchronizedRenderer::Initialize(vtkPVSession* session)
 //----------------------------------------------------------------------------
 vtkPVSynchronizedRenderer::~vtkPVSynchronizedRenderer()
 {
-  this->SetRenderer(0);
+  this->SetRenderer(nullptr);
   if (this->ParallelSynchronizer)
   {
     this->ParallelSynchronizer->Delete();
-    this->ParallelSynchronizer = 0;
+    this->ParallelSynchronizer = nullptr;
   }
   if (this->CSSynchronizer)
   {
     this->CSSynchronizer->Delete();
-    this->CSSynchronizer = 0;
+    this->CSSynchronizer = nullptr;
   }
-  this->SetImageProcessingPass(0);
-  this->SetRenderPass(0);
+  this->SetImageProcessingPass(nullptr);
+  this->SetRenderPass(nullptr);
+  this->SetFXAAOptions(nullptr);
 }
 
 //----------------------------------------------------------------------------
@@ -279,7 +282,7 @@ void vtkPVSynchronizedRenderer::SetRenderPass(vtkRenderPass* pass)
 //----------------------------------------------------------------------------
 void vtkPVSynchronizedRenderer::SetUseDepthBuffer(bool useDB)
 {
-  if (this->ParallelSynchronizer == 0)
+  if (this->ParallelSynchronizer == nullptr)
   {
     return;
   }
@@ -298,7 +301,7 @@ void vtkPVSynchronizedRenderer::SetUseDepthBuffer(bool useDB)
 //----------------------------------------------------------------------------
 void vtkPVSynchronizedRenderer::SetRenderEmptyImages(bool useREI)
 {
-  if (this->ParallelSynchronizer == 0)
+  if (this->ParallelSynchronizer == nullptr)
   {
     return;
   }
@@ -345,10 +348,23 @@ void vtkPVSynchronizedRenderer::SetupPasses()
   {
     return;
   }
-  vtkCameraPass* cameraPass = vtkCameraPass::New();
+  vtkNew<vtkOpenGLFXAAPass> fxaaPass;
+  fxaaPass->SetFXAAOptions(this->GetFXAAOptions());
+  vtkNew<vtkCameraPass> cameraPass;
+  if (this->GetUseFXAA())
+  {
+    this->Renderer->SetPass(fxaaPass);
+  }
   if (this->ImageProcessingPass)
   {
-    this->Renderer->SetPass(this->ImageProcessingPass);
+    if (this->GetUseFXAA())
+    {
+      fxaaPass->SetDelegatePass(this->ImageProcessingPass);
+    }
+    else
+    {
+      this->Renderer->SetPass(this->ImageProcessingPass);
+    }
     this->ImageProcessingPass->SetDelegatePass(cameraPass);
   }
   else
@@ -362,11 +378,9 @@ void vtkPVSynchronizedRenderer::SetupPasses()
   }
   else
   {
-    vtkPVDefaultPass* defaultPass = vtkPVDefaultPass::New();
+    vtkNew<vtkPVDefaultPass> defaultPass;
     cameraPass->SetDelegatePass(defaultPass);
-    defaultPass->Delete();
   }
-  cameraPass->Delete();
 }
 
 //----------------------------------------------------------------------------
@@ -498,4 +512,26 @@ void vtkPVSynchronizedRenderer::UpdateFixBackgroundState()
     const bool fix_background = !(this->EnableRayTracing && this->EnablePathTracing);
     this->ParallelSynchronizer->SetFixBackground(fix_background);
   }
+}
+
+//----------------------------------------------------------------------------
+void vtkPVSynchronizedRenderer::SetUseFXAA(bool use)
+{
+  if (this->UseFXAA == use)
+  {
+    return;
+  }
+  this->UseFXAA = use;
+  this->SetupPasses();
+}
+
+//----------------------------------------------------------------------------
+void vtkPVSynchronizedRenderer::SetFXAAOptions(vtkFXAAOptions* options)
+{
+  if (this->FXAAOptions == options)
+  {
+    return;
+  }
+  vtkSetObjectBodyMacro(FXAAOptions, vtkFXAAOptions, options);
+  this->SetupPasses();
 }

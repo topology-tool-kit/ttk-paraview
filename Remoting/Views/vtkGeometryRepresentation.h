@@ -27,14 +27,16 @@
 
 #ifndef vtkGeometryRepresentation_h
 #define vtkGeometryRepresentation_h
-#include <array>         // needed for array
-#include <unordered_map> // needed for unordered_map
 
 #include "vtkPVDataRepresentation.h"
 #include "vtkProperty.h"            // needed for VTK_POINTS etc.
 #include "vtkRemotingViewsModule.h" // needed for exports
+#include "vtkVector.h"              // for vtkVector.
 
-class vtkCallbackCommand;
+#include <set>           // needed for std::set
+#include <string>        // needed for std::string
+#include <unordered_map> // needed for std::unordered_map
+
 class vtkCompositeDataDisplayAttributes;
 class vtkCompositePolyDataMapper2;
 class vtkMapper;
@@ -196,13 +198,24 @@ public:
   virtual void SetRoughness(double val);
   virtual void SetMetallic(double val);
   virtual void SetEdgeTint(double r, double g, double b);
+  virtual void SetAnisotropy(double val);
+  virtual void SetAnisotropyRotation(double val);
+  virtual void SetBaseIOR(double val);
+  virtual void SetCoatIOR(double val);
+  virtual void SetCoatStrength(double val);
+  virtual void SetCoatRoughness(double val);
+  virtual void SetCoatNormalScale(double val);
+  virtual void SetCoatColor(double r, double g, double b);
   virtual void SetBaseColorTexture(vtkTexture* tex);
   virtual void SetMaterialTexture(vtkTexture* tex);
+  virtual void SetAnisotropyTexture(vtkTexture* tex);
   virtual void SetNormalTexture(vtkTexture* tex);
+  virtual void SetCoatNormalTexture(vtkTexture* tex);
   virtual void SetEmissiveTexture(vtkTexture* tex);
   virtual void SetNormalScale(double val);
   virtual void SetOcclusionStrength(double val);
   virtual void SetEmissiveFactor(double rval, double gval, double bval);
+  virtual void SetShowTexturesOnBackface(bool);
 
   //***************************************************************************
   // Forwarded to Actor.
@@ -254,34 +267,39 @@ public:
 
   //@{
   /**
-   * Set/get the visibility for a single block.
+   * Get/Set the name of the assembly to use for mapping block visibilities,
+   * colors and opacities.
+   *
+   * TODO: this is simply a placeholder for the future. Since this
+   * representation doesn't really support PartitionedDataSetCollections and
+   * hence assembly, the only assembly supported is the
+   * `vtkDataAssemblyUtilities::HierarchyName`. All others are simply ignored.
    */
-  virtual void SetBlockVisibility(unsigned int index, bool visible);
-  virtual bool GetBlockVisibility(unsigned int index) const;
-  virtual void RemoveBlockVisibility(unsigned int index, bool = true);
-  virtual void RemoveBlockVisibilities();
+  void SetActiveAssembly(const char*){};
+  //@}
+
+  //@{
+  /**
+   * Update list of selectors that determine the selected blocks.
+   */
+  void AddBlockSelector(const char*);
+  void RemoveAllBlockSelectors();
   //@}
 
   //@{
   /**
    * Set/get the color for a single block.
    */
-  virtual void SetBlockColor(unsigned int index, double r, double g, double b);
-  virtual void SetBlockColor(unsigned int index, double* color);
-  virtual double* GetBlockColor(unsigned int index);
-  virtual void RemoveBlockColor(unsigned int index);
-  virtual void RemoveBlockColors();
+  void SetBlockColor(const char*, double, double, double);
+  void RemoveAllBlockColors();
   //@}
 
   //@{
   /**
    * Set/get the opacityfor a single block.
    */
-  virtual void SetBlockOpacity(unsigned int index, double opacity);
-  virtual void SetBlockOpacity(unsigned int index, double* opacity);
-  virtual double GetBlockOpacity(unsigned int index);
-  virtual void RemoveBlockOpacity(unsigned int index);
-  virtual void RemoveBlockOpacities();
+  void SetBlockOpacity(const char*, double);
+  void RemoveAllBlockOpacities();
   //@}
 
   /**
@@ -415,7 +433,7 @@ protected:
    * the mapper's attributes with those cached in this representation; This is done
    * after the data has updated (multi-block nodes change after an update).
    */
-  void UpdateBlockAttributes(vtkMapper* mapper);
+  void PopulateBlockAttributes(vtkCompositeDataDisplayAttributes* attrs, vtkDataObject* data) const;
 
   /**
    * Computes the bounds of the visible data based on the block visibilities in the
@@ -474,9 +492,10 @@ protected:
   bool BlockAttrChanged = false;
   vtkTimeStamp BlockAttributeTime;
   bool UpdateBlockAttrLOD = false;
-  std::unordered_map<unsigned int, bool> BlockVisibilities;
-  std::unordered_map<unsigned int, double> BlockOpacities;
-  std::unordered_map<unsigned int, std::array<double, 3> > BlockColors;
+
+  std::set<std::string> BlockSelectors;
+  std::unordered_map<std::string, double> BlockOpacities;
+  std::unordered_map<std::string, vtkVector3d> BlockColors;
 
 private:
   vtkGeometryRepresentation(const vtkGeometryRepresentation&) = delete;

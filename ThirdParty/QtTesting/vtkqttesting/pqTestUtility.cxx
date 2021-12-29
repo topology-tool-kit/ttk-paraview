@@ -168,11 +168,12 @@ QMap<QString, pqEventObserver*> pqTestUtility::eventObservers() const
 }
 
 //-----------------------------------------------------------------------------
-void pqTestUtility::openPlayerDialog()
+pqPlayBackEventsDialog* pqTestUtility::openPlayerDialog()
 {
   pqPlayBackEventsDialog* dialog =
     new pqPlayBackEventsDialog(this->Player, this->Dispatcher, this, QApplication::activeWindow());
   dialog->show();
+  return dialog;
 }
 
 //-----------------------------------------------------------------------------
@@ -370,7 +371,7 @@ void pqTestUtility::addObjectStateProperty(QObject* object, const QString& prope
   {
     return;
   }
-  if (property.isEmpty() || !object->property(property.toLatin1()).isValid())
+  if (property.isEmpty() || !object->property(property.toUtf8()).isValid())
   {
     return;
   }

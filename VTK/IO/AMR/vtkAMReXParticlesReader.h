@@ -53,22 +53,22 @@ public:
   vtkTypeMacro(vtkAMReXParticlesReader, vtkMultiBlockDataSetAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Get/Set the AMReX plotfile. Note this is a directory on the filesystem and
    * not the file.
    */
-  void SetPlotFileName(const char* fname);
-  const char* GetPlotFileName() const;
-  //@}
+  void SetPlotFileName(VTK_FILEPATH const char* fname);
+  VTK_FILEPATH const char* GetPlotFileName() const;
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get/Set the particle type to read. By default, this is set to 'particles'.
    */
   void SetParticleType(const std::string& str);
   const std::string& GetParticleType() const { return this->ParticleType; }
-  //@}
+  ///@}
 
   /**
    * Get vtkDataArraySelection instance to select point arrays to read. Due to
@@ -81,16 +81,16 @@ public:
   /**
    * Returns 1 is fname refers to a plotfile that the reader can read.
    */
-  static int CanReadFile(const char* fname, const char* particlesType = nullptr);
+  static int CanReadFile(VTK_FILEPATH const char* fname, const char* particlesType = nullptr);
 
-  //@{
+  ///@{
   /**
    * Get/Set the controller to use. By default, the global
    * vtkMultiProcessController will be used.
    */
   void SetController(vtkMultiProcessController* controller);
   vtkGetObjectMacro(Controller, vtkMultiProcessController);
-  //@}
+  ///@}
 
 protected:
   vtkAMReXParticlesReader();

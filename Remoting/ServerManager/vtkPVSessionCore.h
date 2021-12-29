@@ -20,7 +20,7 @@
  * ServerImplementation code instantiation and execution.
  * On the other hand, the vtkSMSession dispatch the request to the right
  * process and therefore to the right vtkPVSessionCore instance.
-*/
+ */
 
 #ifndef vtkPVSessionCore_h
 #define vtkPVSessionCore_h
@@ -101,12 +101,12 @@ public:
 
   /**
    * Returns a vtkSIObject or subclass given its global id, if any otherwise
-   * return NULL;
+   * return nullptr;
    */
   vtkSIObject* GetSIObject(vtkTypeUInt32 globalid);
 
   /**
-   * Return a vtkObject given its global id if any otherwise return NULL;
+   * Return a vtkObject given its global id if any otherwise return nullptr;
    */
   vtkObject* GetRemoteObject(vtkTypeUInt32 globalid);
 

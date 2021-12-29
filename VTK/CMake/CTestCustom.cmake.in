@@ -1,3 +1,6 @@
+set(CTEST_CUSTOM_MAXIMUM_NUMBER_OF_ERRORS 1000)
+set(CTEST_CUSTOM_MAXIMUM_NUMBER_OF_WARNINGS 1000)
+
 list(APPEND CTEST_CUSTOM_MEMCHECK_IGNORE
   # Issues in third party glut library
   VTK::RenderingExternalCxx-TestGLUTRenderWindow
@@ -55,6 +58,10 @@ list(APPEND CTEST_CUSTOM_WARNING_EXCEPTION
   # the main culprit here.
   "vcruntime_exception.h.*: note: see declaration of 'std::exception'"
 
+  # C4702 warning (unreachable code) caused by intentional abort() used
+  # in test which prevents the return statement from being called.
+  "TestLoggerDisableSignalHandler.*unreachable code"
+
   # GetVersion is deprecated, but its use is OK.
   "sysinfoapi.h.*: note: see declaration of 'GetVersion'"
 
@@ -80,16 +87,28 @@ list(APPEND CTEST_CUSTOM_WARNING_EXCEPTION
   "[Qq]t.*warning C4714"
   "[Qq]t.*note: see declaration of"
 
+  # Python notes triggered from MPI4Py Cython-generated code.
+  "include/python3.*: note:"
+
+  # macOS warnings about dependencies htat are newer than the CI target
+  # version.
+  "ld: warning: dylib \\(/Applications/Xcode.*\\.app/Contents/Developer/Library/Frameworks/.*\\) was built for newer macOS version \\(.*\\) than being linked \\(.*\\)"
+
+  # Warning notes from Xcode.
+  "/Applications/Xcode.*: note:"
+
   # Ignore moc-generated code (and rcc and uic).
   "\\.dir[/\\\\][^/\\\\]*_autogen"
-
-  # Ignore diy2 warnings
-  "vtkdiy2"
 
   # Intel compilers warn about large functions, but we don't usually care.
   "remark #11074: Inlining inhibited by limit (max-total-size|max-size)"
   # Ignore the suggestion line for more information too.
   "remark #11076: To get full report use"
+
+  # clang-tidy ignores
+  "vtkParse.tab.c.*bugprone-sizeof-expression"
+  "vtkParse.tab.c.*bugprone-suspicious-include"
+  "mocs_compilation.cpp.*bugprone-suspicious-include"
   )
 
 set(cdash_show_third_party_warnings "@VTK_ENABLE_CDASH_THIRD_PARTY_WARNINGS@")
@@ -105,6 +124,12 @@ if (NOT cdash_show_third_party_warnings)
 
     # Suppress ThirdParty source code from displaying warnings.
     "[Tt]hird[Pp]arty"
+
+    # clang will often give multiline warnings from macro expansions,
+    # where the first part has "warning:" and subsequent parts have "note:"
+    # and those will sometimes expand into systems headers. When this occurs
+    # for ThirdParty code, we want it suppressed too. Do so here for headers within Xcode.
+    "Xcode\\.app/Contents/Developer.+note:"
 
     # Suppress Remote module source code from displaying warnings.
     # Suppress modules individually as just "Remote" is a common pattern
@@ -141,8 +166,14 @@ if (NOT cdash_show_third_party_warnings)
     # /source/Infovis/BoostGraphAlgorithms/Testing/Cxx/TestBoostAdapter.cxx:221:47: warning: '*((void*)(& ei)+32).__gnu_cxx::__normal_iterator<boost::detail::stored_edge_property<long unsigned int, boost::property<boost::edge_index_t, unsigned int> >*, std::vector<boost::detail::stored_edge_property<long unsigned int, boost::property<boost::edge_index_t, unsigned int> >, std::allocator<boost::detail::stored_edge_property<long unsigned int, boost::property<boost::edge_index_t, unsigned int> > > > >::_M_current' may be used uninitialized in this function [-Wmaybe-uninitialized]
     "[Bb]oost[Gg]raph.*edge_property.*may be used uninitialized"
 
+    # Boost.Graph uses deprecated Boost headers internally.
+    "define BOOST_BIND_GLOBAL_PLACEHOLDERS to retain the current behavior"
+
     # Warnings due to DIY
     "xmemory.*: warning C4996:.*Default Bounds constructor"
+
+    # vtkm uses deprecated TBB headers
+    "TBB Warning: tbb/task.h is deprecated"
 
     # vtkm related warnings, someone working on vtkm shoudl fix these and once fixed
     # remove these suppressions
@@ -160,6 +191,9 @@ if (NOT cdash_show_third_party_warnings)
     # third party hdf5
     # if(NULL == (*full_name = (char *)H5MM_malloc(path1_len + path2_len + 2 + 2))) /* Extra "+2" to quiet GCC warning - 2019/07/05, QAK */
     "H5MM.*quiet GCC warning"
+
+    # Ignore diy2 warnings
+    "vtkdiy2"
 
     # missing overrides may be suppressed, but the superclass shows up as a match on some systems
     # it makes no sense to suppress the offending class but report the superclass

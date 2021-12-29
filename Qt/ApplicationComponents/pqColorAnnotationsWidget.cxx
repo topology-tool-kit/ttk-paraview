@@ -89,9 +89,9 @@ namespace
 // annotations list, then they are added to the end.
 // Arguments are vectors of pairs where the pair.first is the annotated value
 // while the pair.second is the label/text for the value.
-std::vector<std::pair<QString, QString> > MergeAnnotations(
-  const std::vector<std::pair<QString, QString> >& current_pairs,
-  const std::vector<std::pair<QString, QString> >& new_pairs)
+std::vector<std::pair<QString, QString>> MergeAnnotations(
+  const std::vector<std::pair<QString, QString>>& current_pairs,
+  const std::vector<std::pair<QString, QString>>& new_pairs)
 {
   QMap<QString, QString> old_values;
   for (const auto& pair : current_pairs)
@@ -102,7 +102,7 @@ std::vector<std::pair<QString, QString> > MergeAnnotations(
   // Subset candidate annotations to only those not in existing annotations.
   // At the same time, update old_values map to have better annotation
   // text/labels, if present in the new values.
-  std::vector<std::pair<QString, QString> > real_new_pairs;
+  std::vector<std::pair<QString, QString>> real_new_pairs;
   for (const auto& pair : new_pairs)
   {
     auto iter = old_values.find(pair.first);
@@ -119,7 +119,8 @@ std::vector<std::pair<QString, QString> > MergeAnnotations(
 
   // Iterate over existing annotations, backfilling annotation texts/labels
   // from the new_pairs, if old texts were empty.
-  std::vector<std::pair<QString, QString> > merged_pairs;
+  std::vector<std::pair<QString, QString>> merged_pairs;
+  merged_pairs.reserve(current_pairs.size() + real_new_pairs.size());
   for (const auto& pair : current_pairs)
   {
     // using old_values to get updated annotation texts, if any.
@@ -156,7 +157,7 @@ class pqGlobalOpacityRangeDialog : public QDialog
 {
 public:
   pqGlobalOpacityRangeDialog(
-    double globalOpacity = 1.0, double selectedOpacity = 1.0, QWidget* parent = 0)
+    double globalOpacity = 1.0, double selectedOpacity = 1.0, QWidget* parent = nullptr)
     : QDialog(parent)
   {
     this->GlobalOpacityWidget = new pqDoubleRangeWidget(this);
@@ -187,7 +188,7 @@ public:
     this->setLayout(layout_);
   }
 
-  ~pqGlobalOpacityRangeDialog() override{};
+  ~pqGlobalOpacityRangeDialog() override = default;
 
   double globalOpacity() const { return this->GlobalOpacityWidget->value(); }
   double selectedOpacity() const { return this->SelectedOpacityWidget->value(); }
@@ -248,7 +249,7 @@ public:
 //-----------------------------------------------------------------------------
 bool pqColorAnnotationsWidget::pqInternals::updateAnnotations(vtkAbstractArray* values, bool extend)
 {
-  std::vector<std::pair<QString, QString> > candidate_tuples;
+  std::vector<std::pair<QString, QString>> candidate_tuples;
   for (vtkIdType idx = 0; idx < values->GetNumberOfTuples(); idx++)
   {
     const auto val = values->GetVariantValue(idx);
@@ -359,7 +360,7 @@ void pqColorAnnotationsWidget::applyPreset(const char* presetName)
   const Json::Value& preset = presets->GetFirstPresetWithName(presetName);
   const Json::Value& indexedColors = preset[INDEXED_COLORS];
   if (indexedColors.isNull() || !indexedColors.isArray() || (indexedColors.size() % 3) != 0 ||
-    indexedColors.size() == 0)
+    indexedColors.empty())
   {
     QString warningMessage = "Could not use " + QString(presetName) + " (size " +
       QString::number(indexedColors.size()) + ")" +
@@ -495,7 +496,7 @@ QList<QVariant> pqColorAnnotationsWidget::annotations() const
 //-----------------------------------------------------------------------------
 void pqColorAnnotationsWidget::setAnnotations(const QList<QVariant>& value)
 {
-  std::vector<std::pair<QString, QString> > annotationsData;
+  std::vector<std::pair<QString, QString>> annotationsData;
   annotationsData.reserve(value.size() / 2);
 
   for (int cc = 0; (cc + 1) < value.size(); cc += 2)
@@ -561,7 +562,7 @@ QList<QVariant> pqColorAnnotationsWidget::visibilities() const
 //-----------------------------------------------------------------------------
 void pqColorAnnotationsWidget::setVisibilities(const QList<QVariant>& values)
 {
-  std::vector<std::pair<QString, int> > visibilities;
+  std::vector<std::pair<QString, int>> visibilities;
 
   for (int cc = 0; (cc + 1) < values.size(); cc += 2)
   {
@@ -633,7 +634,7 @@ void pqColorAnnotationsWidget::removeAnnotation()
 {
   auto& internals = (*this->Internals);
   QModelIndexList indexes = internals.Ui.AnnotationsTable->selectionModel()->selectedIndexes();
-  if (indexes.size() == 0)
+  if (indexes.empty())
   {
     // Nothing selected. Nothing to remove
     return;
@@ -811,7 +812,7 @@ bool pqColorAnnotationsWidget::addActiveAnnotationsFromVisibleSources(bool force
       vtkSMPVRepresentationProxy::GetArrayInformationForColorArray(representationProxy);
     if (!activeArrayInfo || !activeArrayInfo->GetName() || !currentArrayInfo ||
       !currentArrayInfo->GetName() ||
-      strcmp(activeArrayInfo->GetName(), currentArrayInfo->GetName()))
+      strcmp(activeArrayInfo->GetName(), currentArrayInfo->GetName()) != 0)
     {
       continue;
     }
@@ -904,7 +905,8 @@ void pqColorAnnotationsWidget::saveAsNewPreset()
     return;
   }
 
-  this->saveAsPreset(qPrintable(ui.presetName->text()), !ui.saveAnnotations->isChecked(), false);
+  this->saveAsPreset(
+    ui.presetName->text().toUtf8().data(), !ui.saveAnnotations->isChecked(), false);
 }
 
 //-----------------------------------------------------------------------------
@@ -914,7 +916,7 @@ void pqColorAnnotationsWidget::saveAsPreset(
   Json::Value cpreset =
     vtkSMTransferFunctionProxy::GetStateAsPreset(this->Internals->LookupTableProxy);
 
-  if (!cpreset[INDEXED_COLORS].size())
+  if (cpreset[INDEXED_COLORS].empty())
   {
     qWarning("Cannot save an empty preset");
     return;
@@ -1070,10 +1072,7 @@ QModelIndexList pqColorAnnotationsWidget::selectedIndexes()
 //-----------------------------------------------------------------------------
 void pqColorAnnotationsWidget::setAnnotationsModel(pqAnnotationsModel* model)
 {
-  if (this->Internals->Model != nullptr)
-  {
-    delete this->Internals->Model;
-  }
+  delete this->Internals->Model;
 
   auto previousModel = this->Internals->Ui.AnnotationsTable->model();
   auto proxyModel = dynamic_cast<QSortFilterProxyModel*>(previousModel);

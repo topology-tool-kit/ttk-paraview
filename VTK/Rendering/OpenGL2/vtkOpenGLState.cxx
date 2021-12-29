@@ -1747,6 +1747,16 @@ void vtkOpenGLState::vtkglClear(GLbitfield val)
   ::glClear(val);
 }
 
+void vtkOpenGLState::vtkglBlitFramebuffer(int srcX0, int srcY0, int srcX1, int srcY1, int dstX0,
+  int dstY0, int dstX1, int dstY1, unsigned int mask, unsigned int filter)
+{
+  // ON APPLE MACOS you must turn off scissor test for DEPTH blits to work
+  vtkOpenGLState::ScopedglEnableDisable stsaver(this, GL_SCISSOR_TEST);
+  this->vtkglDisable(GL_SCISSOR_TEST);
+
+  ::glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
+}
+
 //------------------------------------------------------------------------------
 // Description:
 // Returns its texture unit manager object.
@@ -1835,6 +1845,17 @@ void vtkOpenGLState::VerifyNoActiveTextures()
 }
 
 vtkStandardNewMacro(vtkOpenGLState);
+
+void vtkOpenGLState::PrintSelf(ostream& os, vtkIndent indent)
+{
+  this->Superclass::PrintSelf(os, indent);
+  os << indent << "MajorVersion: " << this->MajorVersion << endl;
+  os << indent << "MinorVersion: " << this->MinorVersion << endl;
+  os << indent << "MaxTextureSize: " << this->MaxTextureSize << endl;
+  os << indent << "Vendor: " << this->Vendor << endl;
+  os << indent << "Renderer: " << this->Renderer << endl;
+  os << indent << "Version: " << this->Version << endl;
+}
 
 vtkCxxSetObjectMacro(vtkOpenGLState, VBOCache, vtkOpenGLVertexBufferObjectCache);
 

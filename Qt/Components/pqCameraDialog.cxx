@@ -147,7 +147,7 @@ QStringList getListOfStrings(pqSettings* settings, const QString& defaultTxt, in
 //=============================================================================
 class pqCameraDialogInternal : public Ui::pqCameraDialog
 {
-  QVector<QPointer<QToolButton> > CustomViewpointButtons;
+  QVector<QPointer<QToolButton>> CustomViewpointButtons;
   QPointer<QToolButton> PlusButton;
 
 public:
@@ -217,7 +217,7 @@ public:
 };
 
 //-----------------------------------------------------------------------------
-pqCameraDialog::pqCameraDialog(QWidget* _p /*=null*/, Qt::WindowFlags f /*=0*/)
+pqCameraDialog::pqCameraDialog(QWidget* _p /*=nullptr*/, Qt::WindowFlags f /*=0*/)
   : pqDialog(_p, f)
 {
   this->Internal = new pqCameraDialogInternal;
@@ -365,7 +365,7 @@ void pqCameraDialog::setupGUI()
     {
       // check if it is a camera link
       vtkSMCameraLink* cameraLink = vtkSMCameraLink::SafeDownCast(cameraLinks->GetItemAsObject(i));
-      if (cameraLink != NULL)
+      if (cameraLink != nullptr)
       {
         const char* linkName = pxm->GetRegisteredLinkName(cameraLink);
         if (model->hasInteractiveViewLink(linkName))
@@ -742,7 +742,7 @@ bool pqCameraDialog::applyCustomViewpoint(int CustomViewpointIndex, vtkSMRenderV
 
   vtkNew<vtkPVXMLParser> parser;
   parser->InitializeParser();
-  parser->ParseChunk(config.toLocal8Bit().data(), static_cast<unsigned int>(config.size()));
+  parser->ParseChunk(config.toUtf8().data(), static_cast<unsigned int>(config.size()));
   parser->CleanupParser();
 
   vtkPVXMLElement* xmlStream = parser->GetRootElement();
@@ -846,7 +846,7 @@ void pqCameraDialog::saveCameraConfiguration()
                       .arg(writer->GetFileDescription())
                       .arg(writer->GetFileExtension());
 
-  pqFileDialog dialog(0, this, "Save Camera Configuration", "", filters);
+  pqFileDialog dialog(nullptr, this, "Save Camera Configuration", "", filters);
   dialog.setFileMode(pqFileDialog::AnyFile);
 
   if (dialog.exec() == QDialog::Accepted)
@@ -873,7 +873,7 @@ void pqCameraDialog::loadCameraConfiguration()
                       .arg(reader->GetFileDescription())
                       .arg(reader->GetFileExtension());
 
-  pqFileDialog dialog(0, this, "Load Camera Configuration", "", filters);
+  pqFileDialog dialog(nullptr, this, "Load Camera Configuration", "", filters);
   dialog.setFileMode(pqFileDialog::ExistingFile);
 
   if (dialog.exec() == QDialog::Accepted)
@@ -901,10 +901,9 @@ QStringList pqCameraDialog::CustomViewpointConfigurations()
   pqSettings* settings = pqApplicationCore::instance()->settings();
   settings->beginGroup("CustomViewButtons");
   settings->beginGroup("Configurations");
-  const QStringList configs =
-    getListOfStrings(settings, pqCustomViewpointButtonDialog::DEFAULT_TOOLTIP,
-      pqCustomViewpointButtonDialog::MINIMUM_NUMBER_OF_ITEMS,
-      pqCustomViewpointButtonDialog::MAXIMUM_NUMBER_OF_ITEMS);
+  QStringList configs = getListOfStrings(settings, pqCustomViewpointButtonDialog::DEFAULT_TOOLTIP,
+    pqCustomViewpointButtonDialog::MINIMUM_NUMBER_OF_ITEMS,
+    pqCustomViewpointButtonDialog::MAXIMUM_NUMBER_OF_ITEMS);
   settings->endGroup();
   settings->endGroup();
   return configs;
@@ -917,10 +916,9 @@ QStringList pqCameraDialog::CustomViewpointToolTips()
   pqSettings* settings = pqApplicationCore::instance()->settings();
   settings->beginGroup("CustomViewButtons");
   settings->beginGroup("ToolTips");
-  const QStringList toolTips =
-    getListOfStrings(settings, pqCustomViewpointButtonDialog::DEFAULT_TOOLTIP,
-      pqCustomViewpointButtonDialog::MINIMUM_NUMBER_OF_ITEMS,
-      pqCustomViewpointButtonDialog::MAXIMUM_NUMBER_OF_ITEMS);
+  QStringList toolTips = getListOfStrings(settings, pqCustomViewpointButtonDialog::DEFAULT_TOOLTIP,
+    pqCustomViewpointButtonDialog::MINIMUM_NUMBER_OF_ITEMS,
+    pqCustomViewpointButtonDialog::MAXIMUM_NUMBER_OF_ITEMS);
   settings->endGroup();
   settings->endGroup();
   return toolTips;

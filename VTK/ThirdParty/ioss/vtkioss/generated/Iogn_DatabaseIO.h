@@ -1,34 +1,8 @@
-// Copyright(C) 1999-2017 National Technology & Engineering Solutions
+// Copyright(C) 1999-2021 National Technology & Engineering Solutions
 // of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
 // NTESS, the U.S. Government retains certain rights in this software.
 //
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-//     * Redistributions of source code must retain the above copyright
-//       notice, this list of conditions and the following disclaimer.
-//
-//     * Redistributions in binary form must reproduce the above
-//       copyright notice, this list of conditions and the following
-//       disclaimer in the documentation and/or other materials provided
-//       with the distribution.
-//
-//     * Neither the name of NTESS nor the names of its
-//       contributors may be used to endorse or promote products derived
-//       from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// See packages/seacas/LICENSE for details
 
 #ifndef IOSS_Iogn_DatabaseIO_h
 #define IOSS_Iogn_DatabaseIO_h
@@ -96,7 +70,7 @@ namespace Iogn {
     DatabaseIO(const DatabaseIO &from) = delete;
     DatabaseIO &operator=(const DatabaseIO &from) = delete;
 
-    ~DatabaseIO() override;
+    ~DatabaseIO() override = default;
 
     const std::string get_format() const override { return "Generated"; }
 
@@ -108,9 +82,7 @@ namespace Iogn {
 
     int int_byte_size_db() const override { return int_byte_size_api(); }
 
-    const GeneratedMesh *get_generated_mesh() const { return m_generatedMesh; }
-
-    void setGeneratedMesh(Iogn::GeneratedMesh *generatedMesh) { m_generatedMesh = generatedMesh; }
+    void setGeneratedMesh(Iogn::GeneratedMesh *generatedMesh);
 
     const std::vector<std::string> &get_sideset_names() const { return m_sideset_names; }
 
@@ -145,7 +117,7 @@ namespace Iogn {
                                size_t data_size) const override;
     int64_t get_field_internal(const Ioss::StructuredBlock * /* sb */,
                                const Ioss::Field & /* field */, void * /* data */,
-                          size_t /* data_size */) const override
+                               size_t /* data_size */) const override
     {
       return -1;
     }
@@ -164,7 +136,7 @@ namespace Iogn {
     int64_t get_field_internal(const Ioss::CommSet *cs, const Ioss::Field &field, void *data,
                                size_t data_size) const override;
 
-    int64_t get_field_internal(const Ioss::Assembly* /*sb*/, const Ioss::Field & /*field*/,
+    int64_t get_field_internal(const Ioss::Assembly * /*sb*/, const Ioss::Field & /*field*/,
                                void * /*data*/, size_t /*data_size*/) const override
     {
       return 0;
@@ -206,7 +178,7 @@ namespace Iogn {
     {
       return -1;
     }
-    int64_t put_field_internal(const Ioss::Assembly* /*sb*/, const Ioss::Field & /*field*/,
+    int64_t put_field_internal(const Ioss::Assembly * /*sb*/, const Ioss::Field & /*field*/,
                                void * /*data*/, size_t /*data_size*/) const override
     {
       return 0;
@@ -220,15 +192,15 @@ namespace Iogn {
 
     void add_transient_fields(Ioss::GroupingEntity *entity);
 
-    GeneratedMesh *          m_generatedMesh{nullptr};
-    std::vector<std::string> m_sideset_names{};
+    std::unique_ptr<GeneratedMesh> m_generatedMesh;
+    std::vector<std::string>       m_sideset_names{};
 
     double currentTime{0.0};
     int    spatialDimension{3};
 
-    int64_t elementBlockCount{0};
-    int64_t nodesetCount{0};
-    int64_t sidesetCount{0};
+    int elementBlockCount{0};
+    int nodesetCount{0};
+    int sidesetCount{0};
 
     bool m_useVariableDf{true};
   };

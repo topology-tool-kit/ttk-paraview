@@ -21,16 +21,15 @@ PURPOSE.  See the above copyright notice for more information.
 #include "vtkSQLDatabase.h"
 #include "vtkInformationObjectBaseKey.h"
 #include "vtkSQLQuery.h"
-#include "vtkToolkits.h"
 
 #include "vtkSQLDatabaseSchema.h"
 
 #include "vtkSQLiteDatabase.h"
 
-#include "vtkCriticalSection.h"
 #include "vtkObjectFactory.h"
 #include "vtkStdString.h"
 
+#include <mutex>
 #include <sstream>
 #include <vtksys/SystemTools.hxx>
 
@@ -368,21 +367,21 @@ vtkSQLDatabase* vtkSQLDatabase::CreateFromURL(const char* URL)
   std::string dataglom;
   vtkSQLDatabase* db = nullptr;
 
-  static vtkSimpleCriticalSection dbURLCritSec;
-  dbURLCritSec.Lock();
+  static std::mutex dbURLCritSec;
+  dbURLCritSec.lock();
 
   // SQLite is a bit special so lets get that out of the way :)
   if (!vtksys::SystemTools::ParseURLProtocol(urlstr, protocol, dataglom))
   {
     vtkGenericWarningMacro("Invalid URL (no protocol found): \"" << urlstr.c_str() << "\"");
-    dbURLCritSec.Unlock();
+    dbURLCritSec.unlock();
     return nullptr;
   }
   if (protocol == "sqlite")
   {
     db = vtkSQLiteDatabase::New();
     db->ParseURL(URL);
-    dbURLCritSec.Unlock();
+    dbURLCritSec.unlock();
     return db;
   }
 
@@ -391,7 +390,7 @@ vtkSQLDatabase* vtkSQLDatabase::CreateFromURL(const char* URL)
         urlstr, protocol, username, unused, hostname, dataport, database))
   {
     vtkGenericWarningMacro("Invalid URL (other components missing): \"" << urlstr.c_str() << "\"");
-    dbURLCritSec.Unlock();
+    dbURLCritSec.unlock();
     return nullptr;
   }
 
@@ -406,7 +405,7 @@ vtkSQLDatabase* vtkSQLDatabase::CreateFromURL(const char* URL)
   {
     vtkGenericWarningMacro("Unsupported protocol: " << protocol.c_str());
   }
-  dbURLCritSec.Unlock();
+  dbURLCritSec.unlock();
   return db;
 }
 

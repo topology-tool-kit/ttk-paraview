@@ -7,30 +7,28 @@ set(classes
   vtkFacetWriter
   vtkFLUENTReader
   vtkGAMBITReader
-  vtkGaussianCubeReader
   vtkGLTFDocumentLoader
   vtkGLTFReader
+  vtkGLTFWriter
   vtkHoudiniPolyDataWriter
   vtkIVWriter
   vtkMCubesReader
   vtkMCubesWriter
   vtkMFIXReader
-  vtkMoleculeReaderBase
   vtkOBJReader
   vtkOBJWriter
   vtkOpenFOAMReader
   vtkParticleReader
-  vtkPDBReader
   vtkProStarReader
   vtkPTSReader
   vtkSTLReader
   vtkSTLWriter
   vtkTecplotReader
-  vtkWindBladeReader
-  vtkXYZMolReader)
+  vtkWindBladeReader)
 
 set(private_classes
   vtkGLTFDocumentLoaderInternals
+  vtkGLTFWriterUtils  
   vtkGLTFUtils)
 
 vtk_module_add_module(VTK::IOGeometry

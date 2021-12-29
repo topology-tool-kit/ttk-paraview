@@ -67,13 +67,13 @@ pqLoadStateReaction::pqLoadStateReaction(QAction* parentObject)
 void pqLoadStateReaction::updateEnableState()
 {
   pqActiveObjects* activeObjects = &pqActiveObjects::instance();
-  this->parentAction()->setEnabled(activeObjects->activeServer() != NULL);
+  this->parentAction()->setEnabled(activeObjects->activeServer() != nullptr);
 }
 
 //-----------------------------------------------------------------------------
 void pqLoadStateReaction::loadState(const QString& filename, bool dialogBlocked, pqServer* server)
 {
-  if (server == NULL)
+  if (server == nullptr)
   {
     server = pqActiveObjects::instance().activeServer();
   }
@@ -90,9 +90,9 @@ void pqLoadStateReaction::loadState(const QString& filename, bool dialogBlocked,
     aproxy.TakeReference(pxm->NewProxy("options", "LoadStateOptions"));
     vtkSMLoadStateOptionsProxy* proxy = vtkSMLoadStateOptionsProxy::SafeDownCast(aproxy);
     vtkSMPropertyHelper(proxy, "DataDirectory")
-      .Set(vtksys::SystemTools::GetParentDirectory(filename.toLocal8Bit().data()).c_str());
+      .Set(vtksys::SystemTools::GetParentDirectory(filename.toUtf8().toStdString()).c_str());
 
-    if (proxy && proxy->PrepareToLoad(filename.toLocal8Bit().data()))
+    if (proxy && proxy->PrepareToLoad(filename.toUtf8().data()))
     {
       vtkNew<vtkSMParaViewPipelineController> controller;
       controller->InitializeProxy(proxy);
@@ -118,7 +118,11 @@ void pqLoadStateReaction::loadState(const QString& filename, bool dialogBlocked,
       pqPVApplicationCore::instance()->setLoadingState(false);
 
       // This is needed since XML state currently does not save active view.
-      pqLoadStateReaction::activateView();
+      // Check for an already active view that could have been set by a custom behavior.
+      if (!pqActiveObjects::instance().activeView())
+      {
+        pqLoadStateReaction::activateView();
+      }
     }
   }
   else
@@ -136,7 +140,7 @@ void pqLoadStateReaction::loadState(const QString& filename, bool dialogBlocked,
 //-----------------------------------------------------------------------------
 void pqLoadStateReaction::loadState()
 {
-  pqFileDialog fileDialog(NULL, pqCoreUtilities::mainWidget(), tr("Load State File"), QString(),
+  pqFileDialog fileDialog(nullptr, pqCoreUtilities::mainWidget(), tr("Load State File"), QString(),
     "ParaView state file (*.pvsm"
 #if VTK_MODULE_ENABLE_ParaView_pqPython
     " *.py"
@@ -157,7 +161,7 @@ void pqLoadStateReaction::activateView()
   auto server = pqActiveObjects::instance().activeServer();
   auto smmodel = pqApplicationCore::instance()->getServerManagerModel();
   auto views = smmodel->findItems<pqView*>(server);
-  if (views.size())
+  if (!views.empty())
   {
     pqActiveObjects::instance().setActiveView(views[0]);
   }

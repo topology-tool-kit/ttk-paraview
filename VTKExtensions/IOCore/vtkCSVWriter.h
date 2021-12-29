@@ -16,7 +16,7 @@
  * @class   vtkCSVWriter
  * @brief   CSV writer for vtkTable
  * Writes a vtkTable as a delimited text file (such as CSV).
-*/
+ */
 
 #ifndef vtkCSVWriter_h
 #define vtkCSVWriter_h
@@ -25,7 +25,7 @@
 #include "vtkPVVTKExtensionsIOCoreModule.h" //needed for exports
 #include "vtkWriter.h"
 
-#include <string>
+#include <string> // for std::string
 
 class vtkMultiProcessController;
 class vtkTable;

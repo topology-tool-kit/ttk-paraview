@@ -19,13 +19,14 @@
 #include "vtkCellData.h"
 #include "vtkCommand.h"
 #include "vtkDataArraySelection.h"
+#include "vtkDataAssembly.h"
 #include "vtkDirectory.h"
 #include "vtkFloatArray.h"
 #include "vtkInformation.h"
 #include "vtkInformationVector.h"
-#include "vtkMultiBlockDataSet.h"
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
+#include "vtkPartitionedDataSetCollection.h"
 #include "vtkPointData.h"
 #include "vtkPolyData.h"
 #include "vtkStreamingDemandDrivenPipeline.h"
@@ -33,6 +34,7 @@
 
 #include <vtksys/RegularExpression.hxx>
 
+#include <algorithm>
 #include <array>
 #include <map>
 #include <set>
@@ -43,45 +45,6 @@
 
 vtkStandardNewMacro(vtkCONVERGECFDReader);
 
-//----------------------------------------------------------------------------
-class vtkCONVERGECFDReader::vtkInternal
-{
-public:
-  std::vector<std::string> CellDataScalarVariables;
-  std::vector<std::string> CellDataVectorVariables;
-  std::vector<std::string> ParcelDataScalarVariables;
-  std::vector<std::string> ParcelDataVectorVariables;
-};
-
-//----------------------------------------------------------------------------
-vtkCONVERGECFDReader::vtkCONVERGECFDReader()
-  : FileName(nullptr)
-  , Internal(new vtkCONVERGECFDReader::vtkInternal())
-{
-  this->SetNumberOfInputPorts(0);
-  this->SetNumberOfOutputPorts(1);
-
-  this->CellDataArraySelection->AddObserver(
-    vtkCommand::ModifiedEvent, this, &vtkCONVERGECFDReader::Modified);
-  this->ParcelDataArraySelection->AddObserver(
-    vtkCommand::ModifiedEvent, this, &vtkCONVERGECFDReader::Modified);
-}
-
-//----------------------------------------------------------------------------
-vtkCONVERGECFDReader::~vtkCONVERGECFDReader()
-{
-  delete[] this->FileName;
-  this->FileName = nullptr;
-  delete this->Internal;
-}
-
-//----------------------------------------------------------------------------
-void vtkCONVERGECFDReader::PrintSelf(ostream& os, vtkIndent indent)
-{
-  this->Superclass::PrintSelf(os, indent);
-}
-
-//----------------------------------------------------------------------------
 namespace
 {
 
@@ -141,6 +104,16 @@ bool ArrayExists(hid_t fileId, const char* pathName)
 
 //----------------------------------------------------------------------------
 /**
+ *  Check existence of array defined by groupName relative to fileId.
+ */
+bool GroupExists(hid_t fileId, const char* groupName)
+{
+  // Same implementation as ArrayExists, but that's okay.
+  return (H5Lexists(fileId, groupName, H5P_DEFAULT) > 0);
+}
+
+//----------------------------------------------------------------------------
+/**
  *  Get length of array defined by pathName relative to fileId.
  */
 hsize_t GetDataLength(hid_t fileId, const char* pathName)
@@ -184,7 +157,6 @@ bool ReadArray(hid_t fileId, const char* pathName, T* data, hsize_t n)
   ScopedH5DHandle arrayId = H5Dopen(fileId, pathName);
   if (arrayId < 0)
   {
-    vtkGenericWarningMacro("No array named " << pathName << " available");
     return false;
   }
 
@@ -313,6 +285,191 @@ void SplitScalarAndVectorVariables(
 } // anonymous namespace
 
 //----------------------------------------------------------------------------
+class vtkCONVERGECFDReader::vtkInternal
+{
+public:
+  vtkCONVERGECFDReader* Self;
+  std::vector<std::string> CellDataScalarVariables;
+  std::vector<std::string> CellDataVectorVariables;
+  std::vector<std::string> ParcelDataTypes;
+  std::vector<std::string> ParcelDataScalarVariables;
+  std::vector<std::string> ParcelDataVectorVariables;
+
+  // Clears out variable info
+  void Reset()
+  {
+    this->CellDataScalarVariables.clear();
+    this->CellDataVectorVariables.clear();
+    this->ParcelDataTypes.clear();
+  }
+
+  // Get a parcel dataset at a given path
+  vtkSmartPointer<vtkPolyData> ReadParcelDataSet(hid_t streamId, const std::string& path)
+  {
+    vtkSmartPointer<vtkPolyData> parcels = vtkSmartPointer<vtkPolyData>::New();
+
+    // Build PARCEL_X address string from path name
+    std::string parcelXPath = path + "/PARCEL_X";
+
+    // Read parcel point locations
+    hsize_t parcelLength = GetDataLength(streamId, parcelXPath.c_str());
+
+    vtkNew<vtkFloatArray> parcelPointArray;
+    parcelPointArray->SetNumberOfComponents(3);
+    parcelPointArray->SetNumberOfTuples(parcelLength);
+
+    vtkNew<vtkBuffer<float>> floatBuffer;
+    floatBuffer->Allocate(parcelLength);
+
+    std::array<char, 3> dimensionNames = { 'X', 'Y', 'Z' };
+    for (size_t c = 0; c < dimensionNames.size(); ++c)
+    {
+      std::stringstream name;
+      name << path << "/PARCEL_" << dimensionNames[c];
+      if (!ReadArray(streamId, name.str().c_str(), floatBuffer->GetBuffer(), parcelLength))
+      {
+        vtkGenericWarningMacro(
+          "No parcel coordinate array " << name.str() << " dataset available in " << name.str());
+        return nullptr;
+      }
+
+      for (hsize_t j = 0; j < parcelLength; ++j)
+      {
+        parcelPointArray->SetTypedComponent(j, static_cast<int>(c), floatBuffer->GetBuffer()[j]);
+      }
+    }
+
+    vtkNew<vtkPoints> parcelPoints;
+    parcelPoints->SetData(parcelPointArray);
+
+    parcels->SetPoints(parcelPoints);
+
+    // Create a vertex for each parcel point
+    vtkNew<vtkCellArray> parcelCells;
+    parcelCells->AllocateExact(parcelLength, 1);
+    for (vtkIdType id = 0; id < static_cast<vtkIdType>(parcelLength); ++id)
+    {
+      parcelCells->InsertNextCell(1, &id);
+    }
+    parcels->SetVerts(parcelCells);
+
+    // Read parcel data arrays
+    for (int i = 0; i < this->Self->ParcelDataArraySelection->GetNumberOfArrays(); ++i)
+    {
+      std::string varName(this->Self->ParcelDataArraySelection->GetArrayName(i));
+      if (varName == "PARCEL_X" || varName == "PARCEL_Y" || varName == "PARCEL_Z" ||
+        this->Self->ParcelDataArraySelection->ArrayIsEnabled(varName.c_str()) == 0)
+      {
+        continue;
+      }
+
+      auto begin = this->ParcelDataVectorVariables.begin();
+      auto end = this->ParcelDataVectorVariables.end();
+      bool isVector = std::find(begin, end, varName) != end;
+
+      // This would be a lot simpler using a vtkSOADataArrayTemplate<float>, but
+      // until GetVoidPointer() is removed from more of the VTK code base, we
+      // will use a vtkFloatArray.
+      vtkNew<vtkFloatArray> dataArray;
+      bool success = true;
+      if (isVector)
+      {
+        std::string pathX = path + "/" + varName + "_X";
+        std::string pathY = path + "/" + varName + "_Y";
+        std::string pathZ = path + "/" + varName + "_Z";
+
+        if (!ArrayExists(streamId, pathX.c_str()))
+        {
+          // This array just doesn't exist in this stream, skip it.
+          continue;
+        }
+
+        // hsize_t length = GetDataLength(streamId, pathX.c_str());
+        dataArray->SetNumberOfComponents(3);
+        dataArray->SetNumberOfTuples(parcelLength);
+        dataArray->SetName(varName.c_str());
+
+        if (static_cast<hsize_t>(floatBuffer->GetSize()) != parcelLength)
+        {
+          floatBuffer->Allocate(parcelLength);
+        }
+        success =
+          success && ReadArray(streamId, pathX.c_str(), floatBuffer->GetBuffer(), parcelLength);
+        for (hsize_t j = 0; j < parcelLength; ++j)
+        {
+          dataArray->SetTypedComponent(j, 0, floatBuffer->GetBuffer()[j]);
+        }
+        success =
+          success && ReadArray(streamId, pathY.c_str(), floatBuffer->GetBuffer(), parcelLength);
+        for (hsize_t j = 0; j < parcelLength; ++j)
+        {
+          dataArray->SetTypedComponent(j, 1, floatBuffer->GetBuffer()[j]);
+        }
+        success =
+          success && ReadArray(streamId, pathZ.c_str(), floatBuffer->GetBuffer(), parcelLength);
+        for (hsize_t j = 0; j < parcelLength; ++j)
+        {
+          dataArray->SetTypedComponent(j, 2, floatBuffer->GetBuffer()[j]);
+        }
+      }
+      else // !is_vector
+      {
+        std::string varPath(path);
+        varPath += "/" + varName;
+
+        if (!ArrayExists(streamId, varPath.c_str()))
+        {
+          // This array just doesn't exist in this stream, skip it.
+          continue;
+        }
+
+        dataArray->SetNumberOfComponents(1);
+        dataArray->SetNumberOfTuples(parcelLength);
+        dataArray->SetName(varName.c_str());
+        success =
+          success && ReadArray(streamId, varPath.c_str(), dataArray->GetPointer(0), parcelLength);
+      }
+
+      if (success)
+      {
+        parcels->GetPointData()->AddArray(dataArray);
+      }
+    }
+
+    return parcels;
+  }
+};
+
+//----------------------------------------------------------------------------
+vtkCONVERGECFDReader::vtkCONVERGECFDReader()
+  : FileName(nullptr)
+  , Internal(new vtkCONVERGECFDReader::vtkInternal())
+{
+  this->SetNumberOfInputPorts(0);
+  this->SetNumberOfOutputPorts(1);
+  this->Internal->Self = this;
+
+  this->CellDataArraySelection->AddObserver(
+    vtkCommand::ModifiedEvent, this, &vtkCONVERGECFDReader::Modified);
+  this->ParcelDataArraySelection->AddObserver(
+    vtkCommand::ModifiedEvent, this, &vtkCONVERGECFDReader::Modified);
+}
+
+//----------------------------------------------------------------------------
+vtkCONVERGECFDReader::~vtkCONVERGECFDReader()
+{
+  delete[] this->FileName;
+  this->FileName = nullptr;
+  delete this->Internal;
+}
+
+//----------------------------------------------------------------------------
+void vtkCONVERGECFDReader::PrintSelf(ostream& os, vtkIndent indent)
+{
+  this->Superclass::PrintSelf(os, indent);
+}
+
+//----------------------------------------------------------------------------
 int vtkCONVERGECFDReader::RequestInformation(
   vtkInformation*, vtkInformationVector**, vtkInformationVector* outInfos)
 {
@@ -321,6 +478,9 @@ int vtkCONVERGECFDReader::RequestInformation(
     return 1;
   }
 
+  // Reset internal information
+  this->Internal->Reset();
+
   ScopedH5FHandle fileId = H5Fopen(this->FileName, H5F_ACC_RDONLY, H5P_DEFAULT);
   if (fileId < 0)
   {
@@ -328,22 +488,137 @@ int vtkCONVERGECFDReader::RequestInformation(
     return 0;
   }
 
-  // Assume that the variables are the same in all streams
-  ScopedH5GHandle streamId = H5Gopen(fileId, "/STREAM_00");
-  if (streamId < 0)
+  // Iterate over all streams to find available cell data arrays and parcel data arrays
+  std::set<std::string> cellVariables;
+  std::set<std::string> parcelVariables;
+  int streamCount = 0;
+  do
   {
-    vtkErrorMacro("Cannot open group /STREAM_00");
-    return 0;
-  }
+    herr_t status = 0;
+    std::ostringstream streamName;
+    streamName << "/STREAM_" << std::setw(2) << std::setfill('0') << streamCount;
+    H5Eset_auto(nullptr, nullptr);
+    status = H5Gget_objinfo(fileId, streamName.str().c_str(), false, nullptr);
+    if (status < 0)
+    {
+      break;
+    }
 
-  if (!ReadStrings(
-        streamId, "VARIABLE_NAMES/CELL_VARIABLES", this->Internal->CellDataScalarVariables))
+    // Open the group
+    ScopedH5GHandle streamId = H5Gopen(fileId, streamName.str().c_str());
+    if (streamId < 0)
+    {
+      // Group exists, but could not be opened
+      vtkErrorMacro("Could not open stream " << streamName.str());
+      break;
+    }
+
+    std::vector<std::string> cellDataVariables;
+    if (!ReadStrings(streamId, "VARIABLE_NAMES/CELL_VARIABLES", cellDataVariables))
+    {
+      vtkErrorMacro("Could not read cell variable names");
+      return 0;
+    }
+
+    // Insert variables into set to ensure uniqueness
+    for (auto& cellVariableName : cellDataVariables)
+    {
+      cellVariables.insert(cellVariableName);
+    }
+
+    // Pre- 3.1 format
+    std::vector<std::string> parcelDataScalarVariables;
+    if (ArrayExists(streamId, "VARIABLE_NAMES/PARCEL_VARIABLES"))
+    {
+      if (!ReadStrings(streamId, "VARIABLE_NAMES/PARCEL_VARIABLES", parcelDataScalarVariables))
+      {
+        vtkErrorMacro("Could not read parcel variable names");
+        return 0;
+      }
+
+      // Copy to set of names to ensure uniqueness
+      for (auto& parcelDataArrayName : parcelDataScalarVariables)
+      {
+        parcelVariables.insert(parcelDataArrayName);
+      }
+    }
+    else
+    {
+      // 3.1 and later format
+      ScopedH5GHandle varNamesHandle = H5Gopen(streamId, "VARIABLE_NAMES");
+      if (varNamesHandle < 0)
+      {
+        vtkErrorMacro("Cannot open /" << streamId << "/VARIABLE_NAMES");
+        return 0;
+      }
+
+      // Iterate over parcel variable names
+      hsize_t numVariableTypes = 0;
+      herr_t err = H5Gget_num_objs(varNamesHandle, &numVariableTypes);
+      if (err < 0)
+      {
+        vtkErrorMacro("Cannot get number of groups from file");
+        return 0;
+      }
+
+      for (hsize_t i = 0; i < numVariableTypes; ++i)
+      {
+        status = 0;
+        char groupName[256];
+        status = H5Lget_name_by_idx(streamId, "VARIABLE_NAMES/", H5_INDEX_NAME, H5_ITER_NATIVE, i,
+          groupName, 256, H5P_DEFAULT);
+        if (status < 0)
+        {
+          vtkErrorMacro(<< "error reading parcel variable names");
+          break;
+        }
+
+        std::string groupNameString(groupName);
+        if (groupNameString == "CELL_VARIABLES")
+        {
+          continue;
+        }
+
+        auto const underscorePos = groupNameString.find_last_of('_');
+        std::string parcelTypePrefix = groupNameString.substr(0, underscorePos);
+
+        std::string parcelVariablesGroupName = parcelTypePrefix + "_VARIABLES";
+        std::string parcelVariableTypeName = parcelTypePrefix + "_DATA";
+
+        // Read parcel array names
+        std::string parcelDataGroup("VARIABLE_NAMES/");
+        parcelDataGroup += parcelVariablesGroupName;
+        if (ArrayExists(streamId, parcelDataGroup.c_str()))
+        {
+          std::vector<std::string> parcelScalarVariables;
+          if (!ReadStrings(streamId, parcelDataGroup.c_str(), parcelScalarVariables))
+          {
+            vtkErrorMacro("Could not read parcel variable names");
+            return 0;
+          }
+
+          // Insert variable name into set to ensure uniqueness
+          for (auto& var : parcelScalarVariables)
+          {
+            parcelVariables.insert(var);
+          }
+        }
+      }
+    }
+
+    streamCount++;
+  } while (true); // end iterating over streams
+
+  constexpr bool defaultEnabledState = true;
+
+  // Set up cell data array selection
+  this->Internal->CellDataScalarVariables.clear();
+  this->Internal->CellDataVectorVariables.clear();
+
+  for (auto& cellArrayName : cellVariables)
   {
-    vtkErrorMacro("Could not read cell variable names");
-    return 0;
+    this->Internal->CellDataScalarVariables.emplace_back(cellArrayName);
   }
-
-  bool defaultEnabledState = true;
 
   // Split cell variables into scalar and vector arrays
   SplitScalarAndVectorVariables(
@@ -365,39 +640,39 @@ int vtkCONVERGECFDReader::RequestInformation(
     }
   }
 
-  if (ArrayExists(streamId, "VARIABLE_NAMES/PARCEL_VARIABLES"))
+  // Set up parcel data array selection
+  this->Internal->ParcelDataScalarVariables.clear();
+  this->Internal->ParcelDataVectorVariables.clear();
+
+  for (auto& parcelArrayName : parcelVariables)
   {
-    if (!ReadStrings(
-          streamId, "VARIABLE_NAMES/PARCEL_VARIABLES", this->Internal->ParcelDataScalarVariables))
+    this->Internal->ParcelDataScalarVariables.emplace_back(parcelArrayName);
+  }
+
+  // Split parcel arrays into scalar and vector variables
+  SplitScalarAndVectorVariables(
+    this->Internal->ParcelDataScalarVariables, this->Internal->ParcelDataVectorVariables);
+
+  // Set up data array status
+  for (const auto& varName : this->Internal->ParcelDataScalarVariables)
+  {
+    if (!this->ParcelDataArraySelection->ArrayExists(varName.c_str()))
     {
-      vtkErrorMacro("Could not read parcel variable names");
-      return 0;
+      this->ParcelDataArraySelection->AddArray(varName.c_str(), defaultEnabledState);
+    }
+  }
+
+  for (const auto& varName : this->Internal->ParcelDataVectorVariables)
+  {
+    // Skip X, Y, Z points
+    if (varName == "PARCEL")
+    {
+      continue;
     }
 
-    // Split parcel arrays into scalar and vector variables
-    SplitScalarAndVectorVariables(
-      this->Internal->ParcelDataScalarVariables, this->Internal->ParcelDataVectorVariables);
-
-    for (const auto& varName : this->Internal->ParcelDataScalarVariables)
+    if (!this->ParcelDataArraySelection->ArrayExists(varName.c_str()))
     {
-      if (!this->ParcelDataArraySelection->ArrayExists(varName.c_str()))
-      {
-        this->ParcelDataArraySelection->AddArray(varName.c_str(), defaultEnabledState);
-      }
-    }
-
-    for (const auto& varName : this->Internal->ParcelDataVectorVariables)
-    {
-      // Skip X, Y, Z points
-      if (varName == "PARCEL")
-      {
-        continue;
-      }
-
-      if (!this->ParcelDataArraySelection->ArrayExists(varName.c_str()))
-      {
-        this->ParcelDataArraySelection->AddArray(varName.c_str(), defaultEnabledState);
-      }
+      this->ParcelDataArraySelection->AddArray(varName.c_str(), defaultEnabledState);
     }
   }
 
@@ -417,19 +692,22 @@ int vtkCONVERGECFDReader::RequestData(
   size_t fileIndex = this->SelectTimeStepIndex(outInfo);
   std::string fileName = this->FileNames[fileIndex];
 
-  if (fileName.size() < 1 || fileName[0] == '\0')
+  if (fileName.empty())
   {
     vtkErrorMacro("No file sequence found");
     return 0;
   }
 
-  vtkMultiBlockDataSet* outputMB = vtkMultiBlockDataSet::GetData(outInfo);
-
-  if (!outputMB)
+  vtkPartitionedDataSetCollection* outputPDC = vtkPartitionedDataSetCollection::GetData(outInfo);
+  if (!outputPDC)
   {
     vtkErrorMacro("No output available!");
     return 0;
   }
+
+  vtkNew<vtkDataAssembly> hierarchy;
+  hierarchy->Initialize();
+  outputPDC->SetDataAssembly(hierarchy);
 
   ScopedH5FHandle fileId = H5Fopen(fileName.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
   if (fileId < 0)
@@ -438,8 +716,8 @@ int vtkCONVERGECFDReader::RequestData(
     return 0;
   }
 
-  ScopedH5GHandle boundaryId = H5Gopen(fileId, "/BOUNDARIES");
-  if (boundaryId < 0)
+  ScopedH5GHandle boundaryHandle = H5Gopen(fileId, "/BOUNDARIES");
+  if (boundaryHandle < 0)
   {
     vtkErrorMacro("Cannot open group/BOUNDARIES");
     return 0;
@@ -480,6 +758,10 @@ int vtkCONVERGECFDReader::RequestData(
       vtkErrorMacro("Could not find array VERTEX_COORDINATES/X");
       break;
     }
+
+    std::stringstream streamss;
+    streamss << "STREAM_" << std::setw(2) << std::setfill('0') << streamCount;
+    int streamNodeId = hierarchy->AddNode(streamss.str().c_str(), 0 /* root */);
 
     hsize_t xCoordsLength = GetDataLength(streamId, "VERTEX_COORDINATES/X");
 
@@ -548,8 +830,116 @@ int vtkCONVERGECFDReader::RequestData(
     vtkNew<vtkPoints> points;
     points->SetData(pointArray);
 
-    // Create surface
-    std::set<vtkIdType> surfacePointIds;
+    // boundaryIdToIndex must be size of max id... ids are not guaranteed to be sequential,
+    // i.e., 1, 3, 5, 30, 31, 32, 1001 so it's better to use map instead of array lookup
+    std::map<int, int> boundaryIdToIndex;
+
+    hsize_t numBoundaryNames = GetDataLength(boundaryHandle, "BOUNDARY_NAMES");
+    std::vector<std::string> boundaryNames(numBoundaryNames);
+    ReadStrings(boundaryHandle, "BOUNDARY_NAMES", boundaryNames);
+    hsize_t numBoundaries = GetDataLength(boundaryHandle, "NUM_ELEMENTS");
+    std::vector<int> boundaryNumElements(numBoundaries);
+    ReadArray(
+      boundaryHandle, "NUM_ELEMENTS", boundaryNumElements.data(), boundaryNumElements.size());
+    std::vector<int> boundaryIds(numBoundaries);
+    ReadArray(boundaryHandle, "BOUNDARY_IDS", boundaryIds.data(), boundaryIds.size());
+    if (numBoundaries != numBoundaryNames)
+    {
+      vtkErrorMacro("Number of BOUNDARY_NAMES does not match NUM_ELEMENTS");
+      return 0;
+    }
+
+    // Make mesh the first node in the stream and put it first in the collection
+    int meshNodeId = hierarchy->AddNode("Mesh", streamNodeId);
+    int meshStartId = outputPDC->GetNumberOfPartitionedDataSets();
+    outputPDC->SetNumberOfPartitionedDataSets(meshStartId + 1);
+
+    vtkNew<vtkUnstructuredGrid> ugrid;
+    outputPDC->SetPartition(meshStartId, 0, ugrid);
+    outputPDC->GetMetaData(meshStartId)->Set(vtkCompositeDataSet::NAME(), "Mesh");
+    hierarchy->AddDataSetIndex(meshNodeId, meshStartId);
+
+    // Multiple surfaces can exist in a single file. We create a vtkPolyData for
+    // each one and store them under another group in the partitioned dataset collection.
+    unsigned int streamSurfaceStartId = outputPDC->GetNumberOfPartitionedDataSets();
+    outputPDC->SetNumberOfPartitionedDataSets(
+      streamSurfaceStartId + static_cast<unsigned int>(boundaryIds.size()));
+
+    int surfaceNodeId = hierarchy->AddNode("Surfaces", streamNodeId);
+    for (int i = 0; i < static_cast<int>(boundaryIds.size()); ++i)
+    {
+      // If boundary index 0 has boundary id == 1, index 1 of boundaryIdToIndex will be 0.
+      boundaryIdToIndex[boundaryIds[i]] = static_cast<int>(i);
+
+      vtkNew<vtkPolyData> boundarySurface;
+      outputPDC->SetPartition(streamSurfaceStartId + i, 0, boundarySurface);
+      outputPDC->GetMetaData(streamSurfaceStartId + static_cast<unsigned int>(i))
+        ->Set(vtkCompositeDataSet::NAME(), boundaryNames[i]);
+
+      vtkNew<vtkCellArray> polys;
+      polys->AllocateEstimate(boundaryNumElements[i], 4);
+      boundarySurface->SetPolys(polys);
+      std::string validName = vtkDataAssembly::MakeValidNodeName(boundaryNames[i].c_str());
+      unsigned int boundaryNodeId = hierarchy->AddNode(validName.c_str(), surfaceNodeId);
+      hierarchy->AddDataSetIndex(boundaryNodeId, streamSurfaceStartId + i);
+    }
+
+    // Create maps from surface point IDs for each block
+    std::vector<std::set<vtkIdType>> blocksSurfacePointIds(boundaryIds.size());
+    for (int polyId = 0; polyId < numPolygons; ++polyId)
+    {
+      if (connectedCells[2 * polyId + 0] >= 0 && connectedCells[2 * polyId + 1] >= 0)
+      {
+        // Polygon is not part of a surface, so skip.
+        continue;
+      }
+
+      int boundaryId = -(connectedCells[2 * polyId + 0] + 1);
+      int boundaryIndex = boundaryIdToIndex[boundaryId];
+      vtkIdType numCellPts =
+        static_cast<vtkIdType>(polygonOffsets[polyId + 1] - polygonOffsets[polyId]);
+      for (vtkIdType id = 0; id < numCellPts; ++id)
+      {
+        vtkIdType ptId = polygons[polygonOffsets[polyId] + id];
+        blocksSurfacePointIds[boundaryIndex].insert(ptId);
+      }
+    }
+
+    // Create maps from original point IDs to surface point IDs for each block
+    std::vector<std::map<vtkIdType, vtkIdType>> blocksOriginalToBlockPointId(numBoundaryNames);
+    for (hsize_t boundaryIndex = 0; boundaryIndex < numBoundaryNames; ++boundaryIndex)
+    {
+      // Create a map from original point ID in the global points list
+      vtkIdType newIndex = 0;
+      for (vtkIdType id : blocksSurfacePointIds[boundaryIndex])
+      {
+        blocksOriginalToBlockPointId[boundaryIndex][id] = newIndex++;
+      }
+
+      // Clear some memory
+      blocksSurfacePointIds[boundaryIndex].clear();
+
+      // Create localized points for this block
+      vtkNew<vtkPoints> blockPoints;
+      blockPoints->SetDataType(points->GetDataType());
+      blockPoints->SetNumberOfPoints(newIndex);
+      vtkFloatArray* toArray = vtkFloatArray::SafeDownCast(blockPoints->GetData());
+      for (auto it = blocksOriginalToBlockPointId[boundaryIndex].begin();
+           it != blocksOriginalToBlockPointId[boundaryIndex].end(); ++it)
+      {
+        vtkIdType from = it->first;
+        vtkIdType to = it->second;
+        float xyz[3];
+        pointArray->GetTypedTuple(from, xyz);
+        toArray->SetTypedTuple(to, xyz);
+      }
+
+      vtkPolyData* boundarySurface =
+        vtkPolyData::SafeDownCast(outputPDC->GetPartition(streamSurfaceStartId + boundaryIndex, 0));
+      boundarySurface->SetPoints(blockPoints);
+    }
+
+    // Go through polygons again and add them to the polydata blocks
     vtkIdType numSurfacePolys = 0;
     for (int polyId = 0; polyId < numPolygons; ++polyId)
     {
@@ -559,73 +949,35 @@ int vtkCONVERGECFDReader::RequestData(
         continue;
       }
 
-      vtkIdType numCellPts =
-        static_cast<vtkIdType>(polygonOffsets[polyId + 1] - polygonOffsets[polyId]);
-      for (vtkIdType id = 0; id < numCellPts; ++id)
-      {
-        surfacePointIds.insert(polygons[polygonOffsets[polyId] + id]);
-      }
       numSurfacePolys++;
-    }
 
-    // Remap original point indices in stream to surface points
-    std::map<vtkIdType, vtkIdType> originalToSurfacePointId;
-    vtkIdType newIndex = 0;
-    for (vtkIdType id : surfacePointIds)
-    {
-      originalToSurfacePointId[id] = newIndex++;
-    }
-
-    vtkNew<vtkPoints> surfacePoints;
-    surfacePoints->SetDataType(points->GetDataType());
-    surfacePoints->SetNumberOfPoints(newIndex);
-    vtkFloatArray* toArray = vtkFloatArray::SafeDownCast(surfacePoints->GetData());
-    for (auto it = originalToSurfacePointId.begin(); it != originalToSurfacePointId.end(); ++it)
-    {
-      vtkIdType from = it->first;
-      vtkIdType to = it->second;
-      float xyz[3];
-      pointArray->GetTypedTuple(from, xyz);
-      toArray->SetTypedTuple(to, xyz);
-    }
-
-    vtkNew<vtkPolyData> surface;
-    surface->SetPoints(surfacePoints);
-
-    vtkNew<vtkCellArray> polys;
-    polys->AllocateEstimate(numSurfacePolys, 4);
-    std::vector<vtkIdType> ptIds(3);
-    for (int polyId = 0; polyId < numPolygons; ++polyId)
-    {
-      if (connectedCells[2 * polyId + 0] >= 0 && connectedCells[2 * polyId + 1] >= 0)
-      {
-        // Polygon is not part of a surface, so skip.
-        continue;
-      }
-
+      int boundaryId = -(connectedCells[2 * polyId + 0] + 1);
+      int boundaryIndex = boundaryIdToIndex[boundaryId];
+      vtkPolyData* polyData =
+        vtkPolyData::SafeDownCast(outputPDC->GetPartition(streamSurfaceStartId + boundaryIndex, 0));
       vtkIdType numCellPts =
         static_cast<vtkIdType>(polygonOffsets[polyId + 1] - polygonOffsets[polyId]);
-      if (ptIds.size() < static_cast<size_t>(numCellPts))
-      {
-        ptIds.resize(numCellPts);
-      }
+      std::vector<vtkIdType> ptIds(numCellPts);
       for (vtkIdType id = 0; id < numCellPts; ++id)
       {
-        ptIds[id] = originalToSurfacePointId[polygons[polygonOffsets[polyId] + id]];
+        vtkIdType ptId = polygons[polygonOffsets[polyId] + id];
+        ptIds[id] = blocksOriginalToBlockPointId[boundaryIndex][ptId];
       }
-
-      polys->InsertNextCell(numCellPts, &ptIds[0]);
+      polyData->GetPolys()->InsertNextCell(numCellPts, &ptIds[0]);
     }
 
-    surface->SetPolys(polys);
+    // Clear some memory
+    blocksOriginalToBlockPointId.clear();
 
-    // Create a new unstructured grid
-    vtkNew<vtkUnstructuredGrid> ugrid;
-    ugrid->SetPoints(points);
-
-    // Create a map from cell to polygon and from surface polygon to volumetric polygon
+    // Create a map from cell to polygons
     std::map<int, std::set<int>> cellToPoly;
+
+    // Create a map from polygon to the volumetric cell to which it is attached
     std::vector<int> polyToCell(numSurfacePolys);
+
+    // Create a map from polygon to boundary
+    std::vector<int> polyToBoundary(numSurfacePolys);
+
     vtkIdType surfacePolyCount = 0;
     for (int polyId = 0; polyId < numPolygons; ++polyId)
     {
@@ -633,22 +985,30 @@ int vtkCONVERGECFDReader::RequestData(
       int cell1 = connectedCells[2 * polyId + 1];
       if (cell0 >= 0)
       {
+        // Add polyId to cell 0's list of polygons
         cellToPoly[cell0].insert(polyId);
       }
       if (cell1 >= 0)
       {
+        // Add polyId to cell 1's list of polygons
         cellToPoly[cell1].insert(polyId);
       }
 
       if (cell0 < 0 || cell1 < 0)
       {
-        polyToCell[surfacePolyCount++] = cell0 >= 0 ? cell0 : cell1;
+        assert(polyToBoundary.size() > static_cast<size_t>(surfacePolyCount));
+        polyToBoundary[surfacePolyCount] = cell0 >= 0 ? -(cell1 + 1) : -(cell0 + 1);
+        polyToCell[surfacePolyCount] = cell0 >= 0 ? cell0 : cell1;
+        surfacePolyCount++;
       }
     }
 
+    // Set the points in the unstructured grid
+    ugrid->SetPoints(points);
+
     // Create polyhedra from their faces
     vtkNew<vtkIdList> faces;
-    for (auto cellIdAndPolys : cellToPoly)
+    for (const auto& cellIdAndPolys : cellToPoly)
     {
       faces->Reset();
       // Number of faces
@@ -696,6 +1056,12 @@ int vtkCONVERGECFDReader::RequestData(
         std::string pathY = rootPath + "_Y";
         std::string pathZ = rootPath + "_Z";
 
+        if (!ArrayExists(streamId, pathX.c_str()))
+        {
+          // This array just doesn't exist in this stream, skip it.
+          continue;
+        }
+
         hsize_t length = GetDataLength(streamId, pathX.c_str());
         dataArray->SetNumberOfComponents(3);
         dataArray->SetNumberOfTuples(length);
@@ -727,6 +1093,12 @@ int vtkCONVERGECFDReader::RequestData(
         std::string path("CELL_CENTER_DATA/");
         path += varName;
 
+        if (!ArrayExists(streamId, path.c_str()))
+        {
+          // This array just doesn't exist in this stream, skip it.
+          continue;
+        }
+
         hsize_t length = GetDataLength(streamId, path.c_str());
         dataArray->SetNumberOfComponents(1);
         dataArray->SetNumberOfTuples(length);
@@ -739,159 +1111,149 @@ int vtkCONVERGECFDReader::RequestData(
         ugrid->GetCellData()->AddArray(dataArray);
 
         // Now pull out the values needed for the surface geometry
-        vtkNew<vtkFloatArray> surfaceDataArray;
-        surfaceDataArray->SetNumberOfComponents(dataArray->GetNumberOfComponents());
-        surfaceDataArray->SetNumberOfTuples(numSurfacePolys);
-        surfaceDataArray->SetName(varName.c_str());
-        for (vtkIdType id = 0; id < numSurfacePolys; ++id)
+        for (int boundaryIndex = 0; boundaryIndex < static_cast<int>(numBoundaryNames);
+             ++boundaryIndex)
         {
-          for (int c = 0; c < surfaceDataArray->GetNumberOfComponents(); ++c)
+          vtkPolyData* boundarySurface = vtkPolyData::SafeDownCast(
+            outputPDC->GetPartition(streamSurfaceStartId + boundaryIndex, 0));
+          int numBoundaryPolys = boundarySurface->GetNumberOfCells();
+          vtkNew<vtkFloatArray> surfaceDataArray;
+          surfaceDataArray->SetNumberOfComponents(dataArray->GetNumberOfComponents());
+          surfaceDataArray->SetNumberOfTuples(numBoundaryPolys);
+          surfaceDataArray->SetName(varName.c_str());
+          vtkIdType localDataCount = 0;
+          for (vtkIdType id = 0; id < numSurfacePolys; ++id)
           {
-            surfaceDataArray->SetTypedComponent(
-              id, c, dataArray->GetTypedComponent(polyToCell[id], c));
+            assert(polyToBoundary.size() > static_cast<size_t>(id));
+            if (boundaryIdToIndex.find(polyToBoundary[id]) == boundaryIdToIndex.end())
+            {
+              vtkErrorMacro(
+                "polyToBoundary[id] is not found within boundaryIdToIndex" << polyToBoundary[id]);
+              return 0;
+            }
+            const int polyBoundaryIndex = boundaryIdToIndex[polyToBoundary[id]];
+            if (polyBoundaryIndex != boundaryIndex)
+            {
+              continue;
+            }
+            for (int c = 0; c < surfaceDataArray->GetNumberOfComponents(); ++c)
+            {
+              assert(polyToCell.size() > static_cast<size_t>(id));
+              surfaceDataArray->SetTypedComponent(
+                localDataCount, c, dataArray->GetTypedComponent(polyToCell[id], c));
+            }
+            ++localDataCount;
           }
+          boundarySurface->GetCellData()->AddArray(surfaceDataArray);
         }
-        surface->GetCellData()->AddArray(surfaceDataArray);
       }
     }
 
-    // Set the mesh and surface in the multiblock output
-    vtkNew<vtkMultiBlockDataSet> streamMB;
-    streamMB->SetNumberOfBlocks(2);
-    streamMB->SetBlock(0, ugrid);
-    streamMB->GetMetaData(0u)->Set(vtkCompositeDataSet::NAME(), "Mesh");
-    streamMB->SetBlock(1, surface);
-    streamMB->GetMetaData(1u)->Set(vtkCompositeDataSet::NAME(), "Surface");
-
     // ++++ PARCEL DATA ++++
-    bool parcelExists = ArrayExists(streamId, "PARCEL_DATA/PARCEL_X");
+    bool parcelExists = GroupExists(streamId, "PARCEL_DATA");
     if (parcelExists)
     {
-      // Read parcel point locations
-      hsize_t parcelLength = GetDataLength(streamId, "PARCEL_DATA/PARCEL_X");
+      std::string parcelDataRoot;
 
-      vtkNew<vtkFloatArray> parcelPointArray;
-      parcelPointArray->SetNumberOfComponents(3);
-      parcelPointArray->SetNumberOfTuples(parcelLength);
-
-      floatBuffer->Allocate(parcelLength);
-
-      for (size_t c = 0; c < dimensionNames.size(); ++c)
+      // Branch between pre-3.1 and post-3.1 file formats
+      H5O_info_t objectInfo;
+      err = H5Oget_info_by_idx(
+        streamId, "PARCEL_DATA", H5_INDEX_NAME, H5_ITER_NATIVE, 0, &objectInfo, 0);
+      if (err < 0 || objectInfo.type == H5O_TYPE_GROUP)
       {
-        std::stringstream name;
-        name << "PARCEL_DATA/PARCEL_" << dimensionNames[c];
-        if (!ReadArray(streamId, name.str().c_str(), floatBuffer->GetBuffer(), parcelLength))
+        // Handle 3.1 or above version
+
+        // Get parcel data type names
+        ScopedH5GHandle parcelDataTypesHandle = H5Gopen(streamId, "PARCEL_DATA");
+        // We already checked that the group exists, so no need to check again.
+
+        hsize_t numParcelDataTypes = 0;
+        err = H5Gget_num_objs(parcelDataTypesHandle, &numParcelDataTypes);
+        if (err < 0)
         {
-          vtkErrorMacro("No parcel coordinate array " << name.str() << " dataset available in "
-                                                      << streamName.str());
+          vtkErrorMacro("Cannot get number of parcel data types from file");
           return 0;
         }
 
-        for (hsize_t j = 0; j < parcelLength; ++j)
+        int parcelsNodeId = hierarchy->AddNode("Parcels", streamNodeId);
+
+        // Iterate over the parcel data types/data sets
+        unsigned int parcelDataTypeCount = 0;
+        for (hsize_t parcelDataTypeIndex = 0; parcelDataTypeIndex < numParcelDataTypes;
+             ++parcelDataTypeIndex)
         {
-          parcelPointArray->SetTypedComponent(j, static_cast<int>(c), floatBuffer->GetBuffer()[j]);
+          status = 0;
+          char groupName[256];
+          status = H5Lget_name_by_idx(streamId, "PARCEL_DATA", H5_INDEX_NAME, H5_ITER_NATIVE,
+            parcelDataTypeIndex, groupName, 256, H5P_DEFAULT);
+          if (status < 0)
+          {
+            vtkErrorMacro(<< "error reading parcel variable names");
+            break;
+          }
+
+          std::string dataType(groupName);
+          std::string dataTypeGroupName("PARCEL_DATA/");
+          dataTypeGroupName += dataType;
+          ScopedH5GHandle dataTypeHandle = H5Gopen(streamId, dataTypeGroupName.c_str());
+          if (dataTypeHandle < 0)
+          {
+            vtkErrorMacro("Cannot open group " << dataTypeGroupName);
+            return 0;
+          }
+
+          // Handle the datasets in each datatype
+          H5G_info_t groupInfo;
+          err = H5Gget_info(dataTypeHandle, &groupInfo);
+          if (err < 0)
+          {
+            vtkErrorMacro("Cannot get number of datasets from group " << dataTypeGroupName);
+            return 0;
+          }
+          hsize_t numDataSets = groupInfo.nlinks;
+
+          std::string dataTypeNodeName = vtkDataAssembly::MakeValidNodeName(dataType.c_str());
+          int parcelDataTypeNodeId = hierarchy->AddNode(dataTypeNodeName.c_str(), parcelsNodeId);
+
+          parcelDataTypeCount++;
+
+          // Iterate over the datasets in the dataset type group
+          for (hsize_t i = 0; i < numDataSets; ++i)
+          {
+            char dataSetGroupName[256];
+            status = H5Lget_name_by_idx(dataTypeHandle, ".", H5_INDEX_NAME, H5_ITER_NATIVE, i,
+              dataSetGroupName, 256, H5P_DEFAULT);
+            if (status < 0)
+            {
+              continue;
+            }
+
+            vtkSmartPointer<vtkPolyData> parcels =
+              this->Internal->ReadParcelDataSet(dataTypeHandle, dataSetGroupName);
+            int parcelsId = outputPDC->GetNumberOfPartitionedDataSets();
+            outputPDC->SetNumberOfPartitionedDataSets(parcelsId + 1);
+            outputPDC->SetPartition(parcelsId, 0, parcels);
+            outputPDC->GetMetaData(parcelsId)->Set(vtkCompositeDataSet::NAME(), dataSetGroupName);
+            std::string validDataSetGroupName =
+              vtkDataAssembly::MakeValidNodeName(dataSetGroupName);
+            int parcelNodeId =
+              hierarchy->AddNode(validDataSetGroupName.c_str(), parcelDataTypeNodeId);
+            hierarchy->AddDataSetIndex(parcelNodeId, parcelsId);
+          }
         }
       }
-
-      vtkNew<vtkPoints> parcelPoints;
-      parcelPoints->SetData(parcelPointArray);
-
-      vtkNew<vtkPolyData> parcels;
-      parcels->SetPoints(parcelPoints);
-
-      // Create a vertex for each parcel point
-      vtkNew<vtkCellArray> parcelCells;
-      parcelCells->AllocateExact(parcelLength, 1);
-      for (vtkIdType id = 0; id < static_cast<vtkIdType>(parcelLength); ++id)
+      else
       {
-        parcelCells->InsertNextCell(1, &id);
+        vtkSmartPointer<vtkPolyData> parcels =
+          this->Internal->ReadParcelDataSet(streamId, "PARCEL_DATA");
+        int parcelsId = outputPDC->GetNumberOfPartitionedDataSets();
+        outputPDC->SetNumberOfPartitionedDataSets(parcelsId + 1);
+        outputPDC->SetPartition(parcelsId, 0, parcels);
+        outputPDC->GetMetaData(parcelsId)->Set(vtkCompositeDataSet::NAME(), "Parcels");
+        int parcelNodeId = hierarchy->AddNode("Parcels", streamNodeId);
+        hierarchy->AddDataSetIndex(parcelNodeId, parcelsId);
       }
-      parcels->SetVerts(parcelCells);
-
-      // Read parcel data arrays
-      for (int i = 0; i < this->ParcelDataArraySelection->GetNumberOfArrays(); ++i)
-      {
-        std::string varName(this->ParcelDataArraySelection->GetArrayName(i));
-        if (varName == "PARCEL_X" || varName == "PARCEL_Y" || varName == "PARCEL_Z" ||
-          this->ParcelDataArraySelection->ArrayIsEnabled(varName.c_str()) == 0)
-        {
-          continue;
-        }
-
-        auto begin = this->Internal->ParcelDataVectorVariables.begin();
-        auto end = this->Internal->ParcelDataVectorVariables.end();
-        bool isVector = std::find(begin, end, varName) != end;
-
-        // This would be a lot simpler using a vtkSOADataArrayTemplate<float>, but
-        // until GetVoidPointer() is removed from more of the VTK code base, we
-        // will use a vtkFloatArray.
-        vtkNew<vtkFloatArray> dataArray;
-        bool success = true;
-        if (isVector)
-        {
-          std::string rootPath("PARCEL_DATA/");
-          rootPath += varName;
-          std::string pathX = rootPath + "_X";
-          std::string pathY = rootPath + "_Y";
-          std::string pathZ = rootPath + "_Z";
-
-          // hsize_t length = GetDataLength(streamId, pathX.c_str());
-          dataArray->SetNumberOfComponents(3);
-          dataArray->SetNumberOfTuples(parcelLength);
-          dataArray->SetName(varName.c_str());
-
-          if (static_cast<hsize_t>(floatBuffer->GetSize()) != parcelLength)
-          {
-            floatBuffer->Allocate(parcelLength);
-          }
-          success =
-            success && ReadArray(streamId, pathX.c_str(), floatBuffer->GetBuffer(), parcelLength);
-          for (hsize_t j = 0; j < parcelLength; ++j)
-          {
-            dataArray->SetTypedComponent(j, 0, floatBuffer->GetBuffer()[j]);
-          }
-          success =
-            success && ReadArray(streamId, pathY.c_str(), floatBuffer->GetBuffer(), parcelLength);
-          for (hsize_t j = 0; j < parcelLength; ++j)
-          {
-            dataArray->SetTypedComponent(j, 1, floatBuffer->GetBuffer()[j]);
-          }
-          success =
-            success && ReadArray(streamId, pathZ.c_str(), floatBuffer->GetBuffer(), parcelLength);
-          for (hsize_t j = 0; j < parcelLength; ++j)
-          {
-            dataArray->SetTypedComponent(j, 2, floatBuffer->GetBuffer()[j]);
-          }
-        }
-        else
-        {
-          std::string path("PARCEL_DATA/");
-          path += varName;
-
-          dataArray->SetNumberOfComponents(1);
-          dataArray->SetNumberOfTuples(parcelLength);
-          dataArray->SetName(varName.c_str());
-          success =
-            success && ReadArray(streamId, path.c_str(), dataArray->GetPointer(0), parcelLength);
-        }
-
-        if (success)
-        {
-          parcels->GetPointData()->AddArray(dataArray);
-        }
-      }
-
-      streamMB->SetNumberOfBlocks(3);
-      streamMB->SetBlock(2, parcels);
-      streamMB->GetMetaData(2u)->Set(vtkCompositeDataSet::NAME(), "Parcels");
     }
-
-    std::stringstream streamss;
-    streamss << "STREAM_" << std::setw(2) << std::setfill('0') << streamCount;
-    outputMB->SetNumberOfBlocks(streamCount + 1);
-    outputMB->GetMetaData(streamCount)->Set(vtkCompositeDataSet::NAME(), streamss.str().c_str());
-    outputMB->SetBlock(streamCount, streamMB);
-
     streamCount++;
   } while (true);
 
@@ -929,10 +1291,11 @@ void vtkCONVERGECFDReader::ReadTimeSteps(vtkInformation* outInfo)
     baseName = originalFile.substr(dirseppos + 1);
   }
 
+  std::vector<std::string> fileNames;
   vtksys::RegularExpression regEx("^([^0-9]*)([0-9]*)[_]?(.*).h5$");
   if (!regEx.find(baseName))
   {
-    this->FileNames.emplace_back(originalFile);
+    fileNames.emplace_back(originalFile);
     return;
   }
 
@@ -944,7 +1307,7 @@ void vtkCONVERGECFDReader::ReadTimeSteps(vtkInformation* outInfo)
   {
     vtkWarningMacro(<< "Could not open directory " << originalFile.c_str()
                     << " is supposed to be from (" << path.c_str() << ")");
-    this->FileNames.emplace_back(originalFile);
+    fileNames.emplace_back(originalFile);
     return;
   }
 
@@ -959,25 +1322,38 @@ void vtkCONVERGECFDReader::ReadTimeSteps(vtkInformation* outInfo)
     {
       continue;
     }
-    this->FileNames.emplace_back(path + file);
+    fileNames.emplace_back(path + file);
   }
 
-  std::vector<double> times;
-  double timeRange[2] = { VTK_DOUBLE_MAX, VTK_DOUBLE_MIN };
-  for (auto file : this->FileNames)
+  std::vector<std::pair<double, std::string>> timesAndFiles;
+  for (const auto& file : fileNames)
   {
     double time = 0.0;
     bool timeRead = this->ReadOutputTime(file, time);
     if (timeRead)
     {
-      timeRange[0] = std::min(timeRange[0], time);
-      timeRange[1] = std::max(timeRange[1], time);
-      times.emplace_back(time);
+      timesAndFiles.emplace_back(std::make_pair(time, file));
     }
   }
 
-  if (times.size() > 0)
+  // Sort files and times by time
+  std::sort(timesAndFiles.begin(), timesAndFiles.end(),
+    [](const std::pair<double, std::string>& left, const std::pair<double, std::string>& right) {
+      return left.first < right.first;
+    });
+
+  std::vector<double> times;
+  // Reset the FileNames vector in chronological order
+  this->FileNames.clear();
+  for (const auto& pair : timesAndFiles)
   {
+    times.emplace_back(pair.first);
+    this->FileNames.emplace_back(pair.second);
+  }
+
+  if (!times.empty())
+  {
+    double timeRange[2] = { times[0], times[times.size() - 1] };
     outInfo->Set(vtkStreamingDemandDrivenPipeline::TIME_RANGE(), timeRange, 2);
     outInfo->Set(
       vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &times[0], static_cast<int>(times.size()));

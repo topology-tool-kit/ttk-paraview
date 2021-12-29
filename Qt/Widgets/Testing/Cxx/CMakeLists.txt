@@ -1,13 +1,13 @@
 SET(MyTests
-  Animation
-  FlatTreeView
-  HeaderViewCheckState
-  TreeViewSelectionAndCheckState
+  Animation.cxx
+  FlatTreeView.cxx
+  HeaderViewCheckState.cxx
+  TreeViewSelectionAndCheckState.cxx
   )
 
 set(TestsNoArgs
-  DoubleLineEdit
-  HierarchicalGridLayout)
+  DoubleLineEdit.cxx
+  HierarchicalGridLayout.cxx)
 
 SET(MocSources
   DoubleLineEdit.h
@@ -18,7 +18,7 @@ SET(MocSources
 if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
   # QtTest fails to compile on ICC. Hence we don't add this test on
   # Intel compilers.
-  list(APPEND TestsNoArgs pqTextEditTest)
+  list(APPEND TestsNoArgs pqTextEditTest.cxx)
   list(APPEND MocSources pqTextEditTest.h)
 endif()
 
@@ -30,16 +30,18 @@ CREATE_TEST_SOURCELIST(Tests pqWidgetsTest.cxx ${MyTests} ${TestsNoArgs})
 vtk_module_test_executable(pqWidgetsTest QTestApp.cxx ${Tests} ${Tests_MOC_SOURCES})
 target_link_libraries(pqWidgetsTest PRIVATE Qt5::Core Qt5::Widgets Qt5::Test)
 
-FOREACH(test ${MyTests})
-  ADD_TEST(
-    NAME pqWidgets${test}
-    COMMAND pqWidgetsTest ${test} --exit)
-ENDFOREACH()
-
-foreach(test IN LISTS TestsNoArgs)
+foreach(fname IN LISTS MyTests)
+  get_filename_component(tname "${fname}" NAME_WE)
   add_test(
-    NAME pqWidgets${test}
-    COMMAND pqWidgetsTest ${test})
+    NAME pqWidgets${tname}
+    COMMAND pqWidgetsTest ${tname} --exit)
+endforeach()
+
+foreach(fname IN LISTS TestsNoArgs)
+  get_filename_component(tname "${fname}" NAME_WE)
+  add_test(
+    NAME pqWidgets${tname}
+    COMMAND pqWidgetsTest ${tname})
 endforeach()
 
 if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Intel")

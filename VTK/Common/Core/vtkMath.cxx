@@ -332,11 +332,97 @@ void vtkMath::Perpendiculars(const float v1[3], float v2[3], float v3[3], double
   vtkMathPerpendiculars(v1, v2, v3, theta);
 }
 
+//------------------------------------------------------------------------------
+// Solve linear equation Ax = b using Gaussian Elimination with Partial Pivoting
+// for a 2x2 system. If the matrix is found to be singular within a small numerical
+// tolerance close to machine precision then 0 is returned.
+vtkTypeBool vtkMath::SolveLinearSystemGEPP2x2(
+  double a00, double a01, double a10, double a11, double b0, double b1, double& x0, double& x1)
+{
+  // Check if any of the matrix coefficients is zero.
+  // If so then swap rows/columns to form an upper triangular matrix without
+  // having to use GEPP.
+  bool cols_swapped = false;
+  if ((a00 == 0) || (a01 == 0) || (a10 == 0) || (a11 == 0))
+  {
+    // zero in either row of the 2nd column?
+    if ((a01 == 0) || (a11 == 0))
+    {
+      // swap columns
+      std::swap(a00, a01);
+      std::swap(a10, a11);
+      cols_swapped = true;
+    }
+    // zero in a00?
+    if (a00 == 0)
+    {
+      // swap rows
+      std::swap(a00, a10);
+      std::swap(a01, a11);
+      std::swap(b0, b1);
+    }
+  }
+  else
+  {
+    // None of the matrix coefficients are exactly zero.
+    // Use GEPP to form upper triangular matrix, i.e. so that a10 == 0.
+    // Select pivot by looking at largest absolute value in a00, a10
+    if (fabs(a00) < fabs(a10))
+    {
+      // swap rows so largest coefficient in first column is in the first row
+      std::swap(a00, a10);
+      std::swap(a01, a11);
+      std::swap(b0, b1);
+    }
+    // a10 = 0;            // bookkeeping only, value is no longer required
+    const double f = -a10 / a00;
+    a11 += a01 * f;
+    b1 += b0 * f;
+  }
+  // Have now an exact zero in a10.
+  // Need to check for singularity by looking at a11.
+  // Note the choice of eps is reasonable but somewhat arbitrary.
+  static const double eps = 256 * std::numeric_limits<double>::epsilon();
+  if (fabs(a11) < eps)
+  {
+    // matrix is singular within small numerical tolerance
+    return 0;
+  }
+  // Solve the triangular system
+  if (a11 != 0)
+  {
+    x1 = b1 / a11;
+  }
+  else
+  {
+    return 0;
+  }
+  if (a00 != 0)
+  {
+    x0 = (b0 - a01 * x1) / a00;
+  }
+  else
+  {
+    return 0;
+  }
+  // other failures in solution?
+  if (!std::isfinite(x0) || !std::isfinite(x1))
+  {
+    return 0;
+  }
+  // If necessary swap solution vector rows.
+  if (cols_swapped)
+  {
+    std::swap(x0, x1);
+  }
+  return 1;
+}
+
 #define VTK_SMALL_NUMBER 1.0e-12
 
 //------------------------------------------------------------------------------
 // Solve linear equations Ax = b using Crout's method. Input is square matrix A
-// and load vector x. Solution x is written over load vector. The dimension of
+// and load vector b. Solution x is written over load vector. The dimension of
 // the matrix is specified in size. If error is found, method returns a 0.
 vtkTypeBool vtkMath::SolveLinearSystem(double** A, double* x, int size)
 {
@@ -344,23 +430,7 @@ vtkTypeBool vtkMath::SolveLinearSystem(double** A, double* x, int size)
   //
   if (size == 2)
   {
-    double det = vtkMath::Determinant2x2(A[0][0], A[0][1], A[1][0], A[1][1]);
-
-    static const double eps = 256.0 * std::numeric_limits<double>::epsilon();
-
-    if (std::fabs(det) < eps)
-    {
-      // Unable to solve linear system
-      return 0;
-    }
-
-    double y[2];
-    y[0] = (A[1][1] * x[0] - A[0][1] * x[1]) / det;
-    y[1] = (-A[1][0] * x[0] + A[0][0] * x[1]) / det;
-
-    x[0] = y[0];
-    x[1] = y[1];
-    return 1;
+    return SolveLinearSystemGEPP2x2(A[0][0], A[0][1], A[1][0], A[1][1], x[0], x[1], x[0], x[1]);
   }
   else if (size == 1)
   {
@@ -432,6 +502,7 @@ vtkTypeBool vtkMath::InvertMatrix(double** A, double** AI, int size)
   return retVal;
 }
 
+#define VTK_MAX_WARNS 3
 //------------------------------------------------------------------------------
 // Factor linear equations Ax = b using LU decomposition A = LU where L is
 // lower triangular matrix and U is upper triangular matrix. Input is
@@ -447,6 +518,9 @@ vtkTypeBool vtkMath::LUFactorLinearSystem(double** A, int* index, int size)
   int maxI = 0;
   double largest, temp1, temp2, sum;
 
+  // Manage number of output warnings
+  static int numWarns = 0;
+
   //
   // Loop over rows to get implicit scaling information
   //
@@ -460,7 +534,7 @@ vtkTypeBool vtkMath::LUFactorLinearSystem(double** A, int* index, int size)
       }
     }
 
-    if (largest == 0.0)
+    if (largest == 0.0 && numWarns++ < VTK_MAX_WARNS)
     {
       vtkGenericWarningMacro(<< "Unable to factor linear system");
       return 0;
@@ -517,7 +591,7 @@ vtkTypeBool vtkMath::LUFactorLinearSystem(double** A, int* index, int size)
     //
     index[j] = maxI;
 
-    if (fabs(A[j][j]) <= VTK_SMALL_NUMBER)
+    if (fabs(A[j][j]) <= VTK_SMALL_NUMBER && numWarns++ < VTK_MAX_WARNS)
     {
       vtkGenericWarningMacro(<< "Unable to factor linear system");
       return 0;
@@ -1239,6 +1313,9 @@ vtkTypeBool vtkMath::LUFactorLinearSystem(double** A, int* index, int size, doub
   int maxI = 0;
   double largest, temp1, temp2, sum;
 
+  // Manage number of output warnings
+  static int numWarns = 0;
+
   //
   // Loop over rows to get implicit scaling information
   //
@@ -1252,7 +1329,7 @@ vtkTypeBool vtkMath::LUFactorLinearSystem(double** A, int* index, int size, doub
       }
     }
 
-    if (largest == 0.0)
+    if (largest == 0.0 && numWarns++ < VTK_MAX_WARNS)
     {
       vtkGenericWarningMacro(<< "Unable to factor linear system");
       return 0;
@@ -1309,7 +1386,7 @@ vtkTypeBool vtkMath::LUFactorLinearSystem(double** A, int* index, int size, doub
     //
     index[j] = maxI;
 
-    if (fabs(A[j][j]) <= VTK_SMALL_NUMBER)
+    if (fabs(A[j][j]) <= VTK_SMALL_NUMBER && numWarns++ < VTK_MAX_WARNS)
     {
       vtkGenericWarningMacro(<< "Unable to factor linear system");
       return 0;
@@ -1716,110 +1793,6 @@ void vtkMath::Identity3x3(float A[3][3])
 void vtkMath::Identity3x3(double A[3][3])
 {
   vtkIdentity3x3(A);
-}
-
-//------------------------------------------------------------------------------
-template <class T1, class T2>
-inline void vtkQuaternionToMatrix3x3(const T1 quat[4], T2 A[3][3])
-{
-  T2 ww = quat[0] * quat[0];
-  T2 wx = quat[0] * quat[1];
-  T2 wy = quat[0] * quat[2];
-  T2 wz = quat[0] * quat[3];
-
-  T2 xx = quat[1] * quat[1];
-  T2 yy = quat[2] * quat[2];
-  T2 zz = quat[3] * quat[3];
-
-  T2 xy = quat[1] * quat[2];
-  T2 xz = quat[1] * quat[3];
-  T2 yz = quat[2] * quat[3];
-
-  T2 rr = xx + yy + zz;
-  // normalization factor, just in case quaternion was not normalized
-  T2 f = 1 / (ww + rr);
-  T2 s = (ww - rr) * f;
-  f *= 2;
-
-  A[0][0] = xx * f + s;
-  A[1][0] = (xy + wz) * f;
-  A[2][0] = (xz - wy) * f;
-
-  A[0][1] = (xy - wz) * f;
-  A[1][1] = yy * f + s;
-  A[2][1] = (yz + wx) * f;
-
-  A[0][2] = (xz + wy) * f;
-  A[1][2] = (yz - wx) * f;
-  A[2][2] = zz * f + s;
-}
-
-//------------------------------------------------------------------------------
-void vtkMath::QuaternionToMatrix3x3(const float quat[4], float A[3][3])
-{
-  vtkQuaternionToMatrix3x3(quat, A);
-}
-
-//------------------------------------------------------------------------------
-void vtkMath::QuaternionToMatrix3x3(const double quat[4], double A[3][3])
-{
-  vtkQuaternionToMatrix3x3(quat, A);
-}
-
-//------------------------------------------------------------------------------
-//  The solution is based on
-//  Berthold K. P. Horn (1987),
-//  "Closed-form solution of absolute orientation using unit quaternions,"
-//  Journal of the Optical Society of America A, 4:629-642
-template <class T1, class T2>
-inline void vtkMatrix3x3ToQuaternion(const T1 A[3][3], T2 quat[4])
-{
-  T2 N[4][4];
-
-  // on-diagonal elements
-  N[0][0] = A[0][0] + A[1][1] + A[2][2];
-  N[1][1] = A[0][0] - A[1][1] - A[2][2];
-  N[2][2] = -A[0][0] + A[1][1] - A[2][2];
-  N[3][3] = -A[0][0] - A[1][1] + A[2][2];
-
-  // off-diagonal elements
-  N[0][1] = N[1][0] = A[2][1] - A[1][2];
-  N[0][2] = N[2][0] = A[0][2] - A[2][0];
-  N[0][3] = N[3][0] = A[1][0] - A[0][1];
-
-  N[1][2] = N[2][1] = A[1][0] + A[0][1];
-  N[1][3] = N[3][1] = A[0][2] + A[2][0];
-  N[2][3] = N[3][2] = A[2][1] + A[1][2];
-
-  T2 eigenvectors[4][4], eigenvalues[4];
-
-  // convert into format that JacobiN can use,
-  // then use Jacobi to find eigenvalues and eigenvectors
-  T2 *NTemp[4], *eigenvectorsTemp[4];
-  for (int i = 0; i < 4; ++i)
-  {
-    NTemp[i] = N[i];
-    eigenvectorsTemp[i] = eigenvectors[i];
-  }
-  vtkMath::JacobiN(NTemp, 4, eigenvalues, eigenvectorsTemp);
-
-  // the first eigenvector is the one we want
-  quat[0] = eigenvectors[0][0];
-  quat[1] = eigenvectors[1][0];
-  quat[2] = eigenvectors[2][0];
-  quat[3] = eigenvectors[3][0];
-}
-
-//------------------------------------------------------------------------------
-void vtkMath::Matrix3x3ToQuaternion(const float A[3][3], float quat[4])
-{
-  vtkMatrix3x3ToQuaternion(A, quat);
-}
-
-//------------------------------------------------------------------------------
-void vtkMath::Matrix3x3ToQuaternion(const double A[3][3], double quat[4])
-{
-  vtkMatrix3x3ToQuaternion(A, quat);
 }
 
 //------------------------------------------------------------------------------
@@ -3084,6 +3057,16 @@ double vtkMath::AngleBetweenVectors(const double v1[3], const double v2[3])
   double cross[3];
   vtkMath::Cross(v1, v2, cross);
   return atan2(vtkMath::Norm(cross), vtkMath::Dot(v1, v2));
+}
+
+//------------------------------------------------------------------------------
+double vtkMath::SignedAngleBetweenVectors(
+  const double v1[3], const double v2[3], const double vn[3])
+{
+  double cross[3];
+  vtkMath::Cross(v1, v2, cross);
+  double angle = atan2(vtkMath::Norm(cross), vtkMath::Dot(v1, v2));
+  return vtkMath::Dot(cross, vn) >= 0 ? angle : -angle;
 }
 
 //------------------------------------------------------------------------------

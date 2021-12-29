@@ -1,29 +1,29 @@
 /* Copyright 2021 NVIDIA Corporation. All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions
-* are met:
-*  * Redistributions of source code must retain the above copyright
-*    notice, this list of conditions and the following disclaimer.
-*  * Redistributions in binary form must reproduce the above copyright
-*    notice, this list of conditions and the following disclaimer in the
-*    documentation and/or other materials provided with the distribution.
-*  * Neither the name of NVIDIA CORPORATION nor the names of its
-*    contributors may be used to endorse or promote products derived
-*    from this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-* EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-* PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-* CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-* EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-* PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-* PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-* OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include <sys/stat.h>
 #ifdef _WIN32
@@ -50,7 +50,7 @@ vtknvindex_slice_params::vtknvindex_slice_params()
 //-------------------------------------------------------------------------------------------------
 vtknvindex_xml_config_parser::vtknvindex_xml_config_parser()
 {
-  m_root_elm = NULL;
+  m_root_elm = nullptr;
   m_parser = vtkSmartPointer<vtkXMLDataParser>::New();
   m_parser->SetIgnoreCharacterData(0);
 }
@@ -58,7 +58,7 @@ vtknvindex_xml_config_parser::vtknvindex_xml_config_parser()
 //-------------------------------------------------------------------------------------------------
 bool vtknvindex_xml_config_parser::open_config_file(const std::string& config_filename, bool create)
 {
-  m_root_elm = NULL;
+  m_root_elm = nullptr;
 
   const std::string config_full_path = get_config_full_path(config_filename);
   if (config_full_path.empty())
@@ -102,10 +102,7 @@ bool vtknvindex_xml_config_parser::open_config_file(const std::string& config_fi
 }
 
 //-------------------------------------------------------------------------------------------------
-vtknvindex_xml_config_parser::~vtknvindex_xml_config_parser()
-{
-  // empty
-}
+vtknvindex_xml_config_parser::~vtknvindex_xml_config_parser() = default;
 
 //-------------------------------------------------------------------------------------------------
 bool vtknvindex_xml_config_parser::get_license_strings(
@@ -132,27 +129,6 @@ bool vtknvindex_xml_config_parser::get_license_strings(
 
   vendor_key = vendor_key_elm->GetCharacterData();
   secret_key = secret_key_elm->GetCharacterData();
-
-  return true;
-}
-
-//-------------------------------------------------------------------------------------------------
-bool vtknvindex_xml_config_parser::get_flex_license_path(std::string& path)
-{
-  vtkXMLDataElement* license_elm = m_root_elm->LookupElementWithName("license");
-  if (!license_elm)
-  {
-    return false;
-  }
-
-  vtkXMLDataElement* flex_license_path_elm =
-    license_elm->FindNestedElementWithName("flex_license_path");
-  if (!flex_license_path_elm)
-  {
-    return false;
-  }
-
-  path = std::string(flex_license_path_elm->GetCharacterData());
 
   return true;
 }
@@ -204,7 +180,7 @@ bool vtknvindex_xml_config_parser::get_home_path(std::string& home_path)
   // get home path from environment
   const char* env_home_path = getenv("NVINDEX_PVPLUGIN_HOME");
 
-  if (env_home_path != NULL)
+  if (env_home_path != nullptr)
   {
     home_path = std::string(env_home_path);
 
@@ -234,7 +210,7 @@ bool vtknvindex_xml_config_parser::get_home_path(std::string& home_path)
 // get home path from ParaView configuration folder
 #ifdef _WIN32
   TCHAR app_data_path[MAX_PATH];
-  if (SUCCEEDED(SHGetFolderPath(NULL, CSIDL_APPDATA, NULL, 0, app_data_path)))
+  if (SUCCEEDED(SHGetFolderPath(nullptr, CSIDL_APPDATA, nullptr, 0, app_data_path)))
   {
     home_path = std::string(app_data_path) + "\\ParaView\\";
     return true;
@@ -242,7 +218,7 @@ bool vtknvindex_xml_config_parser::get_home_path(std::string& home_path)
 #else
   const char* home = getenv("HOME");
 
-  if (home != NULL && strlen(home) > 0)
+  if (home != nullptr && strlen(home) > 0)
   {
     home_path = std::string(home) + std::string("/.config/ParaView/");
     return true;
@@ -274,16 +250,16 @@ bool vtknvindex_xml_config_parser::get_temp_path(std::string& temp_path)
   temp_path = "/tmp";
 
   char* path = getenv("TMPDIR");
-  if (path == NULL || strlen(path) == 0)
+  if (path == nullptr || strlen(path) == 0)
   {
     path = getenv("TEMP");
-    if (path == NULL || strlen(path) == 0)
+    if (path == nullptr || strlen(path) == 0)
     {
       path = getenv("TEMPDIR");
     }
   }
 
-  if (path != NULL || strlen(path) > 0)
+  if (path != nullptr || strlen(path) > 0)
   {
     temp_path = path;
   }
@@ -312,8 +288,6 @@ bool vtknvindex_xml_config_parser::create_config_file(const std::string& filenam
 //-------------------------------------------------------------------------------------------------
 vtknvindex_config_settings::vtknvindex_config_settings()
   : m_enable_preintegration(false)
-  , m_dump_internal_state(false)
-  , m_log_performance(false)
   , m_animation_play_forward(true)
   , m_animation_interval_max(1)
   , m_filter_mode(nv::index::SPARSE_VOLUME_FILTER_TRILINEAR_POST)
@@ -328,10 +302,7 @@ vtknvindex_config_settings::vtknvindex_config_settings()
 }
 
 //-------------------------------------------------------------------------------------------------
-vtknvindex_config_settings::~vtknvindex_config_settings()
-{
-  // empty
-}
+vtknvindex_config_settings::~vtknvindex_config_settings() = default;
 
 //-------------------------------------------------------------------------------------------------
 void vtknvindex_config_settings::set_region_of_interest(
@@ -341,10 +312,9 @@ void vtknvindex_config_settings::set_region_of_interest(
 }
 
 //-------------------------------------------------------------------------------------------------
-void vtknvindex_config_settings::get_region_of_interest(
-  mi::math::Bbox_struct<mi::Float32, 3>& region_of_interest) const
+mi::math::Bbox<mi::Float32, 3> vtknvindex_config_settings::get_region_of_interest() const
 {
-  region_of_interest = m_region_of_interest;
+  return m_region_of_interest;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -355,10 +325,9 @@ void vtknvindex_config_settings::set_subcube_size(
 }
 
 //-------------------------------------------------------------------------------------------------
-void vtknvindex_config_settings::get_subcube_size(
-  mi::math::Vector_struct<mi::Uint32, 3>& subcube_size) const
+mi::math::Vector<mi::Uint32, 3> vtknvindex_config_settings::get_subcube_size() const
 {
-  subcube_size = m_subcube_size;
+  return m_subcube_size;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -418,30 +387,6 @@ void vtknvindex_config_settings::set_ivol_step_size(mi::Float32 step_size)
 mi::Float32 vtknvindex_config_settings::get_ivol_step_size() const
 {
   return m_ivol_step_size;
-}
-
-//-------------------------------------------------------------------------------------------------
-void vtknvindex_config_settings::set_dump_internal_state(bool is_dump)
-{
-  m_dump_internal_state = is_dump;
-}
-
-//-------------------------------------------------------------------------------------------------
-bool vtknvindex_config_settings::is_dump_internal_state() const
-{
-  return m_dump_internal_state;
-}
-
-//-------------------------------------------------------------------------------------------------
-void vtknvindex_config_settings::set_log_performance(bool is_log)
-{
-  m_log_performance = is_log;
-}
-
-//-------------------------------------------------------------------------------------------------
-bool vtknvindex_config_settings::is_log_performance() const
-{
-  return m_log_performance;
 }
 
 //-------------------------------------------------------------------------------------------------

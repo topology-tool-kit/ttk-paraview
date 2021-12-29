@@ -12,6 +12,10 @@
      PURPOSE.  See the above copyright notice for more information.
 
 =========================================================================*/
+
+// Hide VTK_DEPRECATED_IN_9_1_0() warnings for this class.
+#define VTK_DEPRECATION_LEVEL 0
+
 #include "vtkHigherOrderQuadrilateral.h"
 
 #include "vtkCellData.h"
@@ -27,6 +31,13 @@
 #include "vtkTriangle.h"
 #include "vtkVector.h"
 #include "vtkVectorOperators.h"
+
+vtkHigherOrderCurve* vtkHigherOrderQuadrilateral::getEdgeCell()
+{
+  VTK_LEGACY_REPLACED_BODY(
+    vtkHigherOrderQuadrilateral::getEdgeCell, "VTK 9.1", vtkHigherOrderQuadrilateral::GetEdgeCell);
+  return this->GetEdgeCell();
+}
 
 vtkHigherOrderQuadrilateral::vtkHigherOrderQuadrilateral()
 {
@@ -564,11 +575,10 @@ bool vtkHigherOrderQuadrilateral::TransformApproxToCellParams(int subCell, doubl
 void vtkHigherOrderQuadrilateral::SetOrderFromCellData(
   vtkCellData* cell_data, const vtkIdType numPts, const vtkIdType cell_id)
 {
-  if (cell_data->SetActiveAttribute(
-        "HigherOrderDegrees", vtkDataSetAttributes::AttributeTypes::HIGHERORDERDEGREES) != -1)
+  vtkDataArray* v = cell_data->GetHigherOrderDegrees();
+  if (v)
   {
     double degs[3];
-    vtkDataArray* v = cell_data->GetHigherOrderDegrees();
     v->GetTuple(cell_id, degs);
     this->SetOrder(degs[0], degs[1]);
     if (this->Order[2] != numPts)

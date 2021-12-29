@@ -10,8 +10,8 @@
 #include <vector>
 
 // Fluent plugin
+#include <cstdlib>
 #include <sstream>
-#include <stdlib.h>
 #include <visitstream.h>
 
 #include "vtkConvexPointSet.h"
@@ -178,7 +178,7 @@ protected:
   vector<ScalarDataChunk> ScalarDataChunks;
   vector<VectorDataChunk> VectorDataChunks;
 
-  vector<vector<int> > SubSectionZones;
+  vector<vector<int>> SubSectionZones;
   vector<int> SubSectionIds;
   vector<int> SubSectionSize;
 

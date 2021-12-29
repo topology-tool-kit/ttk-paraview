@@ -46,7 +46,7 @@
  *
  * @sa
  * vtkSMDomain  vtkSMSourceProxy
-*/
+ */
 
 #ifndef vtkSMDataTypeDomain_h
 #define vtkSMDataTypeDomain_h
@@ -54,8 +54,7 @@
 #include "vtkRemotingServerManagerModule.h" //needed for exports
 #include "vtkSMDomain.h"
 
-#include <string>
-#include <vector>
+#include <string> // for std::string
 
 class vtkSMSourceProxy;
 
@@ -82,29 +81,9 @@ public:
   int IsInDomain(vtkSMSourceProxy* proxy, int outputport = 0);
 
   /**
-   * Returns the number of acceptable data types.
+   * An experimental API to provide a user-friendly text describing this domain.
    */
-  unsigned int GetNumberOfDataTypes();
-
-  /**
-   * Returns a data type.
-   */
-  const char* GetDataTypeName(unsigned int idx);
-
-  /**
-   * Returns if the data type is composite.
-   */
-  bool DataTypeHasChildren(unsigned int idx);
-
-  /**
-   * Returns if the child match type of a composite data type
-   */
-  const char* GetDataTypeChildMatchTypeAsString(unsigned int idx);
-
-  /**
-   * Returns the allowed child types of a composite data type
-   */
-  const std::vector<std::string>& GetDataTypeChildren(unsigned int idx);
+  std::string GetDomainDescription() const;
 
 protected:
   vtkSMDataTypeDomain();
@@ -116,19 +95,12 @@ protected:
    */
   int ReadXMLAttributes(vtkSMProperty* prop, vtkPVXMLElement* element) override;
 
-  vtkSMDataTypeDomainInternals* DTInternals;
-
-  int CompositeDataSupported;
-  vtkSetMacro(CompositeDataSupported, int);
-  vtkGetMacro(CompositeDataSupported, int);
-
-  int CompositeDataRequired;
-  vtkSetMacro(CompositeDataRequired, int);
-  vtkGetMacro(CompositeDataRequired, int);
-
 private:
   vtkSMDataTypeDomain(const vtkSMDataTypeDomain&) = delete;
   void operator=(const vtkSMDataTypeDomain&) = delete;
+  bool CompositeDataSupported;
+  bool CompositeDataRequired;
+  vtkSMDataTypeDomainInternals* DTInternals;
 };
 
 #endif

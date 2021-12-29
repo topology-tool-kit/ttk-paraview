@@ -143,8 +143,8 @@ struct vtkPUnstructuredGridGhostCellsGenerator::vtkInternals
 
 namespace
 {
-static const int UGGCG_SIZE_EXCHANGE_TAG = 9000;
-static const int UGGCG_DATA_EXCHANGE_TAG = 9001;
+const int UGGCG_SIZE_EXCHANGE_TAG = 9000;
+const int UGGCG_DATA_EXCHANGE_TAG = 9001;
 }
 
 //------------------------------------------------------------------------------
@@ -1230,7 +1230,7 @@ void vtkPUnstructuredGridGhostCellsGenerator::AddGlobalCellIds()
   while (celldata->GetArray(this->GlobalCellIdsArrayName) != nullptr)
   {
     std::string s = this->GlobalCellIdsArrayName;
-    s = s + "1";
+    s += '1';
     this->SetGlobalCellIdsArrayName(s.c_str());
   }
 

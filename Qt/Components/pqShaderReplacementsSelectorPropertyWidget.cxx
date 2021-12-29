@@ -154,7 +154,7 @@ void pqShaderReplacementsSelectorPropertyWidget::updateShaderReplacements()
 void pqShaderReplacementsSelectorPropertyWidget::textChangedAndEditingFinished()
 {
   std::string currentValue = this->Internal->Property->GetElement(0);
-  std::string newValue = this->Internal->TextEdit->toPlainText().toStdString().c_str();
+  std::string newValue = this->Internal->TextEdit->toPlainText().toStdString();
   if (currentValue == newValue)
   {
     // Don't do anything if property and textedit are already synchronized
@@ -194,27 +194,28 @@ void pqShaderReplacementsSelectorPropertyWidget::onLoad()
   dynamic_cast<QToolButton*>(this->sender())->setChecked(false);
   // Popup load texture dialog.
   QString filters = "Shader replacements files (*.json);;All files (*)";
-  pqFileDialog dialog(0, this, tr("Open ShaderReplacements:"), QString(), filters);
+  pqFileDialog dialog(nullptr, this, tr("Open ShaderReplacements:"), QString(), filters);
   dialog.setObjectName("LoadShaderReplacementsDialog");
   dialog.setFileMode(pqFileDialog::ExistingFile);
   if (dialog.exec())
   {
     QStringList files = dialog.getSelectedFiles();
-    if (files.size() > 0 && this->loadShaderReplacements(files[0]))
+    if (!files.empty() && this->loadShaderReplacements(files[0]))
     {
       if (this->Internal->ComboBox->getPathIndex(files[0]) == 0)
       {
         // Selected file is not in the current preset list, add it
         vtkSMSettings* settings = vtkSMSettings::GetInstance();
-        std::string newPaths = settings->GetSettingAsString(
-          pqShaderReplacementsComboBox::ShaderReplacementPathsSettings, "");
-        if (newPaths != "")
+        QString newPaths = QString::fromStdString(settings->GetSettingAsString(
+          pqShaderReplacementsComboBox::ShaderReplacementPathsSettings, ""));
+        if (!newPaths.isEmpty())
         {
-          newPaths += std::string(1, QDir::listSeparator().toLatin1());
+          newPaths += QDir::listSeparator();
         }
-        newPaths += files[0].toStdString();
-        settings->SetSetting(
-          pqShaderReplacementsComboBox::ShaderReplacementPathsSettings, newPaths);
+        newPaths += files[0];
+
+        settings->SetSetting(pqShaderReplacementsComboBox::ShaderReplacementPathsSettings,
+          newPaths.toUtf8().toStdString());
 
         // Refresh the combobox with new preset entry
         this->Internal->ComboBox->populate();
@@ -252,11 +253,10 @@ void pqShaderReplacementsSelectorPropertyWidget::onDelete()
   {
     // A preset is currently selected, remove it from the saved presets
     vtkSMSettings* settings = vtkSMSettings::GetInstance();
-    QString paths(
-      settings->GetSettingAsString(pqShaderReplacementsComboBox::ShaderReplacementPathsSettings, "")
-        .c_str());
+    QString paths = QString::fromStdString(settings->GetSettingAsString(
+      pqShaderReplacementsComboBox::ShaderReplacementPathsSettings, ""));
     QStringList plist = paths.split(QDir::listSeparator());
-    std::string newPaths;
+    QString newPaths;
     int count = 0;
     foreach (QString p, plist)
     {
@@ -264,12 +264,13 @@ void pqShaderReplacementsSelectorPropertyWidget::onDelete()
       {
         if (count > 0)
         {
-          newPaths += std::string(1, QDir::listSeparator().toLatin1());
+          newPaths += QDir::listSeparator();
         }
-        newPaths += p.toStdString();
+        newPaths += p;
       }
     }
-    settings->SetSetting(pqShaderReplacementsComboBox::ShaderReplacementPathsSettings, newPaths);
+    settings->SetSetting(pqShaderReplacementsComboBox::ShaderReplacementPathsSettings,
+      newPaths.toUtf8().toStdString());
   }
   else
   {

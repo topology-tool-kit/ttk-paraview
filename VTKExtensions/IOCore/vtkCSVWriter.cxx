@@ -43,12 +43,12 @@ vtkCxxSetObjectMacro(vtkCSVWriter, Controller, vtkMultiProcessController);
 //-----------------------------------------------------------------------------
 vtkCSVWriter::vtkCSVWriter()
 {
-  this->StringDelimiter = 0;
-  this->FieldDelimiter = 0;
+  this->StringDelimiter = nullptr;
+  this->FieldDelimiter = nullptr;
   this->UseStringDelimiter = true;
   this->SetStringDelimiter("\"");
   this->SetFieldDelimiter(",");
-  this->FileName = 0;
+  this->FileName = nullptr;
   this->Precision = 5;
   this->UseScientificNotation = true;
   this->FieldAssociation = 0;
@@ -62,9 +62,9 @@ vtkCSVWriter::vtkCSVWriter()
 vtkCSVWriter::~vtkCSVWriter()
 {
   this->SetController(nullptr);
-  this->SetStringDelimiter(0);
-  this->SetFieldDelimiter(0);
-  this->SetFileName(0);
+  this->SetStringDelimiter(nullptr);
+  this->SetFieldDelimiter(nullptr);
+  this->SetFileName(nullptr);
 }
 
 //-----------------------------------------------------------------------------
@@ -193,7 +193,7 @@ void vtkCSVWriterGetDataString(vtkArrayIteratorTemplate<unsigned char>* iter, vt
 class vtkCSVWriter::CSVFile
 {
   vtksys::ofstream Stream;
-  std::vector<std::pair<std::string, int> > ColumnInfo;
+  std::vector<std::pair<std::string, int>> ColumnInfo;
   double Time = vtkMath::Nan();
 
 public:
@@ -275,7 +275,7 @@ public:
 
   void WriteData(vtkDataSetAttributes* dsa, vtkCSVWriter* self)
   {
-    std::vector<vtkSmartPointer<vtkArrayIterator> > columnsIters;
+    std::vector<vtkSmartPointer<vtkArrayIterator>> columnsIters;
     for (const auto& cinfo : this->ColumnInfo)
     {
       auto array = dsa->GetAbstractArray(cinfo.first.c_str());

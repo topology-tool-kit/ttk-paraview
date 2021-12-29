@@ -60,7 +60,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "avtVectorMetaData.h"
 #include "TimingsManager.h"
 
-#include "limits.h"
+#include <climits>
 
 vtkStandardNewMacro(vtkAvtMTMDFileFormatAlgorithm);
 //-----------------------------------------------------------------------------
@@ -70,17 +70,15 @@ vtkAvtMTMDFileFormatAlgorithm::vtkAvtMTMDFileFormatAlgorithm()
 }
 
 //-----------------------------------------------------------------------------
-vtkAvtMTMDFileFormatAlgorithm::~vtkAvtMTMDFileFormatAlgorithm()
-{
-}
+vtkAvtMTMDFileFormatAlgorithm::~vtkAvtMTMDFileFormatAlgorithm() = default;
 
 //-----------------------------------------------------------------------------
-int vtkAvtMTMDFileFormatAlgorithm::RequestData(vtkInformation *request,
-        vtkInformationVector **inputVector, vtkInformationVector *outputVector)
+int vtkAvtMTMDFileFormatAlgorithm::RequestData(vtkInformation *vtkNotUsed(request),
+        vtkInformationVector **vtkNotUsed(inputVector), vtkInformationVector *outputVector)
   {
   vtkInformation* outInfo = outputVector->GetInformationObject(0);
 
-  unsigned int TimeIndex = this->GetCurrentTimeStep(outInfo);
+  unsigned int TimeIndex = vtkAvtFileFormatAlgorithm::GetCurrentTimeStep(outInfo);
 
   if (!this->InitializeAVTReader( TimeIndex ))
     {
@@ -117,7 +115,7 @@ int vtkAvtMTMDFileFormatAlgorithm::RequestData(vtkInformation *request,
       }
 
     output->SetNumberOfBlocks( size );
-    vtkMultiBlockDataSet* tempData = NULL;
+    vtkMultiBlockDataSet* tempData = nullptr;
     int blockIndex=0;
     for ( int i=0; i < this->MetaData->GetNumMeshes(); ++i)
       {
@@ -145,7 +143,7 @@ int vtkAvtMTMDFileFormatAlgorithm::RequestData(vtkInformation *request,
           this->FillBlock( tempData, &meshMetaData, TimeIndex );
           output->SetBlock(blockIndex,tempData);
           tempData->Delete();
-          tempData = NULL;
+          tempData = nullptr;
           break;
         }
       output->GetMetaData(blockIndex)->Set(vtkCompositeDataSet::NAME(),name.c_str());
@@ -153,7 +151,7 @@ int vtkAvtMTMDFileFormatAlgorithm::RequestData(vtkInformation *request,
       }
     }
   this->CleanupAVTReader();
-  this->SetupGhostInformation(outInfo);
+  vtkAvtFileFormatAlgorithm::SetupGhostInformation(outInfo);
   return 1;
 }
 

@@ -43,24 +43,24 @@ public:
   vtkTypeMacro(vtkRectilinearGridReader, vtkDataReader);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Get and set the output of this reader.
    */
   vtkRectilinearGrid* GetOutput();
   vtkRectilinearGrid* GetOutput(int idx);
   void SetOutput(vtkRectilinearGrid* output);
-  //@}
+  ///@}
 
   /**
    * Read the meta information from the file (WHOLE_EXTENT).
    */
-  int ReadMetaDataSimple(const std::string& fname, vtkInformation* metadata) override;
+  int ReadMetaDataSimple(VTK_FILEPATH const std::string& fname, vtkInformation* metadata) override;
 
   /**
    * Actual reading happens here
    */
-  int ReadMeshSimple(const std::string& fname, vtkDataObject* output) override;
+  int ReadMeshSimple(VTK_FILEPATH const std::string& fname, vtkDataObject* output) override;
 
 protected:
   vtkRectilinearGridReader();

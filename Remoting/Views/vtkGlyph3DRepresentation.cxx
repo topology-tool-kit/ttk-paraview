@@ -24,6 +24,7 @@
 #include "vtkGlyph3DMapper.h"
 #include "vtkInformation.h"
 #include "vtkInformationVector.h"
+#include "vtkLogger.h"
 #include "vtkMPIMoveData.h"
 #include "vtkMatrix4x4.h"
 #include "vtkMultiBlockDataSet.h"
@@ -51,10 +52,11 @@ class vtkGlyphRepresentationMultiBlockMaker : public vtkMultiBlockDataSetAlgorit
 {
 public:
   static vtkGlyphRepresentationMultiBlockMaker* New();
-  vtkTypeMacro(vtkGlyphRepresentationMultiBlockMaker, vtkMultiBlockDataSetAlgorithm)
+  vtkTypeMacro(vtkGlyphRepresentationMultiBlockMaker, vtkMultiBlockDataSetAlgorithm);
 
-    protected : int RequestData(vtkInformation*, vtkInformationVector** inVec,
-                  vtkInformationVector* outVec) override
+protected:
+  int RequestData(
+    vtkInformation*, vtkInformationVector** inVec, vtkInformationVector* outVec) override
   {
     vtkDataObject* inputDO = vtkDataObject::GetData(inVec[0], 0);
     vtkMultiBlockDataSet* outputMB = vtkMultiBlockDataSet::GetData(outVec, 0);
@@ -73,7 +75,7 @@ public:
     return 1;
   }
 };
-vtkStandardNewMacro(vtkGlyphRepresentationMultiBlockMaker)
+vtkStandardNewMacro(vtkGlyphRepresentationMultiBlockMaker);
 
 } // end anon namespace
 
@@ -101,10 +103,7 @@ vtkGlyph3DRepresentation::vtkGlyph3DRepresentation()
   this->GlyphMapper->SetInterpolateScalarsBeforeMapping(0);
   this->LODGlyphMapper->SetInterpolateScalarsBeforeMapping(0);
 
-  vtkCompositeDataDisplayAttributes* compositeAttributes =
-    vtkCompositePolyDataMapper2::SafeDownCast(this->Mapper)->GetCompositeDataDisplayAttributes();
-  this->GlyphMapper->SetBlockAttributes(compositeAttributes);
-  this->LODGlyphMapper->SetBlockAttributes(compositeAttributes);
+  this->SetupDefaults();
 }
 
 //----------------------------------------------------------------------------
@@ -115,6 +114,24 @@ vtkGlyph3DRepresentation::~vtkGlyph3DRepresentation()
   this->LODGlyphMapper->Delete();
   this->GlyphActor->Delete();
   this->DummySource->Delete();
+}
+
+//----------------------------------------------------------------------------
+void vtkGlyph3DRepresentation::SetupDefaults()
+{
+  this->Superclass::SetupDefaults();
+
+  if (auto compositeAttributes = vtkCompositePolyDataMapper2::SafeDownCast(this->Mapper)
+                                   ->GetCompositeDataDisplayAttributes())
+  {
+    this->GlyphMapper->SetBlockAttributes(compositeAttributes);
+  }
+
+  if (auto compositeAttributes = vtkCompositePolyDataMapper2::SafeDownCast(this->LODMapper)
+                                   ->GetCompositeDataDisplayAttributes())
+  {
+    this->LODGlyphMapper->SetBlockAttributes(compositeAttributes);
+  }
 }
 
 //----------------------------------------------------------------------------
@@ -239,6 +256,8 @@ int vtkGlyph3DRepresentation::ProcessViewRequest(
     // nodes, as is correct.
     double bounds[6];
     this->ComputeGlyphBounds(bounds);
+    vtkLogF(TRACE, "glyph-bounds: (%0.2g, %0.2g, %0.2g, %0.2g, %0.2g, %0.2g)", bounds[0], bounds[1],
+      bounds[2], bounds[3], bounds[4], bounds[5]);
 
     vtkNew<vtkMatrix4x4> matrix;
     this->GlyphActor->GetMatrix(matrix.GetPointer());
@@ -249,7 +268,7 @@ int vtkGlyph3DRepresentation::ProcessViewRequest(
   else if (request_type == vtkPVView::REQUEST_UPDATE_LOD())
   {
     vtkPVRenderView::SetPieceLOD(
-      inInfo, this, this->GlyphMultiBlockMaker->GetOutputDataObject(0), 1);
+      inInfo, this, this->GlyphMultiBlockMaker->GetOutputDataObject(0), 0, 1);
   }
 
   if (request_type == vtkPVView::REQUEST_RENDER())
@@ -275,7 +294,7 @@ int vtkGlyph3DRepresentation::ProcessViewRequest(
     }
     else
     {
-      this->GlyphMapper->SetInputDataObject(1, NULL);
+      this->GlyphMapper->SetInputDataObject(1, nullptr);
     }
 
     producerGlyphPortLOD->GetProducer()->Update();
@@ -288,7 +307,7 @@ int vtkGlyph3DRepresentation::ProcessViewRequest(
     }
     else
     {
-      this->LODGlyphMapper->SetInputDataObject(1, NULL);
+      this->LODGlyphMapper->SetInputDataObject(1, nullptr);
     }
 
     bool lod = this->SuppressLOD ? false : (inInfo->Has(vtkPVRenderView::USE_LOD()) == 1);
@@ -339,7 +358,7 @@ void vtkGlyph3DRepresentation::UpdateColoringParameters()
     this->Mapper->GetScalarMode() != VTK_SCALAR_MODE_USE_POINT_FIELD_DATA)
   {
     // we are not coloring the glyphs with scalars.
-    const char* null = NULL;
+    const char* null = nullptr;
     this->GlyphMapper->SetScalarVisibility(0);
     this->LODGlyphMapper->SetScalarVisibility(0);
     this->GlyphMapper->SelectColorArray(null);

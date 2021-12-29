@@ -146,15 +146,15 @@ static void vtkDebugMultiBlockStructure(vtkIndent indent, vtkMultiGroupDataSet* 
 
 namespace
 {
-static const char* vtkLSDynaCellTypes[] = { "Point", "Beam", "Shell", "Thick Shell", "Solid",
-  "Rigid Body", "Road Surface" };
+const char* vtkLSDynaCellTypes[] = { "Point", "Beam", "Shell", "Thick Shell", "Solid", "Rigid Body",
+  "Road Surface" };
 
 // Read in lines until one that's
 // - not empty, and
 // - not a comment
 // is encountered. Return with that text stored in \a line.
 // If an error or EOF is hit, return 0. Otherwise, return 1.
-static int vtkLSNextSignificantLine(istream& deck, std::string& line)
+int vtkLSNextSignificantLine(istream& deck, std::string& line)
 {
   while (deck.good())
   {
@@ -167,7 +167,7 @@ static int vtkLSNextSignificantLine(istream& deck, std::string& line)
   return 0;
 }
 
-static void vtkLSTrimWhitespace(std::string& line)
+void vtkLSTrimWhitespace(std::string& line)
 {
   std::string::size_type llen = line.length();
   while (llen &&
@@ -186,7 +186,7 @@ static void vtkLSTrimWhitespace(std::string& line)
   line = line.substr(nameStart, llen - nameStart);
 }
 
-static void vtkLSDowncaseFirstWord(std::string& downcased, const std::string& line)
+void vtkLSDowncaseFirstWord(std::string& downcased, const std::string& line)
 {
   std::string::size_type i;
   std::string::value_type chr;
@@ -2590,13 +2590,13 @@ int vtkLSDynaReader::ReadUserIds()
   // FIXME: This won't work if Rigid Body and Shell elements are interleaved (which I now believe
   // they are)
   this->Parts->ReadCellUserIds(
+    LSDynaMetaData::SOLID, this->GetCellArrayStatus(LSDynaMetaData::SOLID, LS_ARRAYNAME_USERID));
+  this->Parts->ReadCellUserIds(
     LSDynaMetaData::BEAM, this->GetCellArrayStatus(LSDynaMetaData::BEAM, LS_ARRAYNAME_USERID));
   this->Parts->ReadCellUserIds(
     LSDynaMetaData::SHELL, this->GetCellArrayStatus(LSDynaMetaData::SHELL, LS_ARRAYNAME_USERID));
   this->Parts->ReadCellUserIds(LSDynaMetaData::THICK_SHELL,
     this->GetCellArrayStatus(LSDynaMetaData::THICK_SHELL, LS_ARRAYNAME_USERID));
-  this->Parts->ReadCellUserIds(
-    LSDynaMetaData::SOLID, this->GetCellArrayStatus(LSDynaMetaData::SOLID, LS_ARRAYNAME_USERID));
   this->Parts->ReadCellUserIds(LSDynaMetaData::RIGID_BODY,
     this->GetCellArrayStatus(LSDynaMetaData::RIGID_BODY, LS_ARRAYNAME_USERID));
   return 0;
@@ -3145,10 +3145,10 @@ void vtkLSDynaReader::ResetPartInfo()
       realMat = mat;                                                                               \
       snprintf(partLabel, sizeof(partLabel), fmt, mat);                                            \
     }                                                                                              \
-    p->PartNames.push_back(partLabel);                                                             \
-    p->PartIds.push_back(realMat);                                                                 \
-    p->PartMaterials.push_back(mat);                                                               \
-    p->PartStatus.push_back(1);                                                                    \
+    p->PartNames.emplace_back(partLabel);                                                          \
+    p->PartIds.emplace_back(realMat);                                                              \
+    p->PartMaterials.emplace_back(mat);                                                            \
+    p->PartStatus.emplace_back(1);                                                                 \
   }
 
   VTK_LSDYNA_PARTLABEL("NUMMAT8", "Part%d"); // was "PartSolid%d

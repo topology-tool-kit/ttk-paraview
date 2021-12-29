@@ -43,7 +43,7 @@ public:
   vtkTypeMacro(vtkPolygon, vtkCell);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * See the vtkCell API for descriptions of these methods.
    */
@@ -69,7 +69,7 @@ public:
   void Derivatives(
     int subId, const double pcoords[3], const double* values, int dim, double* derivs) override;
   int IsPrimaryCell() override { return 0; }
-  //@}
+  ///@}
 
   /**
    * Compute the area of a polygon. This is a convenience function
@@ -90,7 +90,7 @@ public:
    */
   void InterpolateFunctions(const double x[3], double* sf) override;
 
-  //@{
+  ///@{
   /**
    * Computes the unit normal to the polygon. If pts=nullptr, point indexing is
    * assumed to be {0, 1, ..., numPts-1}.
@@ -98,7 +98,7 @@ public:
   static void ComputeNormal(vtkPoints* p, int numPts, const vtkIdType* pts, double n[3]);
   static void ComputeNormal(vtkPoints* p, double n[3]);
   static void ComputeNormal(vtkIdTypeArray* ids, vtkPoints* pts, double n[3]);
-  //@}
+  ///@}
 
   /**
    * Compute the polygon normal from an array of points. This version assumes
@@ -114,7 +114,7 @@ public:
    */
   bool IsConvex();
 
-  //@{
+  ///@{
   /**
    * Determine whether or not a polygon is convex. If pts=nullptr, point indexing
    * is assumed to be {0, 1, ..., numPts-1}.
@@ -122,16 +122,16 @@ public:
   static bool IsConvex(vtkPoints* p, int numPts, vtkIdType* pts);
   static bool IsConvex(vtkIdTypeArray* ids, vtkPoints* p);
   static bool IsConvex(vtkPoints* p);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Compute the centroid of a set of points. Returns false if the computation
    * is invalid (this occurs when numPts=0 or when ids is empty).
    */
   static bool ComputeCentroid(vtkPoints* p, int numPts, const vtkIdType* pts, double centroid[3]);
   static bool ComputeCentroid(vtkIdTypeArray* ids, vtkPoints* pts, double centroid[3]);
-  //@}
+  ///@}
 
   /**
    * Compute the area of a polygon in 3D. The area is returned, as well as
@@ -163,9 +163,11 @@ public:
 
   /**
    * Triangulate this polygon. The user must provide the vtkIdList outTris.
-   * On output, the outTris list contains the ids of the points defining
-   * the triangulation. The ids are ordered into groups of three: each
-   * three-group defines one triangle.
+   * On output, the outTris list contains the ids of the points defining the
+   * triangulation (i.e., not the associated polygon->PointIds, rather the
+   * index into the polygon->Points array). The ids are ordered into groups
+   * of three: each three-group defines one triangle. The method returns
+   * non-zero if the triangulation is successful.
    */
   int Triangulate(vtkIdList* outTris);
 
@@ -217,7 +219,7 @@ public:
   static int IntersectConvex2DCells(
     vtkCell* cell1, vtkCell* cell2, double tol, double p0[3], double p1[3]);
 
-  //@{
+  ///@{
   /**
    * Set/Get the flag indicating whether to use Mean Value Coordinate for the
    * interpolation. If true, InterpolateFunctions() uses the Mean Value
@@ -226,6 +228,19 @@ public:
    */
   vtkGetMacro(UseMVCInterpolation, bool);
   vtkSetMacro(UseMVCInterpolation, bool);
+  ///@}
+
+  //@{
+  /**
+   * Specify an internal tolerance for operations requiring polygon
+   * triangulation.  (For example, clipping and contouring operations proceed
+   * by first triangulating the polygon, and then clipping/contouring the
+   * resulting triangles.)  This is a normalized tolerance value multiplied
+   * by the diagonal length of the polygon bounding box. Is it used to
+   * determine whether potential triangulation edges intersect one another.
+   */
+  vtkSetClampMacro(Tolerance, double, 0.0, 1.0);
+  vtkGetMacro(Tolerance, double);
   //@}
 
 protected:
@@ -236,10 +251,14 @@ protected:
   void InterpolateFunctionsUsingMVC(const double x[3], double* weights);
 
   // variables used by instances of this class
-  double Tolerance;            // Intersection tolerance
-  int SuccessfulTriangulation; // Stops recursive tri. if necessary
-  double Normal[3];            // polygon normal
-  vtkIdList* Tris;
+  double Tolerance;        // Intersection tolerance set by public API
+  double Tol;              // Internal tolerance set by ComputeBounds()
+  void ComputeTolerance(); // Compute the internal tolerance Tol
+
+  int SuccessfulTriangulation; // Stops recursive triangulation if necessary
+  vtkIdList* Tris;             // Output triangulation placed here
+
+  // These are used for internal computation.
   vtkTriangle* Triangle;
   vtkQuad* Quad;
   vtkDoubleArray* TriScalars;
@@ -250,14 +269,33 @@ protected:
   bool UseMVCInterpolation;
 
   // Helper methods for triangulation------------------------------
+  // Made public for extenal access
+public:
+  // Ear cut triangulation options. The order in which vertices are
+  // removed are controlled by different measures. Changing this can
+  // make subtle differences in some cases. Historically the
+  // PERIMETER2_TO_AREA_RATIO has been used.
+  enum EarCutMeasureTypes
+  {
+    PERIMETER2_TO_AREA_RATIO = 0,
+    DOT_PRODUCT = 1,
+    BEST_QUALITY = 2
+  };
+
+  ///@{
   /**
    * A fast triangulation method. Uses recursive divide and
    * conquer based on plane splitting to reduce loop into triangles.
    * The cell (e.g., triangle) is presumed properly initialized (i.e.,
-   * Points and PointIds).
+   * Points and PointIds). Ears can be removed using different measures
+   * (the measures indicate convexity plus characterize the local
+   * geometry around each vertex).
    */
-  int EarCutTriangulation();
+  int EarCutTriangulation(int measure = PERIMETER2_TO_AREA_RATIO);
+  int EarCutTriangulation(vtkIdList* outTris, int measure = PERIMETER2_TO_AREA_RATIO);
+  ///@}
 
+  ///@{
   /**
    * A fast triangulation method. Uses recursive divide and
    * conquer based on plane splitting to reduce loop into triangles.
@@ -265,7 +303,10 @@ protected:
    * Points and PointIds). Unlike EarCutTriangulation(), vertices are visited
    * sequentially without preference to angle.
    */
-  int UnbiasedEarCutTriangulation(int seed);
+  int UnbiasedEarCutTriangulation(int seed, int measure = PERIMETER2_TO_AREA_RATIO);
+  int UnbiasedEarCutTriangulation(
+    int seed, vtkIdList* outTris, int measure = PERIMETER2_TO_AREA_RATIO);
+  ///@}
 
 private:
   vtkPolygon(const vtkPolygon&) = delete;

@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkGLTFDocumentLoader.h
+  Module:    vtkGLTFDocumentLoaderInternals.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -743,6 +743,14 @@ bool vtkGLTFDocumentLoaderInternals::LoadMaterial(
 
   material.Name = "";
   vtkGLTFUtils::GetStringValue(root["name"], material.Name);
+
+  material.Unlit = false;
+
+  const auto& extRoot = root["extensions"];
+  if (!extRoot.empty())
+  {
+    material.Unlit = extRoot.isMember("KHR_materials_unlit");
+  }
 
   return true;
 }

@@ -79,10 +79,10 @@ const char keyPropertyName[] = "IndexSelectionKey";
 struct Widgets
 {
   Widgets()
-    : layout(NULL)
-    , label(NULL)
-    , slider(NULL)
-    , edit(NULL)
+    : layout(nullptr)
+    , label(nullptr)
+    , slider(nullptr)
+    , edit(nullptr)
   {
   }
   Widgets(pqIndexSelectionWidget* parent, const QString& key, int current, int size);
@@ -139,7 +139,7 @@ Widgets::~Widgets()
   if (this->layout)
   {
     this->layout->deleteLater();
-    this->layout = NULL;
+    this->layout = nullptr;
   }
 }
 
@@ -183,7 +183,7 @@ class pqIndexSelectionWidget::pqInternals
 public:
   typedef QMap<QString, Widgets*> WidgetMap;
 
-  pqInternals() {}
+  pqInternals() = default;
 
   ~pqInternals()
   {
@@ -205,10 +205,10 @@ public:
       QVariant keyVar = obj->property(keyPropertyName);
       if (keyVar.isValid())
       {
-        return this->widgetMap.value(keyVar.toString(), NULL);
+        return this->widgetMap.value(keyVar.toString(), nullptr);
       }
     }
-    return NULL;
+    return nullptr;
   }
 
   WidgetMap widgetMap;
@@ -267,7 +267,7 @@ pqIndexSelectionWidget::pqIndexSelectionWidget(
 pqIndexSelectionWidget::~pqIndexSelectionWidget()
 {
   delete this->Internals;
-  this->Internals = 0;
+  this->Internals = nullptr;
 }
 
 //------------------------------------------------------------------------------
@@ -347,7 +347,7 @@ bool pqIndexSelectionWidget::eventFilter(QObject* obj, QEvent* e)
 //------------------------------------------------------------------------------
 void pqIndexSelectionWidget::propertyChanged()
 {
-  QVariant propVar = this->property(this->PushPropertyName.constData());
+  QVariant propVar = this->property(this->PushPropertyName.data());
   QList<QVariant> prop = propVar.toList();
   if (prop.size() % 2 != 0)
   {
@@ -366,7 +366,7 @@ void pqIndexSelectionWidget::propertyChanged()
       continue;
     }
 
-    Widgets* w = this->Internals->widgetMap.value(key, NULL);
+    Widgets* w = this->Internals->widgetMap.value(key, nullptr);
     if (!w)
     {
       qWarning() << Q_FUNC_INFO << "No widgets found for key" << key;
@@ -405,7 +405,7 @@ void pqIndexSelectionWidget::updatePropertyImpl()
   }
 
   this->IgnorePushPropertyUpdates = true;
-  this->setProperty(this->PushPropertyName.constData(), newProp);
+  this->setProperty(this->PushPropertyName.data(), newProp);
   this->IgnorePushPropertyUpdates = false;
   Q_EMIT widgetModified();
 }
@@ -416,9 +416,9 @@ void pqIndexSelectionWidget::buildWidget(vtkSMProperty* infoProp)
   vtkSMStringVectorProperty* svp = vtkSMStringVectorProperty::SafeDownCast(infoProp);
   if (!svp)
   {
-    qWarning() << Q_FUNC_INFO << "index_selection widget expects "
-                                 "Hints/InfoProperty to be a "
-                                 "StringVectorProperty.";
+    qWarning() << Q_FUNC_INFO
+               << "index_selection widget expects Hints/InfoProperty to be a "
+                  "StringVectorProperty.";
     return;
   }
 
@@ -426,8 +426,7 @@ void pqIndexSelectionWidget::buildWidget(vtkSMProperty* infoProp)
   svp->GetElements(strings.GetPointer());
   if (strings->GetNumberOfStrings() % 3 != 0)
   {
-    qWarning() << Q_FUNC_INFO << "index_selection InfoProperty size must be a "
-                                 "multiple of 3.";
+    qWarning() << Q_FUNC_INFO << "index_selection InfoProperty size must be a multiple of 3.";
     return;
   }
 

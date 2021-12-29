@@ -29,31 +29,30 @@
 
 vtkStandardNewMacro(vtkSMXYChartRepresentationInitializationHelper);
 //----------------------------------------------------------------------------
-vtkSMXYChartRepresentationInitializationHelper::vtkSMXYChartRepresentationInitializationHelper()
-{
-}
+vtkSMXYChartRepresentationInitializationHelper::vtkSMXYChartRepresentationInitializationHelper() =
+  default;
 
 //----------------------------------------------------------------------------
-vtkSMXYChartRepresentationInitializationHelper::~vtkSMXYChartRepresentationInitializationHelper()
-{
-}
+vtkSMXYChartRepresentationInitializationHelper::~vtkSMXYChartRepresentationInitializationHelper() =
+  default;
 
 //----------------------------------------------------------------------------
 void vtkSMXYChartRepresentationInitializationHelper::PostInitializeProxy(
   vtkSMProxy* proxy, vtkPVXMLElement*, vtkMTimeType vtkNotUsed(ts))
 {
-  assert(proxy != NULL);
+  assert(proxy != nullptr);
 
   vtkSMSessionProxyManager* pxm = proxy->GetSessionProxyManager();
-  vtkSMViewProxy* activeView = NULL;
+  vtkSMViewProxy* activeView = nullptr;
   if (vtkSMProxySelectionModel* viewSM = pxm->GetSelectionModel("ActiveView"))
   {
     activeView = vtkSMViewProxy::SafeDownCast(viewSM->GetCurrentProxy());
   }
 
   vtkSMPropertyHelper input(proxy, "Input");
-  if (activeView && (!strcmp(activeView->GetXMLName(), "XYBarChartView") ||
-                      !strcmp(activeView->GetXMLName(), "XYHistogramChartView")) &&
+  if (activeView &&
+    (!strcmp(activeView->GetXMLName(), "XYBarChartView") ||
+      !strcmp(activeView->GetXMLName(), "XYHistogramChartView")) &&
     input.GetAsProxy())
   {
     if (vtkSMRepresentationProxy* repr = vtkSMRepresentationProxy::SafeDownCast(proxy))

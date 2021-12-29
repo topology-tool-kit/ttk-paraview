@@ -46,17 +46,18 @@ class VTKFILTERSPARALLELVERDICT_EXPORT vtkPCellSizeFilter : public vtkCellSizeFi
 public:
   vtkTypeMacro(vtkPCellSizeFilter, vtkCellSizeFilter);
   static vtkPCellSizeFilter* New();
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
 protected:
   vtkPCellSizeFilter();
   ~vtkPCellSizeFilter() override;
 
-  //@{
+  ///@{
   /**
    * Method to compute the global sum information.
    */
   void ComputeGlobalSum(double sum[4]) override;
-  //@}
+  ///@}
 
 private:
   vtkPCellSizeFilter(const vtkPCellSizeFilter&) = delete;

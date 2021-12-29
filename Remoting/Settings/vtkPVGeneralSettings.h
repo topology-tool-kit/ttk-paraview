@@ -21,11 +21,12 @@
  * This is a singleton. All calls to vtkPVGeneralSettings::New() return a
  * pointer to the same global instance (with reference count incremented as
  * expected).
-*/
+ */
 
 #ifndef vtkPVGeneralSettings_h
 #define vtkPVGeneralSettings_h
 
+#include "vtkLegacy.h" // for VTK_LEGACY
 #include "vtkObject.h"
 #include "vtkRemotingSettingsModule.h" //needed for exports
 #include "vtkSmartPointer.h"           // needed for vtkSmartPointer.
@@ -82,18 +83,12 @@ public:
 
   //@{
   /**
-   * Enable auto-mpi. Forwarded to vtkProcessModuleAutoMPI.
+   * Deprecated. AutoMPI is no longer supported.
    */
-  void SetEnableAutoMPI(bool);
-  bool GetEnableAutoMPI();
-  //@}
-
-  //@{
-  /**
-   * Set the core limit for auto-mpi.
-   */
-  void SetAutoMPILimit(int val);
-  int GetAutoMPILimit();
+  VTK_LEGACY(void SetEnableAutoMPI(bool));
+  VTK_LEGACY(bool GetEnableAutoMPI());
+  VTK_LEGACY(void SetAutoMPILimit(int val));
+  VTK_LEGACY(int GetAutoMPILimit());
   //@}
 
   //@{

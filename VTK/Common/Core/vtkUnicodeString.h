@@ -48,6 +48,7 @@
 #define vtkUnicodeString_h
 
 #include "vtkCommonCoreModule.h" // For export macro
+#include "vtkDeprecation.h"
 #include "vtkSystemIncludes.h"
 #include <string>
 #include <vector>
@@ -66,6 +67,7 @@ typedef vtkTypeUInt32 vtkUnicodeStringValueType;
   vtkExtraExtendedTemplateMacro(call);                                                             \
   vtkTemplateMacroCase(VTK_UNICODE_STRING, vtkUnicodeString, call)
 
+VTK_DEPRECATED_IN_9_1_0("Use std::string instead.")
 class VTKCOMMONCORE_EXPORT vtkUnicodeString
 {
 public:
@@ -115,15 +117,15 @@ public:
    */
   vtkUnicodeString(const_iterator begin, const_iterator end);
 
-  //@{
+  ///@{
   /**
    * Tests a sequence of bytes, returning true iff they are a valid UTF-8 sequence.
    */
   static bool is_utf8(const char*);
   static bool is_utf8(const std::string&);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Constructs a string from a null-terminated sequence of UTF-8 encoded characters.
    */
@@ -132,7 +134,7 @@ public:
   static vtkUnicodeString from_utf8(const char* begin, const char* end);
   // Constructs a string from a sequence of UTF-8 encoded characters.
   static vtkUnicodeString from_utf8(const std::string&);
-  //@}
+  ///@}
   /**
    * Constructs a string from a null-terminated sequence of UTF-16 encoded characters.
    */
@@ -215,23 +217,23 @@ public:
    */
   void push_back(value_type);
 
-  //@{
+  ///@{
   /**
    * Append Unicode to the current sequence.
    */
   void append(const vtkUnicodeString& value);
   void append(size_type count, value_type character);
   void append(const_iterator begin, const_iterator end);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Replace the current sequence with another.
    */
   void assign(const vtkUnicodeString& value);
   void assign(size_type count, value_type character);
   void assign(const_iterator begin, const_iterator end);
-  //@}
+  ///@}
 
   /**
    * Resets the string to an empty sequence

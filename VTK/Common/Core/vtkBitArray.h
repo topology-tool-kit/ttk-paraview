@@ -66,6 +66,12 @@ public:
   void SetNumberOfTuples(vtkIdType number) override;
 
   /**
+   * In addition to setting the number of values, this method also sets the
+   * unused bits of the last byte of the array.
+   */
+  bool SetNumberOfValues(vtkIdType number) override;
+
+  /**
    * Set the tuple at the ith location using the jth tuple in the source array.
    * This method assumes that the two arrays have the same type
    * and structure. Note that range checking and memory allocation is not
@@ -112,32 +118,32 @@ public:
    */
   void GetTuple(vtkIdType i, double* tuple) override;
 
-  //@{
+  ///@{
   /**
    * Set the tuple value at the ith location in the array.
    */
   void SetTuple(vtkIdType i, const float* tuple) override;
   void SetTuple(vtkIdType i, const double* tuple) override;
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Insert (memory allocation performed) the tuple into the ith location
    * in the array.
    */
   void InsertTuple(vtkIdType i, const float* tuple) override;
   void InsertTuple(vtkIdType i, const double* tuple) override;
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Insert (memory allocation performed) the tuple onto the end of the array.
    */
   vtkIdType InsertNextTuple(const float* tuple) override;
   vtkIdType InsertNextTuple(const double* tuple) override;
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * These methods remove tuples from the data array. They shift data and
    * resize array, so the data array is still valid after this operation. Note,
@@ -146,7 +152,7 @@ public:
   void RemoveTuple(vtkIdType id) override;
   void RemoveFirstTuple() override;
   void RemoveLastTuple() override;
-  //@}
+  ///@}
 
   /**
    * Set the data component at the ith tuple and jth component location.
@@ -225,7 +231,7 @@ public:
   void DeepCopy(vtkDataArray* da) override;
   void DeepCopy(vtkAbstractArray* aa) override { this->Superclass::DeepCopy(aa); }
 
-  //@{
+  ///@{
   /**
    * This method lets the user specify data to be held by the array.  The
    * array argument is a pointer to the data.  size is the size of
@@ -249,7 +255,7 @@ public:
   {
     this->SetArray(static_cast<unsigned char*>(array), size, save, deleteMethod);
   }
-  //@}
+  ///@}
 
   /**
    * This method allows the user to specify a custom free function to be
@@ -264,7 +270,7 @@ public:
    */
   VTK_NEWINSTANCE vtkArrayIterator* NewIterator() override;
 
-  //@{
+  ///@{
   /**
    * Return the indices where a specific value appears.
    */
@@ -272,7 +278,7 @@ public:
   void LookupValue(vtkVariant value, vtkIdList* ids) override;
   vtkIdType LookupValue(int value);
   void LookupValue(int value, vtkIdList* ids);
-  //@}
+  ///@}
 
   /**
    * Tell the array explicitly that the data has changed.
@@ -294,6 +300,19 @@ public:
 protected:
   vtkBitArray();
   ~vtkBitArray() override;
+
+  /**
+   * This method should be called
+   * whenever MaxId needs to be changed, as this method fills the unused bits of
+   * the last byte to zero. If those bits are kept uninitialized, one can
+   * trigger errors when reading the last byte.
+   *
+   * @note This method can be called with `this->MaxId < 0`. In this instance, nothing happens.
+   *
+   * @warning The buffer `this->Array` needs to already be allocated prior to calling this
+   * method.
+   */
+  virtual void InitializeUnusedBitsInLastByte();
 
   unsigned char* Array; // pointer to data
   unsigned char* ResizeAndExtend(vtkIdType sz);
@@ -339,6 +358,7 @@ inline void vtkBitArray::InsertValue(vtkIdType id, int i)
   if (id > this->MaxId)
   {
     this->MaxId = id;
+    this->InitializeUnusedBitsInLastByte();
   }
   this->DataChanged();
 }
@@ -355,7 +375,7 @@ inline void vtkBitArray::InsertVariantValue(vtkIdType id, vtkVariant value)
 
 inline vtkIdType vtkBitArray::InsertNextValue(int i)
 {
-  this->InsertValue(++this->MaxId, i);
+  this->InsertValue(this->MaxId + 1, i);
   this->DataChanged();
   return this->MaxId;
 }
@@ -364,5 +384,4 @@ inline void vtkBitArray::Squeeze()
 {
   this->ResizeAndExtend(this->MaxId + 1);
 }
-
 #endif

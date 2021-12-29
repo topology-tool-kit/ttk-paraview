@@ -384,7 +384,6 @@ int vtkCutter::RequestData(
     if (this->GetGenerateTriangles() && this->GetCutFunction() &&
       this->GetCutFunction()->IsA("vtkPlane") && this->GetNumberOfContours() == 1 &&
       this->GetGenerateCutScalars() == 0 &&
-      (input->GetCellData() && input->GetCellData()->GetNumberOfArrays() == 0) &&
       vtk3DLinearGridPlaneCutter::CanFullyProcessDataObject(input))
     {
       vtkNew<vtk3DLinearGridPlaneCutter> linear3DCutter;
@@ -821,6 +820,7 @@ void vtkCutter::UnstructuredGridCutter(vtkDataSet* input, vtkPolyData* output)
     vtkDataArray* dataArrayInput = inputPointSet->GetPoints()->GetData();
     this->CutFunction->FunctionValue(dataArrayInput, cutScalars);
   }
+
   vtkSmartPointer<vtkCellIterator> cellIter =
     vtkSmartPointer<vtkCellIterator>::Take(input->NewCellIterator());
   vtkNew<vtkGenericCell> cell;
@@ -829,7 +829,8 @@ void vtkCutter::UnstructuredGridCutter(vtkDataSet* input, vtkPolyData* output)
   double tempScalar;
   cellScalars = cutScalars->NewInstance();
   cellScalars->SetNumberOfComponents(cutScalars->GetNumberOfComponents());
-  cellScalars->Allocate(VTK_CELL_SIZE * cutScalars->GetNumberOfComponents());
+  int maxCellSize = input->GetMaxCellSize();
+  cellScalars->Allocate(maxCellSize * cutScalars->GetNumberOfComponents());
 
   vtkContourHelper helper(this->Locator, newVerts, newLines, newPolys, inPD, inCD, outPD, outCD,
     estimatedSize, this->GenerateTriangles != 0);

@@ -411,7 +411,7 @@
         <ExposedProperties>
           <Property name="PlaceWidget" />
           <Property name="Visibility" />
-          <Property name="DirectionalLine"/>
+          <Property name="Directional"/>
           <Property name="HandlePositions" />
           <Property name="HandlePositionsInfo" />
           <Property name="Closed" />
@@ -639,6 +639,13 @@
           <Property name="Position2Info" />
           <Property name="WindowLocation" />
           <Property name="TextActor" />
+          <Property name="ShowBorder" />
+          <Property name="BorderColor" />
+          <Property name="BorderThickness" />
+          <Property name="CornerRadius" />
+          <Property name="CornerResolution" />
+          <Property name="BackgroundColor"/>
+          <Property name="Padding" />
         </ExposedProperties>
       </SubProxy>
       <SubProxy>
@@ -653,9 +660,13 @@
       <SubProxy>
         <Proxy name="Prop2DProperty"
                proxygroup="properties"
-               proxyname="TextProperty"></Proxy>
+               proxyname="TextPropertyCentered"></Proxy>
         <ExposedProperties>
           <Property name="Justification" />
+          <Property name="VerticalJustification" />
+          <Property name="LineOffset" />
+          <Property name="LineSpacing" />
+          <Property name="CellOffset" />
           <Property name="Orientation" />
           <Property name="Color" />
           <Property name="Opacity" />
@@ -665,6 +676,7 @@
           <Property name="Italic" />
           <Property name="Shadow" />
           <Property name="FontSize" />
+          <Property name="BackgroundRGBA"/>
         </ExposedProperties>
       </SubProxy>
       <SubProxy>
@@ -870,9 +882,9 @@
                          number_of_elements="1">
         <BooleanDomain name="bool" />
       </IntVectorProperty>
-      <IntVectorProperty command="SetDirectionalLine"
+      <IntVectorProperty command="SetDirectional"
                             default_values="1"
-                            name="DirectionalLine"
+                            name="Directional"
                             number_of_elements="1">
         <BooleanDomain name="bool" />
       </IntVectorProperty>
@@ -941,9 +953,9 @@
                          number_of_elements="1">
         <BooleanDomain name="bool" />
       </IntVectorProperty>
-      <IntVectorProperty command="SetDirectionalLine"
+      <IntVectorProperty command="SetDirectional"
                             default_values="1"
-                            name="DirectionalLine"
+                            name="Directional"
                             number_of_elements="1">
         <BooleanDomain name="bool" />
       </IntVectorProperty>
@@ -1657,6 +1669,7 @@
         <Hints>
           <NoDefault />
         </Hints>
+        <Documentation>Set if color legend's orientation will be updated based on its position.</Documentation>
       </IntVectorProperty>
       <IntVectorProperty command="GetAutoOrient"
                          information_only="1"
@@ -1680,6 +1693,9 @@
           <Entry text="Vertical"
                  value="1" />
         </EnumerationDomain>
+        <Documentation>
+          Specify orientation of the color legend. Can be used only if Auto Orient is disabled.
+        </Documentation>
       </IntVectorProperty>
       <IntVectorProperty command="GetOrientation"
                          information_only="1"
@@ -1691,22 +1707,22 @@
                          name="WindowLocation"
                          number_of_elements="1">
         <EnumerationDomain name="enum">
-          <Entry text="AnyLocation"
+          <Entry text="Any Location"
                  value="0" />
-          <Entry text="LowerLeftCorner"
+          <Entry text="Lower Left Corner"
                  value="1" />
-          <Entry text="LowerRightCorner"
+          <Entry text="Lower Right Corner"
                  value="2" />
-          <Entry text="LowerCenter"
+          <Entry text="Lower Center"
                  value="3" />
-          <Entry text="UpperLeftCorner"
+          <Entry text="Upper Left Corner"
                  value="4" />
-          <Entry text="UpperRightCorner"
+          <Entry text="Upper Right Corner"
                  value="5" />
-          <Entry text="UpperCenter"
+          <Entry text="Upper Center"
                  value="6" />
         </EnumerationDomain>
-        <Documentation>Specify placement of the scalar bar actor.</Documentation>
+        <Documentation>Specify placement of the color legend.</Documentation>
       </IntVectorProperty>
       <ProxyProperty command="SetScalarBarActor"
                      name="ScalarBarActor">
@@ -1763,19 +1779,19 @@
                          name="WindowLocation"
                          number_of_elements="1">
         <EnumerationDomain name="enum">
-          <Entry text="AnyLocation"
+          <Entry text="Any Location"
                  value="0" />
-          <Entry text="LowerLeftCorner"
+          <Entry text="Lower Left Corner"
                  value="1" />
-          <Entry text="LowerRightCorner"
+          <Entry text="Lower Right Corner"
                  value="2" />
-          <Entry text="LowerCenter"
+          <Entry text="Lower Center"
                  value="3" />
-          <Entry text="UpperLeftCorner"
+          <Entry text="Upper Left Corner"
                  value="4" />
-          <Entry text="UpperRightCorner"
+          <Entry text="Upper Right Corner"
                  value="5" />
-          <Entry text="UpperCenter"
+          <Entry text="Upper Center"
                  value="6" />
         </EnumerationDomain>
       </IntVectorProperty>
@@ -1785,6 +1801,88 @@
           <Group name="props" />
         </ProxyGroupDomain>
       </ProxyProperty>
+
+      <IntVectorProperty animateable="0"
+                         command="SetShowBorder"
+                         default_values="2"
+                         name="ShowBorder"
+                         number_of_elements="1">
+        <EnumerationDomain name="enum">
+          <Entry text="Never"
+                 value="0" />
+          <Entry text="Always"
+                 value="1" />
+          <Entry text="Only on hover"
+                 value="2" />
+        </EnumerationDomain>
+        <Documentation>
+          Set whether the border is always drawn, only on interaction or never.
+        </Documentation>
+      </IntVectorProperty>
+      <DoubleVectorProperty command="SetBorderColor"
+                            default_values="1 1 1"
+                            name="BorderColor"
+                            number_of_elements="3"
+                            panel_widget="color_selector_with_palette">
+        <DoubleRangeDomain max="1 1 1"
+                           min="0 0 0"
+                           name="range" />
+        <Documentation>Set the color of the border.</Documentation>
+        <Hints>
+          <PropertyLink group="settings" proxy="ColorPalette" property="BorderColor" unlink_if_modified="1" />
+        </Hints>
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty command="SetBorderThickness"
+                            default_values="0.0"
+                            name="BorderThickness"
+                            number_of_elements="1">
+        <DoubleRangeDomain max="10"
+                           min="0"
+                           name="range" />
+        <Documentation>Set the thickness of the border.</Documentation>
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty command="SetCornerRadiusStrength"
+                            default_values="0.0"
+                            name="CornerRadius"
+                            number_of_elements="1">
+        <DoubleRangeDomain max="1"
+                           min="0"
+                           name="range" />
+        <Documentation>Set the radius of the round corners in percent of the maximum allowed.</Documentation>
+      </DoubleVectorProperty>
+
+      <IntVectorProperty command="SetCornerResolution"
+                            default_values="20"
+                            name="CornerResolution"
+                            number_of_elements="1"
+                            panel_visibility="advanced">
+        <IntRangeDomain max="1000"
+                           min="0"
+                           name="range" />
+        <Documentation>Set the number of points that define each round corner.</Documentation>
+      </IntVectorProperty>
+
+      <DoubleVectorProperty command="SetPolygonRGBA"
+                            default_values="0 0 0 0"
+                            name="BackgroundColor"
+                            label="Background Color"
+                            number_of_elements="4"
+                            panel_widget="color_selector">
+        <DoubleRangeDomain max="1 1 1 1"
+                           min="0 0 0 0"
+                           name="range" />
+        <Documentation>Set the color and opacity of the border background.</Documentation>
+      </DoubleVectorProperty>
+      <IntVectorProperty command="SetPadding"
+                            default_values="0"
+                            name="Padding"
+                            number_of_elements="1">
+        <IntRangeDomain max="500" min="0" name="range" />
+        <Documentation>Set the padding around the text in pixels unit.</Documentation>
+      </IntVectorProperty>
+
     </Proxy>
     <!-- ================================================================== -->
     <Proxy class="vtkProgressBarRepresentation"

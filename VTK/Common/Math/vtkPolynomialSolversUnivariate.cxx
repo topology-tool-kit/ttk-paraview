@@ -43,7 +43,8 @@ double vtkPolynomialSolversUnivariate::DivisionTolerance = 1e-8; // sqrt( VTK_DB
 void vtkPolynomialSolversUnivariate::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
-  os << indent << "(s) DivisionTolerance: " << this->GetDivisionTolerance() << "\n";
+  os << indent
+     << "(s) DivisionTolerance: " << vtkPolynomialSolversUnivariate::GetDivisionTolerance() << "\n";
 }
 
 //------------------------------------------------------------------------------
@@ -659,7 +660,15 @@ extern "C"
   {
     double aa = *static_cast<const double*>(a);
     double bb = *static_cast<const double*>(b);
-    return (aa < bb) ? -1 : 1;
+    if (aa < bb)
+    {
+      return -1;
+    }
+    if (aa > bb)
+    {
+      return 1;
+    }
+    return 0;
   }
 
 } // extern "C"

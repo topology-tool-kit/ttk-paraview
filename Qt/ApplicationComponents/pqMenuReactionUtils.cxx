@@ -61,38 +61,9 @@ vtkSMInputProperty* getInputProperty(vtkSMProxy* proxy)
 
 QString getDomainDisplayText(vtkSMDomain* domain)
 {
-  if (domain->IsA("vtkSMDataTypeDomain"))
+  if (auto dtd = vtkSMDataTypeDomain::SafeDownCast(domain))
   {
-    QStringList types;
-    QStringList typesWithChildren;
-    vtkSMDataTypeDomain* dtd = static_cast<vtkSMDataTypeDomain*>(domain);
-    for (unsigned int cc = 0; cc < dtd->GetNumberOfDataTypes(); cc++)
-    {
-      if (!dtd->DataTypeHasChildren(cc))
-      {
-        types << dtd->GetDataTypeName(cc);
-      }
-      else
-      {
-        QString phrase(dtd->GetDataTypeName(cc));
-        if (strcmp(dtd->GetDataTypeChildMatchTypeAsString(cc), "any"))
-        {
-          phrase.append(" with at least one child dataset of ");
-        }
-        else
-        {
-          phrase.append(" with all child datasets being ");
-        }
-        for (auto& type : dtd->GetDataTypeChildren(cc))
-        {
-          phrase.append(type.c_str()).append(" or ");
-        }
-        phrase.chop(4);
-        typesWithChildren << phrase;
-      }
-    }
-
-    return QString("Input data must be %1").arg(types.join(" or "));
+    return QString(dtd->GetDomainDescription().c_str());
   }
   else if (domain->IsA("vtkSMInputArrayDomain"))
   {
@@ -101,7 +72,7 @@ QString getDomainDisplayText(vtkSMDomain* domain)
         ? QString("Requires an attribute array")
         : QString("Requires a %1 attribute array").arg(iad->GetAttributeTypeAsString()));
     std::vector<int> numbersOfComponents = iad->GetAcceptableNumbersOfComponents();
-    if (numbersOfComponents.size() > 0)
+    if (!numbersOfComponents.empty())
     {
       txt += QString(" with ");
       for (unsigned int i = 0; i < numbersOfComponents.size(); i++)

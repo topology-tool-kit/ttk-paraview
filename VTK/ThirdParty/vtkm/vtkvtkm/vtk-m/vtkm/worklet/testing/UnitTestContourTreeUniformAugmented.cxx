@@ -80,8 +80,7 @@ private:
                             vtkm::worklet::contourtree_augmented::IdArrayType& expected,
                             std::string arrayName) const
   {
-    vtkm::cont::testing::TestEqualResult testResult =
-      vtkm::cont::testing::test_equal_ArrayHandles(result, expected);
+    TestEqualResult testResult = test_equal_ArrayHandles(result, expected);
     if (!testResult)
     {
       std::cout << arrayName << " sizes; result=" << result.GetNumberOfValues()
@@ -310,19 +309,17 @@ private:
   template <typename FieldType, typename StorageType>
   void CallTestContourTreeAugmentedSteps(
     const vtkm::cont::ArrayHandle<FieldType, StorageType> fieldArray,
-    const vtkm::Id nRows,
-    const vtkm::Id nCols,
-    const vtkm::Id nSlices,
+    const vtkm::Id3 meshSize,
     bool useMarchingCubes,
     unsigned int computeRegularStructure,
     ExpectedStepResults& expectedResults) const
   {
     using namespace vtkm::worklet::contourtree_augmented;
     // 2D Contour Tree
-    if (nSlices == 1)
+    if (meshSize[2] == 1)
     {
       // Build the mesh and fill in the values
-      Mesh_DEM_Triangulation_2D_Freudenthal<FieldType, StorageType> mesh(nRows, nCols);
+      DataSetMeshTriangulation2DFreudenthal mesh(vtkm::Id2{ meshSize[0], meshSize[1] });
       // Run the contour tree on the mesh
       RunTestContourTreeAugmentedSteps(fieldArray,
                                        mesh,
@@ -335,7 +332,7 @@ private:
     else if (useMarchingCubes)
     {
       // Build the mesh and fill in the values
-      Mesh_DEM_Triangulation_3D_MarchingCubes<FieldType, StorageType> mesh(nRows, nCols, nSlices);
+      DataSetMeshTriangulation3DMarchingCubes mesh(meshSize);
       // Run the contour tree on the mesh
       RunTestContourTreeAugmentedSteps(fieldArray,
                                        mesh,
@@ -348,7 +345,7 @@ private:
     else
     {
       // Build the mesh and fill in the values
-      Mesh_DEM_Triangulation_3D_Freudenthal<FieldType, StorageType> mesh(nRows, nCols, nSlices);
+      DataSetMeshTriangulation3DFreudenthal mesh(meshSize);
       // Run the contour tree on the mesh
       RunTestContourTreeAugmentedSteps(fieldArray,
                                        mesh,
@@ -377,16 +374,13 @@ private:
     dataSet.GetCellSet().CopyTo(cellSet);
 
     vtkm::Id3 pointDimensions = cellSet.GetPointDimensions();
-    vtkm::Id nRows = pointDimensions[0];
-    vtkm::Id nCols = pointDimensions[1];
-    vtkm::Id nSlices = pointDimensions[2];
 
     vtkm::cont::ArrayHandle<vtkm::Float32> field;
-    dataSet.GetField("pointvar").GetData().CopyTo(field);
+    dataSet.GetField("pointvar").GetData().AsArrayHandle(field);
 
     // Run the specific test
     CallTestContourTreeAugmentedSteps(
-      field, nRows, nCols, nSlices, useMarchingCubes, computeRegularStructure, expectedResults);
+      field, pointDimensions, useMarchingCubes, computeRegularStructure, expectedResults);
   }
 
   ///
@@ -727,13 +721,11 @@ public:
     vtkm::cont::CellSetStructured<2> cellSet;
     dataSet.GetCellSet().CopyTo(cellSet);
 
-    vtkm::Id2 pointDimensions = cellSet.GetPointDimensions();
-    vtkm::Id nRows = pointDimensions[0];
-    vtkm::Id nCols = pointDimensions[1];
-    vtkm::Id nSlices = 1;
+    vtkm::Id2 pointDimensions2D = cellSet.GetPointDimensions();
+    vtkm::Id3 meshSize{ pointDimensions2D[0], pointDimensions2D[1], 1 };
 
     vtkm::cont::ArrayHandle<vtkm::Float32> field;
-    dataSet.GetField("pointvar").GetData().CopyTo(field);
+    dataSet.GetField("pointvar").GetData().AsArrayHandle(field);
 
     // Create the worklet and run it
     vtkm::worklet::ContourTreeAugmented contourTreeWorklet;
@@ -747,9 +739,7 @@ public:
                            contourTree,
                            meshSortOrder,
                            numIterations,
-                           nRows,
-                           nCols,
-                           nSlices,
+                           meshSize,
                            useMarchingCubes,
                            computeRegularStructure);
 
@@ -759,7 +749,7 @@ public:
       contourTree, meshSortOrder, saddlePeak);
     // Print the contour tree we computed
     std::cout << "Computed Contour Tree" << std::endl;
-    vtkm::worklet::contourtree_augmented::PrintEdgePairArray(saddlePeak);
+    vtkm::worklet::contourtree_augmented::PrintEdgePairArrayColumnLayout(saddlePeak);
     // Print the expected contour tree
     std::cout << "Expected Contour Tree" << std::endl;
     std::cout << "           0           12" << std::endl;
@@ -799,12 +789,9 @@ public:
     dataSet.GetCellSet().CopyTo(cellSet);
 
     vtkm::Id3 pointDimensions = cellSet.GetPointDimensions();
-    vtkm::Id nRows = pointDimensions[0];
-    vtkm::Id nCols = pointDimensions[1];
-    vtkm::Id nSlices = pointDimensions[2];
 
     vtkm::cont::ArrayHandle<vtkm::Float32> field;
-    dataSet.GetField("pointvar").GetData().CopyTo(field);
+    dataSet.GetField("pointvar").GetData().AsArrayHandle(field);
 
     // Create the worklet and run it
     vtkm::worklet::ContourTreeAugmented contourTreeWorklet;
@@ -818,9 +805,7 @@ public:
                            contourTree,
                            meshSortOrder,
                            numIterations,
-                           nRows,
-                           nCols,
-                           nSlices,
+                           pointDimensions,
                            useMarchingCubes,
                            computeRegularStructure);
 
@@ -830,7 +815,7 @@ public:
       contourTree, meshSortOrder, saddlePeak);
     // Print the contour tree we computed
     std::cout << "Computed Contour Tree" << std::endl;
-    vtkm::worklet::contourtree_augmented::PrintEdgePairArray(saddlePeak);
+    vtkm::worklet::contourtree_augmented::PrintEdgePairArrayColumnLayout(saddlePeak);
     // Print the expected contour tree
     std::cout << "Expected Contour Tree" << std::endl;
     std::cout << "           0           67" << std::endl;
@@ -877,12 +862,9 @@ public:
     dataSet.GetCellSet().CopyTo(cellSet);
 
     vtkm::Id3 pointDimensions = cellSet.GetPointDimensions();
-    vtkm::Id nRows = pointDimensions[0];
-    vtkm::Id nCols = pointDimensions[1];
-    vtkm::Id nSlices = pointDimensions[2];
 
     vtkm::cont::ArrayHandle<vtkm::Float32> field;
-    dataSet.GetField("pointvar").GetData().CopyTo(field);
+    dataSet.GetField("pointvar").GetData().AsArrayHandle(field);
 
     // Create the worklet and run it
     vtkm::worklet::ContourTreeAugmented contourTreeWorklet;
@@ -896,9 +878,7 @@ public:
                            contourTree,
                            meshSortOrder,
                            numIterations,
-                           nRows,
-                           nCols,
-                           nSlices,
+                           pointDimensions,
                            useMarchingCubes,
                            computeRegularStructure);
 
@@ -908,7 +888,7 @@ public:
       contourTree, meshSortOrder, saddlePeak);
     // Print the contour tree we computed
     std::cout << "Computed Contour Tree" << std::endl;
-    vtkm::worklet::contourtree_augmented::PrintEdgePairArray(saddlePeak);
+    vtkm::worklet::contourtree_augmented::PrintEdgePairArrayColumnLayout(saddlePeak);
     // Print the expected contour tree
     std::cout << "Expected Contour Tree" << std::endl;
     std::cout << "           0          118" << std::endl;

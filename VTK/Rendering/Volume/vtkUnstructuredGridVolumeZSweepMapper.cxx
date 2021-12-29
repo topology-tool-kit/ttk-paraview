@@ -1925,23 +1925,7 @@ public:
   }
 
   // Destructor.
-  ~vtkPixelListFrame()
-  {
-#if 0
-      vtkIdType i=0;
-      vtkIdType c=this->Vector.size();
-      while(i<c)
-      {
-        vtkPixelList *l=&(Vector[i]);
-        while(!l->empty())
-        {
-          delete l->front();
-          l->pop_front();
-        }
-        ++i;
-      }
-#endif
-  }
+  ~vtkPixelListFrame() = default;
 
   vtkPixelList* GetList(int i)
   {
@@ -2568,8 +2552,8 @@ void vtkUnstructuredGridVolumeZSweepMapper::Render(vtkRenderer* ren, vtkVolume* 
   vtkAlgorithm* inputAlg = this->GetInputAlgorithm(0, 0, inputAlgPort);
   inputAlg->UpdateWholeExtent();
 
-  this->Scalars = this->GetScalars(this->GetInput(), this->ScalarMode, this->ArrayAccessMode,
-    this->ArrayId, this->ArrayName, this->CellScalars);
+  this->Scalars = vtkUnstructuredGridVolumeZSweepMapper::GetScalars(this->GetInput(),
+    this->ScalarMode, this->ArrayAccessMode, this->ArrayId, this->ArrayName, this->CellScalars);
 
   if (this->Scalars == nullptr)
   {

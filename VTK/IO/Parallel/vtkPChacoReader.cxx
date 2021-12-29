@@ -34,7 +34,6 @@
 #include "vtkPointData.h"
 #include "vtkProcessGroup.h"
 #include "vtkStreamingDemandDrivenPipeline.h"
-#include "vtkToolkits.h"
 #include "vtkUnstructuredGrid.h"
 
 vtkStandardNewMacro(vtkPChacoReader);
@@ -316,7 +315,7 @@ void vtkPChacoReader::SetUpEmptyGrid(vtkUnstructuredGrid* output)
     vtkIntArray* ia = vtkIntArray::New();
     ia->SetNumberOfTuples(0);
     ia->SetNumberOfComponents(1);
-    ia->SetName(this->GetGlobalElementIdArrayName());
+    ia->SetName(vtkPChacoReader::GetGlobalElementIdArrayName());
     output->GetCellData()->AddArray(ia);
   }
 
@@ -325,7 +324,7 @@ void vtkPChacoReader::SetUpEmptyGrid(vtkUnstructuredGrid* output)
     vtkIntArray* ia = vtkIntArray::New();
     ia->SetNumberOfTuples(0);
     ia->SetNumberOfComponents(1);
-    ia->SetName(this->GetGlobalNodeIdArrayName());
+    ia->SetName(vtkPChacoReader::GetGlobalNodeIdArrayName());
     output->GetPointData()->AddArray(ia);
   }
 }

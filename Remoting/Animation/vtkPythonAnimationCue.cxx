@@ -14,6 +14,7 @@
 =========================================================================*/
 
 #include "vtkPython.h"
+
 #include "vtkCommand.h"
 #include "vtkObjectFactory.h"
 #include "vtkProcessModule.h"
@@ -59,9 +60,7 @@ vtkPythonAnimationCue::vtkPythonAnimationCue()
 }
 
 //----------------------------------------------------------------------------
-vtkPythonAnimationCue::~vtkPythonAnimationCue()
-{
-}
+vtkPythonAnimationCue::~vtkPythonAnimationCue() = default;
 
 //----------------------------------------------------------------------------
 void vtkPythonAnimationCue::HandleStartCueEvent()

@@ -28,16 +28,16 @@ vtkStandardNewMacro(vtkPVFilePathEncodingHelper);
 //-----------------------------------------------------------------------------
 vtkPVFilePathEncodingHelper::vtkPVFilePathEncodingHelper()
 {
-  this->Path = 0;
-  this->SecondaryPath = 0;
+  this->Path = nullptr;
+  this->SecondaryPath = nullptr;
   this->ActiveGlobalId = 0;
 }
 
 //-----------------------------------------------------------------------------
 vtkPVFilePathEncodingHelper::~vtkPVFilePathEncodingHelper()
 {
-  this->SetPath(0);
-  this->SetSecondaryPath(0);
+  this->SetPath(nullptr);
+  this->SetSecondaryPath(nullptr);
   this->SetActiveGlobalId(0);
 }
 
@@ -83,19 +83,19 @@ bool vtkPVFilePathEncodingHelper::CallObjectMethod(const char* method, bool igno
 {
   vtkPVSessionBase* session =
     vtkPVSessionBase::SafeDownCast(vtkProcessModule::GetProcessModule()->GetActiveSession());
-  vtkObject* object = vtkObject::SafeDownCast(
-    vtkSIProxy::SafeDownCast(session->GetSessionCore()->GetSIObject(this->ActiveGlobalId))
-      ->GetVTKObject());
-  vtkClientServerInterpreter* interpreter =
-    vtkClientServerInterpreterInitializer::GetGlobalInterpreter();
+
+  auto siProxy =
+    vtkSIProxy::SafeDownCast(session->GetSessionCore()->GetSIObject(this->ActiveGlobalId));
+  auto object = vtkObject::SafeDownCast(siProxy->GetVTKObject());
+  auto interpreter = siProxy->GetInterpreter();
 
   // Build stream request
   vtkClientServerStream stream;
   stream << vtkClientServerStream::Invoke << object << method;
-  stream << vtkPVFileInformationHelper::Utf8ToLocalWin32(this->Path);
-  if (this->SecondaryPath != NULL)
+  stream << this->Path;
+  if (this->SecondaryPath != nullptr)
   {
-    stream << vtkPVFileInformationHelper::Utf8ToLocalWin32(this->SecondaryPath);
+    stream << this->SecondaryPath;
   }
   stream << vtkClientServerStream::End;
 

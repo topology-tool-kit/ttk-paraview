@@ -21,11 +21,13 @@
 #define vtkPythonStdStreamCaptureHelper_h
 
 #include "structmember.h"
+#include "vtkPythonCompatibility.h"
 #include "vtkPythonInterpreter.h"
 
 struct vtkPythonStdStreamCaptureHelper
 {
-  PyObject_HEAD int softspace; // Used by print to keep track of its state.
+  PyObject_HEAD
+  int softspace; // Used by print to keep track of its state.
   bool DumpToError;
 
   void Write(const char* string)
@@ -54,12 +56,21 @@ struct vtkPythonStdStreamCaptureHelper
 
   vtkStdString Read() { return vtkPythonInterpreter::ReadStdin(); }
 
+  bool IsATTY()
+  {
+    if (vtkPythonInterpreter::GetCaptureStdin())
+    {
+      return false;
+    }
+    return isatty(fileno(stdin)); // when not captured, uses cin
+  }
   void Close() { this->Flush(); }
 };
 
 static PyObject* vtkWrite(PyObject* self, PyObject* args);
 static PyObject* vtkRead(PyObject* self, PyObject* args);
 static PyObject* vtkFlush(PyObject* self, PyObject* args);
+static PyObject* vtkIsatty(PyObject* self, PyObject* args);
 static PyObject* vtkClose(PyObject* self, PyObject* args);
 
 // const_cast since older versions of python are not const correct.
@@ -67,6 +78,7 @@ static PyMethodDef vtkPythonStdStreamCaptureHelperMethods[] = {
   { const_cast<char*>("write"), vtkWrite, METH_VARARGS, const_cast<char*>("Dump message") },
   { const_cast<char*>("readline"), vtkRead, METH_VARARGS, const_cast<char*>("Read input line") },
   { const_cast<char*>("flush"), vtkFlush, METH_VARARGS, const_cast<char*>("Flush") },
+  { const_cast<char*>("isatty"), vtkIsatty, METH_VARARGS, const_cast<char*>("Is a TTY") },
   { const_cast<char*>("close"), vtkClose, METH_VARARGS, const_cast<char*>("Close") }, { 0, 0, 0, 0 }
 };
 
@@ -82,17 +94,22 @@ static PyMemberDef vtkPythonStdStreamCaptureHelperMembers[] = {
   { 0, 0, 0, 0, 0 }
 };
 
-static PyTypeObject vtkPythonStdStreamCaptureHelperType = {
-#if PY_VERSION_HEX >= 0x02060000
-  PyVarObject_HEAD_INIT(&PyType_Type, 0)
-#else
-  PyObject_HEAD_INIT(&PyType_Type) 0,
+#ifdef VTK_PYTHON_NEEDS_DEPRECATION_WARNING_SUPPRESSION
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
-    "vtkPythonStdStreamCaptureHelper",      // tp_name
-  sizeof(vtkPythonStdStreamCaptureHelper),  // tp_basicsize
-  0,                                        // tp_itemsize
-  0,                                        // tp_dealloc
-  0,                                        // tp_print
+
+// clang-format off
+static PyTypeObject vtkPythonStdStreamCaptureHelperType = {
+  PyVarObject_HEAD_INIT(&PyType_Type, 0)
+  "vtkPythonStdStreamCaptureHelper",       // tp_name
+  sizeof(vtkPythonStdStreamCaptureHelper), // tp_basicsize
+  0,                                       // tp_itemsize
+  0,                                       // tp_dealloc
+#if PY_VERSION_HEX >= 0x03080000
+  0, // tp_vectorcall_offset
+#else
+  nullptr, // tp_print
+#endif
   0,                                        // tp_getattr
   0,                                        // tp_setattr
   0,                                        // tp_compare
@@ -132,20 +149,9 @@ static PyTypeObject vtkPythonStdStreamCaptureHelperType = {
   0,                                        // PyObject *tp_cache;
   0,                                        // PyObject *tp_subclasses;
   0,                                        // PyObject *tp_weaklist;
-  0,                                        // tp_del
-#if PY_VERSION_HEX >= 0x02060000
-  0, // tp_version_tag
-#endif
-#if PY_VERSION_HEX >= 0x03040000
-  0, // tp_finalize
-#endif
-#if PY_VERSION_HEX >= 0x03080000
-  0, // tp_vectorcall
-#if PY_VERSION_HEX < 0x03090000
-  0, // tp_print
-#endif
-#endif
+  VTK_WRAP_PYTHON_SUPPRESS_UNINITIALIZED
 };
+// clang-format on
 
 static PyObject* vtkWrite(PyObject* self, PyObject* args)
 {
@@ -200,6 +206,24 @@ static PyObject* vtkFlush(PyObject* self, PyObject* args)
     wrapper->Flush();
   }
   return Py_BuildValue("");
+}
+
+static PyObject* vtkIsatty(PyObject* self, PyObject* args)
+{
+  (void)args;
+  if (!self || !PyObject_TypeCheck(self, &vtkPythonStdStreamCaptureHelperType))
+  {
+    return 0;
+  }
+  vtkPythonStdStreamCaptureHelper* wrapper =
+    reinterpret_cast<vtkPythonStdStreamCaptureHelper*>(self);
+  if (wrapper->IsATTY())
+  {
+    Py_INCREF(Py_True);
+    return Py_True;
+  }
+  Py_INCREF(Py_False);
+  return Py_False;
 }
 
 static PyObject* vtkClose(PyObject* self, PyObject* args)

@@ -191,7 +191,7 @@ vtkSmartPointer<vtkDataObject> vtkPVHistogramChartRepresentation::TransformInput
   // the server-side, so avoid doing anything that modifies the MTime.
   if (this->ArrayName.empty())
   {
-    return NULL;
+    return nullptr;
   }
 
   this->ExtractHistogram->SetInputArrayToProcess(
@@ -217,7 +217,7 @@ void vtkPVHistogramChartRepresentation::PrepareForRendering()
 //----------------------------------------------------------------------------
 bool vtkPVHistogramChartRepresentation::MapSelectionToInput(vtkSelection* sel)
 {
-  assert(sel != NULL);
+  assert(sel != nullptr);
 
   // Now we do the magic: convert chart row selection to threshold selection
   vtkNew<vtkDoubleArray> selRanges;
@@ -266,7 +266,7 @@ bool vtkPVHistogramChartRepresentation::MapSelectionToInput(vtkSelection* sel)
 //----------------------------------------------------------------------------
 bool vtkPVHistogramChartRepresentation::MapSelectionToView(vtkSelection* sel)
 {
-  assert(sel != NULL);
+  assert(sel != nullptr);
 
   // For vtkPVHistogramChartRepresentation (in the ServerManagerConfiguration
   // xml), we set the SelectionRepresentation up so that the original input
@@ -277,13 +277,13 @@ bool vtkPVHistogramChartRepresentation::MapSelectionToView(vtkSelection* sel)
 
   // build a list of vtkSelectionNode instances that are potentially relevant.
   int fieldType = vtkSelectionNode::ConvertAttributeTypeToSelectionField(this->AttributeType);
-  std::vector<vtkSmartPointer<vtkSelectionNode> > nodes;
+  std::vector<vtkSmartPointer<vtkSelectionNode>> nodes;
   for (unsigned int cc = 0, max = sel->GetNumberOfNodes(); cc < max; ++cc)
   {
     vtkSelectionNode* node = sel->GetNode(cc);
     if (node && node->GetFieldType() == fieldType &&
-      node->GetContentType() == vtkSelectionNode::THRESHOLDS && node->GetSelectionList() != NULL &&
-      node->GetSelectionList()->GetName() != NULL &&
+      node->GetContentType() == vtkSelectionNode::THRESHOLDS &&
+      node->GetSelectionList() != nullptr && node->GetSelectionList()->GetName() != nullptr &&
       this->ArrayName == node->GetSelectionList()->GetName() &&
       node->GetSelectionList()->GetNumberOfTuples() > 0)
     {
@@ -293,7 +293,7 @@ bool vtkPVHistogramChartRepresentation::MapSelectionToView(vtkSelection* sel)
   }
   sel->RemoveAllNodes();
 
-  if (nodes.size() == 0)
+  if (nodes.empty())
   {
     return true;
   }
@@ -303,8 +303,8 @@ bool vtkPVHistogramChartRepresentation::MapSelectionToView(vtkSelection* sel)
   // `pre_delivery` data.
   vtkTable* table = this->GetLocalOutput(/*pre_delivery = */ true);
   vtkDoubleArray* binExtents =
-    table ? vtkDoubleArray::SafeDownCast(table->GetColumnByName(BIN_EXTENTS)) : NULL;
-  if (binExtents == NULL)
+    table ? vtkDoubleArray::SafeDownCast(table->GetColumnByName(BIN_EXTENTS)) : nullptr;
+  if (binExtents == nullptr)
   {
     // Seems like the vtkPVHistogramChartRepresentation hasn't updated yet and
     // the selection is being updated before it. Shouldn't happen, but let's
@@ -359,7 +359,7 @@ bool vtkPVHistogramChartRepresentation::MapSelectionToView(vtkSelection* sel)
   node->SetFieldType(vtkSelectionNode::POINT);
   vtkNew<vtkIdTypeArray> convertedSelectionList;
   convertedSelectionList->SetNumberOfTuples(static_cast<vtkIdType>(selectedBins.size()));
-  if (selectedBins.size())
+  if (!selectedBins.empty())
   {
     std::copy(selectedBins.begin(), selectedBins.end(), convertedSelectionList->GetPointer(0));
   }

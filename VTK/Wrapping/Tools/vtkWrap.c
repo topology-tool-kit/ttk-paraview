@@ -65,19 +65,20 @@ int vtkWrap_IsVoidPointer(ValueInfo* val)
 int vtkWrap_IsCharPointer(ValueInfo* val)
 {
   unsigned int t = (val->Type & VTK_PARSE_BASE_TYPE);
-  return (t == VTK_PARSE_CHAR && vtkWrap_IsPointer(val) && (val->Type & VTK_PARSE_ZEROCOPY) == 0);
+  return (
+    t == VTK_PARSE_CHAR && vtkWrap_IsPointer(val) && (val->Attributes & VTK_PARSE_ZEROCOPY) == 0);
 }
 
 int vtkWrap_IsPODPointer(ValueInfo* val)
 {
   unsigned int t = (val->Type & VTK_PARSE_BASE_TYPE);
   return (t != VTK_PARSE_CHAR && vtkWrap_IsNumeric(val) && vtkWrap_IsPointer(val) &&
-    (val->Type & VTK_PARSE_ZEROCOPY) == 0);
+    (val->Attributes & VTK_PARSE_ZEROCOPY) == 0);
 }
 
 int vtkWrap_IsZeroCopyPointer(ValueInfo* val)
 {
-  return (vtkWrap_IsPointer(val) && (val->Type & VTK_PARSE_ZEROCOPY) != 0);
+  return (vtkWrap_IsPointer(val) && (val->Attributes & VTK_PARSE_ZEROCOPY) != 0);
 }
 
 int vtkWrap_IsStdVector(ValueInfo* val)
@@ -89,15 +90,18 @@ int vtkWrap_IsStdVector(ValueInfo* val)
 int vtkWrap_IsVTKObject(ValueInfo* val)
 {
   unsigned int t = (val->Type & VTK_PARSE_UNQUALIFIED_TYPE);
-  return (t == VTK_PARSE_OBJECT_PTR && !val->IsEnum && val->Class[0] == 'v' &&
-    strncmp(val->Class, "vtk", 3) == 0);
+  return ((t == VTK_PARSE_UNKNOWN_PTR || t == VTK_PARSE_OBJECT_PTR || t == VTK_PARSE_QOBJECT_PTR) &&
+    !val->IsEnum);
 }
 
 int vtkWrap_IsSpecialObject(ValueInfo* val)
 {
+  /* exclude classes in std:: space, they will have separate handlers */
   unsigned int t = (val->Type & VTK_PARSE_UNQUALIFIED_TYPE);
-  return ((t == VTK_PARSE_OBJECT || t == VTK_PARSE_OBJECT_REF) && !val->IsEnum &&
-    val->Class[0] == 'v' && strncmp(val->Class, "vtk", 3) == 0);
+  return (
+    (t == VTK_PARSE_UNKNOWN || t == VTK_PARSE_OBJECT || t == VTK_PARSE_QOBJECT ||
+      t == VTK_PARSE_UNKNOWN_REF || t == VTK_PARSE_OBJECT_REF || t == VTK_PARSE_QOBJECT_REF) &&
+    !val->IsEnum && val->Class && strncmp(val->Class, "std::", 5) != 0);
 }
 
 int vtkWrap_IsPythonObject(ValueInfo* val)
@@ -112,7 +116,7 @@ int vtkWrap_IsPythonObject(ValueInfo* val)
 int vtkWrap_IsObject(ValueInfo* val)
 {
   unsigned int t = (val->Type & VTK_PARSE_BASE_TYPE);
-  return (t == VTK_PARSE_OBJECT || t == VTK_PARSE_QOBJECT);
+  return (t == VTK_PARSE_UNKNOWN || t == VTK_PARSE_OBJECT || t == VTK_PARSE_QOBJECT);
 }
 
 int vtkWrap_IsFunction(ValueInfo* val)
@@ -305,7 +309,7 @@ int vtkWrap_IsEnumMember(ClassInfo* data, ValueInfo* arg)
 
 int vtkWrap_IsNewInstance(ValueInfo* val)
 {
-  return ((val->Type & VTK_PARSE_NEWINSTANCE) != 0);
+  return ((val->Attributes & VTK_PARSE_NEWINSTANCE) != 0);
 }
 
 /* -------------------------------------------------------------------- */
@@ -531,7 +535,7 @@ int vtkWrap_IsClassWrapped(HierarchyInfo* hinfo, const char* classname)
     HierarchyEntry* entry;
     entry = vtkParseHierarchy_FindEntry(hinfo, classname);
 
-    if (entry)
+    if (entry && !vtkParseHierarchy_GetProperty(entry, "WRAPEXCLUDE"))
     {
       return 1;
     }
@@ -764,13 +768,60 @@ void vtkWrap_FindNewInstanceMethods(ClassInfo* data, HierarchyInfo* hinfo)
       if (strcmp(theFunc->Name, "NewInstance") == 0 || strcmp(theFunc->Name, "NewIterator") == 0 ||
         strcmp(theFunc->Name, "CreateInstance") == 0)
       {
-        if ((theFunc->ReturnValue->Type & VTK_PARSE_NEWINSTANCE) == 0)
+        if ((theFunc->ReturnValue->Attributes & VTK_PARSE_NEWINSTANCE) == 0)
         {
           /* get the command-line options */
           options = vtkParse_GetCommandLineOptions();
           fprintf(stderr, "Warning: %s without VTK_NEWINSTANCE hint in %s\n", theFunc->Name,
             options->InputFileName);
-          theFunc->ReturnValue->Type |= VTK_PARSE_NEWINSTANCE;
+          theFunc->ReturnValue->Attributes |= VTK_PARSE_NEWINSTANCE;
+        }
+      }
+    }
+  }
+}
+
+/* -------------------------------------------------------------------- */
+/* This sets the FilePath hint for method parameters. */
+void vtkWrap_FindFilePathMethods(ClassInfo* data)
+{
+  int i, n;
+  size_t l;
+  FunctionInfo* theFunc;
+  const char* name;
+  ValueInfo* arg;
+
+  for (i = 0; i < data->NumberOfFunctions; i++)
+  {
+    theFunc = data->Functions[i];
+    arg = NULL;
+    name = theFunc->Name;
+    if (name)
+    {
+      /* check if method ends in "FileName" or "DirectoryName" */
+      l = strlen(name);
+      if ((l >= 8 && strcmp(&name[l - 8], "FileName") == 0) ||
+        (l >= 13 && strcmp(&name[l - 13], "DirectoryName") == 0) ||
+        (l == 11 && strcmp(name, "CanReadFile") == 0))
+      {
+        n = theFunc->NumberOfParameters;
+        /* look for Set and Get methods */
+        if (n == 0 && strncmp(name, "Get", 3) == 0)
+        {
+          arg = theFunc->ReturnValue;
+        }
+        else if (n == 1 && strncmp(name, "Set", 3) == 0)
+        {
+          arg = theFunc->Parameters[0];
+        }
+        else if (n == 1 && strncmp(name, "Can", 3) == 0)
+        {
+          arg = theFunc->Parameters[0];
+        }
+        /* check the parameter type (must be string) */
+        if (arg && (vtkWrap_IsCharPointer(arg) || vtkWrap_IsString(arg)))
+        {
+          arg->Attributes |= VTK_PARSE_FILEPATH;
         }
       }
     }
@@ -1029,10 +1080,12 @@ void vtkWrap_DeclareVariable(
   {
     /* objects refs and pointers are always handled via pointers,
      * other refs are passed by value */
-    if (aType == VTK_PARSE_CHAR_PTR || aType == VTK_PARSE_VOID_PTR ||
-      (!val->IsEnum &&
-        (aType == VTK_PARSE_OBJECT_PTR || aType == VTK_PARSE_OBJECT_REF ||
-          aType == VTK_PARSE_OBJECT)))
+    if (vtkWrap_IsVTKObject(val) || vtkWrap_IsSpecialObject(val))
+    {
+      fprintf(fp, "*");
+    }
+    /* handling of "char *" C strings, "void *" C buffers */
+    else if (aType == VTK_PARSE_CHAR_PTR || aType == VTK_PARSE_VOID_PTR)
     {
       fprintf(fp, "*");
     }

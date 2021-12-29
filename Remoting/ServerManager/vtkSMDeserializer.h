@@ -19,7 +19,7 @@
  * vtkSMDeserializer is used to deserialize proxies from their XML/Protobuf/?
  * states. This is the base class of deserialization classes that load
  * XMLs/Protobuf/? to restore servermanager state (or part thereof).
-*/
+ */
 
 #ifndef vtkSMDeserializer_h
 #define vtkSMDeserializer_h
@@ -58,7 +58,7 @@ public:
 
   /**
    * Provides access to the session. This is same as calling
-   * this->GetSessionProxyManager()->GetSession() (with NULL checks).
+   * this->GetSessionProxyManager()->GetSession() (with nullptr checks).
    */
   vtkSMSession* GetSession();
 
@@ -79,7 +79,7 @@ protected:
    * simply asks the proxy manager to create a new proxy of the requested type.
    */
   virtual vtkSMProxy* CreateProxy(
-    const char* xmlgroup, const char* xmlname, const char* subProxyName = NULL);
+    const char* xmlgroup, const char* xmlname, const char* subProxyName = nullptr);
 
   vtkWeakPointer<vtkSMSessionProxyManager> SessionProxyManager;
 

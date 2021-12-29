@@ -8,6 +8,7 @@ set(${_vtk_build_test}_TEST_LABELS paraview)
 
 ExternalData_Expand_Arguments(ParaViewData _
   # data files
+  "DATA{${paraview_test_data_directory_input}/Data/vtk_dark_bkg.png}"
   "DATA{${paraview_test_data_directory_input}/Data/blow.vtk}"
   "DATA{${paraview_test_data_directory_input}/Data/can.ex2}"
   "DATA{${paraview_test_data_directory_input}/Data/iron_protein.vtk}"
@@ -22,6 +23,8 @@ ExternalData_Expand_Arguments(ParaViewData _
   "DATA{${CMAKE_CURRENT_SOURCE_DIR}/../Data/Baseline/TestPythonViewNumpyScript.png}"
   "DATA{${CMAKE_CURRENT_SOURCE_DIR}/../Data/Baseline/TestCatalystClient.png}"
   "DATA{${CMAKE_CURRENT_SOURCE_DIR}/../Data/Baseline/FontSize.png}"
+  "DATA{${CMAKE_CURRENT_SOURCE_DIR}/../Data/Baseline/SaveTransparentImages.png}"
+  "DATA{${CMAKE_CURRENT_SOURCE_DIR}/../Data/Baseline/LoadStateWithTextures.png}"
   )
 
 # only enable TestPythonAnnotationFilter test if numpy is available
@@ -65,10 +68,12 @@ paraview_add_test_pvbatch(
 )
 
 paraview_add_test_python(
-  NO_DATA NO_RT
+  NO_RT
   ColorBy.py
+  GroupDataSets.py
   PartialArrayIndication.py
   ResetSession.py
+  SaveTransparentImages.py
   TestClipCylinder.py
   TestColorHistogram.py
   TestGeometryBoundsClobber.py
@@ -76,6 +81,7 @@ paraview_add_test_python(
   TestLineChartLabelPrefix.py
   TestPythonViewScript.py
   TestResetCameraToDirection.py
+  LoadStateWithTextures.py
 )
 
 paraview_add_test_python(
@@ -83,6 +89,7 @@ paraview_add_test_python(
   AppendDatasetsPolyData.py
   MergeBlocksPolyData.py
   PointPicking.py
+  TestGhostCellsGenerator.py
   TestResetProperty.py
   TestOverlappingCellsDetector.py
 )
@@ -91,6 +98,7 @@ paraview_add_test_python(
   NO_VALID NO_RT
   ExportCSV.py
   LoadStateWithOptions.py
+  LoadStateWithDataSets.py
   Plot3DReader.py
   SaveDataWithArraySelection.py
   ReadTimeArray.py
@@ -195,7 +203,7 @@ unset(paraview_python_args)
 if (PARAVIEW_USE_MPI AND MPIEXEC_EXECUTABLE)
   set(_vtk_testing_python_exe "$<TARGET_FILE:ParaView::smTestDriver>")
   set(_vtk_test_python_args
-    --script $<TARGET_FILE:ParaView::pvbatch> -sym
+    --script $<TARGET_FILE:ParaView::pvbatch> --sym
       -m paraview.demos.wavelet_miniapp
       -s ${CMAKE_CURRENT_SOURCE_DIR}/DoLive.py
       -t 10

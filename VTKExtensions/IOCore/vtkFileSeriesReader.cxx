@@ -46,7 +46,7 @@
 #define VTK_CREATE(type, name) vtkSmartPointer<type> name = vtkSmartPointer<type>::New()
 
 #include <algorithm>
-#include <ctype.h> // for isprint().
+#include <cctype> // for isprint().
 #include <map>
 #include <set>
 #include <string>
@@ -79,11 +79,12 @@ public:
   // See paraview/paraview#20314 and paraview/paraview#19777 for two apparently
   // conflicting use-cases that need to be supported.
   void SetSkipTimeInOutput(bool val) { this->SkipTimeInOutput = val; }
+
 private:
   static vtkInformationIntegerKey* INDEX();
-  typedef std::map<double, vtkSmartPointer<vtkInformation> > RangeMapType;
+  typedef std::map<double, vtkSmartPointer<vtkInformation>> RangeMapType;
   RangeMapType RangeMap;
-  std::map<int, vtkSmartPointer<vtkInformation> > InputLookup;
+  std::map<int, vtkSmartPointer<vtkInformation>> InputLookup;
   bool SkipTimeInOutput = false;
 };
 
@@ -182,7 +183,7 @@ int vtkFileSeriesReaderTimeRanges::GetAggregateTimeInfo(vtkInformation* outInfo)
     }
   }
 
-  if (timeSteps.size() > 0)
+  if (!timeSteps.empty())
   {
     outInfo->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &timeSteps[0],
       static_cast<int>(timeSteps.size()));
@@ -461,7 +462,7 @@ const char* vtkFileSeriesReader::GetFileName(unsigned int idx)
 {
   if (idx >= this->Internal->RealFileNames.size())
   {
-    return 0;
+    return nullptr;
   }
   return this->Internal->RealFileNames[idx].c_str();
 }
@@ -621,8 +622,9 @@ int vtkFileSeriesReader::RequestInformation(vtkInformation* request,
   ignoreReaderTime |= !this->Internal->TimeValues.empty();
 
   // Does the reader have time?
-  if (ignoreReaderTime || (!outInfo->Has(vtkStreamingDemandDrivenPipeline::TIME_STEPS()) &&
-                            !outInfo->Has(vtkStreamingDemandDrivenPipeline::TIME_RANGE())))
+  if (ignoreReaderTime ||
+    (!outInfo->Has(vtkStreamingDemandDrivenPipeline::TIME_STEPS()) &&
+      !outInfo->Has(vtkStreamingDemandDrivenPipeline::TIME_RANGE())))
   {
     // Input files have no time steps.  Fake a time step for each equal to the
     // index.
@@ -745,7 +747,7 @@ int vtkFileSeriesReader::RequestData(
 int vtkFileSeriesReader::RequestInformationForInput(
   int index, vtkInformation* request, vtkInformationVector* outputVector)
 {
-  if ((index != this->_FileIndex) || (outputVector != NULL))
+  if ((index != this->_FileIndex) || (outputVector != nullptr))
   {
     if (this->GetNumberOfFileNames() > 0)
     {
@@ -753,7 +755,7 @@ int vtkFileSeriesReader::RequestInformationForInput(
     }
     else
     {
-      this->ReaderSetFileName(0);
+      this->ReaderSetFileName(nullptr);
     }
 
     this->_FileIndex = index;
@@ -784,7 +786,7 @@ int vtkFileSeriesReader::RequestInformationForInput(
       }
     }
     return this->Reader->ProcessRequest(
-      tempRequest, (vtkInformationVector**)NULL, tempOutputVector);
+      tempRequest, (vtkInformationVector**)nullptr, tempOutputVector);
   }
   return 1;
 }
@@ -925,10 +927,7 @@ void vtkFileSeriesReader::UpdateMetaData()
           this->UseJsonMetaFile = true;
           this->MetaFileNameMTime = this->vtkDataObjectAlgorithm::GetMTime();
           size_t len = strlen(fname) + 1;
-          if (this->_MetaFileName)
-          {
-            delete[] this->_MetaFileName;
-          }
+          delete[] this->_MetaFileName;
           this->_MetaFileName = new char[len];
           memcpy(this->_MetaFileName, fname, len);
         }

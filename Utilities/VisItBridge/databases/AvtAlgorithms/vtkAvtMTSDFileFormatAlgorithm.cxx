@@ -61,7 +61,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "avtVectorMetaData.h"
 #include "TimingsManager.h"
 
-#include "limits.h"
+#include <climits>
 
 vtkStandardNewMacro(vtkAvtMTSDFileFormatAlgorithm);
 //-----------------------------------------------------------------------------
@@ -71,17 +71,15 @@ vtkAvtMTSDFileFormatAlgorithm::vtkAvtMTSDFileFormatAlgorithm()
 }
 
 //-----------------------------------------------------------------------------
-vtkAvtMTSDFileFormatAlgorithm::~vtkAvtMTSDFileFormatAlgorithm()
-{
-}
+vtkAvtMTSDFileFormatAlgorithm::~vtkAvtMTSDFileFormatAlgorithm() = default;
 
 //-----------------------------------------------------------------------------
-int vtkAvtMTSDFileFormatAlgorithm::RequestData(vtkInformation *request,
-        vtkInformationVector **inputVector, vtkInformationVector *outputVector)
+int vtkAvtMTSDFileFormatAlgorithm::RequestData(vtkInformation *vtkNotUsed(request),
+        vtkInformationVector **vtkNotUsed(inputVector), vtkInformationVector *outputVector)
   {
   vtkInformation* outInfo = outputVector->GetInformationObject(0);
 
-  unsigned int TimeIndex = this->GetCurrentTimeStep(outInfo);
+  unsigned int TimeIndex = vtkAvtFileFormatAlgorithm::GetCurrentTimeStep(outInfo);
 
   if (!this->InitializeAVTReader( TimeIndex ))
     {
@@ -99,7 +97,7 @@ int vtkAvtMTSDFileFormatAlgorithm::RequestData(vtkInformation *request,
     }
   this->FillMultiBlock(output,TimeIndex);
   this->CleanupAVTReader();
-  this->SetupGhostInformation(outInfo);
+  vtkAvtFileFormatAlgorithm::SetupGhostInformation(outInfo);
   return 1;
 }
 

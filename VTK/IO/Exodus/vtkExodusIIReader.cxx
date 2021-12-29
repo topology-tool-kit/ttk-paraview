@@ -31,6 +31,7 @@
 #include "vtkInformationIntegerKey.h"
 #include "vtkInformationVector.h"
 #include "vtkIntArray.h"
+#include "vtkLogger.h"
 #include "vtkMath.h"
 #include "vtkMultiBlockDataSet.h"
 #include "vtkMutableDirectedGraph.h"
@@ -875,7 +876,7 @@ int vtkExodusIIReaderPrivate::AssembleOutputProceduralArrays(
     vtkIntArray* iarr = vtkIntArray::New();
     iarr->SetNumberOfComponents(1);
     iarr->SetNumberOfTuples(numCells);
-    iarr->SetName(this->GetFileIdArrayName());
+    iarr->SetName(vtkExodusIIReaderPrivate::GetFileIdArrayName());
     cd->AddArray(iarr);
     iarr->FastDelete();
     for (vtkIdType i = 0; i < numCells; ++i)
@@ -1608,7 +1609,7 @@ vtkDataArray* vtkExodusIIReaderPrivate::GetCacheOrRead(vtkExodusIICacheKey key)
 
     // ArrayInfoType* ainfop = &this->ArrayInfo[vtkExodusIIReader::GLOBAL][key.ArrayId];
     arr = vtkDataArray::CreateDataArray(VTK_DOUBLE);
-    arr->SetName(this->GetGlobalVariableValuesArrayName());
+    arr->SetName(vtkExodusIIReaderPrivate::GetGlobalVariableValuesArrayName());
     arr->SetNumberOfComponents(1);
     arr->SetNumberOfTuples(
       static_cast<vtkIdType>(this->ArrayInfo[vtkExodusIIReader::GLOBAL].size()));
@@ -2320,7 +2321,8 @@ vtkDataArray* vtkExodusIIReaderPrivate::GetCacheOrRead(vtkExodusIICacheKey key)
       }
       ptr += binfop->BdsPerEntry[0] - binfop->PointsPerCell;
     }
-    else if (binfop->CellType == VTK_LAGRANGE_WEDGE && binfop->PointsPerCell == 21)
+    else if ((binfop->CellType == VTK_LAGRANGE_WEDGE && binfop->PointsPerCell == 21) ||
+      (binfop->CellType == VTK_BIQUADRATIC_QUADRATIC_WEDGE && binfop->PointsPerCell == 18))
     {
       // Exodus orders edges like so:
       //   r-dir @ -z, 1-r-s-dir @ -z, s-dir @ -z,
@@ -2351,15 +2353,23 @@ vtkDataArray* vtkExodusIIReaderPrivate::GetCacheOrRead(vtkExodusIICacheKey key)
         // Exodus file and is then followed by wedge face nodes,
         // but not in the same order as VTK or the linear Exodus side-set
         // ordering:
-        int ftmp[6];
-        static int wedgeMapping[6] = { 1, 2, 5, 3, 4, 0 };
-        for (k = 0; k < 6; ++k)
+        if (binfop->PointsPerCell == 21)
         {
-          ftmp[k] = ptr[wedgeMapping[k]];
+          int ftmp[6];
+          static int wedgeMapping6[6] = { 1, 2, 5, 3, 4, 0 };
+          for (k = 0; k < 6; ++k)
+          {
+            ftmp[k] = ptr[wedgeMapping6[k]];
+          }
+          for (k = 0; k < 6; ++k, ++ptr)
+          {
+            *ptr = ftmp[k] - 1;
+          }
         }
-        for (k = 0; k < 6; ++k, ++ptr)
+        else
         {
-          *ptr = ftmp[k] - 1;
+          for (k = 0; k < 3; ++k, ++ptr)
+            *ptr = *ptr - 1;
         }
       }
       ptr += binfop->BdsPerEntry[0] - binfop->PointsPerCell;
@@ -2720,7 +2730,7 @@ vtkDataArray* vtkExodusIIReaderPrivate::GetCacheOrRead(vtkExodusIICacheKey key)
     bsinfop = (BlockSetInfoType*)this->GetObjectInfo(otypidx, obj);
 
     arr = vtkIntArray::New();
-    arr->SetName(this->GetObjectIdArrayName());
+    arr->SetName(vtkExodusIIReaderPrivate::GetObjectIdArrayName());
     arr->SetNumberOfComponents(1);
     arr->SetNumberOfTuples(bsinfop->Size);
     arr->FillComponent(0, bsinfop->Id);
@@ -3098,6 +3108,11 @@ void vtkExodusIIReaderPrivate::DetermineVtkCellType(BlockInfoType& binfo)
   {
     binfo.CellType = VTK_QUADRATIC_WEDGE;
     binfo.PointsPerCell = 15;
+  }
+  else if ((elemType.substr(0, 3) == "WED") && (binfo.BdsPerEntry[0] == 18))
+  {
+    binfo.CellType = VTK_BIQUADRATIC_QUADRATIC_WEDGE;
+    binfo.PointsPerCell = 18;
   }
   else if ((elemType.substr(0, 3) == "WED") && (binfo.BdsPerEntry[0] == 21))
   {
@@ -3709,7 +3724,7 @@ void vtkExodusIIReader::PrintSelf(ostream& os, vtkIndent indent)
   if (this->Metadata)
   {
     os << indent << "Metadata:\n";
-    this->Metadata->PrintData(os, indent.GetNextIndent());
+    this->Metadata->PrintSelf(os, indent.GetNextIndent());
   }
   else
   {
@@ -3717,7 +3732,7 @@ void vtkExodusIIReader::PrintSelf(ostream& os, vtkIndent indent)
   }
 }
 
-void vtkExodusIIReaderPrivate::PrintData(ostream& os, vtkIndent indent)
+void vtkExodusIIReaderPrivate::PrintSelf(ostream& os, vtkIndent indent)
 {
   // this->Superclass::Print Self( os, indent );
   os << indent << "Exoid: " << this->Exoid << "\n";
@@ -4541,6 +4556,8 @@ int vtkExodusIIReaderPrivate::RequestData(vtkIdType timeStep, vtkMultiBlockDataS
       obj = this->SortedObjectIndices[otyp][sortIdx];
       BlockSetInfoType* bsinfop = static_cast<BlockSetInfoType*>(this->GetObjectInfo(otypidx, obj));
       // cout << ( bsinfop->Status ? "++" : "--" ) << "   ObjectId: " << bsinfop->Id;
+      // vtkLogF(TRACE, "%s: name=%s, idx=%d, type=%d status=%d",
+      //    vtkLogIdentifier(this), object_name, sortIdx, otypidx, bsinfop->Status);
       if (!bsinfop->Status)
       {
         mbds->SetBlock(sortIdx, nullptr);
@@ -4741,6 +4758,7 @@ int vtkExodusIIReaderPrivate::SetUpEmptyGrid(vtkMultiBlockDataSet* output)
 
 void vtkExodusIIReaderPrivate::Reset()
 {
+  vtkLogF(TRACE, "vtkExodusIIReaderPrivate(%p)::Reset", this);
   this->CloseFile();
   this->ResetCache(); // must come before BlockInfo and SetInfo are cleared.
   this->BlockInfo.clear();
@@ -4935,12 +4953,14 @@ void vtkExodusIIReaderPrivate::SetObjectStatus(int otyp, int k, int stat)
     return;
   }
 
+  vtkLogF(TRACE, "vtkExodusIIReaderPrivate(%p): SetObjectStatus(%d, %d (%s), %d)", this, otyp, k,
+    oinfop->Name.c_str(), stat);
+
   if (oinfop->Status == stat)
   { // no change => do nothing
     return;
   }
   oinfop->Status = stat;
-
   this->Modified();
 }
 
@@ -4953,6 +4973,9 @@ void vtkExodusIIReaderPrivate::SetUnsortedObjectStatus(int otyp, int k, int stat
   { // error message will have been generated by GetSortedObjectInfo()
     return;
   }
+
+  vtkLogF(TRACE, "vtkExodusIIReaderPrivate(%p): SetUnsortedObjectStatus(%d, %d (%s), %d)", this,
+    otyp, k, oinfop->Name.c_str(), stat);
 
   if (oinfop->Status == stat)
   { // no change => do nothing
@@ -5399,14 +5422,7 @@ vtkMTimeType vtkExodusIIReader::GetMetadataMTime()
   delete[] this->propName;                                                                         \
   if (fname)                                                                                       \
   {                                                                                                \
-    size_t fnl = strlen(fname) + 1;                                                                \
-    char* dst = new char[fnl];                                                                     \
-    const char* src = fname;                                                                       \
-    this->propName = dst;                                                                          \
-    do                                                                                             \
-    {                                                                                              \
-      *dst++ = *src++;                                                                             \
-    } while (--fnl);                                                                               \
+    this->propName = vtksys::SystemTools::DuplicateString(fname);                                  \
   }                                                                                                \
   else                                                                                             \
   {                                                                                                \
@@ -5415,6 +5431,7 @@ vtkMTimeType vtkExodusIIReader::GetMetadataMTime()
 
 void vtkExodusIIReader::SetFileName(const char* fname)
 {
+  vtkLogF(TRACE, "%s: SetFileName old=%s, new=%s", vtkLogIdentifier(this), this->FileName, fname);
   vtkSetStringMacroBody(FileName, fname);
   if (modified)
   {
@@ -5996,11 +6013,15 @@ int vtkExodusIIReader::GetObjectStatus(int objectType, int objectIndex)
 
 void vtkExodusIIReader::SetObjectStatus(int objectType, int objectIndex, int status)
 {
+  vtkLogF(TRACE, "%s: SetObjectStatus(type=%d, idx=%d, status=%d)", vtkLogIdentifier(this),
+    objectType, objectIndex, status);
   this->Metadata->SetObjectStatus(objectType, objectIndex, status);
 }
 
 void vtkExodusIIReader::SetObjectStatus(int objectType, const char* objectName, int status)
 {
+  vtkLogScopeF(TRACE, "%s: SetObjectStatus(%s, %s, %d)", vtkLogIdentifier(this),
+    this->GetObjectTypeName(objectType), objectName, status);
   if (objectName && strlen(objectName) > 0)
   {
     if (this->GetNumberOfObjects(objectType) == 0)
@@ -6012,6 +6033,7 @@ void vtkExodusIIReader::SetObjectStatus(int objectType, const char* objectName, 
       return;
     }
     this->SetObjectStatus(objectType, this->GetObjectIndex(objectType, objectName), status);
+    assert(this->GetObjectStatus(objectType, objectName) == status);
   }
 }
 

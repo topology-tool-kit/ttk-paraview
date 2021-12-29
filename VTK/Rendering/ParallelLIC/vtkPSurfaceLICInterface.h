@@ -43,7 +43,7 @@ public:
    * update timing information is stored, it can be written to
    * disk by calling WriteLog.
    */
-  void WriteTimerLog(const char* fileName) override;
+  void WriteTimerLog(VTK_FILEPATH const char* fileName) override;
 
 protected:
   vtkPSurfaceLICInterface();
@@ -70,7 +70,7 @@ protected:
    */
   bool NeedToUpdateCommunicator() override;
 
-  //@{
+  ///@{
   /**
    * Methods used for parallel benchmarks. Use cmake to define
    * vtkSurfaceLICInterfaceTIME to enable benchmarks. During each
@@ -79,7 +79,7 @@ protected:
    */
   virtual void StartTimerEvent(const char* name);
   virtual void EndTimerEvent(const char* name);
-  //@}
+  ///@}
 
 private:
   std::string LogFileName;

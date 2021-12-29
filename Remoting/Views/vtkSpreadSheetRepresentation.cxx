@@ -14,8 +14,8 @@
 =========================================================================*/
 #include "vtkSpreadSheetRepresentation.h"
 
-#include "vtkBlockDeliveryPreprocessor.h"
 #include "vtkCleanArrays.h"
+#include "vtkDataTabulator.h"
 #include "vtkInformation.h"
 #include "vtkInformationVector.h"
 #include "vtkObjectFactory.h"
@@ -27,16 +27,16 @@ vtkStandardNewMacro(vtkSpreadSheetRepresentation);
 vtkSpreadSheetRepresentation::vtkSpreadSheetRepresentation()
 {
   this->SetNumberOfInputPorts(3);
-  this->DataConditioner->SetGenerateOriginalIds(1);
-  this->DataConditioner->SetFlattenTable(true);
+  this->DataConditioner->SetGenerateOriginalIds(true);
+  this->DataConditioner->SetSplitComponents(true);
   this->DataConditioner->SetSplitComponentsNamingMode(
     vtkSplitColumnComponents::NUMBERS_WITH_UNDERSCORES);
   this->CleanArrays->SetInputConnection(this->DataConditioner->GetOutputPort());
   this->CleanArrays->SetFillPartialArrays(true);
   this->CleanArrays->SetMarkFilledPartialArrays(true);
 
-  this->ExtractedDataConditioner->SetGenerateOriginalIds(0);
-  this->ExtractedDataConditioner->SetFlattenTable(true);
+  this->ExtractedDataConditioner->SetGenerateOriginalIds(false);
+  this->ExtractedDataConditioner->SetSplitComponents(true);
   this->ExtractedDataConditioner->SetSplitComponentsNamingMode(
     vtkSplitColumnComponents::NUMBERS_WITH_UNDERSCORES);
   this->ExtractedCleanArrays->SetInputConnection(this->ExtractedDataConditioner->GetOutputPort());
@@ -45,9 +45,7 @@ vtkSpreadSheetRepresentation::vtkSpreadSheetRepresentation()
 }
 
 //----------------------------------------------------------------------------
-vtkSpreadSheetRepresentation::~vtkSpreadSheetRepresentation()
-{
-}
+vtkSpreadSheetRepresentation::~vtkSpreadSheetRepresentation() = default;
 
 //----------------------------------------------------------------------------
 void vtkSpreadSheetRepresentation::SetFieldAssociation(int val)
@@ -61,18 +59,26 @@ void vtkSpreadSheetRepresentation::SetFieldAssociation(int val)
 }
 
 //----------------------------------------------------------------------------
-void vtkSpreadSheetRepresentation::AddCompositeDataSetIndex(unsigned int val)
+void vtkSpreadSheetRepresentation::AddSelector(const char* selector)
 {
-  this->DataConditioner->AddCompositeDataSetIndex(val);
-  this->ExtractedDataConditioner->AddCompositeDataSetIndex(val);
+  this->DataConditioner->AddSelector(selector);
+  this->ExtractedDataConditioner->AddSelector(selector);
   this->MarkModified();
 }
 
 //----------------------------------------------------------------------------
-void vtkSpreadSheetRepresentation::RemoveAllCompositeDataSetIndices()
+void vtkSpreadSheetRepresentation::ClearSelectors()
 {
-  this->DataConditioner->RemoveAllCompositeDataSetIndices();
-  this->ExtractedDataConditioner->RemoveAllCompositeDataSetIndices();
+  this->DataConditioner->ClearSelectors();
+  this->ExtractedDataConditioner->ClearSelectors();
+  this->MarkModified();
+}
+
+//----------------------------------------------------------------------------
+void vtkSpreadSheetRepresentation::SetActiveAssemblyForSelectors(const char* name)
+{
+  this->DataConditioner->SetActiveAssemblyForSelectors(name);
+  this->ExtractedDataConditioner->SetActiveAssemblyForSelectors(name);
   this->MarkModified();
 }
 
@@ -148,7 +154,7 @@ vtkAlgorithmOutput* vtkSpreadSheetRepresentation::GetDataProducer()
 {
   return this->DataConditioner->GetNumberOfInputConnections(0) == 1
     ? this->CleanArrays->GetOutputPort(0)
-    : NULL;
+    : nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -156,7 +162,7 @@ vtkAlgorithmOutput* vtkSpreadSheetRepresentation::GetExtractedDataProducer()
 {
   return this->ExtractedDataConditioner->GetNumberOfInputConnections(0) == 1
     ? this->ExtractedCleanArrays->GetOutputPort(0)
-    : NULL;
+    : nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -166,7 +172,7 @@ vtkAlgorithmOutput* vtkSpreadSheetRepresentation::GetSelectionProducer()
   {
     return this->GetInternalOutputPort(1, 0);
   }
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------

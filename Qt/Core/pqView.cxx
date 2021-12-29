@@ -81,7 +81,7 @@ public:
   bool WidgetCreated;
 
   // List of representation shown by this view.
-  QList<QPointer<pqRepresentation> > Representations;
+  QList<QPointer<pqRepresentation>> Representations;
 
   pqViewInternal()
     : WidgetCreated(false)
@@ -96,7 +96,7 @@ public:
 
 //-----------------------------------------------------------------------------
 pqView::pqView(const QString& type, const QString& group, const QString& name, vtkSMViewProxy* view,
-  pqServer* server, QObject* _parent /*=null*/)
+  pqServer* server, QObject* _parent /*=nullptr*/)
   : pqProxy(group, name, view, server, _parent)
 {
   this->ViewType = type;
@@ -140,7 +140,7 @@ pqView::~pqView()
   {
     if (disp)
     {
-      disp->setView(0);
+      disp->setView(nullptr);
     }
   }
 
@@ -171,7 +171,7 @@ void pqView::initialize()
   this->onRepresentationsChanged();
 
   // Create the widget.
-  if (this->widget() == NULL)
+  if (this->widget() == nullptr)
   {
     qWarning("This view doesn't have a QWidget. May not work as expected.");
   }
@@ -299,7 +299,7 @@ pqRepresentation* pqView::getRepresentation(int index) const
     return this->Internal->Representations[index];
   }
 
-  return 0;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -322,7 +322,7 @@ void pqView::onRepresentationsChanged()
   // Determine what changed. Add the new Representations and remove the old
   // ones. Make sure new Representations have a reference to this render module.
   // Remove the reference to this render module in the removed Representations.
-  QList<QPointer<pqRepresentation> > currentReprs;
+  QList<QPointer<pqRepresentation>> currentReprs;
   vtkSMProxyProperty* prop =
     vtkSMProxyProperty::SafeDownCast(this->getProxy()->GetProperty("Representations"));
   pqServerManagerModel* smModel = pqApplicationCore::instance()->getServerManagerModel();
@@ -353,16 +353,16 @@ void pqView::onRepresentationsChanged()
     }
   }
 
-  QList<QPointer<pqRepresentation> >::Iterator iter = this->Internal->Representations.begin();
+  QList<QPointer<pqRepresentation>>::Iterator iter = this->Internal->Representations.begin();
   while (iter != this->Internal->Representations.end())
   {
     if (*iter && !currentReprs.contains(*iter))
     {
       pqRepresentation* repr = (*iter);
       // Remove the render module pointer from the repr.
-      repr->setView(0);
+      repr->setView(nullptr);
       iter = this->Internal->Representations.erase(iter);
-      QObject::disconnect(repr, 0, this, 0);
+      QObject::disconnect(repr, nullptr, this, nullptr);
       Q_EMIT this->representationVisibilityChanged(repr, false);
       Q_EMIT this->representationRemoved(repr);
     }
@@ -408,8 +408,9 @@ QSize pqView::getSize()
 //-----------------------------------------------------------------------------
 bool pqView::canDisplay(pqOutputPort* opPort) const
 {
-  pqPipelineSource* source = opPort ? opPort->getSource() : 0;
-  vtkSMSourceProxy* sourceProxy = source ? vtkSMSourceProxy::SafeDownCast(source->getProxy()) : 0;
+  pqPipelineSource* source = opPort ? opPort->getSource() : nullptr;
+  vtkSMSourceProxy* sourceProxy =
+    source ? vtkSMSourceProxy::SafeDownCast(source->getProxy()) : nullptr;
   if (!opPort || !sourceProxy || opPort->getServer()->getResource().scheme() == "catalyst")
   {
     return false;

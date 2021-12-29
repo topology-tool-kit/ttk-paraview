@@ -18,7 +18,6 @@
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
 #include "vtkPVArrayInformation.h"
-#include "vtkPVCompositeDataInformation.h"
 #include "vtkPVDataInformation.h"
 #include "vtkPVDataSetAttributesInformation.h"
 #include "vtkPVXMLElement.h"
@@ -150,7 +149,7 @@ private:
         return true;
       }
     }
-    return (this->DataTypes.size() == 0);
+    return this->DataTypes.empty();
   }
 
   bool AreArrayInformationKeysAcceptable(vtkPVArrayInformation* arrayInfo)
@@ -214,7 +213,7 @@ void vtkSMArrayListDomainInternals::BuildArrayList(
     association = vtkSMInputArrayDomain::ANY;
   }
 
-  if (self->GetNoneString() && result.size() == 0)
+  if (self->GetNoneString() && result.empty())
   {
     vtkSMArrayListDomainArrayInformation info;
     info.ArrayName = self->GetNoneString();
@@ -330,8 +329,8 @@ void vtkSMArrayListDomainInternals::BuildArrayList(
 vtkSMArrayListDomain::vtkSMArrayListDomain()
 {
   this->AttributeType = vtkDataSetAttributes::SCALARS;
-  this->InputDomainName = 0;
-  this->NoneString = 0;
+  this->InputDomainName = nullptr;
+  this->NoneString = nullptr;
   this->ALDInternals = new vtkSMArrayListDomainInternals;
   this->PickFirstAvailableArrayByDefault = true;
 }
@@ -339,8 +338,8 @@ vtkSMArrayListDomain::vtkSMArrayListDomain()
 //---------------------------------------------------------------------------
 vtkSMArrayListDomain::~vtkSMArrayListDomain()
 {
-  this->SetInputDomainName(0);
-  this->SetNoneString(0);
+  this->SetInputDomainName(nullptr);
+  this->SetNoneString(nullptr);
   delete this->ALDInternals;
   this->ALDInternals = nullptr;
 }
@@ -679,7 +678,7 @@ int vtkSMArrayListDomain::SetDefaultValues(vtkSMProperty* prop, bool use_uncheck
 
   const vtkSMArrayListDomainArrayInformation* info =
     this->ALDInternals->FindAttribute(this->AttributeType);
-  if (info == nullptr && this->ALDInternals->DomainValues.size() > 0)
+  if (info == nullptr && !this->ALDInternals->DomainValues.empty())
   {
     if (this->PickFirstAvailableArrayByDefault == true)
     {
@@ -863,7 +862,7 @@ std::string vtkSMArrayListDomain::CreateMangledName(vtkPVArrayInformation* array
 std::string vtkSMArrayListDomain::ArrayNameFromMangledName(const char* name)
 {
   std::string extractedName = name;
-  size_t pos = extractedName.rfind("_");
+  size_t pos = extractedName.rfind('_');
   if (pos == std::string::npos)
   {
     return extractedName;
@@ -876,7 +875,7 @@ int vtkSMArrayListDomain::ComponentIndexFromMangledName(
   vtkPVArrayInformation* info, const char* name)
 {
   std::string extractedName = name;
-  size_t pos = extractedName.rfind("_");
+  size_t pos = extractedName.rfind('_');
   if (pos == std::string::npos)
   {
     return -1;

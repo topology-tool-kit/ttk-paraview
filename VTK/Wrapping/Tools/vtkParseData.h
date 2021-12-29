@@ -26,6 +26,7 @@
 #ifndef vtkParseData_h
 #define vtkParseData_h
 
+#include "vtkParseAttributes.h"
 #include "vtkParseString.h"
 #include "vtkParseType.h"
 #include "vtkWrappingToolsModule.h"
@@ -108,12 +109,12 @@ typedef struct _ItemInfo
 } ItemInfo;
 
 /* forward declarations */
-struct _ValueInfo;
-struct _FunctionInfo;
-struct _FileInfo;
-typedef struct _ValueInfo ValueInfo;
-typedef struct _FunctionInfo FunctionInfo;
-typedef struct _FileInfo FileInfo;
+struct ValueInfo_;
+struct FunctionInfo_;
+struct FileInfo_;
+typedef struct ValueInfo_ ValueInfo;
+typedef struct FunctionInfo_ FunctionInfo;
+typedef struct FileInfo_ FileInfo;
 
 /**
  * CommentInfo is for storing comments by category
@@ -145,13 +146,14 @@ typedef struct _TemplateInfo
  * order to support dimensions that are sized according to
  * template parameter values or according to named constants.
  */
-struct _ValueInfo
+struct ValueInfo_
 {
   parse_item_t ItemType;
   parse_access_t Access;
   const char* Name;
   const char* Comment;
   const char* Value;       /* for vars or default parameters values */
+  unsigned int Attributes; /* as defined in vtkParseAttributes.h */
   unsigned int Type;       /* as defined in vtkParseType.h   */
   const char* Class;       /* classname for type */
   int Count;               /* total number of values, if known */
@@ -168,7 +170,7 @@ struct _ValueInfo
 /**
  * FunctionInfo is for functions and methods
  */
-struct _FunctionInfo
+struct FunctionInfo_
 {
   parse_item_t ItemType;
   parse_access_t Access;
@@ -181,14 +183,15 @@ struct _FunctionInfo
   ValueInfo** Parameters;
   ValueInfo* ReturnValue; /* NULL for constructors and destructors */
   int NumberOfPreconds;
-  const char** Preconds;   /* preconditions */
-  const char* Macro;       /* the macro that defined this function */
-  const char* SizeHint;    /* hint the size e.g. for operator[] */
-  const char* Deprecation; /* if not NULL, function is deprecated */
+  const char** Preconds;         /* preconditions */
+  const char* Macro;             /* the macro that defined this function */
+  const char* SizeHint;          /* hint the size e.g. for operator[] */
+  const char* DeprecatedReason;  /* reason for deprecation, or NULL */
+  const char* DeprecatedVersion; /* version of deprecation, or NULL */
   int IsOperator;
   int IsVariadic;
-  int IsLegacy;      /* marked as a legacy method or function */
   int IsExcluded;    /* marked as excluded from wrapping */
+  int IsDeprecated;  /* method or function has been deprecated */
   int IsStatic;      /* methods only */
   int IsVirtual;     /* methods only */
   int IsPureVirtual; /* methods only */
@@ -209,13 +212,14 @@ struct _FunctionInfo
   int ArrayFailure;                 /* legacy */
   int IsPublic;                     /* legacy */
   int IsProtected;                  /* legacy */
+  int IsLegacy;                     /* legacy */
 #endif
 };
 
 /**
  * UsingInfo is for using directives
  */
-typedef struct _UsingInfo
+typedef struct UsingInfo_
 {
   parse_item_t ItemType;
   parse_access_t Access;
@@ -227,7 +231,7 @@ typedef struct _UsingInfo
 /**
  * ClassInfo is for classes, structs, unions, and namespaces
  */
-typedef struct _ClassInfo
+typedef struct ClassInfo_
 {
   parse_item_t ItemType;
   parse_access_t Access;
@@ -239,7 +243,7 @@ typedef struct _ClassInfo
   int NumberOfItems;
   ItemInfo* Items;
   int NumberOfClasses;
-  struct _ClassInfo** Classes;
+  struct ClassInfo_** Classes;
   int NumberOfFunctions;
   FunctionInfo** Functions;
   int NumberOfConstants;
@@ -247,20 +251,22 @@ typedef struct _ClassInfo
   int NumberOfVariables;
   ValueInfo** Variables;
   int NumberOfEnums;
-  struct _ClassInfo** Enums;
+  struct ClassInfo_** Enums;
   int NumberOfTypedefs;
   ValueInfo** Typedefs;
   int NumberOfUsings;
   UsingInfo** Usings;
   int NumberOfNamespaces;
-  struct _ClassInfo** Namespaces;
+  struct ClassInfo_** Namespaces;
   int NumberOfComments;
   CommentInfo** Comments;
-  const char* Deprecation;
+  const char* DeprecatedReason;
+  const char* DeprecatedVersion;
   int IsAbstract;
   int IsFinal;
   int HasDelete;
   int IsExcluded;
+  int IsDeprecated;
 } ClassInfo;
 
 /**
@@ -268,17 +274,17 @@ typedef struct _ClassInfo
  * For scoped enums, the constants are in the enum itself, but for
  * standard enums, the constants are at the same level as the enum.
  */
-typedef struct _ClassInfo EnumInfo;
+typedef struct ClassInfo_ EnumInfo;
 
 /**
  * Namespace is for namespaces
  */
-typedef struct _ClassInfo NamespaceInfo;
+typedef struct ClassInfo_ NamespaceInfo;
 
 /**
  * FileInfo is for header files
  */
-struct _FileInfo
+struct FileInfo_
 {
   const char* FileName;
   const char* NameComment;
@@ -287,7 +293,7 @@ struct _FileInfo
   const char* SeeAlso;
 
   int NumberOfIncludes;
-  struct _FileInfo** Includes;
+  struct FileInfo_** Includes;
   ClassInfo* MainClass;
   NamespaceInfo* Contents;
   StringCache* Strings;

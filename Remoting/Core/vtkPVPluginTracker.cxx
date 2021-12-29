@@ -21,7 +21,6 @@
 #include "vtkPSystemTools.h"
 #include "vtkPVConfig.h"
 #include "vtkPVLogger.h"
-#include "vtkPVOptions.h"
 #include "vtkPVPlugin.h"
 #include "vtkPVPluginLoader.h"
 #include "vtkPVPythonModule.h"
@@ -30,13 +29,14 @@
 #include "vtkPVXMLElement.h"
 #include "vtkPVXMLParser.h"
 #include "vtkProcessModule.h"
+#include "vtkRemotingCoreConfiguration.h"
 #include "vtkVersion.h"
 
 #include "vtksys/FStream.hxx"
 #include "vtksys/String.hxx"
 #include "vtksys/SystemTools.hxx"
 
-#include <assert.h>
+#include <cassert>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -61,7 +61,7 @@ public:
   bool AutoLoad;
   vtkItem()
   {
-    this->Plugin = NULL;
+    this->Plugin = nullptr;
     this->AutoLoad = false;
   }
 };
@@ -110,7 +110,7 @@ std::string vtkLocatePluginOrConfigFile(const char* plugin, const char* hint, bo
 
   auto pm = vtkProcessModule::GetProcessModule();
   // Make sure we can get the options before going further
-  if (pm == NULL)
+  if (pm == nullptr)
   {
     vtkLogF(ERROR, "vtkProcessModule does not exist!");
     return std::string();
@@ -160,26 +160,21 @@ std::string vtkLocatePluginOrConfigFile(const char* plugin, const char* hint, bo
   if (hint && *hint)
   {
     const std::string hintdir = vtksys::SystemTools::GetFilenamePath(hint);
-    auto path = locator->Locate(hintdir + "/" + plugin, landmark);
+    auto path = locator->Locate(std::string(hintdir).append("/").append(plugin), landmark);
     if (!path.empty())
     {
-      return path + "/" + landmark;
+      return std::string(path).append("/").append(landmark);
     }
   }
 
-  // First try the test plugin path, if it exists.
-  vtkPVOptions* options = pm->GetOptions();
-  if (options && options->GetTestPluginPaths() && strlen(options->GetTestPluginPaths()) > 0)
+  // First try the plugin search paths, if any.
+  for (const auto& spath : vtkRemotingCoreConfiguration::GetInstance()->GetPluginSearchPaths())
   {
-    std::vector<std::string> testPluginPaths = tokenize(options->GetTestPluginPaths(), ',');
-    for (const auto& testPluginPath : testPluginPaths)
+    vtkVLogF(PARAVIEW_LOG_PLUGIN_VERBOSITY(), "check `plugin-search-path` first.");
+    auto path = locator->Locate(spath, landmark);
+    if (!path.empty())
     {
-      vtkVLogF(PARAVIEW_LOG_PLUGIN_VERBOSITY(), "check `test-plugin-path` first.");
-      auto path = locator->Locate(testPluginPath, landmark);
-      if (!path.empty())
-      {
-        return path + "/" + landmark;
-      }
+      return std::string(path).append("/").append(landmark);
     }
   }
 
@@ -190,7 +185,7 @@ std::string vtkLocatePluginOrConfigFile(const char* plugin, const char* hint, bo
     auto pluginpath = locator->Locate(exe_dir, prefixes, landmark);
     if (!pluginpath.empty())
     {
-      return pluginpath + "/" + landmark;
+      return std::string(pluginpath).append("/").append(landmark);
     }
   }
 
@@ -258,14 +253,14 @@ vtkPVPluginTracker::vtkPVPluginTracker()
 vtkPVPluginTracker::~vtkPVPluginTracker()
 {
   delete this->PluginsList;
-  this->PluginsList = NULL;
+  this->PluginsList = nullptr;
 }
 
 //----------------------------------------------------------------------------
 vtkPVPluginTracker* vtkPVPluginTracker::GetInstance()
 {
   static vtkSmartPointer<vtkPVPluginTracker> Instance;
-  if (Instance.GetPointer() == NULL)
+  if (Instance.GetPointer() == nullptr)
   {
     vtkPVPluginTracker* mgr = vtkPVPluginTracker::New();
     Instance = mgr;
@@ -356,7 +351,7 @@ void vtkPVPluginTracker::LoadPluginConfigurationXMLConf(
   {
     if (!vtksys::SystemTools::FileIsFullPath(line))
     {
-      line = exe_dir + "/" + line;
+      line = std::string(exe_dir).append("/").append(line);
     }
 
     this->LoadPluginConfigurationXML(line.c_str(), false);
@@ -412,7 +407,7 @@ void vtkPVPluginTracker::LoadPluginConfigurationXML(vtkPVXMLElement* root, bool 
 void vtkPVPluginTracker::LoadPluginConfigurationXMLHinted(
   vtkPVXMLElement* root, char const* hint, bool forceLoad)
 {
-  if (root == NULL)
+  if (root == nullptr)
   {
     return;
   }
@@ -540,7 +535,7 @@ unsigned int vtkPVPluginTracker::RegisterAvailablePlugin(const char* filename)
 //----------------------------------------------------------------------------
 void vtkPVPluginTracker::RegisterPlugin(vtkPVPlugin* plugin)
 {
-  assert(plugin != NULL);
+  assert(plugin != nullptr);
 
   vtkPluginsList::iterator iter = this->PluginsList->LocateUsingPluginName(plugin->GetPluginName());
   if (iter == this->PluginsList->end())
@@ -607,7 +602,7 @@ vtkPVPlugin* vtkPVPluginTracker::GetPlugin(unsigned int index)
   if (index >= this->GetNumberOfPlugins())
   {
     vtkWarningMacro("Invalid index: " << index);
-    return NULL;
+    return nullptr;
   }
   return (*this->PluginsList)[index].Plugin;
 }
@@ -618,7 +613,7 @@ const char* vtkPVPluginTracker::GetPluginName(unsigned int index)
   if (index >= this->GetNumberOfPlugins())
   {
     vtkWarningMacro("Invalid index: " << index);
-    return NULL;
+    return nullptr;
   }
   return (*this->PluginsList)[index].PluginName.c_str();
 }
@@ -629,7 +624,7 @@ const char* vtkPVPluginTracker::GetPluginFileName(unsigned int index)
   if (index >= this->GetNumberOfPlugins())
   {
     vtkWarningMacro("Invalid index: " << index);
-    return NULL;
+    return nullptr;
   }
   return (*this->PluginsList)[index].FileName.c_str();
 }
@@ -642,7 +637,7 @@ bool vtkPVPluginTracker::GetPluginLoaded(unsigned int index)
     vtkWarningMacro("Invalid index: " << index);
     return false;
   }
-  return (*this->PluginsList)[index].Plugin != NULL;
+  return (*this->PluginsList)[index].Plugin != nullptr;
 }
 
 //----------------------------------------------------------------------------

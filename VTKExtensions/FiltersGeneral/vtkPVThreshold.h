@@ -1,7 +1,7 @@
 /*=========================================================================
 
-  program:   paraview
-  module:    vtkpvthreshold.h
+  program: ParaView
+  module:  vtkPVThreshold.h
 
   copyright (c) kitware, inc.
   all rights reserved.
@@ -13,13 +13,12 @@
 
 =========================================================================*/
 /**
- * @class   vtkpvthreshold
- * @brief   threshold filter
- *
+ * @class vtkPVThreshold
+ * @brief threshold filter to add support for vtkHyperTreeGrid.
  *
  * This is a subclass of vtkThreshold that allows to apply threshold filters
  * to either vtkDataSet or vtkHyperTreeGrid.
-*/
+ */
 
 #ifndef vtkPVThreshold_h
 #define vtkPVThreshold_h
@@ -30,22 +29,21 @@
 class VTKPVVTKEXTENSIONSFILTERSGENERAL_EXPORT vtkPVThreshold : public vtkThreshold
 {
 public:
-  vtkTypeMacro(vtkPVThreshold, vtkThreshold);
-
   static vtkPVThreshold* New();
+  vtkTypeMacro(vtkPVThreshold, vtkThreshold);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  virtual int ProcessRequest(
-    vtkInformation*, vtkInformationVector**, vtkInformationVector*) override;
+  int ProcessRequest(vtkInformation*, vtkInformationVector**, vtkInformationVector*) override;
 
 protected:
   vtkPVThreshold() = default;
-  virtual ~vtkPVThreshold() override = default;
+  ~vtkPVThreshold() override = default;
 
-  virtual int RequestData(vtkInformation*, vtkInformationVector**, vtkInformationVector*) override;
-  virtual int RequestDataObject(vtkInformation*, vtkInformationVector**, vtkInformationVector*);
-
+  int RequestData(vtkInformation*, vtkInformationVector**, vtkInformationVector*) override;
   int FillInputPortInformation(int, vtkInformation*) override;
   int FillOutputPortInformation(int, vtkInformation*) override;
+
+  virtual int RequestDataObject(vtkInformation*, vtkInformationVector**, vtkInformationVector*);
 
 private:
   vtkPVThreshold(const vtkPVThreshold&) = delete;

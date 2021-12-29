@@ -46,7 +46,7 @@ public:
   vtkTypeMacro(vtkNewickTreeReader, vtkDataReader);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Get the output of this reader.
    */
@@ -54,12 +54,12 @@ public:
   vtkTree* GetOutput(int idx);
   void SetOutput(vtkTree* output);
   int ReadNewickTree(const char* buffer, vtkTree& tree);
-  //@}
+  ///@}
 
   /**
    * Actual reading happens here
    */
-  int ReadMeshSimple(const std::string& fname, vtkDataObject* output) override;
+  int ReadMeshSimple(VTK_FILEPATH const std::string& fname, vtkDataObject* output) override;
 
 protected:
   vtkNewickTreeReader();

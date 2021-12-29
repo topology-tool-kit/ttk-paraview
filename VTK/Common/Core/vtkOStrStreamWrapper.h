@@ -27,6 +27,8 @@
 #ifndef vtkOStrStreamWrapper_h
 #define vtkOStrStreamWrapper_h
 
+#include "vtkCommonCoreModule.h"
+
 #ifndef VTK_SYSTEM_INCLUDES_INSIDE
 Do_not_include_vtkOStrStreamWrapper_directly_vtkSystemIncludes_includes_it;
 #endif
@@ -57,14 +59,14 @@ public:
    */
   vtkOStrStreamWrapper* rdbuf();
 
-  //@{
+  ///@{
   /**
    * Set whether the memory is frozen.  The vtkOStrStreamWrapper will free
    * the memory returned by str() only if it is not frozen.
    */
   void freeze();
   void freeze(int);
-  //@}
+  ///@}
 
 protected:
   // The pointer returned by str().

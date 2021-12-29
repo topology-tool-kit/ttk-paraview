@@ -43,51 +43,50 @@ class pqView;
 class vtkSMProxy;
 
 /**
-* This is the Animation panel widget. It controls the behavior
-* of the Animation panel which includes adding of key frames,
-* changing of keyframes etc etc.
-*/
+ * This is the Animation panel widget. It controls the behavior
+ * of the Animation panel which includes adding of key frames,
+ * changing of keyframes etc etc.
+ */
 class PQCOMPONENTS_EXPORT pqAnimationViewWidget : public QWidget
 {
   Q_OBJECT
   typedef QWidget Superclass;
 
 public:
-  pqAnimationViewWidget(QWidget* parent = 0);
+  pqAnimationViewWidget(QWidget* parent = nullptr);
   ~pqAnimationViewWidget() override;
 
 public Q_SLOTS:
 
   /**
-  * set the scene to view
-  */
+   * set the scene to view
+   */
   void setScene(pqAnimationScene* scene);
 
 protected Q_SLOTS:
 
   /**
-  * The cues in the scene have changed, so we make sure
-  * that we are not displaying a removed or added cue, if so
-  * we update the GUI.
-  */
+   * The cues in the scene have changed, so we make sure that we are not
+   * displaying a removed or added cue, if so we update the GUI.
+   */
   void onSceneCuesChanged();
 
   /**
-  * called when keyframes change
-  */
+   * called when keyframes change
+   */
   void keyFramesChanged(QObject*);
 
   /**
-  * called when scene time range changes
-  */
+   * called when scene time range changes
+   */
   void updateSceneTimeRange();
   /**
-  * called when scene time changes
-  */
+   * called when scene time changes
+   */
   void updateSceneTime();
   /**
-  * called when time steps changes
-  */
+   * called when time steps changes
+   */
   void updateTicks();
 
   // called when track is double clicked
@@ -96,9 +95,12 @@ protected Q_SLOTS:
   // called when play mode changes
   void updatePlayMode();
 
+  // called when number of keyframe/timesteps changed
+  void updateStrideRange();
+
   /**
-  * Called to toggle a track's enabled state.
-  */
+   * Called to toggle a track's enabled state.
+   */
   void toggleTrackEnabled(pqAnimationTrack* track);
 
   // called when deleting a track
@@ -107,9 +109,9 @@ protected Q_SLOTS:
   void createTrack();
 
   /**
-  * called to create a new python animation track.
-  * we allow creating as many python tracks as needed.
-  */
+   * called to create a new python animation track.
+   * we allow creating as many python tracks as needed.
+   */
   void createPythonTrack();
 
   // set active view changed
@@ -134,11 +136,13 @@ protected Q_SLOTS:
 
   void generalSettingsChanged();
 
+  void onStrideChanged();
+
 private:
   Q_DISABLE_COPY(pqAnimationViewWidget)
 
   class pqInternal;
-  pqInternal* Internal;
+  pqInternal* Internal = nullptr;
 };
 
 #endif

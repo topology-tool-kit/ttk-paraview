@@ -16,17 +16,16 @@
 #ifndef vtkSMProxyInternals_h
 #define vtkSMProxyInternals_h
 
-#include "vtkClientServerStream.h"
-#include "vtkSMProperty.h"
-#include "vtkSMPropertyGroup.h"
-#include "vtkSMProxy.h"
-#include "vtkSMProxyLink.h"
-#include "vtkSmartPointer.h"
-#include "vtkWeakPointer.h"
+#include "vtkSMProperty.h"      // for vtkSMProperty
+#include "vtkSMPropertyGroup.h" // for vtkSMPropertyGroup
+#include "vtkSMProxy.h"         // for vtkSMProxy
+#include "vtkSMProxyLink.h"     // for vtkSMProxyLink
+#include "vtkSmartPointer.h"    // for vtkSmartPointer
+#include "vtkWeakPointer.h"     // for vtkWeakPointer
 
-#include <map>
-#include <string>
-#include <vector>
+#include <map>    // for std::map
+#include <string> // for std::string
+#include <vector> // for std::vector
 
 //---------------------------------------------------------------------------
 // Internal data structure for storing object IDs, server IDs and
@@ -57,11 +56,11 @@ struct vtkSMProxyInternals
   // were added for the Property iterator
   std::vector<std::string> PropertyNamesInOrder;
 
-  std::vector<vtkSmartPointer<vtkSMPropertyGroup> > PropertyGroups;
+  std::vector<vtkSmartPointer<vtkSMPropertyGroup>> PropertyGroups;
 
   std::vector<int> ServerIDs;
 
-  typedef std::map<std::string, vtkSmartPointer<vtkSMProxy> > ProxyMap;
+  typedef std::map<std::string, vtkSmartPointer<vtkSMProxy>> ProxyMap;
   ProxyMap SubProxies;
 
   struct ConnectionInfo
@@ -88,7 +87,7 @@ struct vtkSMProxyInternals
   ExposedPropertyInfoMap ExposedProperties;
 
   // Vector of vtkSMProxyLink for shared properties among subproxies.
-  typedef std::vector<vtkSmartPointer<vtkSMProxyLink> > SubProxyLinksType;
+  typedef std::vector<vtkSmartPointer<vtkSMProxyLink>> SubProxyLinksType;
   SubProxyLinksType SubProxyLinks;
 
   // Annotation map

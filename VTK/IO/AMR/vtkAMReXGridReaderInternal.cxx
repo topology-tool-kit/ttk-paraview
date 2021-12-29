@@ -87,23 +87,12 @@ bool RealDescriptor::operator==(const RealDescriptor& rd) const
 #define AMREX_PRINT(os, indent, var) os << indent << #var << ": " << var << endl
 
 vtkAMReXGridHeader::vtkAMReXGridHeader()
-  : versionName()
-  , variableNamesSize(0)
-  , variableNames()
+  : variableNamesSize(0)
   , dim(0)
   , time(0)
   , finestLevel(0)
-  , problemDomainLoEnd()
-  , problemDomainHiEnd()
-  , refinementRatio()
-  , levelDomains()
-  , levelSteps()
   , geometryCoord(0)
   , magicZero(0)
-  , levelSize()
-  , levelCells()
-  , levelPrefix()
-  , multiFabPrefix()
   , debugHeader(false)
 {
 }
@@ -233,6 +222,55 @@ bool vtkAMReXGridHeader::Parse(const std::string& headerData)
   return true;
 }
 
+void vtkAMReXGridHeader::SetVectorNamePrefix(const std::string& prefix)
+{
+  this->vectorNamePrefix = prefix;
+}
+
+void vtkAMReXGridHeader::SetNameDelimiter(const char delim)
+{
+  this->nameDelim = delim;
+}
+
+std::string vtkAMReXGridHeader::GetBaseVariableName(const std::string& name)
+{
+  std::string baseName = name;
+  const std::size_t pos = baseName.find_first_of(this->nameDelim);
+  const std::string prefix = baseName.substr(0, pos);
+  if (prefix == this->vectorNamePrefix)
+  {
+    baseName = baseName.substr(pos + 1);
+    std::size_t posSuffix = baseName.find_last_of(this->nameDelim);
+    baseName = baseName.substr(0, posSuffix);
+  }
+  return baseName;
+}
+
+int vtkAMReXGridHeader::CheckComponent(const std::string& name)
+{
+  const std::size_t pos = name.find_last_of(this->nameDelim);
+  // we expect to use the character just past pos
+  // so we don't want to accidentially jump outside the string
+  if (pos > name.size() - 1)
+  {
+    return -1;
+  }
+  const std::string suffix = name.substr(pos + 1);
+  if (suffix == "x")
+  {
+    return 0;
+  }
+  if (suffix == "y")
+  {
+    return 1;
+  }
+  if (suffix == "z")
+  {
+    return 2;
+  }
+  return -1;
+}
+
 bool vtkAMReXGridHeader::ParseGenericHeader(const std::string& headerData)
 {
   char c;
@@ -248,6 +286,14 @@ bool vtkAMReXGridHeader::ParseGenericHeader(const std::string& headerData)
   for (int cc = 0; cc < this->variableNamesSize; ++cc)
   {
     hstream >> this->variableNames[cc];
+
+    // build vector name map
+    std::string baseName = this->GetBaseVariableName(this->variableNames[cc]);
+    int component = this->CheckComponent(this->variableNames[cc]);
+    // resize variable map for scalar or vector
+    parsedVariableNames[baseName].resize(component < 0 ? 1 : 3);
+    component = (component < 0) ? 0 : component;
+    parsedVariableNames[baseName][component] = cc;
   }
   hstream >> this->dim;
   if (this->dim != 1 && this->dim != 2 && this->dim != 3)
@@ -379,15 +425,7 @@ vtkAMReXGridLevelHeader::vtkAMReXGridLevelHeader()
   , levelNumberOfGhostCells(0)
   , levelBoxArraySize(0)
   , levelMagicZero(0)
-  , levelBoxArrays()
   , levelNumberOfFABOnDisk(0)
-  , levelFabOnDiskPrefix()
-  , levelFABFile()
-  , levelFileOffset()
-  , levelMinimumsFAB()
-  , levelMaximumsFAB()
-  , levelFABArrayMinimum()
-  , levelFABArrayMaximum()
   , levelRealNumberOfBytes(0)
   , levelRealOrder(0)
   , debugLevelHeader(false)
@@ -634,8 +672,6 @@ bool vtkAMReXGridLevelHeader::ParseLevelHeader(int _level, int _dim, const std::
 }
 
 vtkAMReXGridReaderInternal::vtkAMReXGridReaderInternal()
-  : FileName()
-  , LevelHeader()
 {
   this->headersAreRead = false;
   this->debugReader = false;
@@ -874,7 +910,6 @@ void vtkAMReXGridReaderInternal::GetBlockAttribute(
       // - Patrick O'Leary
       //
       int linefeed = is.tellg();
-      is.seekg((linefeed + 1) + (offsetOfAttribute * (numberOfPoints * ird->numBytes())));
 
       if (debugReader)
       {
@@ -883,37 +918,41 @@ void vtkAMReXGridReaderInternal::GetBlockAttribute(
         std::cout << std::endl;
       }
 
+      // read every component of the variable into the buffers vector
+      std::string attributeName(attribute);
+      int nComps = static_cast<int>(this->Header->parsedVariableNames[attributeName].size());
+      std::vector<std::vector<char>> buffers(nComps);
+      for (int i = 0; i < nComps; ++i)
+      {
+        int compIndex = this->Header->parsedVariableNames[attributeName][i];
+        std::string compName = this->Header->variableNames[compIndex];
+        offsetOfAttribute = this->GetOffsetOfAttribute(compName.c_str());
+        is.seekg((linefeed + 1) + (offsetOfAttribute * (numberOfPoints * ird->numBytes())));
+        buffers[i].resize(numberOfPoints * ird->numBytes());
+        this->ReadBlockAttribute(is, numberOfPoints, ird->numBytes(), buffers[i].data());
+      }
+
+      RealDescriptor* ord = nullptr;
+      // copy buffers into vtkAOSDataArrayTemplate
       if (ird->numBytes() == 4)
       {
-        vtkNew<vtkFloatArray> dataArray;
-        dataArray->SetName(attribute);
-        dataArray->SetNumberOfTuples(numberOfPoints);
-        float* arrayPtr = static_cast<float*>(dataArray->GetPointer(0));
-        std::vector<char> buffer(numberOfPoints * ird->numBytes());
-        this->ReadBlockAttribute(is, numberOfPoints, ird->numBytes(), buffer.data());
-        RealDescriptor* ord =
-          new RealDescriptor(ieee_float, little_float_order, 4); // we desire ieee little endian
-        this->Convert(arrayPtr, buffer.data(), numberOfPoints, *ord, *ird);
+        vtkNew<vtkAOSDataArrayTemplate<float>> dataArray;
+        ord = new RealDescriptor(ieee_float, little_float_order, 4);
+        this->CreateVTKAttributeArray(
+          dataArray.Get(), ord, ird, buffers, numberOfPoints, attributeName);
         pDataSet->GetCellData()->AddArray(dataArray);
-        delete ird;
-        delete ord;
       }
       else
       {
-        vtkNew<vtkDoubleArray> dataArray;
-        dataArray->SetName(attribute);
-        dataArray->SetNumberOfTuples(numberOfPoints);
-        double* arrayPtr = static_cast<double*>(dataArray->GetPointer(0));
-        std::vector<char> buffer(numberOfPoints * ird->numBytes());
-        this->ReadBlockAttribute(is, numberOfPoints, ird->numBytes(), buffer.data());
-        RealDescriptor* ord =
-          new RealDescriptor(ieee_double, little_double_order, 8); // we desire ieee little endian
-        this->Convert(arrayPtr, buffer.data(), numberOfPoints, *ord, *ird);
+        vtkNew<vtkAOSDataArrayTemplate<double>> dataArray;
+        ord = new RealDescriptor(ieee_double, little_double_order, 8);
+        this->CreateVTKAttributeArray(
+          dataArray.Get(), ord, ird, buffers, numberOfPoints, attributeName);
         pDataSet->GetCellData()->AddArray(dataArray);
-        arrayPtr = nullptr;
-        delete ird;
-        delete ord;
       }
+      delete ord;
+      delete ird;
+
       if (debugReader)
       {
         std::cout << is.tellg() << " "

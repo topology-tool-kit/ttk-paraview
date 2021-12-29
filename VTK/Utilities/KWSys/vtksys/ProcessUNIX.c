@@ -122,6 +122,10 @@ static inline void kwsysProcess_usleep(unsigned int msec)
 /* The maximum amount to read from a pipe at a time.  */
 #define KWSYSPE_PIPE_BUFFER_SIZE 1024
 
+#if defined(__NVCOMPILER)
+#  pragma diag_suppress 550 /* variable set but never used (in FD_ZERO) */
+#endif
+
 /* Keep track of times using a signed representation.  Switch to the
    native (possibly unsigned) representation only when calling native
    functions.  */
@@ -2128,17 +2132,17 @@ static void kwsysProcessSetExitExceptionByIndex(kwsysProcess* cp, int sig,
 #endif
 #ifdef SIGABRT
     case SIGABRT:
-      KWSYSPE_CASE(Other, "Child aborted");
+      KWSYSPE_CASE(Other, "Subprocess aborted");
       break;
 #endif
 #ifdef SIGKILL
     case SIGKILL:
-      KWSYSPE_CASE(Other, "Child killed");
+      KWSYSPE_CASE(Other, "Subprocess killed");
       break;
 #endif
 #ifdef SIGTERM
     case SIGTERM:
-      KWSYSPE_CASE(Other, "Child terminated");
+      KWSYSPE_CASE(Other, "Subprocess terminated");
       break;
 #endif
 #ifdef SIGHUP
@@ -2890,10 +2894,10 @@ static void kwsysProcessesSignalHandler(int signum
   /* Re-Install our handler.  Repeat call until it is not interrupted.  */
   {
     struct sigaction newSigAction;
-    struct sigaction& oldSigAction;
+    struct sigaction* oldSigAction;
     memset(&newSigAction, 0, sizeof(struct sigaction));
-    newSigChldAction.sa_handler = kwsysProcessesSignalHandler;
-    newSigChldAction.sa_flags = SA_NOCLDSTOP;
+    newSigAction.sa_handler = kwsysProcessesSignalHandler;
+    newSigAction.sa_flags = SA_NOCLDSTOP;
     sigemptyset(&newSigAction.sa_mask);
     switch (signum) {
       case SIGCHLD:
@@ -2908,7 +2912,7 @@ static void kwsysProcessesSignalHandler(int signum
         oldSigAction = &kwsysProcessesOldSigTermAction;
         break;
       default:
-        return 0;
+        return;
     }
     while ((sigaction(signum, &newSigAction, oldSigAction) < 0) &&
            (errno == EINTR))

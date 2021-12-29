@@ -1,43 +1,37 @@
 /* Copyright 2021 NVIDIA Corporation. All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions
-* are met:
-*  * Redistributions of source code must retain the above copyright
-*    notice, this list of conditions and the following disclaimer.
-*  * Redistributions in binary form must reproduce the above copyright
-*    notice, this list of conditions and the following disclaimer in the
-*    documentation and/or other materials provided with the distribution.
-*  * Neither the name of NVIDIA CORPORATION nor the names of its
-*    contributors may be used to endorse or promote products derived
-*    from this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-* EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-* PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-* CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-* EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-* PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-* PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-* OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-#include "vtkPVConfig.h"
-#if PARAVIEW_VERSION_MAJOR == 5 && PARAVIEW_VERSION_MINOR >= 6
-#define USE_VTK_OGL_STATE
-#endif
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
-#include "vtknvindex_forwarding_logger.h"
 #include "vtknvindex_opengl_canvas.h"
+#include "vtknvindex_forwarding_logger.h"
 
 #include "vtkOpenGLError.h"
 #include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLRenderer.h"
-#ifdef USE_VTK_OGL_STATE
 #include "vtkOpenGLState.h"
-#endif
 #include "vtkRenderWindow.h"
 
 #if defined(__APPLE__)
@@ -54,10 +48,7 @@ vtknvindex_opengl_canvas::vtknvindex_opengl_canvas()
 }
 
 //-------------------------------------------------------------------------------------------------
-vtknvindex_opengl_canvas::~vtknvindex_opengl_canvas()
-{
-  // empty
-}
+vtknvindex_opengl_canvas::~vtknvindex_opengl_canvas() = default;
 
 //-------------------------------------------------------------------------------------------------
 bool vtknvindex_opengl_canvas::is_multi_thread_capable() const
@@ -80,7 +71,6 @@ std::string vtknvindex_opengl_canvas::get_class_name() const
 //-------------------------------------------------------------------------------------------------
 void vtknvindex_opengl_canvas::initialize_gl()
 {
-#ifdef USE_VTK_OGL_STATE
   vtkOpenGLState* ostate = m_vtk_ogl_render_window->GetState();
 
   if (ostate)
@@ -88,10 +78,6 @@ void vtknvindex_opengl_canvas::initialize_gl()
     ostate->vtkglClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     ostate->vtkglDisable(GL_LIGHTING);
   }
-#else
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glDisable(GL_LIGHTING);
-#endif
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -106,7 +92,6 @@ void vtknvindex_opengl_canvas::prepare()
   glDepthMask(GL_FALSE);
   glDisable(GL_DEPTH_TEST);
 
-#ifdef USE_VTK_OGL_STATE
   vtkOpenGLState* ostate = m_vtk_ogl_render_window->GetState();
 
   if (ostate)
@@ -115,7 +100,6 @@ void vtknvindex_opengl_canvas::prepare()
     ostate->ResetGLDepthMaskState();
     ostate->ResetEnumState(GL_DEPTH_TEST);
   }
-#endif
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -189,8 +173,7 @@ void vtknvindex_opengl_canvas::receive_tile_blend(
 //-------------------------------------------------------------------------------------------------
 void vtknvindex_opengl_canvas::finish()
 {
-// Restore default settings.
-#ifdef USE_VTK_OGL_STATE
+  // Restore default settings.
   vtkOpenGLState* ostate = m_vtk_ogl_render_window->GetState();
 
   if (ostate)
@@ -199,11 +182,6 @@ void vtknvindex_opengl_canvas::finish()
     ostate->vtkglEnable(GL_DEPTH_TEST);
     ostate->vtkglDepthMask(GL_TRUE);
   }
-#else
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  glEnable(GL_DEPTH_TEST);
-  glDepthMask(GL_TRUE);
-#endif
 }
 
 //-------------------------------------------------------------------------------------------------

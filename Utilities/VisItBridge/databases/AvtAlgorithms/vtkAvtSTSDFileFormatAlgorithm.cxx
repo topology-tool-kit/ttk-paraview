@@ -62,7 +62,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "avtVectorMetaData.h"
 #include "TimingsManager.h"
 
-#include "limits.h"
+#include <climits>
 
 vtkStandardNewMacro(vtkAvtSTSDFileFormatAlgorithm);
 //-----------------------------------------------------------------------------
@@ -72,9 +72,7 @@ vtkAvtSTSDFileFormatAlgorithm::vtkAvtSTSDFileFormatAlgorithm()
 }
 
 //-----------------------------------------------------------------------------
-vtkAvtSTSDFileFormatAlgorithm::~vtkAvtSTSDFileFormatAlgorithm()
-{
-}
+vtkAvtSTSDFileFormatAlgorithm::~vtkAvtSTSDFileFormatAlgorithm() = default;
 
 //-----------------------------------------------------------------------------
 int vtkAvtSTSDFileFormatAlgorithm::RequestDataObject(vtkInformation *,
@@ -94,7 +92,7 @@ int vtkAvtSTSDFileFormatAlgorithm::RequestDataObject(vtkInformation *,
     {
     return 1;
     }
-  else if ( !output || output->GetDataObjectType() != this->OutputType )
+  if ( !output || output->GetDataObjectType() != this->OutputType )
     {
     output = vtkMultiBlockDataSet::New();
     }
@@ -105,8 +103,8 @@ int vtkAvtSTSDFileFormatAlgorithm::RequestDataObject(vtkInformation *,
   }
 
 //-----------------------------------------------------------------------------
-int vtkAvtSTSDFileFormatAlgorithm::RequestData(vtkInformation *request,
-        vtkInformationVector **inputVector, vtkInformationVector *outputVector)
+int vtkAvtSTSDFileFormatAlgorithm::RequestData(vtkInformation *vtkNotUsed(request),
+        vtkInformationVector **vtkNotUsed(inputVector), vtkInformationVector *outputVector)
   {
   if (!this->InitializeAVTReader())
     {
@@ -125,7 +123,7 @@ int vtkAvtSTSDFileFormatAlgorithm::RequestData(vtkInformation *request,
 
   this->FillMultiBlock(output, 0);
   this->CleanupAVTReader();
-  this->SetupGhostInformation(outInfo);
+  vtkAvtFileFormatAlgorithm::SetupGhostInformation(outInfo);
   return 1;
 }
 
@@ -154,7 +152,7 @@ void vtkAvtSTSDFileFormatAlgorithm::FillMultiBlock(vtkMultiBlockDataSet *output,
       continue;
       }
 
-    vtkDataSet *data=NULL;
+    vtkDataSet *data=nullptr;
     CATCH_VISIT_EXCEPTIONS(data,
       this->AvtFile->GetMesh(timestep, 0, name.c_str()) );
 

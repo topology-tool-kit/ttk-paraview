@@ -7,6 +7,7 @@
 //  the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
+#include <vtkm/cont/ArrayCopy.h>
 #include <vtkm/cont/ArrayHandle.h>
 #include <vtkm/cont/ArrayHandleCartesianProduct.h>
 #include <vtkm/cont/ArrayHandleCast.h>
@@ -29,7 +30,6 @@
 
 #include <vtkm/cont/UncertainArrayHandle.h>
 #include <vtkm/cont/UnknownArrayHandle.h>
-#include <vtkm/cont/VariantArrayHandle.h>
 
 #include <vtkm/cont/testing/TestingSerialization.h>
 
@@ -68,16 +68,14 @@ public:
   template <typename ArrayHandle1, typename ArrayHandle2>
   VTKM_CONT void operator()(const ArrayHandle1& array1, const ArrayHandle2& array2) const
   {
-    auto result = vtkm::cont::testing::test_equal_ArrayHandles(array1, array2);
-    VTKM_TEST_ASSERT(result, result.GetMergedMessage());
+    VTKM_TEST_ASSERT(test_equal_ArrayHandles(array1, array2));
   }
 
   VTKM_CONT void operator()(const vtkm::cont::UnknownArrayHandle& array1,
                             const vtkm::cont::UnknownArrayHandle& array2) const
   {
-    auto result = vtkm::cont::testing::test_equal_ArrayHandles(
-      array1.ResetTypes<vtkm::TypeListAll, StorageList>(),
-      array2.ResetTypes<vtkm::TypeListAll, StorageList>());
+    VTKM_TEST_ASSERT(test_equal_ArrayHandles(array1.ResetTypes<vtkm::TypeListAll, StorageList>(),
+                                             array2.ResetTypes<vtkm::TypeListAll, StorageList>()));
   }
 };
 
@@ -88,18 +86,6 @@ inline void RunTest(const T& obj)
   TestSerialization(obj, TestEqualArrayHandle{});
 }
 
-template <typename T>
-inline void RunTest(const T& obj, std::true_type)
-{
-  TestSerialization(obj, TestEqualArrayHandle{});
-}
-
-template <typename T>
-inline void RunTest(const T&, std::false_type)
-{
-  // Suppress running the test
-}
-
 //-----------------------------------------------------------------------------
 constexpr vtkm::Id ArraySize = 10;
 
@@ -108,14 +94,14 @@ using TestTypesListVec = vtkm::List<vtkm::Vec3f_32, vtkm::Vec3f_64>;
 using TestTypesList = vtkm::ListAppend<TestTypesListScalar, TestTypesListVec>;
 
 template <typename T, typename S>
-inline vtkm::cont::VariantArrayHandleBase<vtkm::ListAppend<TestTypesList, vtkm::List<T>>>
-MakeTestVariantArrayHandle(const vtkm::cont::ArrayHandle<T, S>& array)
+inline vtkm::cont::UnknownArrayHandle MakeTestUnknownArrayHandle(
+  const vtkm::cont::ArrayHandle<T, S>& array)
 {
   return array;
 }
 
 template <typename T, typename S>
-inline vtkm::cont::UnknownArrayHandle MakeTestUnknownArrayHandle(
+inline vtkm::cont::UncertainArrayHandle<vtkm::List<T>, vtkm::List<S>> MakeTestUncertainArrayHandle(
   const vtkm::cont::ArrayHandle<T, S>& array)
 {
   return array;
@@ -129,7 +115,7 @@ struct TestArrayHandleBasic
     auto array = RandomArrayHandle<T>::Make(ArraySize);
     RunTest(array);
     RunTest(MakeTestUnknownArrayHandle(array));
-    RunTest(MakeTestVariantArrayHandle(array));
+    RunTest(MakeTestUncertainArrayHandle(array));
   }
 };
 
@@ -142,8 +128,7 @@ struct TestArrayHandleSOA
     vtkm::cont::ArrayCopy(RandomArrayHandle<T>::Make(ArraySize), array);
     RunTest(array);
     RunTest(MakeTestUnknownArrayHandle(array));
-    RunTest(MakeTestVariantArrayHandle(array),
-            vtkm::ListHas<VTKM_DEFAULT_STORAGE_LIST, vtkm::cont::StorageTagSOA>{});
+    RunTest(MakeTestUncertainArrayHandle(array));
   }
 };
 
@@ -158,11 +143,7 @@ struct TestArrayHandleCartesianProduct
                                                    RandomArrayHandle<T>::Make(ArraySize));
     RunTest(array);
     RunTest(MakeTestUnknownArrayHandle(array));
-    RunTest(MakeTestVariantArrayHandle(array),
-            vtkm::ListHas<VTKM_DEFAULT_STORAGE_LIST,
-                          vtkm::cont::StorageTagCartesianProduct<vtkm::cont::StorageTagBasic,
-                                                                 vtkm::cont::StorageTagBasic,
-                                                                 vtkm::cont::StorageTagBasic>>{});
+    RunTest(MakeTestUncertainArrayHandle(array));
   }
 };
 
@@ -175,9 +156,7 @@ struct TestArrayHandleCast
       vtkm::cont::make_ArrayHandleCast<T>(RandomArrayHandle<vtkm::Int8>::Make(ArraySize));
     RunTest(array);
     RunTest(MakeTestUnknownArrayHandle(array));
-    RunTest(MakeTestVariantArrayHandle(array),
-            vtkm::ListHas<VTKM_DEFAULT_STORAGE_LIST,
-                          vtkm::cont::StorageTagCast<vtkm::Int8, vtkm::cont::StorageTagBasic>>{});
+    RunTest(MakeTestUncertainArrayHandle(array));
   }
 
   template <typename T, vtkm::IdComponent N>
@@ -187,9 +166,7 @@ struct TestArrayHandleCast
       RandomArrayHandle<vtkm::Vec<vtkm::Int8, N>>::Make(ArraySize));
     RunTest(array);
     RunTest(MakeTestUnknownArrayHandle(array));
-    RunTest(MakeTestVariantArrayHandle(array),
-            vtkm::ListHas<VTKM_DEFAULT_STORAGE_LIST,
-                          vtkm::cont::StorageTagCast<vtkm::Int8, vtkm::cont::StorageTagBasic>>{});
+    RunTest(MakeTestUncertainArrayHandle(array));
   }
 };
 
@@ -202,8 +179,7 @@ struct TestArrayHandleConstant
     auto array = vtkm::cont::make_ArrayHandleConstant(cval, ArraySize);
     RunTest(array);
     RunTest(MakeTestUnknownArrayHandle(array));
-    RunTest(MakeTestVariantArrayHandle(array),
-            vtkm::ListHas<VTKM_DEFAULT_STORAGE_LIST, vtkm::cont::StorageTagConstant>{});
+    RunTest(MakeTestUncertainArrayHandle(array));
   }
 };
 
@@ -217,8 +193,7 @@ struct TestArrayHandleCounting
     auto array = vtkm::cont::make_ArrayHandleCounting(start, step, ArraySize);
     RunTest(array);
     RunTest(MakeTestUnknownArrayHandle(array));
-    RunTest(MakeTestVariantArrayHandle(array),
-            vtkm::ListHas<VTKM_DEFAULT_STORAGE_LIST, vtkm::cont::StorageTagCounting>{});
+    RunTest(MakeTestUncertainArrayHandle(array));
   }
 };
 
@@ -236,9 +211,7 @@ struct TestArrayHandleGroupVec
         auto array = vtkm::cont::make_ArrayHandleGroupVec<3>(flat);
         RunTest(array);
         RunTest(MakeTestUnknownArrayHandle(array));
-        RunTest(MakeTestVariantArrayHandle(array),
-                vtkm::ListHas<VTKM_DEFAULT_STORAGE_LIST,
-                              vtkm::cont::StorageTagGroupVec<vtkm::cont::StorageTagBasic, 3>>{});
+        RunTest(MakeTestUncertainArrayHandle(array));
         break;
       }
       case 4:
@@ -246,9 +219,7 @@ struct TestArrayHandleGroupVec
         auto array = vtkm::cont::make_ArrayHandleGroupVec<4>(flat);
         RunTest(array);
         RunTest(MakeTestUnknownArrayHandle(array));
-        RunTest(MakeTestVariantArrayHandle(array),
-                vtkm::ListHas<VTKM_DEFAULT_STORAGE_LIST,
-                              vtkm::cont::StorageTagGroupVec<vtkm::cont::StorageTagBasic, 4>>{});
+        RunTest(MakeTestUncertainArrayHandle(array));
         break;
       }
       default:
@@ -256,9 +227,7 @@ struct TestArrayHandleGroupVec
         auto array = vtkm::cont::make_ArrayHandleGroupVec<2>(flat);
         RunTest(array);
         RunTest(MakeTestUnknownArrayHandle(array));
-        RunTest(MakeTestVariantArrayHandle(array),
-                vtkm::ListHas<VTKM_DEFAULT_STORAGE_LIST,
-                              vtkm::cont::StorageTagGroupVec<vtkm::cont::StorageTagBasic, 2>>{});
+        RunTest(MakeTestUncertainArrayHandle(array));
         break;
       }
     }
@@ -296,8 +265,7 @@ void TestArrayHandleIndex()
   auto array = vtkm::cont::ArrayHandleIndex(size);
   RunTest(array);
   RunTest(MakeTestUnknownArrayHandle(array));
-  RunTest(MakeTestVariantArrayHandle(array),
-          vtkm::ListHas<VTKM_DEFAULT_STORAGE_LIST, vtkm::cont::StorageTagIndex>{});
+  RunTest(MakeTestUncertainArrayHandle(array));
 }
 
 struct TestArrayHandlePermutation
@@ -315,10 +283,7 @@ struct TestArrayHandlePermutation
       RandomArrayHandle<T>::Make(ArraySize));
     RunTest(array);
     RunTest(MakeTestUnknownArrayHandle(array));
-    RunTest(MakeTestVariantArrayHandle(array),
-            vtkm::ListHas<VTKM_DEFAULT_STORAGE_LIST,
-                          vtkm::cont::StorageTagPermutation<vtkm::cont::StorageTagBasic,
-                                                            vtkm::cont::StorageTagBasic>>{});
+    RunTest(MakeTestUncertainArrayHandle(array));
   }
 };
 
@@ -330,9 +295,23 @@ struct TestArrayHandleReverse
     auto array = vtkm::cont::make_ArrayHandleReverse(RandomArrayHandle<T>::Make(ArraySize));
     RunTest(array);
     RunTest(MakeTestUnknownArrayHandle(array));
-    RunTest(MakeTestVariantArrayHandle(array),
-            vtkm::ListHas<VTKM_DEFAULT_STORAGE_LIST,
-                          vtkm::cont::StorageTagReverse<vtkm::cont::StorageTagBasic>>{});
+    RunTest(MakeTestUncertainArrayHandle(array));
+  }
+};
+
+struct TestArrayHandleSwizzle
+{
+  template <typename T>
+  void operator()(T) const
+  {
+    constexpr vtkm::IdComponent NUM_COMPONENTS = vtkm::VecTraits<T>::NUM_COMPONENTS;
+    vtkm::Vec<vtkm::IdComponent, NUM_COMPONENTS> map;
+    for (vtkm::IdComponent i = 0; i < NUM_COMPONENTS; ++i)
+    {
+      map[i] = NUM_COMPONENTS - (i + 1);
+    }
+    auto array = vtkm::cont::make_ArrayHandleSwizzle(RandomArrayHandle<T>::Make(ArraySize), map);
+    RunTest(array);
   }
 };
 
@@ -350,8 +329,7 @@ void TestArrayHandleUniformPointCoordinates()
   auto array = MakeRandomArrayHandleUniformPointCoordinates();
   RunTest(array);
   RunTest(MakeTestUnknownArrayHandle(array));
-  RunTest(MakeTestVariantArrayHandle(array),
-          vtkm::ListHas<VTKM_DEFAULT_STORAGE_LIST, vtkm::cont::StorageTagUniformPoints>{});
+  RunTest(MakeTestUncertainArrayHandle(array));
 }
 
 
@@ -360,9 +338,11 @@ void TestArrayHandleSerialization()
 {
   std::cout << "Testing ArrayHandleBasic\n";
   vtkm::testing::Testing::TryTypes(TestArrayHandleBasic(), TestTypesList());
+  vtkm::testing::Testing::TryTypes(
+    TestArrayHandleBasic(), vtkm::List<char, long, long long, unsigned long, unsigned long long>());
 
   std::cout << "Testing ArrayHandleSOA\n";
-  vtkm::testing::Testing::TryTypes(TestArrayHandleSOA(), TestTypesList());
+  vtkm::testing::Testing::TryTypes(TestArrayHandleSOA(), TestTypesListVec());
 
   std::cout << "Testing ArrayHandleCartesianProduct\n";
   vtkm::testing::Testing::TryTypes(TestArrayHandleCartesianProduct(), TestTypesListScalar());
@@ -390,6 +370,9 @@ void TestArrayHandleSerialization()
 
   std::cout << "Testing ArrayHandleReverse\n";
   vtkm::testing::Testing::TryTypes(TestArrayHandleReverse(), TestTypesList());
+
+  std::cout << "Testing ArrayHandleSwizzle\n";
+  vtkm::testing::Testing::TryTypes(TestArrayHandleSwizzle(), TestTypesList());
 
   std::cout << "Testing ArrayHandleUniformPointCoordinates\n";
   TestArrayHandleUniformPointCoordinates();

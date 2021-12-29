@@ -32,7 +32,7 @@
 #include "vtkSmartPointer.h"
 #define VTK_CREATE(type, name) vtkSmartPointer<type> name = vtkSmartPointer<type>::New()
 
-#include <math.h>
+#include <cmath>
 
 //=============================================================================
 vtkStandardNewMacro(vtkSamplePlaneSource);
@@ -48,7 +48,7 @@ vtkSamplePlaneSource::vtkSamplePlaneSource()
   this->Normal[2] = 1.0;
   this->Resolution = 100;
 
-  this->Controller = NULL;
+  this->Controller = nullptr;
   this->SetController(vtkMultiProcessController::GetGlobalController());
   if (!this->Controller)
   {
@@ -59,7 +59,7 @@ vtkSamplePlaneSource::vtkSamplePlaneSource()
 
 vtkSamplePlaneSource::~vtkSamplePlaneSource()
 {
-  this->SetController(NULL);
+  this->SetController(nullptr);
 }
 
 void vtkSamplePlaneSource::PrintSelf(ostream& os, vtkIndent indent)

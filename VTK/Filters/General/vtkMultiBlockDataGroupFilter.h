@@ -21,6 +21,10 @@
  * one group of the multi-group dataset and will assign each update piece
  * as a sub-block. For example, if there are two inputs and four update
  * pieces, the output contains two groups with four datasets each.
+ *
+ * `vtkGroupDataSetsFilter` is a newer filter that can be used for similar
+ * use-cases and is more flexible. It is recommended that new code uses
+ * vtkGroupDataSetsFilter instead of this one.
  */
 
 #ifndef vtkMultiBlockDataGroupFilter_h
@@ -41,7 +45,7 @@ public:
    */
   static vtkMultiBlockDataGroupFilter* New();
 
-  //@{
+  ///@{
   /**
    * Assign a data object as input. Note that this method does not
    * establish a pipeline connection. Use AddInputConnection() to
@@ -49,7 +53,7 @@ public:
    */
   void AddInputData(vtkDataObject*);
   void AddInputData(int, vtkDataObject*);
-  //@}
+  ///@}
 
 protected:
   vtkMultiBlockDataGroupFilter();

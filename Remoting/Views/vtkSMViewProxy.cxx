@@ -25,7 +25,6 @@
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
 #include "vtkPVLogger.h"
-#include "vtkPVOptions.h"
 #include "vtkPVView.h"
 #include "vtkPVXMLElement.h"
 #include "vtkPointData.h"
@@ -34,6 +33,7 @@
 #include "vtkRenderer.h"
 #include "vtkRendererCollection.h"
 #include "vtkSMDataDeliveryManagerProxy.h"
+#include "vtkSMNamedPropertyIterator.h"
 #include "vtkSMParaViewPipelineControllerWithRendering.h"
 #include "vtkSMProperty.h"
 #include "vtkSMProxyIterator.h"
@@ -47,9 +47,10 @@
 #include "vtkSmartPointer.h"
 #include "vtkStereoCompositor.h"
 #include "vtkUnsignedCharArray.h"
+#include "vtkVector.h"
 #include "vtkWindowToImageFilter.h"
 
-#include <assert.h>
+#include <cassert>
 
 namespace vtkSMViewProxyNS
 {
@@ -57,13 +58,13 @@ const char* GetRepresentationNameFromHints(const char* viewType, vtkPVXMLElement
 {
   if (!hints)
   {
-    return NULL;
+    return nullptr;
   }
 
   for (unsigned int cc = 0, max = hints->GetNumberOfNestedElements(); cc < max; ++cc)
   {
     vtkPVXMLElement* child = hints->GetNestedElement(cc);
-    if (child == NULL || child->GetName() == NULL)
+    if (child == nullptr || child->GetName() == nullptr)
     {
       continue;
     }
@@ -83,7 +84,7 @@ const char* GetRepresentationNameFromHints(const char* viewType, vtkPVXMLElement
     else if (strcmp(child->GetName(), "Representation") == 0 &&
       // has an attribute "view" that matches the viewType.
       child->GetAttribute("view") && strcmp(child->GetAttribute("view"), viewType) == 0 &&
-      child->GetAttribute("type") != NULL)
+      child->GetAttribute("type") != nullptr)
     {
       // if port is present, it must match "port".
       int xmlPort;
@@ -93,7 +94,7 @@ const char* GetRepresentationNameFromHints(const char* viewType, vtkPVXMLElement
       }
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 /**
@@ -110,8 +111,8 @@ public:
   void SetParent(vtkSMViewProxy* view) { this->Parent = view; }
 
 protected:
-  WindowToImageFilter() {}
-  ~WindowToImageFilter() override {}
+  WindowToImageFilter() = default;
+  ~WindowToImageFilter() override = default;
 
   void Render() override
   {
@@ -158,8 +159,7 @@ public:
     const int stereo_type = vtkSMPropertyHelper(self, "StereoType", true).GetAsInt();
 
     // determine if we're capture a stereo image that needs two passes.
-    const bool two_pass_stereo =
-      stereo_render &&
+    const bool two_pass_stereo = stereo_render &&
       (stereo_type == VTK_STEREO_RED_BLUE || stereo_type == VTK_STEREO_ANAGLYPH ||
         stereo_type == VTK_STEREO_INTERLACED || stereo_type == VTK_STEREO_DRESDEN ||
         stereo_type == VTK_STEREO_CHECKERBOARD ||
@@ -207,29 +207,37 @@ private:
   vtkSmartPointer<vtkImageData> TranslucentCapture(int magX, int magY)
   {
     auto self = this->Self;
-    vtkRenderWindow* window = self->GetRenderWindow();
-    if (window && vtkSMViewProxy::GetTransparentBackground())
+    if (vtkSMViewProxy::GetTransparentBackground() && self->GetProperty("Background") != nullptr)
     {
-      if (auto renderer = this->FindBackgroundRenderer(window))
-      {
-        std::unique_ptr<RendererSaverRAII> rsaver(new RendererSaverRAII(renderer));
-        renderer->SetGradientBackground(false);
-        renderer->SetTexturedBackground(false);
-        renderer->SetBackground(1.0, 1.0, 1.0);
-        auto whiteImage = this->Capture(magX, magY);
-        renderer->SetBackground(0, 0, 0);
-        auto blackImage = this->Capture(magX, magY);
-        rsaver.reset();
+      vtkNew<vtkSMNamedPropertyIterator> piter;
+      piter->SetProxy(self);
+      piter->SetPropertyNames(
+        { "UseColorPaletteForBackground", "Background", "BackgroundColorMode" });
 
-        vtkNew<vtkImageTransparencyFilter> tfilter;
-        tfilter->AddInputData(whiteImage);
-        tfilter->AddInputData(blackImage);
-        tfilter->Update();
+      // Save current state.
+      auto state = vtk::TakeSmartPointer(self->SaveXMLState(nullptr, piter));
+      vtkSMPropertyHelper(self, "UseColorPaletteForBackground", /*quiet*/ true).Set(0);
+      vtkSMPropertyHelper(self, "BackgroundColorMode", true).Set(0); // single-color.
 
-        vtkSmartPointer<vtkImageData> result;
-        result = tfilter->GetOutput();
-        return result;
-      }
+      vtkSMPropertyHelper(self, "Background").Set(vtkVector3d(1.0).GetData(), 3);
+      self->UpdateVTKObjects();
+      auto whiteImage = this->Capture(magX, magY);
+      vtkSMPropertyHelper(self, "Background").Set(vtkVector3d(0.0).GetData(), 3);
+      self->UpdateVTKObjects();
+      auto blackImage = this->Capture(magX, magY);
+
+      // restore state.
+      self->LoadXMLState(state, nullptr);
+      self->UpdateVTKObjects();
+
+      vtkNew<vtkImageTransparencyFilter> tfilter;
+      tfilter->AddInputData(whiteImage);
+      tfilter->AddInputData(blackImage);
+      tfilter->Update();
+
+      vtkSmartPointer<vtkImageData> result;
+      result = tfilter->GetOutput();
+      return result;
     }
 
     return this->Capture(magX, magY);
@@ -239,47 +247,6 @@ private:
   {
     return vtkSmartPointer<vtkImageData>::Take(this->Self->CaptureWindowSingle(magX, magY));
   }
-
-  vtkRenderer* FindBackgroundRenderer(vtkRenderWindow* window) const
-  {
-    vtkCollectionSimpleIterator cookie;
-    auto renderers = window->GetRenderers();
-    renderers->InitTraversal(cookie);
-    while (auto renderer = renderers->GetNextRenderer(cookie))
-    {
-      if (renderer->GetErase())
-      {
-        // Found a background-writing renderer.
-        return renderer;
-      }
-    }
-
-    return nullptr;
-  }
-
-  class RendererSaverRAII
-  {
-    vtkRenderer* Renderer;
-    const bool Gradient;
-    const bool Textured;
-    const double Background[3];
-
-  public:
-    RendererSaverRAII(vtkRenderer* ren)
-      : Renderer(ren)
-      , Gradient(ren->GetGradientBackground())
-      , Textured(ren->GetTexturedBackground())
-      , Background{ ren->GetBackground()[0], ren->GetBackground()[1], ren->GetBackground()[2] }
-    {
-    }
-
-    ~RendererSaverRAII()
-    {
-      this->Renderer->SetGradientBackground(this->Gradient);
-      this->Renderer->SetTexturedBackground(this->Textured);
-      this->Renderer->SetBackground(const_cast<double*>(this->Background));
-    }
-  };
 
   bool StereoCompose(int type, vtkImageData* leftNResult, vtkImageData* right)
   {
@@ -320,7 +287,6 @@ private:
     return false;
   }
 
-private:
   CaptureHelper(const CaptureHelper&) = delete;
   void operator=(const CaptureHelper&) = delete;
 };
@@ -334,7 +300,7 @@ vtkStandardNewMacro(vtkSMViewProxy);
 vtkSMViewProxy::vtkSMViewProxy()
 {
   this->SetLocation(vtkProcessModule::CLIENT_AND_SERVERS);
-  this->DefaultRepresentationName = 0;
+  this->DefaultRepresentationName = nullptr;
   this->Enable = true;
   this->DeliveryManager = nullptr;
 }
@@ -342,7 +308,7 @@ vtkSMViewProxy::vtkSMViewProxy()
 //----------------------------------------------------------------------------
 vtkSMViewProxy::~vtkSMViewProxy()
 {
-  this->SetDefaultRepresentationName(0);
+  this->SetDefaultRepresentationName(nullptr);
 }
 
 //----------------------------------------------------------------------------
@@ -352,7 +318,7 @@ vtkView* vtkSMViewProxy::GetClientSideView()
   {
     return vtkView::SafeDownCast(this->GetClientSideObject());
   }
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -503,11 +469,13 @@ void vtkSMViewProxy::Update()
       }
       else
       {
-        // this->GetProducerProxy(i)->PostUpdateData();
+        this->GetProducerProxy(i)->PostUpdateData(false);
       }
     }
 
-    this->PostUpdateData(false);
+    // We don't need to call PostUpdateData on all producers again since we just
+    // did that explicitly (and selectively) in the loop above.
+    this->PostUpdateDataSelfOnly(false);
   }
 }
 
@@ -518,11 +486,11 @@ vtkSMRepresentationProxy* vtkSMViewProxy::CreateDefaultRepresentation(
   assert("The session should be valid" && this->Session);
 
   vtkSMSourceProxy* producer = vtkSMSourceProxy::SafeDownCast(proxy);
-  if ((producer == NULL) || (outputPort < 0) ||
+  if ((producer == nullptr) || (outputPort < 0) ||
     (static_cast<int>(producer->GetNumberOfOutputPorts()) <= outputPort) ||
     (producer->GetSession() != this->GetSession()))
   {
-    return NULL;
+    return nullptr;
   }
 
   // Update with time from the view to ensure we have up-to-date data.
@@ -532,7 +500,7 @@ vtkSMRepresentationProxy* vtkSMViewProxy::CreateDefaultRepresentation(
   const char* representationType = this->GetRepresentationType(producer, outputPort);
   if (!representationType)
   {
-    return NULL;
+    return nullptr;
   }
 
   vtkSMSessionProxyManager* pxm = this->GetSessionProxyManager();
@@ -546,7 +514,7 @@ vtkSMRepresentationProxy* vtkSMViewProxy::CreateDefaultRepresentation(
   }
   vtkWarningMacro(
     "Failed to create representation (representations," << representationType << ").");
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -583,13 +551,13 @@ const char* vtkSMViewProxy::GetRepresentationType(vtkSMSourceProxy* producer, in
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
 bool vtkSMViewProxy::CanDisplayData(vtkSMSourceProxy* producer, int outputPort)
 {
-  if (producer == NULL || outputPort < 0 ||
+  if (producer == nullptr || outputPort < 0 ||
     static_cast<int>(producer->GetNumberOfOutputPorts()) <= outputPort ||
     producer->GetSession() != this->GetSession())
   {
@@ -597,10 +565,10 @@ bool vtkSMViewProxy::CanDisplayData(vtkSMSourceProxy* producer, int outputPort)
   }
 
   const char* type = this->GetRepresentationType(producer, outputPort);
-  if (type != NULL)
+  if (type != nullptr)
   {
     vtkSMSessionProxyManager* pxm = this->GetSessionProxyManager();
-    return (pxm->GetPrototypeProxy("representations", type) != NULL);
+    return (pxm->GetPrototypeProxy("representations", type) != nullptr);
   }
 
   return false;
@@ -624,7 +592,7 @@ vtkSMRepresentationProxy* vtkSMViewProxy::FindRepresentation(
       }
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -750,7 +718,7 @@ int vtkSMViewProxy::WriteImage(const char* filename, const char* writerName, int
   shot.TakeReference(this->CaptureWindow(magX, magY));
 
   vtkVLogScopeF(PARAVIEW_LOG_RENDERING_VERBOSITY(), "Save image to disk");
-  if (vtkProcessModule::GetProcessModule()->GetOptions()->GetSymmetricMPIMode())
+  if (vtkProcessModule::GetProcessModule()->GetSymmetricMPIMode())
   {
     return vtkSMUtilities::SaveImageOnProcessZero(shot, filename, writerName);
   }
@@ -798,8 +766,8 @@ bool vtkSMViewProxy::IsContextReadyForRendering()
 //----------------------------------------------------------------------------
 bool vtkSMViewProxy::HideOtherRepresentationsIfNeeded(vtkSMProxy* repr)
 {
-  if (repr == NULL || this->GetHints() == NULL ||
-    this->GetHints()->FindNestedElementByName("ShowOneRepresentationAtATime") == NULL)
+  if (repr == nullptr || this->GetHints() == nullptr ||
+    this->GetHints()->FindNestedElementByName("ShowOneRepresentationAtATime") == nullptr)
   {
     return false;
   }
@@ -808,7 +776,7 @@ bool vtkSMViewProxy::HideOtherRepresentationsIfNeeded(vtkSMProxy* repr)
     this->GetHints()->FindNestedElementByName("ShowOneRepresentationAtATime");
   const char* reprType = oneRepr->GetAttribute("type");
 
-  if (reprType && strcmp(repr->GetXMLName(), reprType))
+  if (reprType && strcmp(repr->GetXMLName(), reprType) != 0)
   {
     return false;
   }
@@ -834,9 +802,7 @@ bool vtkSMViewProxy::HideOtherRepresentationsIfNeeded(vtkSMProxy* repr)
 }
 
 //----------------------------------------------------------------------------
-void vtkSMViewProxy::RepresentationVisibilityChanged(vtkSMProxy*, bool)
-{
-}
+void vtkSMViewProxy::RepresentationVisibilityChanged(vtkSMProxy*, bool) {}
 
 //----------------------------------------------------------------------------
 bool vtkSMViewProxy::GetLocalProcessSupportsInteraction()
@@ -849,7 +815,7 @@ bool vtkSMViewProxy::GetLocalProcessSupportsInteraction()
 //----------------------------------------------------------------------------
 bool vtkSMViewProxy::MakeRenderWindowInteractor(bool quiet)
 {
-  if (this->GetInteractor() != NULL)
+  if (this->GetInteractor() != nullptr)
   {
     // all's setup already. nothing to do.
     return true;
@@ -894,7 +860,7 @@ bool vtkSMViewProxy::MakeRenderWindowInteractor(bool quiet)
     iren->Initialize();
   }
   this->SetupInteractor(iren);
-  return this->GetInteractor() != NULL;
+  return this->GetInteractor() != nullptr;
 }
 
 //----------------------------------------------------------------------------

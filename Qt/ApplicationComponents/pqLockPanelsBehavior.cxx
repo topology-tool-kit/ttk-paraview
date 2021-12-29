@@ -61,8 +61,8 @@ public:
   pqLockPanelsBehavior* Behavior;
 
 protected:
-  vtkLockDockWidgetsCallback() {}
-  ~vtkLockDockWidgetsCallback() override {}
+  vtkLockDockWidgetsCallback() = default;
+  ~vtkLockDockWidgetsCallback() override = default;
 };
 
 } // anonymous namespace
@@ -81,7 +81,7 @@ public:
   ~pqInternals()
   {
     this->Callback->Delete();
-    this->Callback = NULL;
+    this->Callback = nullptr;
   }
 
   vtkLockDockWidgetsCallback* Callback;
@@ -144,7 +144,8 @@ void pqLockPanelsBehavior::toggleLockPanels()
 //-----------------------------------------------------------------------------
 void pqLockPanelsBehavior::lockPanels(bool lock)
 {
-  QDockWidget::DockWidgetFeatures features = QDockWidget::AllDockWidgetFeatures;
+  QDockWidget::DockWidgetFeatures features = QDockWidget::DockWidgetClosable |
+    QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable;
   if (lock)
   {
     features = QDockWidget::DockWidgetClosable;

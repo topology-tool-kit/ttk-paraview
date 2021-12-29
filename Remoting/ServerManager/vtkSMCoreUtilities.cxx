@@ -20,6 +20,7 @@
 #include "vtkPVXMLElement.h"
 #include "vtkSMDomain.h"
 #include "vtkSMDomainIterator.h"
+#include "vtkSMFileListDomain.h"
 #include "vtkSMInputProperty.h"
 #include "vtkSMOrderedPropertyIterator.h"
 #include "vtkSMProperty.h"
@@ -28,29 +29,25 @@
 #include "vtkSmartPointer.h"
 
 #include <cassert>
+#include <cctype>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
-#include <ctype.h>
 #include <sstream>
 
 vtkStandardNewMacro(vtkSMCoreUtilities);
 //----------------------------------------------------------------------------
-vtkSMCoreUtilities::vtkSMCoreUtilities()
-{
-}
+vtkSMCoreUtilities::vtkSMCoreUtilities() = default;
 
 //----------------------------------------------------------------------------
-vtkSMCoreUtilities::~vtkSMCoreUtilities()
-{
-}
+vtkSMCoreUtilities::~vtkSMCoreUtilities() = default;
 
 //----------------------------------------------------------------------------
 const char* vtkSMCoreUtilities::GetFileNameProperty(vtkSMProxy* proxy)
 {
   if (!proxy)
   {
-    return NULL;
+    return nullptr;
   }
 
   if (proxy->GetHints())
@@ -92,7 +89,32 @@ const char* vtkSMCoreUtilities::GetFileNameProperty(vtkSMProxy* proxy)
     }
     piter->Next();
   }
-  return NULL;
+  return nullptr;
+}
+
+//----------------------------------------------------------------------------
+std::vector<std::string> vtkSMCoreUtilities::GetFileNameProperties(vtkSMProxy* proxy)
+{
+  std::vector<std::string> result;
+  if (!proxy)
+  {
+    return result;
+    ;
+  }
+
+  vtkNew<vtkSMOrderedPropertyIterator> piter;
+  piter->SetProxy(proxy);
+  for (piter->Begin(); !piter->IsAtEnd(); piter->Next())
+  {
+    if (auto property = piter->GetProperty())
+    {
+      if (property->FindDomain<vtkSMFileListDomain>() != nullptr)
+      {
+        result.push_back(piter->GetKey());
+      }
+    }
+  }
+  return result;
 }
 
 //----------------------------------------------------------------------------
@@ -275,7 +297,7 @@ const char* vtkSMCoreUtilities::GetInputPropertyName(vtkSMProxy* proxy, int port
 {
   if (!proxy)
   {
-    return NULL;
+    return nullptr;
   }
 
   vtkNew<vtkSMOrderedPropertyIterator> piter;
@@ -292,7 +314,7 @@ const char* vtkSMCoreUtilities::GetInputPropertyName(vtkSMProxy* proxy, int port
     }
     piter->Next();
   }
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -360,8 +382,10 @@ const char* vtkSMCoreUtilities::GetStringForCellType(int cellType)
       return "Bi-Quadratic-Quad";
     case VTK_TRIQUADRATIC_HEXAHEDRON:
       return "Tri-Quadratic-Hexahedron";
+    case VTK_TRIQUADRATIC_PYRAMID:
+      return "Tri-Quadratic-Pyramid";
     case VTK_QUADRATIC_LINEAR_QUAD:
-      return "Quadratice-Linear-Quad";
+      return "Quadratic-Linear-Quad";
     case VTK_QUADRATIC_LINEAR_WEDGE:
       return "Quadratic-Linear-Wedge";
     case VTK_BIQUADRATIC_QUADRATIC_WEDGE:

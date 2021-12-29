@@ -163,7 +163,7 @@ vtkSMProxy* vtkSMProxySelectionModel::GetSelectedProxy(unsigned int idx)
     return vtkSMProxy::SafeDownCast(iter->GetPointer());
   }
 
-  return NULL;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -305,8 +305,8 @@ void vtkSMProxySelectionModel::LoadState(const vtkSMMessage* msg, vtkSMProxyLoca
   // If we did not get initialized yet, we don't filter
   if (this->Internal->GetMasterId() != -1 &&
     !(!this->Internal->Initialized ||
-        (this->IsFollowingMaster() &&
-          this->Internal->GetMasterId() == static_cast<int>(msg->client_id()))))
+      (this->IsFollowingMaster() &&
+        this->Internal->GetMasterId() == static_cast<int>(msg->client_id()))))
   {
     return;
   }
@@ -315,7 +315,7 @@ void vtkSMProxySelectionModel::LoadState(const vtkSMMessage* msg, vtkSMProxyLoca
   this->Internal->Initialized = true;
 
   // Load current proxy
-  vtkSMProxy* currentProxy = NULL;
+  vtkSMProxy* currentProxy = nullptr;
   if (msg->GetExtension(ProxySelectionModelState::current_proxy) != 0)
   {
     vtkTypeUInt32 currentProxyId = msg->GetExtension(ProxySelectionModelState::current_proxy);
@@ -370,7 +370,7 @@ void vtkSMProxySelectionModel::LoadState(const vtkSMMessage* msg, vtkSMProxyLoca
   bool tmp = this->IsLocalPushOnly();
   this->EnableLocalPushOnly();
   this->Select(new_selection, CLEAR_AND_SELECT);
-  this->SetCurrentProxy(currentProxy, new_selection.size() == 0 ? SELECT : NO_UPDATE);
+  this->SetCurrentProxy(currentProxy, new_selection.empty() ? SELECT : NO_UPDATE);
   if (!tmp)
     this->DisableLocalPushOnly();
 }
@@ -459,7 +459,7 @@ void vtkSMProxySelectionModel::SetFollowingMaster(bool following)
   this->Internal->FollowinMaster = following;
   if (following)
   {
-    this->Internal->MasterChangedCallBack(0, 0, 0);
+    this->Internal->MasterChangedCallBack(nullptr, 0, nullptr);
   }
 }
 

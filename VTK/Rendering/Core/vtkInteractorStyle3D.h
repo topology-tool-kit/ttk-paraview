@@ -72,13 +72,16 @@ public:
 
   // This method handles updating the prop based on changes in the devices
   // pose. We use rotate as the state to mean adjusting-the-actor-pose
-  virtual void PositionProp(vtkEventData*);
+  // if last world event position \p lwpos and orientation \p lwori are defined
+  // then this function do not use the Interactor3D to get the last world event position
+  // and orientation. This is useful when one needs to pass custom world event data.
+  virtual void PositionProp(vtkEventData*, double* lwpos = nullptr, double* lwori = nullptr);
 
   // This method handles updating the camera based on changes in the devices
   // pose. We use Dolly as the state to mean moving the camera forward
   virtual void Dolly3D(vtkEventData*);
 
-  //@{
+  ///@{
   /**
    * Set/Get the maximum dolly speed used when flying in 3D, in meters per second.
    * Default is 1.6666, corresponding to walking speed (= 6 km/h).
@@ -86,7 +89,7 @@ public:
    */
   vtkSetMacro(DollyPhysicalSpeed, double);
   vtkGetMacro(DollyPhysicalSpeed, double);
-  //@}
+  ///@}
 
   /**
    * Set the scaling factor from world to physical space.
@@ -95,7 +98,7 @@ public:
    */
   virtual void SetScale(vtkCamera* cam, double newScale);
 
-  //@{
+  ///@{
   /**
    * Get/Set the interaction picker.
    * By default, a vtkPropPicker is instancied.
@@ -122,6 +125,7 @@ protected:
 
   double DollyPhysicalSpeed;
   vtkNew<vtkTimerLog> LastDolly3DEventTime;
+  double LastTrackPadPosition[2];
 
 private:
   vtkInteractorStyle3D(const vtkInteractorStyle3D&) = delete;

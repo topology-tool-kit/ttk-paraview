@@ -64,7 +64,7 @@ public:
 };
 
 //-----------------------------------------------------------------------------
-pqUndoStack::pqUndoStack(vtkSMUndoStackBuilder* builder, QObject* _parent /*=null*/)
+pqUndoStack::pqUndoStack(vtkSMUndoStackBuilder* builder, QObject* _parent /*=nullptr*/)
   : QObject(_parent)
 {
   this->Implementation = new pqImplementation();
@@ -86,7 +86,7 @@ pqUndoStack::pqUndoStack(vtkSMUndoStackBuilder* builder, QObject* _parent /*=nul
 
   this->Implementation->VTKConnector = vtkSmartPointer<vtkEventQtSlotConnect>::New();
   this->Implementation->VTKConnector->Connect(this->Implementation->UndoStack,
-    vtkCommand::ModifiedEvent, this, SLOT(onStackChanged()), NULL, 1.0);
+    vtkCommand::ModifiedEvent, this, SLOT(onStackChanged()), nullptr, 1.0);
 }
 
 //-----------------------------------------------------------------------------
@@ -114,7 +114,7 @@ bool pqUndoStack::canRedo()
 }
 
 //-----------------------------------------------------------------------------
-const QString pqUndoStack::undoLabel()
+QString pqUndoStack::undoLabel()
 {
   return this->Implementation->UndoStack->CanUndo()
     ? this->Implementation->UndoStack->GetUndoSetLabel(0)
@@ -122,7 +122,7 @@ const QString pqUndoStack::undoLabel()
 }
 
 //-----------------------------------------------------------------------------
-const QString pqUndoStack::redoLabel()
+QString pqUndoStack::redoLabel()
 {
   return this->Implementation->UndoStack->CanRedo()
     ? this->Implementation->UndoStack->GetRedoSetLabel(0)
@@ -170,7 +170,7 @@ void pqUndoStack::beginUndoSet(QString label)
 {
   if (this->Implementation->NestedCount == 0)
   {
-    this->Implementation->UndoStackBuilder->Begin(label.toLocal8Bit().data());
+    this->Implementation->UndoStackBuilder->Begin(label.toUtf8().data());
   }
 
   this->Implementation->NestedCount++;
@@ -263,7 +263,7 @@ void pqUndoStack::beginNonUndoableChanges()
 void pqUndoStack::endNonUndoableChanges()
 {
   bool ignore = false;
-  if (this->Implementation->IgnoreAllChangesStack.size() > 0)
+  if (!this->Implementation->IgnoreAllChangesStack.empty())
   {
     ignore = this->Implementation->IgnoreAllChangesStack.takeLast();
   }

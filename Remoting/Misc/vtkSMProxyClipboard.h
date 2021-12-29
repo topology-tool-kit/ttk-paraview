@@ -30,7 +30,7 @@
  * \li For other vtkSMProxyProperty instances (e.g. LookupTable,
  * ScalarOpacityFunction, etc.) on Paste, it tries to locate the requested proxy
  * value on the session.
-*/
+ */
 
 #ifndef vtkSMProxyClipboard_h
 #define vtkSMProxyClipboard_h
@@ -69,9 +69,9 @@ public:
   bool Paste(vtkSMProxy* target);
 
   /**
-   * Clears the clipboard. Same as calling Copy(NULL).
+   * Clears the clipboard. Same as calling Copy(nullptr).
    */
-  void Clear() { this->Copy(NULL); }
+  void Clear() { this->Copy(nullptr); }
 
 protected:
   vtkSMProxyClipboard();

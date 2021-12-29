@@ -43,6 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqUndoStack.h"
 #include "vtkDataObject.h"
 #include "vtkNew.h"
+#include "vtkPVArrayInformation.h"
 #include "vtkPVCatalystChannelInformation.h"
 #include "vtkPVDataInformation.h"
 #include "vtkPVGeneralSettings.h"
@@ -68,7 +69,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class pqApplyBehavior::pqInternals
 {
 public:
-  typedef QPair<vtkWeakPointer<vtkSMRepresentationProxy>, vtkWeakPointer<vtkSMViewProxy> > PairType;
+  typedef QPair<vtkWeakPointer<vtkSMRepresentationProxy>, vtkWeakPointer<vtkSMViewProxy>> PairType;
   QList<PairType> NewlyCreatedRepresentations;
 };
 
@@ -80,9 +81,7 @@ pqApplyBehavior::pqApplyBehavior(QObject* parentObject)
 }
 
 //-----------------------------------------------------------------------------
-pqApplyBehavior::~pqApplyBehavior()
-{
-}
+pqApplyBehavior::~pqApplyBehavior() = default;
 
 //-----------------------------------------------------------------------------
 void pqApplyBehavior::registerPanel(pqPropertiesPanel* panel)
@@ -226,17 +225,20 @@ void pqApplyBehavior::applied(pqPropertiesPanel*)
       // If not scalar coloring, we make an attempt to color using
       // 'vtkBlockColors' array, if present.
       if (vtkSMPVRepresentationProxy::SafeDownCast(reprProxy) &&
-        vtkSMPVRepresentationProxy::GetUsingScalarColoring(reprProxy) == false &&
-        reprProxy->GetRepresentedDataInformation()->GetArrayInformation(
-          "vtkBlockColors", vtkDataObject::FIELD) != NULL &&
-        reprProxy->GetRepresentedDataInformation()->GetNumberOfBlockLeafs(false) > 1)
+        vtkSMPVRepresentationProxy::GetUsingScalarColoring(reprProxy) == false)
       {
-        vtkSMPVRepresentationProxy::SetScalarColoring(
-          reprProxy, "vtkBlockColors", vtkDataObject::FIELD);
-        if (gsettings->GetScalarBarMode() ==
-          vtkPVGeneralSettings::AUTOMATICALLY_SHOW_AND_HIDE_SCALAR_BARS)
+        auto dataInfo = reprProxy->GetRepresentedDataInformation();
+        auto arrayInfo = dataInfo->GetArrayInformation("vtkBlockColors", vtkDataObject::FIELD);
+        if (dataInfo->IsCompositeDataSet() && arrayInfo != nullptr &&
+          arrayInfo->GetComponentRange(0)[1] > 0)
         {
-          vtkSMPVRepresentationProxy::SetScalarBarVisibility(reprProxy, viewProxy, true);
+          vtkSMPVRepresentationProxy::SetScalarColoring(
+            reprProxy, "vtkBlockColors", vtkDataObject::FIELD);
+          if (gsettings->GetScalarBarMode() ==
+            vtkPVGeneralSettings::AUTOMATICALLY_SHOW_AND_HIDE_SCALAR_BARS)
+          {
+            vtkSMPVRepresentationProxy::SetScalarBarVisibility(reprProxy, viewProxy, true);
+          }
         }
       }
     }
@@ -274,7 +276,7 @@ void pqApplyBehavior::showData(pqPipelineSource* source, pqView* view)
   vtkNew<vtkSMParaViewPipelineControllerWithRendering> controller;
   pqServerManagerModel* smmodel = pqApplicationCore::instance()->getServerManagerModel();
 
-  vtkSMViewProxy* currentViewProxy = view ? view->getViewProxy() : NULL;
+  vtkSMViewProxy* currentViewProxy = view ? view->getViewProxy() : nullptr;
 
   const auto& activeObjects = pqActiveObjects::instance();
   auto activeLayout = activeObjects.activeLayout();
@@ -314,6 +316,7 @@ void pqApplyBehavior::showData(pqPipelineSource* source, pqView* view)
 
     // reset interaction mode for render views. Not a huge fan, but we'll fix
     // this some other time.
+    // @sa `pqPipelineBrowserWidget` for BUG #20521 fix.
     if (pqRenderView* rview = qobject_cast<pqRenderView*>(pqPreferredView))
     {
       if (rview->getNumberOfVisibleDataRepresentations() == 1)

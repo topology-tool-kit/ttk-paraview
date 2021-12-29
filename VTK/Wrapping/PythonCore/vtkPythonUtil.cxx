@@ -22,7 +22,6 @@
 #include "vtkPythonCommand.h"
 #include "vtkSmartPointerBase.h"
 #include "vtkStdString.h"
-#include "vtkToolkits.h"
 #include "vtkUnicodeString.h"
 #include "vtkVariant.h"
 #include "vtkWeakPointer.h"
@@ -50,8 +49,7 @@ class PyVTKObjectGhost
 {
 public:
   PyVTKObjectGhost()
-    : vtk_ptr()
-    , vtk_class(nullptr)
+    : vtk_class(nullptr)
     , vtk_dict(nullptr)
   {
   }
@@ -564,7 +562,7 @@ vtkObjectBase* vtkPythonUtil::GetPointerFromObject(PyObject* obj, const char* re
     if (obj)
     {
       PyObject* arglist = Py_BuildValue("()");
-      PyObject* result = PyEval_CallObject(obj, arglist);
+      PyObject* result = PyObject_Call(obj, arglist, nullptr);
       Py_DECREF(arglist);
       Py_DECREF(obj);
       if (result == nullptr)
@@ -642,13 +640,11 @@ PyObject* vtkPythonUtil::GetObjectFromObject(PyObject* arg, const char* type)
   union vtkPythonUtilPointerUnion u;
   PyObject* tmp = nullptr;
 
-#ifdef Py_USING_UNICODE
   if (PyUnicode_Check(arg))
   {
     tmp = PyUnicode_AsUTF8String(arg);
     arg = tmp;
   }
-#endif
 
   if (PyBytes_Check(arg))
   {
@@ -1033,7 +1029,6 @@ Py_hash_t vtkPythonUtil::VariantHash(const vtkVariant* v)
       break;
     }
 
-#ifdef Py_USING_UNICODE
     case VTK_UNICODE_STRING:
     {
       vtkUnicodeString u = v->ToUnicodeString();
@@ -1048,7 +1043,6 @@ Py_hash_t vtkPythonUtil::VariantHash(const vtkVariant* v)
       Py_DECREF(tmp);
       break;
     }
-#endif
 
     default:
     {
@@ -1083,7 +1077,7 @@ void vtkPythonVoidFunc(void* arg)
 
   arglist = Py_BuildValue("()");
 
-  result = PyEval_CallObject(func, arglist);
+  result = PyObject_Call(func, arglist, nullptr);
   Py_DECREF(arglist);
 
   if (result)

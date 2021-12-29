@@ -77,16 +77,11 @@ vtkStandardNewMacro(vtkDataReader);
 
 vtkCxxSetObjectMacro(vtkDataReader, InputArray, vtkCharArray);
 
-// this undef is required on the hp. vtkMutexLock ends up including
-// /usr/include/dce/cma_ux.h which has the gall to #define read as cma_read
-
-#ifdef read
-#undef read
-#endif
-
+//------------------------------------------------------------------------------
 // Construct object.
 vtkDataReader::vtkDataReader()
 {
+  this->FileVersion = 0;
   this->FileType = VTK_ASCII;
   this->ScalarsName = nullptr;
   this->VectorsName = nullptr;
@@ -138,6 +133,7 @@ vtkDataReader::vtkDataReader()
   this->SetNumberOfOutputPorts(1);
 }
 
+//------------------------------------------------------------------------------
 vtkDataReader::~vtkDataReader()
 {
   delete[] this->ScalarsName;
@@ -156,6 +152,7 @@ vtkDataReader::~vtkDataReader()
   delete this->IS;
 }
 
+//------------------------------------------------------------------------------
 void vtkDataReader::SetFileName(const char* fname)
 {
   if (this->GetNumberOfFileNames() == 1 && this->GetFileName(0) && fname &&
@@ -171,6 +168,7 @@ void vtkDataReader::SetFileName(const char* fname)
   this->Modified();
 }
 
+//------------------------------------------------------------------------------
 const char* vtkDataReader::GetFileName() const
 {
   if (this->GetNumberOfFileNames() < 1)
@@ -180,6 +178,7 @@ const char* vtkDataReader::GetFileName() const
   return this->vtkSimpleReader::GetFileName(0);
 }
 
+//------------------------------------------------------------------------------
 int vtkDataReader::ReadTimeDependentMetaData(int timestep, vtkInformation* metadata)
 {
   if (this->ReadFromInputString)
@@ -190,6 +189,7 @@ int vtkDataReader::ReadTimeDependentMetaData(int timestep, vtkInformation* metad
   return this->Superclass::ReadTimeDependentMetaData(timestep, metadata);
 }
 
+//------------------------------------------------------------------------------
 int vtkDataReader::ReadMesh(
   int piece, int npieces, int nghosts, int timestep, vtkDataObject* output)
 {
@@ -208,6 +208,7 @@ int vtkDataReader::ReadMesh(
   return this->Superclass::ReadMesh(piece, npieces, nghosts, timestep, output);
 }
 
+//------------------------------------------------------------------------------
 void vtkDataReader::SetInputString(const char* in)
 {
   int len = 0;
@@ -218,11 +219,13 @@ void vtkDataReader::SetInputString(const char* in)
   this->SetInputString(in, len);
 }
 
+//------------------------------------------------------------------------------
 void vtkDataReader::SetBinaryInputString(const char* in, int len)
 {
   this->SetInputString(in, len);
 }
 
+//------------------------------------------------------------------------------
 void vtkDataReader::SetInputString(const char* in, int len)
 {
   if (this->Debug)
@@ -257,6 +260,7 @@ void vtkDataReader::SetInputString(const char* in, int len)
   this->Modified();
 }
 
+//------------------------------------------------------------------------------
 // Internal function to read in a line up to 256 characters.
 // Returns zero if there was an error.
 int vtkDataReader::ReadLine(char result[256])
@@ -284,6 +288,7 @@ int vtkDataReader::ReadLine(char result[256])
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Internal function to read in a string up to 256 characters.
 // Returns zero if there was an error.
 int vtkDataReader::ReadString(char result[256])
@@ -297,6 +302,7 @@ int vtkDataReader::ReadString(char result[256])
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Internal function to read in an integer value.
 // Returns zero if there was an error.
 int vtkDataReader::Read(char* result)
@@ -312,6 +318,7 @@ int vtkDataReader::Read(char* result)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataReader::Read(unsigned char* result)
 {
   int intData;
@@ -325,6 +332,7 @@ int vtkDataReader::Read(unsigned char* result)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataReader::Read(short* result)
 {
   *this->IS >> *result;
@@ -335,6 +343,7 @@ int vtkDataReader::Read(short* result)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataReader::Read(unsigned short* result)
 {
   *this->IS >> *result;
@@ -345,6 +354,7 @@ int vtkDataReader::Read(unsigned short* result)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataReader::Read(int* result)
 {
   *this->IS >> *result;
@@ -355,6 +365,7 @@ int vtkDataReader::Read(int* result)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataReader::Read(unsigned int* result)
 {
   *this->IS >> *result;
@@ -365,6 +376,7 @@ int vtkDataReader::Read(unsigned int* result)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataReader::Read(long* result)
 {
   *this->IS >> *result;
@@ -375,6 +387,7 @@ int vtkDataReader::Read(long* result)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataReader::Read(unsigned long* result)
 {
   *this->IS >> *result;
@@ -385,6 +398,7 @@ int vtkDataReader::Read(unsigned long* result)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataReader::Read(long long* result)
 {
   *this->IS >> *result;
@@ -395,6 +409,7 @@ int vtkDataReader::Read(long long* result)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataReader::Read(unsigned long long* result)
 {
   *this->IS >> *result;
@@ -405,6 +420,7 @@ int vtkDataReader::Read(unsigned long long* result)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataReader::Read(float* result)
 {
   *this->IS >> *result;
@@ -415,6 +431,7 @@ int vtkDataReader::Read(float* result)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataReader::Read(double* result)
 {
   *this->IS >> *result;
@@ -425,6 +442,7 @@ int vtkDataReader::Read(double* result)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 size_t vtkDataReader::Peek(char* str, size_t n)
 {
   if (n == 0)
@@ -445,6 +463,7 @@ size_t vtkDataReader::Peek(char* str, size_t n)
   return len;
 }
 
+//------------------------------------------------------------------------------
 // Open a vtk data file. Returns zero if error.
 int vtkDataReader::OpenVTKFile(const char* fname)
 {
@@ -517,6 +536,7 @@ int vtkDataReader::OpenVTKFile(const char* fname)
   return 0;
 }
 
+//------------------------------------------------------------------------------
 // Read the header of a vtk data file. Returns 0 if error.
 int vtkDataReader::ReadHeader(const char* fname)
 {
@@ -563,6 +583,8 @@ int vtkDataReader::ReadHeader(const char* fname)
                     << this->FileMinorVersion << " with older reader version "
                     << vtkLegacyReaderMajorVersion << "." << vtkLegacyReaderMinorVersion);
   }
+  // Compose FileVersion
+  this->FileVersion = 10 * this->FileMajorVersion + this->FileMinorVersion;
 
   //
   // read title
@@ -639,6 +661,7 @@ int vtkDataReader::ReadHeader(const char* fname)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataReader::IsFileValid(const char* dstype)
 {
   char line[1024];
@@ -685,6 +708,7 @@ int vtkDataReader::IsFileValid(const char* dstype)
   return 0;
 }
 
+//------------------------------------------------------------------------------
 // Read the cell data of a vtk data file. The number of cells (from the
 // dataset) must match the number of cells defined in cell attributes (unless
 // no geometry was defined).
@@ -843,6 +867,7 @@ int vtkDataReader::ReadCellData(vtkDataSet* ds, vtkIdType numCells)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Read the point data of a vtk data file. The number of points (from the
 // dataset) must match the number of points defined in point attributes (unless
 // no geometry was defined).
@@ -1011,6 +1036,7 @@ int vtkDataReader::ReadPointData(vtkDataSet* ds, vtkIdType numPts)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Read the vertex data of a vtk data file. The number of vertices (from the
 // graph) must match the number of vertices defined in vertex attributes (unless
 // no geometry was defined).
@@ -1169,6 +1195,7 @@ int vtkDataReader::ReadVertexData(vtkGraph* g, vtkIdType numVertices)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Read the edge data of a vtk data file. The number of edges (from the
 // graph) must match the number of edges defined in edge attributes (unless
 // no geometry was defined).
@@ -1327,6 +1354,7 @@ int vtkDataReader::ReadEdgeData(vtkGraph* g, vtkIdType numEdges)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Read the row data of a vtk data file.
 int vtkDataReader::ReadRowData(vtkTable* t, vtkIdType numEdges)
 {
@@ -1511,6 +1539,7 @@ int vtkReadASCIIData(vtkDataReader* self, T* data, vtkIdType numTuples, vtkIdTyp
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Description:
 // Read data array. Return pointer to array object if successful read;
 // otherwise return nullptr. Note: this method instantiates a reference counted
@@ -1843,7 +1872,7 @@ vtkAbstractArray* vtkDataReader::ReadArray(
           {
             vtkTypeUInt64 length;
             IS->read(reinterpret_cast<char*>(&length), 8);
-            vtkByteSwap::Swap4BE(&length);
+            vtkByteSwap::Swap8BE(&length);
             stringLength = length;
           }
           std::vector<char> str(stringLength);
@@ -2142,6 +2171,7 @@ vtkAbstractArray* vtkDataReader::ReadArray(
   return array;
 }
 
+//------------------------------------------------------------------------------
 // Read point coordinates. Return 0 if error.
 int vtkDataReader::ReadPointCoordinates(vtkPointSet* ps, vtkIdType numPts)
 {
@@ -2177,6 +2207,7 @@ int vtkDataReader::ReadPointCoordinates(vtkPointSet* ps, vtkIdType numPts)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Read point coordinates. Return 0 if error.
 int vtkDataReader::ReadPointCoordinates(vtkGraph* g, vtkIdType numPts)
 {
@@ -2212,6 +2243,7 @@ int vtkDataReader::ReadPointCoordinates(vtkGraph* g, vtkIdType numPts)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Read the coordinates for a rectilinear grid. The axes parameter specifies
 // which coordinate axes (0,1,2) is being read.
 int vtkDataReader::ReadCoordinates(vtkRectilinearGrid* rg, int axes, int numCoords)
@@ -2255,6 +2287,7 @@ int vtkDataReader::ReadCoordinates(vtkRectilinearGrid* rg, int axes, int numCoor
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Read scalar point attributes. Return 0 if error.
 int vtkDataReader::ReadScalarData(vtkDataSetAttributes* a, vtkIdType numPts)
 {
@@ -2348,6 +2381,7 @@ int vtkDataReader::ReadScalarData(vtkDataSetAttributes* a, vtkIdType numPts)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Read vector point attributes. Return 0 if error.
 int vtkDataReader::ReadVectorData(vtkDataSetAttributes* a, vtkIdType numPts)
 {
@@ -2399,6 +2433,7 @@ int vtkDataReader::ReadVectorData(vtkDataSetAttributes* a, vtkIdType numPts)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Read normal point attributes. Return 0 if error.
 int vtkDataReader::ReadNormalData(vtkDataSetAttributes* a, vtkIdType numPts)
 {
@@ -2450,6 +2485,7 @@ int vtkDataReader::ReadNormalData(vtkDataSetAttributes* a, vtkIdType numPts)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Read tensor point attributes. Return 0 if error.
 int vtkDataReader::ReadTensorData(vtkDataSetAttributes* a, vtkIdType numPts, vtkIdType numComp)
 {
@@ -2500,6 +2536,7 @@ int vtkDataReader::ReadTensorData(vtkDataSetAttributes* a, vtkIdType numPts, vtk
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Read color scalar point attributes. Return 0 if error.
 int vtkDataReader::ReadCoScalarData(vtkDataSetAttributes* a, vtkIdType numPts)
 {
@@ -2596,6 +2633,7 @@ int vtkDataReader::ReadCoScalarData(vtkDataSetAttributes* a, vtkIdType numPts)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Read texture coordinates point attributes. Return 0 if error.
 int vtkDataReader::ReadTCoordsData(vtkDataSetAttributes* a, vtkIdType numPts)
 {
@@ -2656,6 +2694,7 @@ int vtkDataReader::ReadTCoordsData(vtkDataSetAttributes* a, vtkIdType numPts)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Read texture coordinates point attributes. Return 0 if error.
 int vtkDataReader::ReadGlobalIds(vtkDataSetAttributes* a, vtkIdType numPts)
 {
@@ -2702,6 +2741,7 @@ int vtkDataReader::ReadGlobalIds(vtkDataSetAttributes* a, vtkIdType numPts)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Read pedigree ids. Return 0 if error.
 int vtkDataReader::ReadPedigreeIds(vtkDataSetAttributes* a, vtkIdType numPts)
 {
@@ -2748,6 +2788,7 @@ int vtkDataReader::ReadPedigreeIds(vtkDataSetAttributes* a, vtkIdType numPts)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Read edge flags. Return 0 if error.
 int vtkDataReader::ReadEdgeFlags(vtkDataSetAttributes* a, vtkIdType numPts)
 {
@@ -2794,6 +2835,7 @@ int vtkDataReader::ReadEdgeFlags(vtkDataSetAttributes* a, vtkIdType numPts)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataReader::ReadInformation(vtkInformation* info, vtkIdType numKeys)
 {
   // Assuming that the opening INFORMATION line has been read.
@@ -3051,6 +3093,7 @@ int vtkDataReader::ReadInformation(vtkInformation* info, vtkIdType numKeys)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Read lookup table. Return 0 if error.
 int vtkDataReader::ReadLutData(vtkDataSetAttributes* a)
 {
@@ -3121,6 +3164,7 @@ int vtkDataReader::ReadLutData(vtkDataSetAttributes* a)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataReader::ReadCells(vtkSmartPointer<vtkCellArray>& cellArray)
 {
   vtkIdType offsetsSize{ 0 };
@@ -3201,6 +3245,7 @@ int vtkDataReader::ReadCells(vtkSmartPointer<vtkCellArray>& cellArray)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Read lookup table. Return 0 if error.
 int vtkDataReader::ReadCellsLegacy(vtkIdType size, int* data)
 {
@@ -3241,6 +3286,7 @@ int vtkDataReader::ReadCellsLegacy(vtkIdType size, int* data)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataReader::ReadCellsLegacy(vtkIdType size, int* data, int skip1, int read2, int skip3)
 {
   char line[256];
@@ -3353,6 +3399,7 @@ int vtkDataReader::ReadCellsLegacy(vtkIdType size, int* data, int skip1, int rea
   return 1;
 }
 
+//------------------------------------------------------------------------------
 void vtkDataReader::ConvertGhostLevelsToGhostType(FieldType fieldType, vtkAbstractArray* data) const
 {
   vtkUnsignedCharArray* ucData = vtkArrayDownCast<vtkUnsignedCharArray>(data);
@@ -3381,6 +3428,7 @@ void vtkDataReader::ConvertGhostLevelsToGhostType(FieldType fieldType, vtkAbstra
   }
 }
 
+//------------------------------------------------------------------------------
 vtkFieldData* vtkDataReader::ReadFieldData(FieldType fieldType)
 {
   int i, numArrays = 0, skipField = 0;
@@ -3448,6 +3496,7 @@ vtkFieldData* vtkDataReader::ReadFieldData(FieldType fieldType)
   }
 }
 
+//------------------------------------------------------------------------------
 char* vtkDataReader::LowerCase(char* str, const size_t len)
 {
   size_t i;
@@ -3472,6 +3521,7 @@ void vtkDataReader::CloseVTKFile()
   this->IS = nullptr;
 }
 
+//------------------------------------------------------------------------------
 void vtkDataReader::InitializeCharacteristics()
 {
   int i;
@@ -3544,6 +3594,7 @@ void vtkDataReader::InitializeCharacteristics()
   }
 }
 
+//------------------------------------------------------------------------------
 // read entire file, storing important characteristics
 int vtkDataReader::CharacterizeFile()
 {
@@ -3583,6 +3634,7 @@ int vtkDataReader::CharacterizeFile()
   return 1;
 }
 
+//------------------------------------------------------------------------------
 void vtkDataReader::CheckFor(const char* name, char* line, int& num, char**& array, int& allocSize)
 {
   if (!strncmp(this->LowerCase(line, strlen(name)), name, strlen(name)))
@@ -3631,6 +3683,7 @@ void vtkDataReader::CheckFor(const char* name, char* line, int& num, char**& arr
   } // found one
 }
 
+//------------------------------------------------------------------------------
 const char* vtkDataReader::GetScalarsNameInFile(int i)
 {
   this->CharacterizeFile();
@@ -3644,6 +3697,7 @@ const char* vtkDataReader::GetScalarsNameInFile(int i)
   }
 }
 
+//------------------------------------------------------------------------------
 const char* vtkDataReader::GetVectorsNameInFile(int i)
 {
   this->CharacterizeFile();
@@ -3656,6 +3710,7 @@ const char* vtkDataReader::GetVectorsNameInFile(int i)
     return this->VectorsNameInFile[i];
   }
 }
+//------------------------------------------------------------------------------
 const char* vtkDataReader::GetTensorsNameInFile(int i)
 {
   this->CharacterizeFile();
@@ -3668,6 +3723,7 @@ const char* vtkDataReader::GetTensorsNameInFile(int i)
     return this->TensorsNameInFile[i];
   }
 }
+//------------------------------------------------------------------------------
 const char* vtkDataReader::GetNormalsNameInFile(int i)
 {
   this->CharacterizeFile();
@@ -3680,6 +3736,7 @@ const char* vtkDataReader::GetNormalsNameInFile(int i)
     return this->NormalsNameInFile[i];
   }
 }
+//------------------------------------------------------------------------------
 const char* vtkDataReader::GetTCoordsNameInFile(int i)
 {
   this->CharacterizeFile();
@@ -3692,6 +3749,7 @@ const char* vtkDataReader::GetTCoordsNameInFile(int i)
     return this->TCoordsNameInFile[i];
   }
 }
+//------------------------------------------------------------------------------
 const char* vtkDataReader::GetFieldDataNameInFile(int i)
 {
   this->CharacterizeFile();
@@ -3705,32 +3763,12 @@ const char* vtkDataReader::GetFieldDataNameInFile(int i)
   }
 }
 
-vtkTypeBool vtkDataReader::ProcessRequest(
-  vtkInformation* request, vtkInformationVector** inputVector, vtkInformationVector* outputVector)
-{
-  // generate the data
-  if (request->Has(vtkDemandDrivenPipeline::REQUEST_DATA()))
-  {
-    return this->RequestData(request, inputVector, outputVector);
-  }
-
-  if (request->Has(vtkStreamingDemandDrivenPipeline::REQUEST_UPDATE_EXTENT()))
-  {
-    return this->RequestUpdateExtent(request, inputVector, outputVector);
-  }
-
-  // execute information
-  if (request->Has(vtkDemandDrivenPipeline::REQUEST_INFORMATION()))
-  {
-    return this->RequestInformation(request, inputVector, outputVector);
-  }
-
-  return this->Superclass::ProcessRequest(request, inputVector, outputVector);
-}
-
+//------------------------------------------------------------------------------
 void vtkDataReader::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
+
+  os << indent << "File Version: " << this->FileVersion << "\n";
 
   if (this->FileType == VTK_BINARY)
   {
@@ -3846,11 +3884,13 @@ void vtkDataReader::PrintSelf(ostream& os, vtkIndent indent)
   os << indent << "InputStringLength: " << this->InputStringLength << endl;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataReader::ReadDataSetData(vtkDataSet* vtkNotUsed(ds))
 {
   return 0;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataReader::DecodeString(char* resname, const char* name)
 {
   if (!resname || !name)

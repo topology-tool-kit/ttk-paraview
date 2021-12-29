@@ -72,7 +72,7 @@ public:
       vtkCommand::EndInteractionEvent, this->Widget_ptr, &pqMultiSliceAxisWidget::onMarkClicked);
   }
 
-  ~pqInternal() {}
+  ~pqInternal() = default;
 
   void init()
   {
@@ -101,7 +101,7 @@ public:
 };
 
 //-----------------------------------------------------------------------------
-pqMultiSliceAxisWidget::pqMultiSliceAxisWidget(QWidget* parentW /*=NULL*/)
+pqMultiSliceAxisWidget::pqMultiSliceAxisWidget(QWidget* parentW /*=nullptr*/)
   : Superclass(parentW)
 {
   this->Internal = new pqMultiSliceAxisWidget::pqInternal(*this);
@@ -125,10 +125,7 @@ pqMultiSliceAxisWidget::~pqMultiSliceAxisWidget()
   // will be deleted in the same time as us.
 
   // remove internal data structure
-  if (this->Internal)
-  {
-    delete this->Internal;
-  }
+  delete this->Internal;
 }
 
 // ----------------------------------------------------------------------------
@@ -140,7 +137,7 @@ QWidget* pqMultiSliceAxisWidget::getVTKWidget()
 // ----------------------------------------------------------------------------
 void pqMultiSliceAxisWidget::setTitle(const QString& newTitle)
 {
-  this->Internal->SliceItem->GetAxis()->SetTitle(newTitle.toLocal8Bit().data());
+  this->Internal->SliceItem->GetAxis()->SetTitle(newTitle.toUtf8().toStdString());
   Q_EMIT this->titleChanged(newTitle);
 }
 

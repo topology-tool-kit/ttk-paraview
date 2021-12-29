@@ -32,6 +32,7 @@
 #define vtkBezierTetra_h
 
 #include "vtkCommonDataModelModule.h" // For export macro
+#include "vtkDeprecation.h"           // For VTK_DEPRECATED_IN_9_1_0
 #include "vtkHigherOrderTetra.h"
 
 class vtkTetra;
@@ -50,14 +51,16 @@ public:
   int GetCellType() override { return VTK_BEZIER_TETRAHEDRON; }
   vtkCell* GetEdge(int edgeId) override;
   vtkCell* GetFace(int faceId) override;
+  VTK_DEPRECATED_IN_9_1_0(
+    "EvaluateLocationProjectedNode is deprecated, use instead EvaluateLocation.")
   void EvaluateLocationProjectedNode(
     int& subId, const vtkIdType point_id, double x[3], double* weights);
   void SetRationalWeightsFromPointData(vtkPointData* point_data, const vtkIdType numPts);
   void InterpolateFunctions(const double pcoords[3], double* weights) override;
   void InterpolateDerivs(const double pcoords[3], double* derivs) override;
 
-  vtkHigherOrderCurve* getEdgeCell() override;
-  vtkHigherOrderTriangle* getFaceCell() override;
+  vtkHigherOrderCurve* GetEdgeCell() override;
+  vtkHigherOrderTriangle* GetFaceCell() override;
 
   vtkDoubleArray* GetRationalWeights();
 

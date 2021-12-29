@@ -84,6 +84,7 @@
 
 class vtkMultiProcessController;
 
+VTK_DEPRECATED_IN_9_1_0("Use vtkGhostCellsGenerator instead")
 class VTKFILTERSPARALLELGEOMETRY_EXPORT vtkPUnstructuredGridGhostCellsGenerator
   : public vtkUnstructuredGridGhostCellsGenerator
 {
@@ -94,13 +95,13 @@ public:
 
   static vtkPUnstructuredGridGhostCellsGenerator* New();
 
-  //@{
+  ///@{
   /**
    * Set/Get the MPI multi process controller object.
    */
   void SetController(vtkMultiProcessController* c);
   vtkGetObjectMacro(Controller, vtkMultiProcessController);
-  //@}
+  ///@}
 
 protected:
   vtkPUnstructuredGridGhostCellsGenerator();

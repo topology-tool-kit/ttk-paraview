@@ -20,7 +20,7 @@
  * the visualization driver.
  * @sa
  * vtkSMSessionClient
-*/
+ */
 
 #ifndef vtkPVSessionServer_h
 #define vtkPVSessionServer_h
@@ -41,7 +41,7 @@ public:
   /**
    * Returns the active controller used to communicate with the process.
    * Value must be DATA_SERVER_ROOT or RENDER_SERVER_ROOT or CLIENT.
-   * But only the CLIENT do return something different than NULL;
+   * But only the CLIENT do return something different than nullptr;
    */
   vtkMultiProcessController* GetController(ServerFlags processType) override;
 

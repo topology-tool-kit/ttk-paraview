@@ -35,17 +35,17 @@ public:
   vtkTypeMacro(vtkSLCReader, vtkImageReader2);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Was there an error on the last read performed?
    */
   vtkGetMacro(Error, int);
-  //@}
+  ///@}
 
   /**
    * Is the given file an SLC file?
    */
-  int CanReadFile(const char* fname) override;
+  int CanReadFile(VTK_FILEPATH const char* fname) override;
   /**
    * .slc
    */

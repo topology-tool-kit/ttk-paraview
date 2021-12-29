@@ -4,6 +4,69 @@ Major API Changes             {#MajorAPIChanges}
 This page documents major API/design changes between different versions since we
 started tracking these (starting after version 4.2).
 
+Changes in 5.10
+----------------
+
+###Command line options###
+
+The command line parsing code in ParaView has been refactored entirely.
+Previously, `vtkPVOptions` and its subclasses handled both parsing / processing
+of the command line options and keeping the state for those selections. This
+made it quite inflexible. This is now split into separate classes.
+`vtkCLIOptions` is the class that handles parsing of command line options (and
+internally uses CLI11, a 3-rd party library) while the state for the options is
+maintained by singletons like `vtkProcessModuleConfiguration`,
+`vtkRemotingCoreConfiguration`, and `pqCoreConfiguration`.
+Application code that wants to test value for any of the command-line options
+can use these singletons to check them instead of using vtkPVOptions or
+subclasses.
+
+###vtkSubsetInclusionLattice and SIL###
+
+`vtkSubsetInclusionLattice` and related classes have been removed. The only
+reader that used this when this was introduced was CGNS reader which since
+stopped used these classes for performance reasons. IOSS reader (`vtKIOSSReader`)
+demonstrates a newer away of representing assemblies using `vtkDataAssembly`
+and using that for selecting blocks to read on the reader.
+
+Similarly legacy SIL, which used vtkGraph instead of `vtkSubsetInclusionLattice`
+for a similar purpose is now obsolete. All server-manager and UI classes related
+to that have been removed as well.
+
+###Changes to vtkPVDataInformation###
+
+vtkPVDataInformation no longer builds a complete composite data hierarchy
+information. Thus, `vtkPVCompositeDataInformation` is no longer populated
+and hence removed. This simplifies the logic in vtkPVDataInformation
+considerably.
+
+vtkPVDataInformation now provides access to`vtkDataAssembly`
+representing the hierarchy for composite datasets. This can be used by
+application to support cases where information about the composite
+data hierarchy is needed. For vtkPartitionedDataSetCollection, which can
+have other assemblies associated with it, vtkPVDataInformation also
+collects those.
+
+For composite datasets, vtkPVDataInformation now gathers information
+about all unique leaf datatypes. This is useful for applications to
+determine exactly what type of datasets a composite dataset is comprised
+of.
+
+vtkPVTemporalDataInformation is now simply a subclass of
+vtkPVDataInformation. This is possible since vtkPVDataInformation no
+longer includes vtkPVCompositeDataInformation.
+
+
+###Extract Block###
+
+**Extract Block** filter now internally uses `vtkExtractBlockUsingDataAssembly`
+instead of `vtkExtractBlock`. Thus, the filter now uses selectors to select
+which blocks to extracts instead of composite indices. For applications
+requiring the older form, **ExtractBlockLegacy** proxy is still available. It
+may be worthwhile however to replace the code to use the new selector-based
+extract block filter. A composite index can be converted to a selector string as
+`//*[@cid='%d']` where `%d` is replaced by the actual composite index.
+
 Changes in 5.9
 --------------
 

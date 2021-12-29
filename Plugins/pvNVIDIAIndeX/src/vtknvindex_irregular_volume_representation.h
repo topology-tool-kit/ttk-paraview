@@ -85,8 +85,15 @@ public:
   void SetVisibility(bool val) override;
 
   //***************************************************************************
-  // Forwarded to vtkVolumeRepresentationPreprocessor
-  void SetExtractedBlockIndex(unsigned int index);
+  //@{
+  /**
+   * Forwarded to vtkVolumeRepresentationPreprocessor. Controls which blocks in
+   * a composite dataset are rendered.
+   */
+  void SetActiveAssembly(const char*);
+  void AddBlockSelector(const char*);
+  void RemoveAllBlockSelectors();
+  //@}
 
   //***************************************************************************
   // Forwarded to vtkResampleToImage
@@ -122,12 +129,6 @@ public:
 
   // Set subcube border size.
   void set_subcube_border(int border);
-
-  // Set dump internal state of NVIDIA IndeX.
-  void set_dump_internal_state(bool is_dump);
-
-  // Set flag to log performance values.
-  void set_log_performance(bool is_log);
 
   // Set CUDA code parameter.
   void set_volume_filter(int filter);
@@ -221,7 +222,10 @@ private:
   void operator=(const vtknvindex_irregular_volume_representation&) = delete;
 
   // Update current kernel
-  void update_current_kernel();
+  bool update_current_kernel();
+
+  // Update current kernel source code.
+  void update_current_kernel_source(bool need_force_render = false);
 
   class vtkInternals;
   vtkInternals* Internals;

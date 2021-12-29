@@ -70,9 +70,7 @@ pqMainWindowEventBehavior::pqMainWindowEventBehavior(QObject* parentObject)
 }
 
 //-----------------------------------------------------------------------------
-pqMainWindowEventBehavior::~pqMainWindowEventBehavior()
-{
-}
+pqMainWindowEventBehavior::~pqMainWindowEventBehavior() = default;
 
 //-----------------------------------------------------------------------------
 void pqMainWindowEventBehavior::onClose(QCloseEvent*)
@@ -90,9 +88,7 @@ void pqMainWindowEventBehavior::onClose(QCloseEvent*)
 }
 
 //-----------------------------------------------------------------------------
-void pqMainWindowEventBehavior::onShow(QShowEvent*)
-{
-}
+void pqMainWindowEventBehavior::onShow(QShowEvent*) {}
 
 //-----------------------------------------------------------------------------
 void pqMainWindowEventBehavior::onDragEnter(QDragEnterEvent* event)

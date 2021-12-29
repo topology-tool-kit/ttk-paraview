@@ -55,14 +55,15 @@ public:
   static vtkTubeBender* New();
   // Generating VTK hierarchical class relationship
   vtkTypeMacro(vtkTubeBender, vtkPolyDataAlgorithm);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Set the minimum tube radius (minimum because the tube radius may vary).
    */
   vtkSetClampMacro(Radius, double, 0.0, VTK_DOUBLE_MAX);
   vtkGetMacro(Radius, double);
-  //@}
+  ///@}
 
 protected:
   vtkTubeBender();
@@ -70,14 +71,13 @@ protected:
 
   double Radius;
 
-private:
-  vtkTubeBender(const vtkTubeBender&);  // Not implemented.
-  void operator=(const vtkTubeBender&); // Not implemented.
+public:
+  vtkTubeBender(const vtkTubeBender&) = delete;  // Not implemented.
+  void operator=(const vtkTubeBender&) = delete; // Not implemented.
 
 protected:
   int RequestData(vtkInformation* request, vtkInformationVector** inputVector,
     vtkInformationVector* outputVector) override;
-  void PrintSelf(ostream& os, vtkIndent indent) override;
 };
 
 #endif // vtkTubeBender_h

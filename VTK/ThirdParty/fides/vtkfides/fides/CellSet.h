@@ -11,11 +11,12 @@
 #ifndef fides_datamodel_CellSet_H_
 #define fides_datamodel_CellSet_H_
 
+#include <fides/Array.h>
 #include <fides/DataModel.h>
 #include <fides/Value.h>
-#include <fides/Array.h>
 #include <fides/xgc/XGCCommon.h>
 
+#include <vtkm/cont/ArrayHandleSOA.h>
 #include <vtkm/cont/DynamicCellSet.h>
 #include <vtkm/cont/PartitionedDataSet.h>
 
@@ -42,12 +43,9 @@ struct CellSetBase : public DataModelBase
   /// This is called after all data is read from disk/buffers,
   /// enabling any work that needs to access array values and other
   /// dataset data.
-  virtual void PostRead(
-    vtkm::cont::PartitionedDataSet&,
-    const fides::metadata::MetaData&)
-  {}
+  virtual void PostRead(std::vector<vtkm::cont::DataSet>&, const fides::metadata::MetaData&) {}
 
-  virtual ~CellSetBase() {};
+  virtual ~CellSetBase(){};
 };
 
 /// \brief Data model object for VTK-m cell sets.
@@ -60,8 +58,7 @@ struct CellSetBase : public DataModelBase
 struct CellSet : public DataModelBase
 {
   /// Overridden to handle CellSet specific items.
-  void ProcessJSON(const rapidjson::Value& json,
-                   DataSourcesType& sources) override;
+  void ProcessJSON(const rapidjson::Value& json, DataSourcesType& sources) override;
 
   /// Reads and returns the cell sets.
   /// The paths are passed to the \c DataSources to create
@@ -74,9 +71,8 @@ struct CellSet : public DataModelBase
   /// This is called after all data is read from disk/buffers,
   /// enabling any work that needs to access array values and other
   /// dataset data.
-  void PostRead(
-    vtkm::cont::PartitionedDataSet& partitions,
-    const fides::metadata::MetaData& selections);
+  void PostRead(std::vector<vtkm::cont::DataSet>& partitions,
+                const fides::metadata::MetaData& selections);
 
 private:
   std::unique_ptr<CellSetBase> CellSetImpl = nullptr;
@@ -89,8 +85,7 @@ private:
 struct CellSetSingleType : public CellSetBase
 {
   /// Overridden to handle CellSetSingleType specific items.
-  void ProcessJSON(const rapidjson::Value& json,
-                   DataSourcesType& sources) override;
+  void ProcessJSON(const rapidjson::Value& json, DataSourcesType& sources) override;
 
   /// Reads and returns the cell sets.
   /// The paths are passed to the \c DataSources to create
@@ -104,14 +99,13 @@ struct CellSetSingleType : public CellSetBase
   /// enabling any work that needs to access array values and other
   /// dataset data. In this case, it is necessary to know the number
   /// of points to create the VTK-m cellset.
-  virtual void PostRead(
-    vtkm::cont::PartitionedDataSet& partitions,
-    const fides::metadata::MetaData& selections) override;
+  virtual void PostRead(std::vector<vtkm::cont::DataSet>& partitions,
+                        const fides::metadata::MetaData& selections) override;
 
 protected:
   std::pair<unsigned char, int> CellInformation;
   std::vector<vtkm::cont::DynamicCellSet> CellSetCache;
-  std::vector<vtkm::cont::VariantArrayHandle> ConnectivityArrays;
+  std::vector<vtkm::cont::UnknownArrayHandle> ConnectivityArrays;
 };
 
 /// \brief Class to read unstructured grids of mixed cell types.
@@ -121,8 +115,7 @@ protected:
 struct CellSetExplicit : public CellSetBase
 {
   /// Overridden to handle CellSetExplicit specific items.
-  void ProcessJSON(const rapidjson::Value& json,
-                   DataSourcesType& sources) override;
+  void ProcessJSON(const rapidjson::Value& json, DataSourcesType& sources) override;
 
   /// Reads and returns the cell sets.
   /// The paths are passed to the \c DataSources to create
@@ -136,18 +129,17 @@ struct CellSetExplicit : public CellSetBase
   /// enabling any work that needs to access array values and other
   /// dataset data. In this case, it is necessary to know the number
   /// of points to create the VTK-m cellset.
-  virtual void PostRead(
-    vtkm::cont::PartitionedDataSet& partitions,
-    const fides::metadata::MetaData& selections) override;
+  virtual void PostRead(std::vector<vtkm::cont::DataSet>& partitions,
+                        const fides::metadata::MetaData& selections) override;
 
 protected:
   std::vector<vtkm::cont::DynamicCellSet> CellSetCache;
   std::unique_ptr<Array> CellTypes = nullptr;
   std::unique_ptr<Array> NumberOfVertices = nullptr;
   std::unique_ptr<Array> Connectivity = nullptr;
-  std::vector<vtkm::cont::VariantArrayHandle> CellTypesArrays;
-  std::vector<vtkm::cont::VariantArrayHandle> NumberOfVerticesArrays;
-  std::vector<vtkm::cont::VariantArrayHandle> ConnectivityArrays;
+  std::vector<vtkm::cont::UnknownArrayHandle> CellTypesArrays;
+  std::vector<vtkm::cont::UnknownArrayHandle> NumberOfVerticesArrays;
+  std::vector<vtkm::cont::UnknownArrayHandle> ConnectivityArrays;
 };
 
 /// \brief Class to read structured grids.
@@ -157,8 +149,7 @@ protected:
 struct CellSetStructured : public CellSetBase
 {
   /// Overridden to handle CellSetSingleType specific items.
-  void ProcessJSON(const rapidjson::Value& json,
-                   DataSourcesType& sources) override;
+  void ProcessJSON(const rapidjson::Value& json, DataSourcesType& sources) override;
 
   /// Reads and returns the cell sets.
   /// The paths are passed to the \c DataSources to create
@@ -168,8 +159,16 @@ struct CellSetStructured : public CellSetBase
     DataSourcesType& sources,
     const fides::metadata::MetaData& selections) override;
 
+  /// This is called after all data is read from disk/buffers,
+  /// enabling any work that needs to access array values and other
+  /// dataset data. In this case, the dimensions, origin, and spacing
+  /// can be read from file, which is not available at Read() time.
+  virtual void PostRead(std::vector<vtkm::cont::DataSet>&,
+                        const fides::metadata::MetaData&) override;
+
 private:
   std::unique_ptr<Value> Dimensions = nullptr;
+  std::vector<vtkm::cont::UnknownArrayHandle> DimensionArrays;
 };
 
 
@@ -179,11 +178,13 @@ private:
 /// \c CellSetXGC objects.
 struct CellSetXGC : public CellSetBase
 {
-  CellSetXGC() : CommonImpl(new XGCCommon()) {}
+  CellSetXGC()
+    : CommonImpl(new XGCCommon())
+  {
+  }
 
   /// Overridden to handle CellSetXGC specific items.
-  void ProcessJSON(const rapidjson::Value& json,
-                   DataSourcesType& sources) override;
+  void ProcessJSON(const rapidjson::Value& json, DataSourcesType& sources) override;
 
   /// Reads and returns the cell sets.
   /// The paths are passed to the \c DataSources to create
@@ -193,6 +194,9 @@ struct CellSetXGC : public CellSetBase
     DataSourcesType& sources,
     const fides::metadata::MetaData& selections) override;
 
+  virtual void PostRead(std::vector<vtkm::cont::DataSet>& partitions,
+                        const fides::metadata::MetaData& selections) override;
+
 private:
   std::vector<vtkm::cont::DynamicCellSet> CellSetCache;
   std::unique_ptr<Array> CellConnectivity = nullptr;
@@ -201,9 +205,57 @@ private:
   bool IsPeriodic = true;
   std::unique_ptr<XGCCommon> CommonImpl;
 
+  class CalcPsi;
+};
+
+/// \brief Class to read GTC cell set.
+///
+/// This class implements the \c CellSetBase API for reading
+/// \c CellSetGTC objects.
+struct CellSetGTC : public CellSetBase
+{
+  /// Overridden to handle CellSetGTC specific items.
+  void ProcessJSON(const rapidjson::Value& json, DataSourcesType& sources) override;
+
+  /// Reads and returns the cell sets.
+  /// The paths are passed to the \c DataSources to create
+  /// file paths. \c selections restrict the data that is loaded.
+  std::vector<vtkm::cont::DynamicCellSet> Read(
+    const std::unordered_map<std::string, std::string>& paths,
+    DataSourcesType& sources,
+    const fides::metadata::MetaData& selections) override;
+
+  void PostRead(std::vector<vtkm::cont::DataSet>& partitions,
+                const fides::metadata::MetaData& selections) override;
+
+private:
+  using GTCCoordsType32 = vtkm::cont::ArrayHandleSOA<vtkm::Vec3f_32>;
+  using GTCCoordsType64 = vtkm::cont::ArrayHandleSOA<vtkm::Vec3f_64>;
+
+  bool IsCached = false;
+  vtkm::cont::DynamicCellSet CachedCellSet;
+
+  void ComputeCellSet(vtkm::cont::DataSet& dataSet);
+
+  template <typename T, typename C>
+  std::vector<vtkm::Id> ComputeConnectivity(
+    const vtkm::cont::ArrayHandle<vtkm::Vec<T, 3>, C>& coords,
+    const vtkm::cont::ArrayHandle<int>& igrid,
+    const vtkm::cont::ArrayHandle<int>& indexShift);
+
+  std::vector<vtkm::cont::UnknownArrayHandle> IGridArrays;
+  std::vector<vtkm::cont::UnknownArrayHandle> IndexShiftArrays;
+  std::unique_ptr<Array> IGrid = nullptr;
+  std::unique_ptr<Array> IndexShift = nullptr;
+  vtkm::Id NumberOfPlanes = -1;
+  vtkm::Id NumberOfPointsPerPlane = -1;
+
+  bool RArrayCached = false;
+  bool PhiArrayCached = false;
+  vtkm::cont::ArrayHandle<vtkm::Float32> RArray;
+  vtkm::cont::ArrayHandle<vtkm::Float32> PhiArray;
 };
 
 }
 }
-
 #endif

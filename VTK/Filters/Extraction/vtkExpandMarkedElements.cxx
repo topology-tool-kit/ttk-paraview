@@ -12,6 +12,10 @@
      PURPOSE.  See the above copyright notice for more information.
 
 =========================================================================*/
+
+// Hide VTK_DEPRECATED_IN_9_1_0() warning for this class
+#define VTK_DEPRECATION_LEVEL 0
+
 #include "vtkExpandMarkedElements.h"
 
 #include "vtkBoundingBox.h"
@@ -244,7 +248,7 @@ int vtkExpandMarkedElements::RequestData(
 
   vtkInformation* info = this->GetInputArrayInformation(0);
   const int assoc = info->Get(vtkDataObject::FIELD_ASSOCIATION());
-  auto datasets = vtkDIYUtilities::GetDataSets(outputDO);
+  auto datasets = vtkCompositeDataSet::GetDataSets(outputDO);
   datasets.erase(std::remove_if(datasets.begin(), datasets.end(),
                    [](vtkDataSet* ds) { return (ds->GetNumberOfPoints() == 0); }),
     datasets.end());

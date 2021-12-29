@@ -36,14 +36,21 @@
 #ifndef vtkBlueObeliskData_h
 #define vtkBlueObeliskData_h
 
+#include "vtkDeprecation.h" // For VTK_DEPRECATED_IN_9_1_0
+
 #include "vtkDomainsChemistryModule.h" // For export macro
+#include "vtkLegacy.h"                 // For VTK_LEGACY_REMOVE
 #include "vtkNew.h"                    // For vtkNew
 #include "vtkObject.h"
+
+#include <mutex> // for std::mutex
 
 class vtkAbstractArray;
 class vtkFloatArray;
 class vtkStringArray;
+#if !defined(VTK_LEGACY_REMOVE)
 class vtkSimpleMutexLock;
+#endif
 class vtkUnsignedShortArray;
 
 // Hidden STL reference: std::vector<vtkAbstractArray*>
@@ -57,10 +64,9 @@ public:
   static vtkBlueObeliskData* New();
 
   /**
-   * Fill this object using an internal vtkBlueObeliskDataParser
-   * instance. Check that the vtkSimpleMutexLock GetWriteMutex() is
-   * locked before calling this method on a static instance in a
-   * multithreaded environment.
+   * Fill this object using an internal vtkBlueObeliskDataParser instance.
+   * Wrap this call with calls to LockWriteMutex and UnlockWriteMutex before calling
+   * this method on a static instance in a multithreaded environment.
    */
   void Initialize();
 
@@ -69,23 +75,42 @@ public:
    */
   bool IsInitialized() { return this->Initialized; }
 
-  //@{
+  ///@{
   /**
    * Access the mutex that protects the arrays during a call to
    * Initialize()
    */
+#if !defined(VTK_LEGACY_REMOVE)
+  VTK_DEPRECATED_IN_9_1_0("Use LockWriteMutex() and UnlockWriteMutex() instead.")
   vtkGetObjectMacro(WriteMutex, vtkSimpleMutexLock);
-  //@}
+#endif
+  ///@}
 
-  //@{
+  ///@{
+  /**
+   * Lock the mutex that protects the arrays during a call to
+   * Initialize().
+   */
+  void LockWriteMutex();
+  ///@}
+
+  ///@{
+  /**
+   * Unlock the mutex that protects the arrays during a call to
+   * Initialize().
+   */
+  void UnlockWriteMutex();
+  ///@}
+
+  ///@{
   /**
    * Return the number of elements for which this vtkBlueObeliskData
    * instance contains information.
    */
   vtkGetMacro(NumberOfElements, unsigned short);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Access the raw arrays stored in this vtkBlueObeliskData.
    */
@@ -96,7 +121,7 @@ public:
   vtkGetNewMacro(PeriodicTableBlocks, vtkStringArray);
   vtkGetNewMacro(ElectronicConfigurations, vtkStringArray);
   vtkGetNewMacro(Families, vtkStringArray);
-  //@}
+  ///@}
 
   vtkGetNewMacro(Masses, vtkFloatArray);
   vtkGetNewMacro(ExactMasses, vtkFloatArray);
@@ -124,7 +149,15 @@ protected:
   vtkBlueObeliskData();
   ~vtkBlueObeliskData() override;
 
+#if !defined(VTK_LEGACY_REMOVE)
   vtkSimpleMutexLock* WriteMutex;
+#else
+private:
+  std::mutex NewWriteMutex;
+
+protected:
+#endif
+
   bool Initialized;
 
   /**

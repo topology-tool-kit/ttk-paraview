@@ -35,11 +35,6 @@
 #include "vtkAbstractAccumulator.h"
 #include "vtkFiltersHyperTreeGridADRModule.h" // For export macro
 
-#include <cassert>
-#include <functional>
-#include <string>
-#include <unordered_map>
-
 template <typename FunctorT>
 class VTKFILTERSHYPERTREEGRIDADR_EXPORT vtkArithmeticAccumulator : public vtkAbstractAccumulator
 {
@@ -74,12 +69,12 @@ public:
   /**
    * Shallow copy of the accumulator.
    */
-  void ShallowCopy(vtkDataObject* accumulator) override;
+  void ShallowCopy(vtkObject* accumulator) override;
 
   /**
    * Deep copy of the accumulator.
    */
-  void DeepCopy(vtkDataObject* accumulator) override;
+  void DeepCopy(vtkObject* accumulator) override;
 
   /**
    * Returns true if the parameters of accumulator is the same as the ones of this
@@ -121,5 +116,7 @@ private:
   void operator=(vtkArithmeticAccumulator<FunctorT>&) = delete;
 };
 
-#include "vtkArithmeticAccumulator.txx"
+#include "vtkArithmeticAccumulator.txx" // template implementation
 #endif
+
+// VTK-HeaderTest-Exclude: vtkArithmeticAccumulator.h

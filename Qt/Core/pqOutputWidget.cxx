@@ -96,7 +96,7 @@ public:
 
 protected:
   OutputWindow() { this->PromptUserOff(); }
-  ~OutputWindow() override {}
+  ~OutputWindow() override = default;
 
   QPointer<pqOutputWidget> Widget;
   QMutex MutexGenericMessage;
@@ -145,30 +145,30 @@ MessageHandler* MessageHandler::instance()
 
 void MessageHandler::displayMessage(QtMsgType type, const QString& msg)
 {
-  QByteArray localMsg = msg.toLocal8Bit();
+  QByteArray localMsg = msg.toUtf8();
   vtkOutputWindow* vtkWindow = vtkOutputWindow::GetInstance();
   if (vtkWindow)
   {
     switch (type)
     {
       case QtDebugMsg:
-        vtkWindow->DisplayDebugText(localMsg.constData());
+        vtkWindow->DisplayDebugText(localMsg.data());
         break;
 
       case QtInfoMsg:
-        vtkWindow->DisplayText(localMsg.constData());
+        vtkWindow->DisplayText(localMsg.data());
         break;
 
       case QtWarningMsg:
-        vtkWindow->DisplayWarningText(localMsg.constData());
+        vtkWindow->DisplayWarningText(localMsg.data());
         break;
 
       case QtCriticalMsg:
-        vtkWindow->DisplayErrorText(localMsg.constData());
+        vtkWindow->DisplayErrorText(localMsg.data());
         break;
 
       case QtFatalMsg:
-        vtkWindow->DisplayErrorText(localMsg.constData());
+        vtkWindow->DisplayErrorText(localMsg.data());
         abort();
         break;
     }
@@ -215,25 +215,29 @@ public:
                              * repeated menu actions in the menus. */
                             << "DBusMenuExporterPrivate"
                             << "DBusMenuExporterDBus"
-                            /* This error appears in Qt 5.6 on Mac OS X 10.11.1 (and maybe others)
-                               */
+                            // This error appears in Qt 5.6 on Mac OS X 10.11.1 (and maybe others)
                             << "QNSView mouseDragged: Internal mouse button tracking invalid"
                             << "Unrecognised OpenGL version"
                             /* Skip DBusMenuExporterPrivate errors. These, I suspect, are due to
                              * repeated menu actions in the menus. */
                             << "DBusMenuExporterPrivate"
                             << "DBusMenuExporterDBus"
-                            /* Skip XCB errors coming from Qt 5 tests. */
+                            // Skip XCB errors coming from Qt 5 tests.
                             << "QXcbConnection: XCB"
                             /* This error message appears on some HDPi screens with not clear
                                reasons */
                             << "QWindowsWindow::setGeometry: Unable to set geometry"
-                            /* Skip qt.qpa.xcb errors */
+                            // Skip qt.qpa.xcb errors
                             << "qt.qpa.xcb: internal error"
                             /* suppress "warning: internal error:  void
                                QXcbWindow::setNetWmStateOnUnmappedWindow() called on mapped window"
                                */
-                            << "QXcbWindow::setNetWmStateOnUnmappedWindow";
+                            << "QXcbWindow::setNetWmStateOnUnmappedWindow"
+                            /* suppress "warning: In unknown, line 0" and
+                               "warning: Populating font family aliases took"
+                             */
+                            << "warning: In unknown, line 0"
+                            << "warning: Populating font family aliases took";
   }
 
   void displayMessageInConsole(const QString& message, QtMsgType type)
@@ -445,7 +449,7 @@ void pqOutputWidget::suppress(const QStringList& substrs)
 void pqOutputWidget::saveToFile()
 {
   QString text = this->Internals->Ui.consoleWidget->text();
-  pqFileDialog fileDialog(NULL, pqCoreUtilities::mainWidget(), "Save output", QString(),
+  pqFileDialog fileDialog(nullptr, pqCoreUtilities::mainWidget(), "Save output", QString(),
     "Text Files (*.txt);;All Files (*)");
   fileDialog.setFileMode(pqFileDialog::AnyFile);
   if (fileDialog.exec() != pqFileDialog::Accepted)
@@ -455,7 +459,7 @@ void pqOutputWidget::saveToFile()
   }
 
   QString filename = fileDialog.getSelectedFiles().first();
-  QByteArray filename_ba = filename.toLocal8Bit();
+  QByteArray filename_ba = filename.toUtf8();
   std::ofstream fileStream;
   fileStream.open(filename_ba.data());
   if (fileStream.is_open())

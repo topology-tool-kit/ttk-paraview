@@ -17,3 +17,4 @@ ParaView 5.9. For earlier versions of Catalyst, please refer to earlier docs
    build_and_install
    for_simulation_developers
    for_implementation_developers
+   catalyst_replay

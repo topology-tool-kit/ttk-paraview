@@ -42,6 +42,17 @@
 #include <cstdlib>  // malloc(), realloc(), free(), size_t
 #include <cstring>  // memset(), memcpy(), memmove(), memcmp()
 
+
+//----------------------------------------------------------------------------
+// MOD FOR CONDUIT: ignore clang macro warning for rapidjson
+// ---------------------------------------------------------------------------
+//---------------------------------------------------------------------------//
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wexpansion-to-defined"
+#endif
+//---------------------------------------------------------------------------//
+
 ///////////////////////////////////////////////////////////////////////////////
 // RAPIDJSON_VERSION_STRING
 //
@@ -113,7 +124,10 @@
     \see RAPIDJSON_NAMESPACE
 */
 #ifndef RAPIDJSON_NAMESPACE
-#define RAPIDJSON_NAMESPACE rapidjson
+//----------------------------------------------------------------------------
+// MOD FOR CONDUIT: use custom namespace to avoid symbol collisions
+// ---------------------------------------------------------------------------
+#define RAPIDJSON_NAMESPACE conduit_rapidjson
 #endif
 #ifndef RAPIDJSON_NAMESPACE_BEGIN
 #define RAPIDJSON_NAMESPACE_BEGIN namespace RAPIDJSON_NAMESPACE {
@@ -653,5 +667,16 @@ enum Type {
 };
 
 RAPIDJSON_NAMESPACE_END
+
+//----------------------------------------------------------------------------
+// MOD FOR CONDUIT: ignore clang macro warning for rapidjson
+// ---------------------------------------------------------------------------
+//---------------------------------------------------------------------------//
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+//---------------------------------------------------------------------------//
+
+
 
 #endif // RAPIDJSON_RAPIDJSON_H_

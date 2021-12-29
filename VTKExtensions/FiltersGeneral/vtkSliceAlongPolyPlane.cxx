@@ -20,6 +20,7 @@
 #include "vtkCleanPolyData.h"
 #include "vtkCompositeDataIterator.h"
 #include "vtkCutter.h"
+#include "vtkDataObjectTree.h"
 #include "vtkDataSetSurfaceFilter.h"
 #include "vtkFloatArray.h"
 #include "vtkInformation.h"
@@ -44,10 +45,10 @@
 #include <iostream>
 #include <list>
 
-vtkStandardNewMacro(vtkSliceAlongPolyPlane)
+vtkStandardNewMacro(vtkSliceAlongPolyPlane);
 
-  //----------------------------------------------------------------------------
-  void vtkSliceAlongPolyPlane::PrintSelf(ostream& os, vtkIndent indent)
+//----------------------------------------------------------------------------
+void vtkSliceAlongPolyPlane::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
   os << indent << "Tolerance: " << this->Tolerance << endl;
@@ -61,9 +62,7 @@ vtkSliceAlongPolyPlane::vtkSliceAlongPolyPlane()
 }
 
 //----------------------------------------------------------------------------
-vtkSliceAlongPolyPlane::~vtkSliceAlongPolyPlane()
-{
-}
+vtkSliceAlongPolyPlane::~vtkSliceAlongPolyPlane() = default;
 
 //----------------------------------------------------------------------------
 int vtkSliceAlongPolyPlane::RequestDataObject(
@@ -71,19 +70,20 @@ int vtkSliceAlongPolyPlane::RequestDataObject(
 {
   // If input is vtkCompositeDataSet, output will be a vtkMultiBlockDataSet
   // otherwise it will be a vtkPolyData.
-  vtkDataObject* inputDO = vtkDataObject::GetData(inputVector[0], 0);
-  if (vtkCompositeDataSet::SafeDownCast(inputDO))
+  if (auto inputDT = vtkDataObjectTree::GetData(inputVector[0], 0))
   {
-    if (vtkMultiBlockDataSet::GetData(outputVector, 0) == NULL)
+    auto output = vtkDataObject::GetData(outputVector, 0);
+    if (output == nullptr || !output->IsA(inputDT->GetClassName()))
     {
-      vtkNew<vtkMultiBlockDataSet> output;
-      outputVector->GetInformationObject(0)->Set(vtkDataObject::DATA_OBJECT(), output.GetPointer());
+      auto clone = inputDT->NewInstance();
+      outputVector->GetInformationObject(0)->Set(vtkDataObject::DATA_OBJECT(), clone);
+      clone->FastDelete();
     }
     return 1;
   }
   else if (vtkDataSet::GetData(inputVector[0], 0))
   {
-    if (vtkPolyData::GetData(outputVector, 0) == NULL)
+    if (vtkPolyData::GetData(outputVector, 0) == nullptr)
     {
       vtkNew<vtkPolyData> output;
       outputVector->GetInformationObject(0)->Set(vtkDataObject::DATA_OBJECT(), output.GetPointer());
@@ -247,9 +247,9 @@ void vtkSliceAlongPolyPlane::CleanPolyLine(vtkPolyData* input, vtkPolyData* outp
   output->ShallowCopy(input);
 
   // remove other cell types that we don't care about.
-  output->SetVerts(NULL);
-  output->SetPolys(NULL);
-  output->SetVerts(NULL);
+  output->SetVerts(nullptr);
+  output->SetPolys(nullptr);
+  output->SetVerts(nullptr);
 
   vtkMultiProcessController* controller = vtkMultiProcessController::GetGlobalController();
   if (controller && controller->GetNumberOfProcesses() > 1)
@@ -283,7 +283,7 @@ int vtkSliceAlongPolyPlane::RequestData(vtkInformation* vtkNotUsed(request),
   vtkNew<vtkPolyData> polyLinePD;
   this->CleanPolyLine(vtkPolyData::GetData(inputVector[1], 0), polyLinePD.GetPointer());
 
-  if (vtkPolyLine::SafeDownCast(polyLinePD->GetCell(0)) == NULL)
+  if (vtkPolyLine::SafeDownCast(polyLinePD->GetCell(0)) == nullptr)
   {
     vtkErrorMacro(<< " First cell in input polydata is not a vtkPolyLine.");
     return 0;
@@ -340,7 +340,7 @@ bool vtkSliceAlongPolyPlane::Execute(
   cutter->Update();
 
   vtkDataSet* cutterOutput = vtkDataSet::SafeDownCast(cutter->GetOutputDataObject(0));
-  if (cutterOutput == NULL || cutterOutput->GetNumberOfPoints() == 0)
+  if (cutterOutput == nullptr || cutterOutput->GetNumberOfPoints() == 0)
   {
     // shortcut if the cut produces an empty dataset.
     return 1;
@@ -381,7 +381,9 @@ bool vtkSliceAlongPolyPlane::Execute(
   threshold->SetInputData(combinationPolyData.GetPointer());
   threshold->SetInputArrayToProcess(
     0, 0, 0, vtkDataObject::FIELD_ASSOCIATION_POINTS, "vtkValidPointMaskArrayName");
-  threshold->ThresholdBetween(0.5, 1.5);
+  threshold->SetThresholdFunction(vtkThreshold::THRESHOLD_BETWEEN);
+  threshold->SetLowerThreshold(0.5);
+  threshold->SetUpperThreshold(1.5);
   threshold->Update();
 
   vtkNew<vtkDataSetSurfaceFilter> toPolyData;

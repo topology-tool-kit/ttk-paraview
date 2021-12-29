@@ -75,15 +75,16 @@ class VTKFILTERSGENERAL_EXPORT vtkDiscreteMarchingCubes : public vtkMarchingCube
 public:
   static vtkDiscreteMarchingCubes* New();
   vtkTypeMacro(vtkDiscreteMarchingCubes, vtkMarchingCubes);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Set/Get the computation of neighbouring voxel values.
    */
   vtkSetMacro(ComputeAdjacentScalars, vtkTypeBool);
   vtkGetMacro(ComputeAdjacentScalars, vtkTypeBool);
   vtkBooleanMacro(ComputeAdjacentScalars, vtkTypeBool);
-  //@}
+  ///@}
 
 protected:
   vtkDiscreteMarchingCubes();

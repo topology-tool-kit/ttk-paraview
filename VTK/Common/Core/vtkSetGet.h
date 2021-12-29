@@ -31,7 +31,6 @@
 #include "vtkCompiler.h"
 #include "vtkLegacy.h"
 #include "vtkSystemIncludes.h"
-#include <math.h>
 #include <type_traits> // for std::underlying type.
 #include <typeinfo>
 
@@ -177,6 +176,10 @@
 #define vtkSetStringMacro(name)                                                                    \
   virtual void Set##name(const char* _arg) vtkSetStringBodyMacro(name, _arg)
 
+// Set a file path, like vtkSetStringMacro but with VTK_FILEPATH hint.
+#define vtkSetFilePathMacro(name)                                                                  \
+  virtual void Set##name(VTK_FILEPATH const char* _arg) vtkSetStringBodyMacro(name, _arg)
+
 // This macro defines a body of set string macro. It can be used either in
 // the header file using vtkSetStringMacro or in the implementation.
 #define vtkSetStringBodyMacro(name, _arg)                                                          \
@@ -214,12 +217,49 @@
 // Get character string.  Creates member Get"name"()
 // (e.g., char *GetFilename());
 //
-#define vtkGetStringMacro(name)                                                                    \
-  virtual char* Get##name()                                                                        \
+#define vtkGetStringMacro(name) virtual char* Get##name() vtkGetStringBodyMacro(name)
+
+// Get a file path, like vtkGetStringMacro but with VTK_FILEPATH hint.
+#define vtkGetFilePathMacro(name) virtual VTK_FILEPATH char* Get##name() vtkGetStringBodyMacro(name)
+
+// This macro defines a body of get string macro. It can be used either in
+// the header file using vtkGetStringMacro or in the implementation.
+#define vtkGetStringBodyMacro(name)                                                                \
   {                                                                                                \
     vtkDebugMacro(<< this->GetClassName() << " (" << this << "): returning " << #name " of "       \
                   << (this->name ? this->name : "(null)"));                                        \
     return this->name;                                                                             \
+  }
+
+//
+// Set std::string. Creates a member Set"name"()
+//
+#define vtkSetStdStringFromCharMacro(name)                                                         \
+  virtual void Set##name(const char* arg)                                                          \
+  {                                                                                                \
+    vtkDebugMacro(<< this->GetClassName() << " (" << this << "): setting " << #name " to "         \
+                  << (arg ? arg : "(null)"));                                                      \
+    if (arg)                                                                                       \
+    {                                                                                              \
+      this->name = arg;                                                                            \
+    }                                                                                              \
+    else                                                                                           \
+    {                                                                                              \
+      this->name.clear();                                                                          \
+    }                                                                                              \
+    this->Modified();                                                                              \
+  }
+
+//
+// Get character string.  Creates member Get"name"()
+// (e.g., char *GetFilename());
+//
+#define vtkGetCharFromStdStringMacro(name)                                                         \
+  virtual const char* Get##name()                                                                  \
+  {                                                                                                \
+    vtkDebugMacro(<< this->GetClassName() << " (" << this << "): returning " << #name " of "       \
+                  << this->name);                                                                  \
+    return this->name.c_str();                                                                     \
   }
 
 //
@@ -734,7 +774,11 @@ extern VTKCOMMONCORE_EXPORT void vtkOutputWindowDisplayDebugText(
 // Don't use it as a way to shut up the compiler while you take your
 // sweet time getting around to implementing the method.
 //
+#ifdef __VTK_WRAP__
+#define vtkNotUsed(x) x
+#else
 #define vtkNotUsed(x)
+#endif
 
 //
 // This macro is used for functions which may not be used in a translation unit

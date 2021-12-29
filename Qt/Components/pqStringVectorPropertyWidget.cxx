@@ -43,10 +43,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkSMProperty.h"
 #include "vtkSMPropertyHelper.h"
 #include "vtkSMProxy.h"
-#include "vtkSMSILDomain.h"
 #include "vtkSMStringListDomain.h"
 #include "vtkSMStringVectorProperty.h"
-#include "vtkSMSubsetInclusionLatticeDomain.h"
 
 #include "pqApplicationCore.h"
 #include "pqArrayListDomain.h"
@@ -57,15 +55,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqFileChooserWidget.h"
 #include "pqLineEdit.h"
 #include "pqPopOutWidget.h"
-#include "pqProxySILModel.h"
-#include "pqSILModel.h"
-#include "pqSILWidget.h"
+#include "pqQtDeprecated.h"
 #include "pqSMAdaptor.h"
 #include "pqScalarValueListPropertyWidget.h"
 #include "pqServerManagerModel.h"
 #include "pqSignalAdaptors.h"
-#include "pqSubsetInclusionLatticeTreeModel.h"
-#include "pqSubsetInclusionLatticeWidget.h"
 #include "pqTextEdit.h"
 #include "pqTreeView.h"
 #include "pqTreeViewSelectionHelper.h"
@@ -85,6 +79,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cassert>
 
 #if VTK_MODULE_ENABLE_ParaView_pqPython
+#include "pqPythonScriptEditor.h"
 #include "pqPythonSyntaxHighlighter.h"
 #endif
 
@@ -126,13 +121,11 @@ pqStringVectorPropertyWidget::pqStringVectorPropertyWidget(
   }
 
   // find the domain(s)
-  vtkSMEnumerationDomain* enumerationDomain = 0;
-  vtkSMFileListDomain* fileListDomain = 0;
-  vtkSMArrayListDomain* arrayListDomain = 0;
-  vtkSMStringListDomain* stringListDomain = 0;
-  vtkSMSILDomain* silDomain = 0;
-  vtkSMArraySelectionDomain* arraySelectionDomain = 0;
-  vtkSMSubsetInclusionLatticeDomain* silDomain2 = nullptr;
+  vtkSMEnumerationDomain* enumerationDomain = nullptr;
+  vtkSMFileListDomain* fileListDomain = nullptr;
+  vtkSMArrayListDomain* arrayListDomain = nullptr;
+  vtkSMStringListDomain* stringListDomain = nullptr;
+  vtkSMArraySelectionDomain* arraySelectionDomain = nullptr;
 
   vtkSMDomainIterator* domainIter = svp->NewDomainIterator();
   for (domainIter->Begin(); !domainIter->IsAtEnd(); domainIter->Next())
@@ -143,8 +136,6 @@ pqStringVectorPropertyWidget::pqStringVectorPropertyWidget(
     fileListDomain = fileListDomain ? fileListDomain : vtkSMFileListDomain::SafeDownCast(domain);
     arrayListDomain =
       arrayListDomain ? arrayListDomain : vtkSMArrayListDomain::SafeDownCast(domain);
-    silDomain = silDomain ? silDomain : vtkSMSILDomain::SafeDownCast(domain);
-    silDomain2 = silDomain2 ? silDomain2 : vtkSMSubsetInclusionLatticeDomain::SafeDownCast(domain);
     arraySelectionDomain =
       arraySelectionDomain ? arraySelectionDomain : vtkSMArraySelectionDomain::SafeDownCast(domain);
     stringListDomain =
@@ -182,52 +173,15 @@ pqStringVectorPropertyWidget::pqStringVectorPropertyWidget(
       this->setChangeAvailableAsChangeFinished(true);
     }
 
-    // If there's a hint on the smproperty indicating that this smproperty expects a
-    // directory name, then, we will use the directory mode.
-
-    if (hints && hints->FindNestedElementByName("UseDirectoryName"))
-    {
-      chooser->setUseDirectoryMode(true);
-    }
-
-    // If there's a hint on the smproperty indicating that this smproperty accepts
-    // any file name, then, we will use the AnyFile mode.
-
-    if (hints && hints->FindNestedElementByName("AcceptAnyFile"))
-    {
-      chooser->setAcceptAnyFile(true);
-    }
-
-    QStringList supportedExtensions;
-    for (unsigned int cc = 0, max = (hints ? hints->GetNumberOfNestedElements() : 0); cc < max;
-         ++cc)
-    {
-      vtkPVXMLElement* childXML = hints->GetNestedElement(cc);
-      if (childXML && childXML->GetName() && strcmp(childXML->GetName(), "FileChooser") == 0)
-      {
-        const char* extensions = childXML->GetAttribute("extensions");
-        const char* file_description = childXML->GetAttribute("file_description");
-        if (!extensions || !file_description)
-        {
-          vtkVLogF(PARAVIEW_LOG_APPLICATION_VERBOSITY(), "incomplete `FileChooser` hint skipped.");
-        }
-        else
-        {
-          QStringList lextensions =
-            QString(extensions).split(QRegExp("\\s+"), QString::SkipEmptyParts);
-          supportedExtensions.push_back(
-            QString("%1 (*.%2)").arg(file_description).arg(lextensions.join(" *.")));
-        }
-      }
-    }
-    if (supportedExtensions.size() > 0)
-    {
-      vtkVLogF(PARAVIEW_LOG_APPLICATION_VERBOSITY(), "using extensions `%s`",
-        supportedExtensions.join(", ").toLocal8Bit().data());
-      chooser->setExtension(supportedExtensions.join(";;"));
-    }
-
-    if (hints == nullptr || hints->FindNestedElementByName("BrowseLocalFileSystem") == nullptr)
+    // process hints.
+    bool directoryMode, anyFile, browseLocalFileSystem;
+    QString filter;
+    pqStringVectorPropertyWidget::processFileChooserHints(
+      hints, directoryMode, anyFile, filter, browseLocalFileSystem);
+    chooser->setUseDirectoryMode(directoryMode);
+    chooser->setAcceptAnyFile(anyFile);
+    chooser->setExtension(filter);
+    if (!browseLocalFileSystem)
     {
       pqServerManagerModel* smm = pqApplicationCore::instance()->getServerManagerModel();
       chooser->setServer(smm->findServer(smProxy->GetSession()));
@@ -276,41 +230,6 @@ pqStringVectorPropertyWidget::pqStringVectorPropertyWidget(
       selectorWidget->setIconType(property_name, aswhints->GetAttribute("icon_type"));
     }
     this->addPropertyLink(selectorWidget, property_name, SIGNAL(widgetModified()), smProperty);
-    this->setChangeAvailableAsChangeFinished(true);
-  }
-  else if (silDomain)
-  {
-    vtkVLogF(PARAVIEW_LOG_APPLICATION_VERBOSITY(), "use `pqSILWidget`.");
-    pqSILWidget* tree = new pqSILWidget(silDomain->GetSubTree(), this);
-    tree->setObjectName("BlockSelectionWidget");
-
-    pqSILModel* silModel = new pqSILModel(tree);
-
-    // FIXME: This needs to be automated, we want the model to automatically
-    // fetch the SIL when the domain is updated.
-    silModel->setSILDomain(silDomain);
-    silModel->update();
-    tree->setModel(silModel);
-
-    this->addPropertyLink(tree->activeModel(), "values", SIGNAL(valuesChanged()), smProperty);
-    this->setChangeAvailableAsChangeFinished(true);
-
-    // hide widget label
-    setShowLabel(false);
-
-    vbox->addWidget(tree);
-  }
-  else if (silDomain2)
-  {
-    this->setShowLabel(false);
-
-    vtkVLogF(PARAVIEW_LOG_APPLICATION_VERBOSITY(), "use `pqSubsetInclusionLatticeWidget`.");
-    auto model = new pqSubsetInclusionLatticeTreeModel(this);
-
-    model->setSubsetInclusionLattice(silDomain2->GetSIL());
-    pqSubsetInclusionLatticeWidget* silWidget = new pqSubsetInclusionLatticeWidget(model, this);
-    vbox->addWidget(silWidget);
-    this->addPropertyLink(model, "selection", SIGNAL(selectionModified()), smProperty);
     this->setChangeAvailableAsChangeFinished(true);
   }
   else if (arraySelectionDomain)
@@ -383,11 +302,20 @@ pqStringVectorPropertyWidget::pqStringVectorPropertyWidget(
     {
 #if VTK_MODULE_ENABLE_ParaView_pqPython
       vtkVLogF(PARAVIEW_LOG_APPLICATION_VERBOSITY(), "supports Python syntax highlighter.");
-      new pqPythonSyntaxHighlighter(textEdit, textEdit);
+      auto highlighter = new pqPythonSyntaxHighlighter(textEdit, *textEdit);
+      highlighter->ConnectHighligter();
+
+      QPushButton* pushButton = new QPushButton(this);
+      pushButton->setIcon(this->style()->standardIcon(QStyle::SP_TitleBarMaxButton));
+      this->connect(pushButton, &QPushButton::clicked, [textEdit]() {
+        pqPythonScriptEditor::linkTo(textEdit);
+        pqPythonScriptEditor::bringFront();
+      });
+      hbox->addWidget(pushButton);
+      vbox->addWidget(textEdit);
 #else
       vtkVLogF(
         PARAVIEW_LOG_APPLICATION_VERBOSITY(), "Python not enabled, no syntax highlighter support.");
-#endif
       pqPopOutWidget* popOut = new pqPopOutWidget(textEdit,
         QString("%1 - %2").arg(smProperty->GetParent()->GetXMLLabel(), smProperty->GetXMLLabel()),
         this);
@@ -395,6 +323,7 @@ pqStringVectorPropertyWidget::pqStringVectorPropertyWidget(
       popOut->setPopOutButton(popToDialogButton);
       hbox->addWidget(popToDialogButton);
       vbox->addWidget(popOut);
+#endif
     }
     else
     {
@@ -456,9 +385,7 @@ pqStringVectorPropertyWidget::pqStringVectorPropertyWidget(
 }
 
 //-----------------------------------------------------------------------------
-pqStringVectorPropertyWidget::~pqStringVectorPropertyWidget()
-{
-}
+pqStringVectorPropertyWidget::~pqStringVectorPropertyWidget() = default;
 
 //-----------------------------------------------------------------------------
 pqPropertyWidget* pqStringVectorPropertyWidget::createWidget(
@@ -469,4 +396,49 @@ pqPropertyWidget* pqStringVectorPropertyWidget::createWidget(
     return new pqArraySelectorPropertyWidget(svp, smproxy, parent);
   }
   return new pqStringVectorPropertyWidget(svp, smproxy, parent);
+}
+
+//-----------------------------------------------------------------------------
+void pqStringVectorPropertyWidget::processFileChooserHints(vtkPVXMLElement* hints,
+  bool& directoryMode, bool& anyFile, QString& filter, bool& browseLocalFileSystem)
+{
+  // If there's a hint on the smproperty indicating that this smproperty expects a
+  // directory name, then, we will use the directory mode.
+  directoryMode = (hints && hints->FindNestedElementByName("UseDirectoryName"));
+
+  // If there's a hint on the smproperty indicating that this smproperty accepts
+  // any file name, then, we will use the AnyFile mode.
+  anyFile = (hints && hints->FindNestedElementByName("AcceptAnyFile"));
+
+  // For browsing of local file system.
+  browseLocalFileSystem = (hints && hints->FindNestedElementByName("BrowseLocalFileSystem"));
+
+  QStringList supportedExtensions;
+  for (unsigned int cc = 0, max = (hints ? hints->GetNumberOfNestedElements() : 0); cc < max; ++cc)
+  {
+    vtkPVXMLElement* childXML = hints->GetNestedElement(cc);
+    if (childXML && childXML->GetName() && strcmp(childXML->GetName(), "FileChooser") == 0)
+    {
+      const char* extensions = childXML->GetAttribute("extensions");
+      const char* file_description = childXML->GetAttribute("file_description");
+      if (!extensions || !file_description)
+      {
+        vtkVLogF(PARAVIEW_LOG_APPLICATION_VERBOSITY(), "incomplete `FileChooser` hint skipped.");
+      }
+      else
+      {
+        QStringList lextensions =
+          QString(extensions).split(QRegExp("\\s+"), PV_QT_SKIP_EMPTY_PARTS);
+        supportedExtensions.push_back(
+          QString("%1 (*.%2)").arg(file_description).arg(lextensions.join(" *.")));
+      }
+    }
+  }
+
+  if (!supportedExtensions.empty())
+  {
+    vtkVLogF(PARAVIEW_LOG_APPLICATION_VERBOSITY(), "using extensions `%s`",
+      supportedExtensions.join(", ").toUtf8().data());
+    filter = supportedExtensions.join(";;");
+  }
 }

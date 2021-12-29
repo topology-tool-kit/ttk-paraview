@@ -56,14 +56,12 @@ pqPropertyLinksConnection::pqPropertyLinksConnection(QObject* qobject, const cha
   if (this->ObjectQt && !this->SignalQt.isEmpty())
   {
     QObject::connect(
-      this->ObjectQt, this->SignalQt.toLocal8Bit().data(), this, SIGNAL(qtpropertyModified()));
+      this->ObjectQt, this->SignalQt.toUtf8().data(), this, SIGNAL(qtpropertyModified()));
   }
 }
 
 //-----------------------------------------------------------------------------
-pqPropertyLinksConnection::~pqPropertyLinksConnection()
-{
-}
+pqPropertyLinksConnection::~pqPropertyLinksConnection() = default;
 
 //-----------------------------------------------------------------------------
 void pqPropertyLinksConnection::setUseUncheckedProperties(bool useUnchecked)
@@ -96,7 +94,7 @@ bool pqPropertyLinksConnection::operator==(const pqPropertyLinksConnection& othe
 //-----------------------------------------------------------------------------
 QVariant pqPropertyLinksConnection::currentQtValue() const
 {
-  return this->ObjectQt->property(this->PropertyQt.toLocal8Bit().data());
+  return this->ObjectQt->property(this->PropertyQt.toUtf8().data());
 }
 
 //-----------------------------------------------------------------------------
@@ -135,7 +133,7 @@ QVariant pqPropertyLinksConnection::currentServerManagerValue(bool use_unchecked
     case pqSMAdaptor::SELECTION:
       if (this->IndexSM == -1)
       {
-        QList<QList<QVariant> > newVal =
+        QList<QList<QVariant>> newVal =
           pqSMAdaptor::getSelectionProperty(this->PropertySM, value_type);
         currentSMValue.setValue(newVal);
       }
@@ -152,7 +150,6 @@ QVariant pqPropertyLinksConnection::currentServerManagerValue(bool use_unchecked
 
     case pqSMAdaptor::MULTIPLE_ELEMENTS:
     case pqSMAdaptor::COMPOSITE_TREE:
-    case pqSMAdaptor::SIL:
       if (this->IndexSM == -1)
       {
         currentSMValue = pqSMAdaptor::getMultipleElementProperty(this->PropertySM, value_type);
@@ -174,7 +171,7 @@ QVariant pqPropertyLinksConnection::currentServerManagerValue(bool use_unchecked
 //-----------------------------------------------------------------------------
 void pqPropertyLinksConnection::setQtValue(const QVariant& value)
 {
-  this->ObjectQt->setProperty(this->PropertyQt.toLocal8Bit().data(), value);
+  this->ObjectQt->setProperty(this->PropertyQt.toUtf8().data(), value);
 }
 
 //-----------------------------------------------------------------------------
@@ -222,7 +219,7 @@ void pqPropertyLinksConnection::setServerManagerValue(bool use_unchecked, const 
     case pqSMAdaptor::SELECTION:
       if (this->IndexSM == -1)
       {
-        QList<QList<QVariant> > theProp = value.value<QList<QList<QVariant> > >();
+        QList<QList<QVariant>> theProp = value.value<QList<QList<QVariant>>>();
         pqSMAdaptor::setSelectionProperty(this->PropertySM, theProp, value_type);
       }
       else
@@ -237,7 +234,6 @@ void pqPropertyLinksConnection::setServerManagerValue(bool use_unchecked, const 
       }
       break;
 
-    case pqSMAdaptor::SIL:
     case pqSMAdaptor::MULTIPLE_ELEMENTS:
     case pqSMAdaptor::COMPOSITE_TREE:
       if (this->IndexSM == -1)

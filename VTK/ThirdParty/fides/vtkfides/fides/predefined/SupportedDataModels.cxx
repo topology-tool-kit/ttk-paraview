@@ -17,12 +17,13 @@ namespace predefined
 
 DataModelTypes ConvertDataModelToEnum(std::string str)
 {
-  const std::map<std::string, DataModelTypes> enumStrings {
-    {"uniform", DataModelTypes::UNIFORM},
-    {"rectilinear", DataModelTypes::RECTILINEAR},
-    {"unstructured", DataModelTypes::UNSTRUCTURED},
-    {"unstructured_single", DataModelTypes::UNSTRUCTURED_SINGLE},
-    {"xgc", DataModelTypes::XGC}
+  const std::map<std::string, DataModelTypes> enumStrings{
+    { "uniform", DataModelTypes::UNIFORM },
+    { "rectilinear", DataModelTypes::RECTILINEAR },
+    { "unstructured", DataModelTypes::UNSTRUCTURED },
+    { "unstructured_single", DataModelTypes::UNSTRUCTURED_SINGLE },
+    { "xgc", DataModelTypes::XGC },
+    { "gtc", DataModelTypes::GTC }
   };
   auto it = enumStrings.find(str);
   return it == enumStrings.end() ? DataModelTypes::UNSUPPORTED : it->second;

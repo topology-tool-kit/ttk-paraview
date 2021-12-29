@@ -27,7 +27,7 @@
 
 #include "vtkCommonCoreModule.h" // For export macro
 #include "vtkObject.h"
-#include <vtksys/DynamicLoader.hxx>
+#include <vtksys/DynamicLoader.hxx> // Implementation
 
 typedef vtksys::DynamicLoader::LibraryHandle vtkLibHandle;
 typedef vtksys::DynamicLoader::SymbolPointer vtkSymbolPointer;
@@ -37,14 +37,15 @@ class VTKCOMMONCORE_EXPORT vtkDynamicLoader : public vtkObject
 public:
   static vtkDynamicLoader* New();
   vtkTypeMacro(vtkDynamicLoader, vtkObject);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /**
    * Load a dynamic library into the current process.
    * The returned vtkLibHandle can be used to access the symbols in the
    * library.
    */
-  static vtkLibHandle OpenLibrary(const char*);
-  static vtkLibHandle OpenLibrary(const char*, int);
+  static vtkLibHandle OpenLibrary(VTK_FILEPATH const char*);
+  static vtkLibHandle OpenLibrary(VTK_FILEPATH const char*, int);
 
   /**
    * Attempt to detach a dynamic library from the
@@ -82,4 +83,3 @@ private:
 };
 
 #endif
-// VTK-HeaderTest-Exclude: vtkDynamicLoader.h

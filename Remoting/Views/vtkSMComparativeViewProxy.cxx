@@ -23,7 +23,7 @@
 #include "vtkSMProxyManager.h"
 #include "vtkSMUndoStackBuilder.h"
 
-#include <assert.h>
+#include <cassert>
 
 #define GET_PV_COMPARATIVE_VIEW() vtkPVComparativeView::SafeDownCast(this->GetClientSideObject())
 
@@ -36,9 +36,7 @@ vtkSMComparativeViewProxy::vtkSMComparativeViewProxy()
 }
 
 //----------------------------------------------------------------------------
-vtkSMComparativeViewProxy::~vtkSMComparativeViewProxy()
-{
-}
+vtkSMComparativeViewProxy::~vtkSMComparativeViewProxy() = default;
 
 //----------------------------------------------------------------------------
 void vtkSMComparativeViewProxy::Update()
@@ -94,9 +92,8 @@ void vtkSMComparativeViewProxy::CreateVTKObjects()
     return;
   }
 
-  GET_PV_COMPARATIVE_VIEW()
-    ->AddObserver(
-      vtkCommand::ConfigureEvent, this, &vtkSMComparativeViewProxy::InvokeConfigureEvent);
+  GET_PV_COMPARATIVE_VIEW()->AddObserver(
+    vtkCommand::ConfigureEvent, this, &vtkSMComparativeViewProxy::InvokeConfigureEvent);
 
   GET_PV_COMPARATIVE_VIEW()->Initialize(rootView);
 }
@@ -116,7 +113,7 @@ vtkSMViewProxy* vtkSMComparativeViewProxy::GetRootView()
 //----------------------------------------------------------------------------
 void vtkSMComparativeViewProxy::MarkDirty(vtkSMProxy* modifiedProxy)
 {
-  if (vtkSMViewProxy::SafeDownCast(modifiedProxy) == NULL)
+  if (vtkSMViewProxy::SafeDownCast(modifiedProxy) == nullptr)
   {
     // cout << "vtkSMComparativeViewProxy::MarkDirty == " << modifiedProxy << endl;
     // The representation that gets added to this view is a consumer of it's
@@ -172,7 +169,7 @@ bool vtkSMComparativeViewProxy::MakeRenderWindowInteractor(bool quiet)
 
   views->InitTraversal();
   for (vtkSMViewProxy* view = vtkSMViewProxy::SafeDownCast(views->GetNextItemAsObject());
-       view != NULL; view = vtkSMViewProxy::SafeDownCast(views->GetNextItemAsObject()))
+       view != nullptr; view = vtkSMViewProxy::SafeDownCast(views->GetNextItemAsObject()))
   {
     flag = view->MakeRenderWindowInteractor(quiet) && flag;
   }

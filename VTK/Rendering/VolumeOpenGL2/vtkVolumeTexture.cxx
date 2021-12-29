@@ -437,7 +437,7 @@ bool vtkVolumeTexture::LoadTexture(int const interpolation, VolumeBlock* volBloc
     {
       fRange[i] = static_cast<float>(r[i]);
     }
-    this->GetScaleAndBias(VTK_FLOAT, fRange, this->CoordsScale[0], this->CoordsBias[0]);
+    vtkVolumeTexture::GetScaleAndBias(VTK_FLOAT, fRange, this->CoordsScale[0], this->CoordsBias[0]);
     vtkDataArray* yCoords = rgBlock->GetYCoordinates();
     this->CoordsTexSizes[1] = yCoords->GetNumberOfTuples();
     r = yCoords->GetFiniteRange(0);
@@ -445,7 +445,7 @@ bool vtkVolumeTexture::LoadTexture(int const interpolation, VolumeBlock* volBloc
     {
       fRange[i] = static_cast<float>(r[i]);
     }
-    this->GetScaleAndBias(VTK_FLOAT, fRange, this->CoordsScale[1], this->CoordsBias[1]);
+    vtkVolumeTexture::GetScaleAndBias(VTK_FLOAT, fRange, this->CoordsScale[1], this->CoordsBias[1]);
     vtkDataArray* zCoords = rgBlock->GetZCoordinates();
     this->CoordsTexSizes[2] = zCoords->GetNumberOfTuples();
     r = zCoords->GetFiniteRange(0);
@@ -453,7 +453,7 @@ bool vtkVolumeTexture::LoadTexture(int const interpolation, VolumeBlock* volBloc
     {
       fRange[i] = static_cast<float>(r[i]);
     }
-    this->GetScaleAndBias(VTK_FLOAT, fRange, this->CoordsScale[2], this->CoordsBias[2]);
+    vtkVolumeTexture::GetScaleAndBias(VTK_FLOAT, fRange, this->CoordsScale[2], this->CoordsBias[2]);
 
     vtkNew<vtkFloatArray> coordsArray;
     coordsArray->SetNumberOfComponents(3);
@@ -505,27 +505,44 @@ bool vtkVolumeTexture::LoadTexture(int const interpolation, VolumeBlock* volBloc
     if (blankPoints)
     {
       const auto blankPointsRange = vtk::DataArrayValueRange<1>(ugPointBlankArray);
-      for (auto blankPtId = 0; blankPtId < numPts; ++blankPtId)
+      int d0 = (blockSize[0] - this->IsCellData) * (blockSize[1] - this->IsCellData);
+      int ptId, cellId;
+      for (int k = 0; k < blockSize[2]; ++k)
       {
-        blankingArrayRange[blankPtId][0] = blankPointsRange[blankPtId];
+        for (int j = 0; j < blockSize[1]; ++j)
+        {
+          for (int i = 0; i < blockSize[0]; ++i)
+          {
+            cellId = k * d0 + j * (blockSize[0] - this->IsCellData) + i;
+            ptId = k * (blockSize[0]) * (blockSize[1]) + j * (blockSize[0]) + i;
+            blankingArrayRange[cellId][0] = blankPointsRange[ptId];
+          }
+        }
       }
     }
 
     if (blankCells)
     {
       int comp = blankPoints ? 1 : 0;
-      int d0 = blockSize[0] * blockSize[1];
-      int d01 = (blockSize[0] - 1) * (blockSize[1] - 1);
+      int d0 = (blockSize[0] - 1) * (blockSize[1] - 1);
+      int d01 = (blockSize[0] - this->IsCellData) * (blockSize[1] - this->IsCellData);
       const auto blankCellsRange = vtk::DataArrayValueRange<1>(ugCellBlankArray);
       int ptId, cellId;
-      for (int k = 0; k < blockSize[2] - 1; ++k)
+      for (int k = 0; k < blockSize[2] - this->IsCellData; ++k)
       {
-        for (int j = 0; j < blockSize[1] - 1; ++j)
+        for (int j = 0; j < blockSize[1] - this->IsCellData; ++j)
         {
-          for (int i = 0; i < blockSize[0] - 1; ++i)
+          for (int i = 0; i < blockSize[0] - this->IsCellData; ++i)
           {
-            ptId = k * d0 + j * blockSize[0] + i;
-            cellId = k * d01 + j * (blockSize[0] - 1) + i;
+            ptId = k * d01 + j * (blockSize[0] - this->IsCellData) + i;
+            cellId = k * d0 + j * (blockSize[0] - 1) + i;
+            if (!this->IsCellData)
+            {
+              auto kc = (k >= (blockSize[2] - 1) ? blockSize[2] - 2 : k);
+              auto jc = (j >= (blockSize[1] - 1) ? blockSize[1] - 2 : j);
+              auto ic = (i >= (blockSize[0] - 1) ? blockSize[0] - 2 : i);
+              cellId = kc * d0 + jc * (blockSize[0] - 1) + ic;
+            }
             blankingArrayRange[ptId][comp] = blankCellsRange[cellId];
           }
         }

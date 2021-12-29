@@ -15,6 +15,7 @@
 #include "vtkPEnSightReader.h"
 
 #include "vtkDataArrayCollection.h"
+#include "vtkExtentTranslator.h"
 #include "vtkFloatArray.h"
 #include "vtkIdList.h"
 #include "vtkIdListCollection.h"
@@ -30,6 +31,7 @@
 #include "vtkRectilinearGrid.h"
 #include "vtkSmartPointer.h"
 #include "vtkStreamingDemandDrivenPipeline.h"
+#include "vtkStructuredData.h"
 #include "vtkStructuredGrid.h"
 #include "vtkStructuredPoints.h"
 #include "vtkUnsignedCharArray.h"
@@ -60,24 +62,24 @@ void cleanup(vtkPEnSightReaderCellIdsType* foo)
 //----------------------------------------------------------------------------
 vtkPEnSightReader::vtkPEnSightReader()
 {
-  this->MeasuredFileName = NULL;
-  this->MatchFileName = NULL;
+  this->MeasuredFileName = nullptr;
+  this->MatchFileName = nullptr;
 
-  this->IS = NULL;
+  this->IS = nullptr;
 
   this->VariableMode = -1;
 
   this->UnstructuredPartIds = vtkIdList::New();
   this->StructuredPartIds = vtkIdList::New();
-  this->CellIds = NULL;
+  this->CellIds = nullptr;
 
-  this->PointIds = NULL;
+  this->PointIds = nullptr;
 
-  this->VariableFileNames = NULL;
-  this->ComplexVariableFileNames = NULL;
+  this->VariableFileNames = nullptr;
+  this->ComplexVariableFileNames = nullptr;
 
-  this->VariableDescriptions = NULL;
-  this->ComplexVariableDescriptions = NULL;
+  this->VariableDescriptions = nullptr;
+  this->ComplexVariableDescriptions = nullptr;
 
   this->VariableTimeSetIds = vtkIdList::New();
   this->ComplexVariableTimeSetIds = vtkIdList::New();
@@ -128,25 +130,25 @@ vtkPEnSightReader::~vtkPEnSightReader()
   {
     cleanup(this->CellIds);
     delete this->CellIds;
-    this->CellIds = NULL;
+    this->CellIds = nullptr;
   }
 
   if (this->PointIds)
   {
     cleanup(this->PointIds);
     delete this->PointIds;
-    this->PointIds = NULL;
+    this->PointIds = nullptr;
   }
 
   if (this->MeasuredFileName)
   {
     delete[] this->MeasuredFileName;
-    this->MeasuredFileName = NULL;
+    this->MeasuredFileName = nullptr;
   }
   if (this->MatchFileName)
   {
     delete[] this->MatchFileName;
-    this->MatchFileName = NULL;
+    this->MatchFileName = nullptr;
   }
 
   if (this->NumberOfVariables > 0)
@@ -156,7 +158,7 @@ vtkPEnSightReader::~vtkPEnSightReader()
       delete[] this->VariableFileNames[i];
     }
     delete[] this->VariableFileNames;
-    this->VariableFileNames = NULL;
+    this->VariableFileNames = nullptr;
   }
 
   if (this->NumberOfComplexVariables > 0)
@@ -166,40 +168,40 @@ vtkPEnSightReader::~vtkPEnSightReader()
       delete[] this->ComplexVariableFileNames[i];
     }
     delete[] this->ComplexVariableFileNames;
-    this->ComplexVariableFileNames = NULL;
+    this->ComplexVariableFileNames = nullptr;
   }
 
   this->UnstructuredPartIds->Delete();
-  this->UnstructuredPartIds = NULL;
+  this->UnstructuredPartIds = nullptr;
   this->StructuredPartIds->Delete();
-  this->StructuredPartIds = NULL;
+  this->StructuredPartIds = nullptr;
 
   this->VariableTimeSetIds->Delete();
-  this->VariableTimeSetIds = NULL;
+  this->VariableTimeSetIds = nullptr;
   this->ComplexVariableTimeSetIds->Delete();
-  this->ComplexVariableTimeSetIds = NULL;
+  this->ComplexVariableTimeSetIds = nullptr;
   this->VariableFileSetIds->Delete();
-  this->VariableFileSetIds = NULL;
+  this->VariableFileSetIds = nullptr;
   this->ComplexVariableFileSetIds->Delete();
-  this->ComplexVariableFileSetIds = NULL;
+  this->ComplexVariableFileSetIds = nullptr;
 
   this->TimeSetFileNameNumbers->Delete();
-  this->TimeSetFileNameNumbers = NULL;
+  this->TimeSetFileNameNumbers = nullptr;
   this->TimeSetsWithFilenameNumbers->Delete();
-  this->TimeSetsWithFilenameNumbers = NULL;
+  this->TimeSetsWithFilenameNumbers = nullptr;
   this->TimeSets->Delete();
-  this->TimeSets = NULL;
+  this->TimeSets = nullptr;
   this->FileSetFileNameNumbers->Delete();
-  this->FileSetFileNameNumbers = NULL;
+  this->FileSetFileNameNumbers = nullptr;
   this->FileSetsWithFilenameNumbers->Delete();
-  this->FileSetsWithFilenameNumbers = NULL;
+  this->FileSetsWithFilenameNumbers = nullptr;
   this->FileSetNumberOfSteps->Delete();
-  this->FileSetNumberOfSteps = NULL;
+  this->FileSetNumberOfSteps = nullptr;
 
   this->TimeSetIds->Delete();
-  this->TimeSets = NULL;
+  this->TimeSets = nullptr;
   this->FileSets->Delete();
-  this->FileSets = NULL;
+  this->FileSets = nullptr;
 
   this->ActualTimeValue = 0.0;
 }
@@ -462,7 +464,7 @@ int vtkPEnSightReader::RequestInformation(vtkInformation* vtkNotUsed(request),
       }
     }
   }
-  if (timeValues.size() > 0)
+  if (!timeValues.empty())
   {
     std::sort(timeValues.begin(), timeValues.end());
     std::vector<double> uniqueTimeValues(
@@ -497,8 +499,9 @@ int vtkPEnSightReader::ReadCaseFileGeometry(char* line)
   // There will definitely be a "model" line.  There may also be "measured"
   // and "match" lines.
   lineRead = this->ReadNextDataLine(line);
-  while (lineRead && (strncmp(line, "m", 1) == 0 || strncmp(line, "boundary:", 9) == 0 ||
-                       strncmp(line, "rigid_body:", 11) == 0))
+  while (lineRead &&
+    (strncmp(line, "m", 1) == 0 || strncmp(line, "boundary:", 9) == 0 ||
+      strncmp(line, "rigid_body:", 11) == 0))
   {
     if (strncmp(line, "model:", 6) == 0)
     {
@@ -961,7 +964,7 @@ int vtkPEnSightReader::ReadCaseFileVariable(char* line)
     {
       vtkErrorMacro("invalid VARIABLE line: " << line);
       delete this->IS;
-      this->IS = NULL;
+      this->IS = nullptr;
       return 0;
     }
     lineRead = this->ReadNextDataLine(line);
@@ -1326,7 +1329,7 @@ int vtkPEnSightReader::ReadCaseFile()
   {
     vtkErrorMacro("Unable to open file: " << sfilename.c_str());
     delete this->IS;
-    this->IS = NULL;
+    this->IS = nullptr;
     return 0;
   }
 
@@ -1335,32 +1338,32 @@ int vtkPEnSightReader::ReadCaseFile()
   for (i = 0; i < this->NumberOfVariables; i++)
   {
     delete[] this->VariableFileNames[i];
-    this->VariableFileNames[i] = NULL;
+    this->VariableFileNames[i] = nullptr;
     delete[] this->VariableDescriptions[i];
-    this->VariableDescriptions[i] = NULL;
+    this->VariableDescriptions[i] = nullptr;
   }
   delete[] this->VariableFileNames;
-  this->VariableFileNames = NULL;
+  this->VariableFileNames = nullptr;
   delete[] this->VariableDescriptions;
-  this->VariableDescriptions = NULL;
+  this->VariableDescriptions = nullptr;
   delete[] this->VariableTypes;
-  this->VariableTypes = NULL;
+  this->VariableTypes = nullptr;
 
   for (i = 0; i < this->NumberOfComplexVariables; i++)
   {
     delete[] this->ComplexVariableFileNames[2 * i];
-    this->ComplexVariableFileNames[2 * i] = NULL;
+    this->ComplexVariableFileNames[2 * i] = nullptr;
     delete[] this->ComplexVariableFileNames[2 * i + 1];
-    this->ComplexVariableFileNames[2 * i + 1] = NULL;
+    this->ComplexVariableFileNames[2 * i + 1] = nullptr;
     delete[] this->ComplexVariableDescriptions[i];
-    this->ComplexVariableDescriptions[i] = NULL;
+    this->ComplexVariableDescriptions[i] = nullptr;
   }
   delete[] this->ComplexVariableFileNames;
-  this->ComplexVariableFileNames = NULL;
+  this->ComplexVariableFileNames = nullptr;
   delete[] this->ComplexVariableDescriptions;
-  this->ComplexVariableDescriptions = NULL;
+  this->ComplexVariableDescriptions = nullptr;
   delete[] this->ComplexVariableTypes;
-  this->ComplexVariableTypes = NULL;
+  this->ComplexVariableTypes = nullptr;
 
   this->NumberOfVariables = 0;
   this->NumberOfComplexVariables = 0;
@@ -1381,7 +1384,7 @@ int vtkPEnSightReader::ReadCaseFile()
         // The class is vtkEnSight6Reader, but the case file says "gold".
         vtkErrorMacro("This is not an EnSight6 file.");
         delete this->IS;
-        this->IS = NULL;
+        this->IS = nullptr;
         return 0;
       }
     }
@@ -1393,7 +1396,7 @@ int vtkPEnSightReader::ReadCaseFile()
         // not say "gold".
         vtkErrorMacro("This is not an EnSight Gold file.");
         delete this->IS;
-        this->IS = NULL;
+        this->IS = nullptr;
         return 0;
       }
     }
@@ -1438,7 +1441,7 @@ int vtkPEnSightReader::ReadCaseFile()
   }
 
   delete this->IS;
-  this->IS = NULL;
+  this->IS = nullptr;
 
   // Fill data array selection objects with these arrays.
   // TODO: Segfault or not segfault ? That is the question...
@@ -1899,7 +1902,7 @@ void vtkPEnSightReader::AddVariableType()
 {
   int size;
   int i;
-  int* types = NULL;
+  int* types = nullptr;
 
   // Figure out what the size of the variable type array is.
   if (this->VariableMode < 8)
@@ -2110,16 +2113,17 @@ vtkPEnSightReader::vtkPEnSightReaderCellIds* vtkPEnSightReader::GetCellIds(int i
   {
     vtkErrorMacro("Cell type " << cellType << " out of range.  Only " << NUMBER_OF_ELEMENT_TYPES - 1
                                << " types exist.");
-    return 0;
+    return nullptr;
   }
-  if (index < 0 || ((this->UnstructuredPartIds->IsId(index) == -1) &&
-                     (this->StructuredPartIds->IsId(index) == -1)))
+  if (index < 0 ||
+    ((this->UnstructuredPartIds->IsId(index) == -1) &&
+      (this->StructuredPartIds->IsId(index) == -1)))
   {
     vtkErrorMacro("Index " << index << " out of range.  Only "
                            << this->UnstructuredPartIds->GetNumberOfIds() << " (unstructured) or "
                            << this->StructuredPartIds->GetNumberOfIds()
                            << " (structured) IDs exist.");
-    return 0;
+    return nullptr;
   }
 
   // Create the container if necessary.
@@ -2138,7 +2142,7 @@ vtkPEnSightReader::vtkPEnSightReaderCellIds* vtkPEnSightReader::GetCellIds(int i
   }
 
   // Make sure this vtkIdList exists.
-  if ((*this->CellIds)[cellIdsIndex] == NULL)
+  if ((*this->CellIds)[cellIdsIndex] == nullptr)
   {
     // TODO: FIXME: map consumes x12 times more memory than vector
     // we need another way of store these ids...
@@ -2160,14 +2164,15 @@ vtkPEnSightReader::vtkPEnSightReaderCellIds* vtkPEnSightReader::GetCellIds(int i
 vtkPEnSightReader::vtkPEnSightReaderCellIds* vtkPEnSightReader::GetPointIds(int index)
 {
   // Check argument range.
-  if (index < 0 || ((this->UnstructuredPartIds->IsId(index) == -1) &&
-                     (this->StructuredPartIds->IsId(index) == -1)))
+  if (index < 0 ||
+    ((this->UnstructuredPartIds->IsId(index) == -1) &&
+      (this->StructuredPartIds->IsId(index) == -1)))
   {
     vtkErrorMacro("Index " << index << " out of range.  Only "
                            << this->UnstructuredPartIds->GetNumberOfIds() << " (unstructured) or "
                            << this->StructuredPartIds->GetNumberOfIds()
                            << " (structured) IDs exist.");
-    return 0;
+    return nullptr;
   }
 
   // Create the container if necessary.
@@ -2183,7 +2188,7 @@ vtkPEnSightReader::vtkPEnSightReaderCellIds* vtkPEnSightReader::GetPointIds(int 
   }
 
   // Make sure this vtkIdList exists.
-  if ((*this->PointIds)[index] == NULL)
+  if ((*this->PointIds)[index] == nullptr)
   {
     // TODO: FIXME: map consumes x12 times more memory than vector
     if (this->StructuredPartIds->IsId(index) != -1)
@@ -2206,8 +2211,9 @@ vtkIdType vtkPEnSightReader::GetTotalNumberOfCellIds(int index)
   int i;
   vtkIdType result = 0;
 
-  if (index < 0 || ((this->UnstructuredPartIds->IsId(index) == -1) &&
-                     (this->StructuredPartIds->IsId(index) == -1)))
+  if (index < 0 ||
+    ((this->UnstructuredPartIds->IsId(index) == -1) &&
+      (this->StructuredPartIds->IsId(index) == -1)))
   {
     vtkErrorMacro("Index " << index << " out of range.  Only "
                            << this->UnstructuredPartIds->GetNumberOfIds() << " (unstructured) or "
@@ -2235,8 +2241,9 @@ vtkIdType vtkPEnSightReader::GetLocalTotalNumberOfCellIds(int index)
   int i;
   vtkIdType numCellIds = 0;
 
-  if (index < 0 || ((this->UnstructuredPartIds->IsId(index) == -1) &&
-                     (this->StructuredPartIds->IsId(index) == -1)))
+  if (index < 0 ||
+    ((this->UnstructuredPartIds->IsId(index) == -1) &&
+      (this->StructuredPartIds->IsId(index) == -1)))
   {
     vtkErrorMacro("Index " << index << " out of range.  Only "
                            << this->UnstructuredPartIds->GetNumberOfIds() << " (unstructured) or "
@@ -2389,11 +2396,39 @@ void vtkPEnSightReader::PrepareStructuredDimensionsForDistribution(int partId, i
   // Cells
   int mpiLocalProcessId = this->GetMultiProcessLocalProcessId();
   int mpiNumberOfProcesses = this->GetMultiProcessNumberOfProcesses();
+
+  vtkNew<vtkExtentTranslator> splitter;
+  splitter->SetWholeExtent(
+    0, oldDimensions[0] - 1, 0, oldDimensions[1] - 1, 0, oldDimensions[2] - 1);
+  splitter->SetPiece(mpiLocalProcessId);
+  splitter->SetNumberOfPieces(mpiNumberOfProcesses);
+  splitter->SetGhostLevel(0); // ghostLevel;
+  switch (*splitDimension)
+  {
+    case 0:
+      splitter->SetSplitModeToXSlab();
+      break;
+
+    case 1:
+      splitter->SetSplitModeToYSlab();
+      break;
+
+    case 2:
+      splitter->SetSplitModeToZSlab();
+      break;
+  }
+  splitter->PieceToExtent();
+
+  int newExtent[6], newCellExtent[6];
+  splitter->GetExtent(newExtent);
+  vtkStructuredData::GetCellExtentFromPointExtent(newExtent, newCellExtent);
+  int newCellDims[3];
+  vtkStructuredData::GetDimensionsFromExtent(newCellExtent, newCellDims);
+
   int oldCellDimension = oldDimensions[*splitDimension] - 1;
-  int newCellDimension = (oldCellDimension / mpiNumberOfProcesses) + 1;
-  int cellBeginIndex = mpiLocalProcessId * newCellDimension;
-  if ((cellBeginIndex + newCellDimension) > oldCellDimension)
-    newCellDimension = oldCellDimension - cellBeginIndex;
+  int newCellDimension = newCellDims[*splitDimension];
+
+  int cellBeginIndex = newExtent[2 * *splitDimension];
 
   int oldCellDimensions[3];
   oldCellDimensions[0] = (oldDimensions[0] == 1) ? 1 : (oldDimensions[0] - 1);

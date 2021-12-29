@@ -92,7 +92,7 @@ vtkSpyPlotReader::vtkSpyPlotReader()
   this->BoxSize[0] = -1;
   this->BoxSize[1] = -1;
   this->BoxSize[2] = -1;
-  this->FileName = 0;
+  this->FileName = nullptr;
   this->CellDataArraySelection = vtkDataArraySelection::New();
   this->TimeStep = 0;
   this->TimeStepRange[0] = 0;
@@ -102,7 +102,7 @@ vtkSpyPlotReader::vtkSpyPlotReader()
   this->MergeXYZComponents = 1;
 
   // this has all of the processes.
-  this->GlobalController = 0;
+  this->GlobalController = nullptr;
   this->SetGlobalController(vtkMultiProcessController::GetGlobalController());
 
   this->DistributeFiles = 0;          // by default, distribute blocks, not files.
@@ -120,13 +120,13 @@ vtkSpyPlotReader::vtkSpyPlotReader()
 //-----------------------------------------------------------------------------
 vtkSpyPlotReader::~vtkSpyPlotReader()
 {
-  this->SetFileName(0);
+  this->SetFileName(nullptr);
   this->CellDataArraySelection->Delete();
-  this->Map->Clean(0);
+  this->Map->Clean(nullptr);
   delete this->Map;
   delete this->Bounds;
-  this->Map = 0;
-  this->SetGlobalController(0);
+  this->Map = nullptr;
+  this->SetGlobalController(nullptr);
   delete this->TimeSteps;
 }
 
@@ -142,7 +142,7 @@ void vtkSpyPlotReader::SetTimeStepsInternal(const vtkSpyPlotReader::VectorOfDoub
 // whether the dataset is AMR.
 void vtkSpyPlotReader::SetFileName(const char* filename)
 {
-  if (this->FileName == NULL && filename == NULL)
+  if (this->FileName == nullptr && filename == nullptr)
   {
     return;
   }
@@ -184,7 +184,7 @@ int vtkSpyPlotReader::RequestDataObject(
   vtkInformation* req, vtkInformationVector** vtkNotUsed(inV), vtkInformationVector* outV)
 {
   vtkInformation* outInfo = outV->GetInformationObject(0);
-  vtkCompositeDataSet* outData = NULL;
+  vtkCompositeDataSet* outData = nullptr;
 
   // Call UpdateFile (which sets IsAMR) because RequestInformation isn't called
   // before RequestDataObject
@@ -227,7 +227,7 @@ int vtkSpyPlotReader::RequestDataObject(
 int vtkSpyPlotReader::RequestInformation(
   vtkInformation* request, vtkInformationVector** inputVector, vtkInformationVector* outputVector)
 {
-  if (this->GlobalController == 0)
+  if (this->GlobalController == nullptr)
   {
     vtkErrorMacro("Controller not specified. This reader requires controller to be set.");
     // return 0;
@@ -270,7 +270,7 @@ int vtkSpyPlotReader::RequestInformation(
     outInfo2->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
   }
 #endif // PARAVIEW_ENABLE_SPYPLOT_MARKERS
-  if (this->TimeSteps->size() > 0)
+  if (!this->TimeSteps->empty())
   {
     outInfo0->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &(*this->TimeSteps)[0],
       static_cast<int>(this->TimeSteps->size()));
@@ -305,7 +305,7 @@ int vtkSpyPlotReader::UpdateFile(vtkInformation* request, vtkInformationVector* 
     // If filename hasn't changed since the last time we read the core
     // meta-data, we don't need to re-read it. If the file was processed
     // successfully, then this->Map->Files won't be empty.
-    return (this->Map->Files.size() != 0) ? 1 : 0;
+    return this->Map->Files.empty() ? 0 : 1;
   }
 
   this->FileNameChanged = false;
@@ -334,14 +334,14 @@ int vtkSpyPlotReader::UpdateFile(vtkInformation* request, vtkInformationVector* 
     }
   }
 
-  return this->Map->Files.size() > 0 ? this->UpdateMetaData(request, outputVector) : 0;
+  return this->Map->Files.empty() ? 0 : this->UpdateMetaData(request, outputVector);
 }
 
 //-----------------------------------------------------------------------------
 int vtkSpyPlotReader::UpdateMetaData(
   vtkInformation* vtkNotUsed(request), vtkInformationVector* vtkNotUsed(outputVector))
 {
-  if (this->Map->Files.size() == 0)
+  if (this->Map->Files.empty())
   {
     vtkErrorMacro("The internal file map is empty!");
     return 0;
@@ -490,7 +490,7 @@ int vtkSpyPlotReader::UpdateTimeStep(
   int closestStep = 0;
 
   if (outputInfo->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP()) &&
-    (this->TimeSteps->size() > 0))
+    !this->TimeSteps->empty())
   {
     // Get the requested time step. We only support requests of a single time
     // step in this reader right now
@@ -511,7 +511,8 @@ int vtkSpyPlotReader::UpdateTimeStep(
     }
   }
   this->CurrentTimeStep = closestStep;
-  if ((outputData != NULL) && (static_cast<int>(this->TimeSteps->size()) > this->CurrentTimeStep))
+  if ((outputData != nullptr) &&
+    (static_cast<int>(this->TimeSteps->size()) > this->CurrentTimeStep))
   {
     outputData->GetInformation()->Set(
       vtkDataObject::DATA_TIME_STEP(), (*this->TimeSteps)[this->CurrentTimeStep]);
@@ -527,7 +528,7 @@ int vtkSpyPlotReader::AddBlockIdArray(vtkCompositeDataSet* cds)
   for (cdIter->InitTraversal(); !cdIter->IsDoneWithTraversal(); cdIter->GoToNextItem(), blockId++)
   {
     vtkDataObject* dataObject = cdIter->GetCurrentDataObject();
-    if (dataObject != 0)
+    if (dataObject != nullptr)
     {
       vtkDataSet* ds = vtkDataSet::SafeDownCast(dataObject);
       assert("check: ds_exists" && ds != 0);
@@ -535,7 +536,7 @@ int vtkSpyPlotReader::AddBlockIdArray(vtkCompositeDataSet* cds)
       // Add the block id cell data array
       vtkCellData* cd = ds->GetCellData();
       vtkDataArray* array = cd->GetArray("blockId");
-      if (array != 0)
+      if (array != nullptr)
       {
         cd->RemoveArray("blockId"); // if this is not the first step,
         // make sure we have a clean array
@@ -625,7 +626,7 @@ int vtkSpyPlotReader::RequestData(vtkInformation* request,
   vtkInformationVector** vtkNotUsed(inputVector), vtkInformationVector* outputVector)
 {
   vtkDebugMacro("--------------------------- Request Data --------------------------------");
-  vtkSpyPlotUniReader* uniReader = 0;
+  vtkSpyPlotUniReader* uniReader = nullptr;
 
   std::vector<vtkRectilinearGrid*> grids;
 
@@ -645,7 +646,7 @@ int vtkSpyPlotReader::RequestData(vtkInformation* request,
     return 0;
   }
 
-  vtkPolyData* tracersData = NULL;
+  vtkPolyData* tracersData = nullptr;
 
   if (this->GenerateTracerArray == 1)
   {
@@ -705,10 +706,10 @@ int vtkSpyPlotReader::RequestData(vtkInformation* request,
   this->SetGlobalMinLevelAndSpacing(blockIterator);
   // export global bounds, minimum level, spacing, and box size
   // in field data arrays for use by downstream filters
-  if (hbds != NULL)
+  if (hbds != nullptr)
   {
     this->AddAttributes(hbds);
-    assert("FieldData should not be NULL!" && hbds->GetFieldData() != NULL);
+    assert("FieldData should not be nullptr!" && hbds->GetFieldData() != nullptr);
 
     vtkFieldData* fd = hbds->GetFieldData();
     (void)fd; // only used for asserts
@@ -778,7 +779,7 @@ int vtkSpyPlotReader::RequestData(vtkInformation* request,
         tracersData->Initialize();
 
         vtkFloatArray* tracers = uniReader->GetTracers();
-        if (tracers != 0)
+        if (tracers != nullptr)
         {
 
           vtkPoints* points = vtkPoints::New();
@@ -1104,7 +1105,7 @@ int vtkSpyPlotReader::MergeVectors(
 {
   int prefixFlag = 0;
 
-  if (a1 == 0 || a2 == 0 || a3 == 0)
+  if (a1 == nullptr || a2 == nullptr || a3 == nullptr)
   {
     return 0;
   }
@@ -1127,7 +1128,7 @@ int vtkSpyPlotReader::MergeVectors(
   n1 = a1->GetName();
   n2 = a2->GetName();
   n3 = a3->GetName();
-  if (n1 == 0 || n2 == 0 || n3 == 0)
+  if (n1 == nullptr || n2 == nullptr || n3 == nullptr)
   {
     return 0;
   }
@@ -1202,7 +1203,7 @@ int vtkSpyPlotReader::MergeVectors(vtkDataSetAttributes* da, vtkDataArray* a1, v
 {
   int prefixFlag = 0;
 
-  if (a1 == 0 || a2 == 0)
+  if (a1 == nullptr || a2 == nullptr)
   {
     return 0;
   }
@@ -1222,7 +1223,7 @@ int vtkSpyPlotReader::MergeVectors(vtkDataSetAttributes* da, vtkDataArray* a1, v
   size_t e1, e2;
   n1 = a1->GetName();
   n2 = a2->GetName();
-  if (n1 == 0 || n2 == 0)
+  if (n1 == nullptr || n2 == nullptr)
   {
     return 0;
   }
@@ -1264,7 +1265,7 @@ int vtkSpyPlotReader::MergeVectors(vtkDataSetAttributes* da, vtkDataArray* a1, v
   switch (a1->GetDataType())
   {
     vtkTemplateMacro(
-      vtkMergeVectorComponents(length, (VTK_TT*)p1, (VTK_TT*)p2, (VTK_TT*)0, (VTK_TT*)pn));
+      vtkMergeVectorComponents(length, (VTK_TT*)p1, (VTK_TT*)p2, (VTK_TT*)nullptr, (VTK_TT*)pn));
     default:
       vtkErrorMacro(<< "Execute: Unknown ScalarType");
       return 0;
@@ -1373,7 +1374,7 @@ void vtkSpyPlotReader::PrintBlockList(vtkNonOverlappingAMR* hbds, int vtkNotUsed
     for (i = 0; i < totalNumberOfDataSets; i++)
     {
       // cout<<myProcId<<" dataset="<<i<<"/"<<totalNumberOfDataSets;
-      if (hbds->GetDataSet(level, i) == 0)
+      if (hbds->GetDataSet(level, i) == nullptr)
       {
         // cout<<" Void"<<endl;
       }
@@ -1512,8 +1513,6 @@ void vtkSpyPlotReader::GetLocalMinLevelAndSpacing(
   // now that we have the block with minimum
   // level, we can get the spacing from him.
   minLevelBlock->GetSpacing(spacing);
-
-  return;
 }
 //
 void vtkSpyPlotReader::SetGlobalMinLevelAndSpacing(vtkSpyPlotBlockIterator* biter)
@@ -1547,7 +1546,7 @@ void vtkSpyPlotReader::SetGlobalMinLevelAndSpacing(vtkSpyPlotBlockIterator* bite
   int myRank = this->GlobalController->GetLocalProcessId();
 
   // proc 0 gets a bigger buffer to collect all the data
-  double* recvBuf = myRank == 0 ? new double[4 * numProcs] : 0;
+  double* recvBuf = myRank == 0 ? new double[4 * numProcs] : nullptr;
   this->GlobalController->Gather(sendBuf, recvBuf, 4, 0);
 
   // reduce min level while preserving its
@@ -1710,7 +1709,6 @@ void vtkSpyPlotReader::SetGlobalBoxSize(vtkSpyPlotBlockIterator* biter)
     default:
       vtkErrorMacro("Invalid flag value verifying that box size is constant.");
   }
-  return;
 }
 
 // This functions return 1 if the bounds have been set
@@ -1774,8 +1772,6 @@ void vtkSpyPlotReader::SetGlobalBounds(vtkSpyPlotBlockIterator* biter, int total
   {
     vtkErrorMacro("Problem occurred getting the global bounds");
   }
-
-  return;
 }
 
 int vtkSpyPlotReader::PrepareAMRData(vtkNonOverlappingAMR* hb, vtkSpyPlotBlock* block, int* level,
@@ -1888,7 +1884,7 @@ void vtkSpyPlotReader::UpdateFieldData(int numFields, int dims[3], int level, in
     if (this->CellDataArraySelection->ArrayIsEnabled(fname))
     {
       vtkDataArray* array = cd->GetArray(fname);
-      if (array != 0)
+      if (array != nullptr)
       {
         cd->RemoveArray(fname); // if this is not the first step,
         // make sure we have a clean array
@@ -1969,14 +1965,14 @@ void vtkSpyPlotReader::UpdateBadGhostFieldData(int numFields, int dims[3], int r
     if (this->CellDataArraySelection->ArrayIsEnabled(fname))
     {
       vtkDataArray* array = cd->GetArray(fname);
-      if (array != 0)
+      if (array != nullptr)
       {
         cd->RemoveArray(fname); // if this is not the first step,
         // make sure we have a clean array
       }
 
       array = uniReader->GetCellFieldData(blockID, field, &fixed);
-      if (array == 0)
+      if (array == nullptr)
       {
         vtkErrorMacro("Unable to read array " << fname);
         continue;
@@ -1992,7 +1988,7 @@ void vtkSpyPlotReader::UpdateBadGhostFieldData(int numFields, int dims[3], int r
         switch (array->GetDataType())
         {
           vtkTemplateMacro(::vtkSpyPlotRemoveBadGhostCells(
-            static_cast<VTK_TT*>(0), array, realExtents, realDims, ptDims, realPtDims));
+            static_cast<VTK_TT*>(nullptr), array, realExtents, realDims, ptDims, realPtDims));
         }
         uniReader->MarkCellFieldDataFixed(blockID, field);
       }
@@ -2144,7 +2140,7 @@ int vtkSpyPlotReader::PrepareMarkers(vtkMultiBlockDataSet* mbds, vtkSpyPlotUniRe
     {
 
       vtkDataArray* array = pd->GetArray(reader->Markers[m].Variables[v].Label);
-      if (array == 0)
+      if (array == nullptr)
       {
         array = vtkFloatArray::New();
         array->SetName(reader->Markers[m].Variables[v].Label);
@@ -2258,8 +2254,8 @@ void vtkSpyPlotReader::SetGlobalLevels(vtkCompositeDataSet* composite)
   // the global number of levels. Otherwise, the number of levels is 1.
   if (this->IsAMR)
   {
-    // hbDS is non-null.
-    assert("check: ds is vtkNonOverlappingAMR" && hbDS != NULL);
+    // hbDS is non-nullptr.
+    assert("check: ds is vtkNonOverlappingAMR" && hbDS != nullptr);
     numberOfLevels = hbDS->GetNumberOfLevels();
     unsigned long ulintMsgValue;
     // Update it from the children
@@ -2428,7 +2424,7 @@ void vtkSpyPlotReader::SetGlobalLevels(vtkCompositeDataSet* composite)
         else
         {
           int kk;
-          std::vector<vtkSmartPointer<vtkDataSet> > datasets;
+          std::vector<vtkSmartPointer<vtkDataSet>> datasets;
           for (kk = 0; kk < numberOfDataSets; kk++)
           {
             datasets.push_back(vtkDataSet::SafeDownCast(mbDS->GetBlock(kk)));
@@ -2449,10 +2445,10 @@ void vtkSpyPlotReader::SetGlobalLevels(vtkCompositeDataSet* composite)
   if (hbDS)
   {
     // save all the existing data sets
-    std::vector<std::vector<vtkSmartPointer<vtkUniformGrid> > > datasets;
+    std::vector<std::vector<vtkSmartPointer<vtkUniformGrid>>> datasets;
     for (unsigned int level = 0; level < numberOfLevels; level++)
     {
-      std::vector<vtkSmartPointer<vtkUniformGrid> > datasetsAtLevel;
+      std::vector<vtkSmartPointer<vtkUniformGrid>> datasetsAtLevel;
       for (unsigned int kk = 0; kk < hbDS->GetNumberOfDataSets(level); kk++)
       {
         vtkUniformGrid* ug = hbDS->GetDataSet(level, kk);
@@ -2514,7 +2510,7 @@ int vtkSpyPlotReader::ComputeDerivedVars(
 static void createSpyPlotLevelArray(vtkCellData* cd, int size, int level)
 {
   vtkDataArray* array = cd->GetArray("levels");
-  if (array != 0)
+  if (array != nullptr)
   {
     cd->RemoveArray("levels"); // if this is not the first step,
     // make sure we have a clean array

@@ -31,11 +31,11 @@
 //----------------------------------------------------------------------------
 struct vtkPVTrivialProducerStaticInternal
 {
-  std::map<std::string, vtkSmartPointer<vtkDataObject> > RegisteredDataObjectMap;
+  std::map<std::string, vtkSmartPointer<vtkDataObject>> RegisteredDataObjectMap;
 
   bool HasKey(const char* key)
   {
-    if (key == NULL)
+    if (key == nullptr)
     {
       return false;
     }
@@ -48,12 +48,12 @@ struct vtkPVTrivialProducerStaticInternal
     {
       return this->RegisteredDataObjectMap[key].GetPointer();
     }
-    return NULL;
+    return nullptr;
   }
 
   void Print(ostream& os, vtkIndent indent)
   {
-    std::map<std::string, vtkSmartPointer<vtkDataObject> >::iterator iter =
+    std::map<std::string, vtkSmartPointer<vtkDataObject>>::iterator iter =
       this->RegisteredDataObjectMap.begin();
     while (iter != this->RegisteredDataObjectMap.end())
     {
@@ -68,14 +68,10 @@ vtkPVTrivialProducerStaticInternal* vtkDistributedTrivialProducer::InternalStati
 
 vtkStandardNewMacro(vtkDistributedTrivialProducer);
 //----------------------------------------------------------------------------
-vtkDistributedTrivialProducer::vtkDistributedTrivialProducer()
-{
-}
+vtkDistributedTrivialProducer::vtkDistributedTrivialProducer() = default;
 
 //----------------------------------------------------------------------------
-vtkDistributedTrivialProducer::~vtkDistributedTrivialProducer()
-{
-}
+vtkDistributedTrivialProducer::~vtkDistributedTrivialProducer() = default;
 //----------------------------------------------------------------------------
 void vtkDistributedTrivialProducer::SetGlobalOutput(const char* key, vtkDataObject* output)
 {

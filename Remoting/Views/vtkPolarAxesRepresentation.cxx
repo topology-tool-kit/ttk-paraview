@@ -35,7 +35,6 @@
 #include "vtkPolarAxesActor.h"
 #include "vtkPolyData.h"
 #include "vtkProperty.h"
-#include "vtkProperty.h"
 #include "vtkRenderer.h"
 #include "vtkSmartPointer.h"
 #include "vtkStringArray.h"
@@ -173,12 +172,12 @@ bool vtkPolarAxesRepresentation::RemoveFromView(vtkView* view)
     if (vtkRenderer* renderer = pvview->GetRenderer(this->RendererType))
     {
       renderer->RemoveActor(this->PolarAxesActor);
-      this->PolarAxesActor->SetCamera(NULL);
-      this->RenderView = NULL;
+      this->PolarAxesActor->SetCamera(nullptr);
+      this->RenderView = nullptr;
       return this->Superclass::RemoveFromView(view);
     }
   }
-  this->RenderView = NULL;
+  this->RenderView = nullptr;
   return false;
 }
 

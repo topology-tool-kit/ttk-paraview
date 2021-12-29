@@ -36,10 +36,7 @@
 
 vtkStandardNewMacro(vtkLagrangeHexahedron);
 
-vtkLagrangeHexahedron::vtkLagrangeHexahedron()
-  : vtkHigherOrderHexahedron()
-{
-}
+vtkLagrangeHexahedron::vtkLagrangeHexahedron() = default;
 
 vtkLagrangeHexahedron::~vtkLagrangeHexahedron() = default;
 
@@ -130,15 +127,15 @@ void vtkLagrangeHexahedron::InterpolateDerivs(const double pcoords[3], double* d
 {
   vtkLagrangeInterpolation::Tensor3ShapeDerivatives(this->GetOrder(), pcoords, derivs);
 }
-vtkHigherOrderCurve* vtkLagrangeHexahedron::getEdgeCell()
+vtkHigherOrderCurve* vtkLagrangeHexahedron::GetEdgeCell()
 {
   return EdgeCell;
 }
-vtkHigherOrderQuadrilateral* vtkLagrangeHexahedron::getFaceCell()
+vtkHigherOrderQuadrilateral* vtkLagrangeHexahedron::GetFaceCell()
 {
   return FaceCell;
 }
-vtkHigherOrderInterpolation* vtkLagrangeHexahedron::getInterp()
+vtkHigherOrderInterpolation* vtkLagrangeHexahedron::GetInterpolation()
 {
   return Interp;
 };

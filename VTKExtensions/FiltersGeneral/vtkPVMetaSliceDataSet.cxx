@@ -72,7 +72,7 @@ vtkPVMetaSliceDataSet::vtkPVMetaSliceDataSet()
 vtkPVMetaSliceDataSet::~vtkPVMetaSliceDataSet()
 {
   delete this->Internal;
-  this->Internal = NULL;
+  this->Internal = nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -163,8 +163,9 @@ int vtkPVMetaSliceDataSet::RequestDataObject(
     return 0;
   }
 
-  if (vtkHyperTreeGrid::SafeDownCast(
-        inputVector[0]->GetInformationObject(0)->Get(vtkDataObject::DATA_OBJECT())))
+  vtkInformation* info = inputVector[0]->GetInformationObject(0);
+
+  if (info && vtkHyperTreeGrid::SafeDownCast(info->Get(vtkDataObject::DATA_OBJECT())))
   {
     this->Internal->Cutter->SetCutFunction(this->ImplicitFunctions[METASLICE_HYPERTREEGRID]);
     this->Internal->ExtractCells->SetImplicitFunction(

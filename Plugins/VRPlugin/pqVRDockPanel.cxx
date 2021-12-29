@@ -1,7 +1,7 @@
 /*=========================================================================
 
    Program: ParaView
-   Module:    $RCSfile$
+   Module:  pqVRDockPanel.cxx
 
    Copyright (c) 2005,2006 Sandia Corporation, Kitware Inc.
    All rights reserved.
@@ -71,6 +71,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QPointer>
 
 #include <vtksys/FStream.hxx>
+
+#include <cmath>
 
 class pqVRDockPanel::pqInternals : public Ui::VRDockPanel
 {
@@ -216,7 +218,7 @@ void pqVRDockPanel::editConnection(QListWidgetItem* item)
   // Lookup connection
   QString connName = item->text();
   pqVRConnectionManager* mgr = pqVRConnectionManager::instance();
-  (void)mgr;
+  (void)mgr; // Avoid unusued local variable warning if VRPN and VRUI not enabled
 
   pqVRAddConnectionDialog dialog(this);
   bool set = false;
@@ -269,7 +271,7 @@ void pqVRDockPanel::addConnection()
   if (dialog.exec() == QDialog::Accepted)
   {
     pqVRConnectionManager* mgr = pqVRConnectionManager::instance();
-    (void)mgr;
+    (void)mgr; // Avoid unusued local variable warning if VRPN and VRUI not enabled
     dialog.updateConnection();
 #if PARAVIEW_PLUGIN_VRPlugin_USE_VRPN
     if (dialog.isVRPN())
@@ -298,7 +300,7 @@ void pqVRDockPanel::removeConnection()
   }
   QString name = item->text();
   pqVRConnectionManager* mgr = pqVRConnectionManager::instance();
-  (void)mgr;
+  (void)mgr; // Avoid unusued local variable warning if VRPN and VRUI not enabled
 
   pqVRAddConnectionDialog dialog(this);
 #if PARAVIEW_PLUGIN_VRPlugin_USE_VRPN
@@ -320,7 +322,7 @@ void pqVRDockPanel::removeConnection()
 void pqVRDockPanel::addStyle()
 {
   vtkSMProxy* proxy = this->Internals->propertyCombo->getCurrentProxy();
-  QByteArray property = this->Internals->propertyCombo->getCurrentPropertyName().toLocal8Bit();
+  QByteArray property = this->Internals->propertyCombo->getCurrentPropertyName().toUtf8();
   QString styleString = this->Internals->stylesCombo->currentText();
 
   vtkVRInteractorStyleFactory* styleFactory = vtkVRInteractorStyleFactory::GetInstance();
@@ -359,7 +361,7 @@ void pqVRDockPanel::removeStyle()
   }
   QString name = item->text();
 
-  vtkVRInteractorStyle* style = this->Internals->StyleNameMap.value(name, NULL);
+  vtkVRInteractorStyle* style = this->Internals->StyleNameMap.value(name, nullptr);
   if (!style)
   {
     return;
@@ -397,7 +399,7 @@ void pqVRDockPanel::editStyle(QListWidgetItem* item)
 
   pqVRAddStyleDialog dialog(this);
   QString name = item->text();
-  vtkVRInteractorStyle* style = this->Internals->StyleNameMap.value(name, NULL);
+  vtkVRInteractorStyle* style = this->Internals->StyleNameMap.value(name, nullptr);
   if (!style)
   {
     return;
@@ -442,7 +444,7 @@ void pqVRDockPanel::setActiveView(pqView* view)
 {
   pqRenderView* rview = qobject_cast<pqRenderView*>(view);
 
-  // Remove any RenderView.* entries in the combobox
+  // Remove any RenderView entries in the combobox
   Qt::MatchFlags matchFlags = Qt::MatchStartsWith | Qt::MatchCaseSensitive;
   int ind = this->Internals->proxyCombo->findText("RenderView", matchFlags);
   while (ind != -1)
@@ -457,7 +459,7 @@ void pqVRDockPanel::setActiveView(pqView* view)
     this->Internals->proxyCombo->addProxy(0, rview->getSMName(), rview->getProxy());
   }
 
-  this->Internals->Camera = NULL;
+  this->Internals->Camera = nullptr;
   if (rview)
   {
     vtkSMRenderViewProxy* renPxy = rview->getRenderViewProxy();
@@ -477,8 +479,8 @@ void pqVRDockPanel::setActiveView(pqView* view)
 //-----------------------------------------------------------------------------
 void pqVRDockPanel::saveState()
 {
-  pqFileDialog fileDialog(NULL, pqCoreUtilities::mainWidget(), "Save VR plugin template", QString(),
-    "VR plugin template files (*.pvvr)");
+  pqFileDialog fileDialog(nullptr, pqCoreUtilities::mainWidget(), "Save VR plugin template",
+    QString(), "VR plugin template files (*.pvvr)");
 
   fileDialog.setFileMode(pqFileDialog::AnyFile);
 
@@ -502,18 +504,15 @@ void pqVRDockPanel::saveState()
     queueHandler->saveStylesConfiguration(root.GetPointer());
   }
 
-  // Avoid temporary QByteArrays in QString --> const char * conversion:
-  QByteArray filename_ba = filename.toLocal8Bit();
-  vtksys::ofstream os(filename_ba.constData(), ios::out);
+  vtksys::ofstream os(filename.toUtf8().data(), ios::out);
   root->PrintXML(os, vtkIndent());
 }
 
 //-----------------------------------------------------------------------------
 void pqVRDockPanel::restoreState()
 {
-  pqFileDialog fileDialog(NULL, pqCoreUtilities::mainWidget(), "Load VR plugin template", QString(),
-    "VR plugin template files (*.pvvr);;"
-    "ParaView state files (*.pvsm)");
+  pqFileDialog fileDialog(nullptr, pqCoreUtilities::mainWidget(), "Load VR plugin template",
+    QString(), "VR plugin template files (*.pvvr);;ParaView state files (*.pvsm)");
 
   fileDialog.setFileMode(pqFileDialog::ExistingFile);
 
@@ -526,7 +525,7 @@ void pqVRDockPanel::restoreState()
   QString filename = fileDialog.getSelectedFiles().first();
 
   vtkNew<vtkPVXMLParser> xmlParser;
-  xmlParser->SetFileName(qPrintable(filename));
+  xmlParser->SetFileName(filename.toUtf8().data());
   xmlParser->Parse();
 
   vtkPVXMLElement* root = xmlParser->GetRootElement();
@@ -535,14 +534,14 @@ void pqVRDockPanel::restoreState()
   vtkPVXMLElement* connRoot = root->FindNestedElementByName("VRConnectionManager");
   if (connMgr && connRoot)
   {
-    connMgr->configureConnections(connRoot, NULL);
+    connMgr->configureConnections(connRoot, nullptr);
   }
 
   pqVRQueueHandler* queueHandler = pqVRQueueHandler::instance();
   vtkPVXMLElement* stylesRoot = root->FindNestedElementByName("VRInteractorStyles");
   if (queueHandler && stylesRoot)
   {
-    queueHandler->configureStyles(root, NULL);
+    queueHandler->configureStyles(root, nullptr);
   }
 }
 
@@ -644,22 +643,36 @@ void pqVRDockPanel::updateDebugLabel()
 }
 
 //-----------------------------------------------------------------------------
+// createName() -- this method returns the string that will appear in the
+//   "Interactions:" list in the Qt VR Panel for the individual given "*style".
 QString pqVRDockPanel::pqInternals::createName(vtkVRInteractorStyle* style)
 {
+  QString description;  // A one-line description of the interaction (style, object, property)
+  QString className;    // The name of the style's VTK class (e.g. vtkVRTrackStyle)
+  QString styleName;    // A human readable version of the style
+  QString objectName;   // The object onto which the style interacts
+  QString propertyName; // The property of the object which the style affects
+
   pqApplicationCore* core = pqApplicationCore::instance();
   pqServerManagerModel* model = core->getServerManagerModel();
   vtkVRInteractorStyleFactory* styleFactory = vtkVRInteractorStyleFactory::GetInstance();
 
-  QString className = style->GetClassName();
-  QString desc =
+  className = style->GetClassName();
+  styleName =
     QString::fromStdString(styleFactory->GetDescriptionFromClassName(className.toStdString()));
+
   vtkSMProxy* smControlledProxy = style->GetControlledProxy();
   pqProxy* pqControlledProxy = model->findItem<pqProxy*>(smControlledProxy);
-  QString name =
-    QString("%1 on %2's %3")
-      .arg(desc)
-      .arg(pqControlledProxy ? pqControlledProxy->getSMName() : smControlledProxy->GetXMLLabel())
-      .arg(style->GetControlledPropertyName());
 
-  return name;
+  // WRS-TODO: I don't know why "<error>" occurs, there will always be a selected Proxy -- should be
+  // investigated
+  objectName =
+    (pqControlledProxy ? pqControlledProxy->getSMName()
+                       : (smControlledProxy ? smControlledProxy->GetXMLLabel() : "<error>"));
+  propertyName =
+    (strlen(style->GetControlledPropertyName()) ? style->GetControlledPropertyName() : "--");
+
+  description = QString("%1 on %2's %3").arg(styleName).arg(objectName).arg(propertyName);
+
+  return description;
 }

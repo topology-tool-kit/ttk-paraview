@@ -107,17 +107,17 @@ public:
 
 protected:
   vtkPVOrthographicSliceViewInteractorStyle()
-    : PrimaryInteractorStyle(NULL)
-    , OrthographicInteractorStyle(NULL)
-    , PrimaryRenderer(NULL)
+    : PrimaryInteractorStyle(nullptr)
+    , OrthographicInteractorStyle(nullptr)
+    , PrimaryRenderer(nullptr)
     , ClickCounter(0)
   {
   }
   ~vtkPVOrthographicSliceViewInteractorStyle() override
   {
-    this->SetPrimaryInteractorStyle(NULL);
-    this->SetOrthographicInteractorStyle(NULL);
-    this->SetPrimaryRenderer(NULL);
+    this->SetPrimaryInteractorStyle(nullptr);
+    this->SetOrthographicInteractorStyle(nullptr);
+    this->SetPrimaryRenderer(nullptr);
   }
 
   vtkCameraManipulator* FindManipulator(int button, int shift, int control) override
@@ -156,12 +156,7 @@ vtkStandardNewMacro(vtkPVOrthographicSliceViewInteractorStyle);
 vtkStandardNewMacro(vtkPVOrthographicSliceView);
 //----------------------------------------------------------------------------
 vtkPVOrthographicSliceView::vtkPVOrthographicSliceView()
-  : Renderers()
-  , OrthographicInteractorStyle()
-  , SlicePositionAxes2D()
-  , SlicePositionAxes3D()
-  , SliceAnnotations()
-  , SliceAnnotationsVisibility(false)
+  : SliceAnnotationsVisibility(false)
   , MouseWheelForwardEventId(0)
   , MouseWheelBackwardEventId(0)
   , GridAxes3DActorsNeedShallowCopy(false)
@@ -549,26 +544,6 @@ void vtkPVOrthographicSliceView::MoveSlicePosition(vtkRenderer* ren, double posi
 }
 
 //----------------------------------------------------------------------------
-void vtkPVOrthographicSliceView::SetBackground(double r, double g, double b)
-{
-  this->Superclass::SetBackground(r, g, b);
-  for (int cc = 0; cc < 3; cc++)
-  {
-    this->Renderers[cc]->SetBackground(r, g, b);
-  }
-}
-
-//----------------------------------------------------------------------------
-void vtkPVOrthographicSliceView::SetBackground2(double r, double g, double b)
-{
-  this->Superclass::SetBackground2(r, g, b);
-  for (int cc = 0; cc < 3; cc++)
-  {
-    this->Renderers[cc]->SetBackground2(r, g, b);
-  }
-}
-
-//----------------------------------------------------------------------------
 void vtkPVOrthographicSliceView::SetBackgroundTexture(vtkTexture* val)
 {
   this->Superclass::SetBackgroundTexture(val);
@@ -579,22 +554,12 @@ void vtkPVOrthographicSliceView::SetBackgroundTexture(vtkTexture* val)
 }
 
 //----------------------------------------------------------------------------
-void vtkPVOrthographicSliceView::SetGradientBackground(int val)
+void vtkPVOrthographicSliceView::UpdateBackground(vtkRenderer* renderer)
 {
-  this->Superclass::SetGradientBackground(val);
+  this->Superclass::UpdateBackground(renderer);
   for (int cc = 0; cc < 3; cc++)
   {
-    this->Renderers[cc]->SetGradientBackground(val ? true : false);
-  }
-}
-
-//----------------------------------------------------------------------------
-void vtkPVOrthographicSliceView::SetTexturedBackground(int val)
-{
-  this->Superclass::SetTexturedBackground(val);
-  for (int cc = 0; cc < 3; cc++)
-  {
-    this->Renderers[cc]->SetTexturedBackground(val ? true : false);
+    this->Superclass::UpdateBackground(this->Renderers[cc]);
   }
 }
 
@@ -642,7 +607,7 @@ void vtkPVOrthographicSliceView::SetGridAxes3DActor(vtkPVGridAxes3DActor* gridAc
     {
       this->Renderers[cc]->RemoveViewProp(this->GridAxes3DActors[cc]);
     }
-    vtkPVGridAxes3DActor* clone = gridActor ? gridActor->NewInstance() : NULL;
+    vtkPVGridAxes3DActor* clone = gridActor ? gridActor->NewInstance() : nullptr;
     this->GridAxes3DActors[cc].TakeReference(clone);
     if (this->GridAxes3DActors[cc] && !in_tile_display_mode)
     {

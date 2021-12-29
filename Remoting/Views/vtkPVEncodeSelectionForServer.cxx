@@ -32,7 +32,7 @@ static void vtkShrinkSelection(vtkSelection* sel)
 {
   std::map<void*, int> pixelCounts;
   unsigned int numNodes = sel->GetNumberOfNodes();
-  void* chosen = NULL;
+  void* chosen = nullptr;
   int maxPixels = -1;
   for (unsigned int cc = 0; cc < numNodes; cc++)
   {
@@ -52,8 +52,8 @@ static void vtkShrinkSelection(vtkSelection* sel)
     }
   }
 
-  std::vector<vtkSmartPointer<vtkSelectionNode> > chosenNodes;
-  if (chosen != NULL)
+  std::vector<vtkSmartPointer<vtkSelectionNode>> chosenNodes;
+  if (chosen != nullptr)
   {
     for (unsigned int cc = 0; cc < numNodes; cc++)
     {
@@ -76,13 +76,9 @@ static void vtkShrinkSelection(vtkSelection* sel)
 
 vtkObjectFactoryNewMacro(vtkPVEncodeSelectionForServer);
 
-vtkPVEncodeSelectionForServer::vtkPVEncodeSelectionForServer()
-{
-}
+vtkPVEncodeSelectionForServer::vtkPVEncodeSelectionForServer() = default;
 
-vtkPVEncodeSelectionForServer::~vtkPVEncodeSelectionForServer()
-{
-}
+vtkPVEncodeSelectionForServer::~vtkPVEncodeSelectionForServer() = default;
 
 void vtkPVEncodeSelectionForServer::PrintSelf(ostream& os, vtkIndent indent)
 {

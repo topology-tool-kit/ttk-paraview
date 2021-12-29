@@ -178,7 +178,7 @@ class VTKCOMMONDATAMODEL_EXPORT vtkHyperTree : public vtkObject
 public:
   vtkTypeMacro(vtkHyperTree, vtkObject);
 
-  void PrintSelf(ostream&, vtkIndent) override;
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /**
    * Restore the initial state: only one vertice is then a leaf:
@@ -187,7 +187,8 @@ public:
    * @param dimension
    * @param numberOfChildren
    */
-  void Initialize(unsigned char, unsigned char, unsigned char);
+  void Initialize(
+    unsigned char branchFactor, unsigned char dimension, unsigned char numberOfChildren);
 
   /**
    * Restore a state from read data, without using a cursor
@@ -213,23 +214,68 @@ public:
     vtkBitArray* outIsMasked) = 0;
 
   /**
-   * Initialize a state from write data.
-   * Call after create the hypertree grid.
+   * This method builds the indexing of this tree given a breadth first order
+   * descriptor. This descriptor is the same bit array that would be created by
+   * `ComputeBreadthFirstOrderDescriptor`. The current tree is ready to use
+   * after calling this method.
    *
-   * @param inIsMasked: the mask of hypertree grid including
-   * this hypertree which is a vtkBitArray.
-   * @param nbVerticesbyLevel: the number of vertices in tree
-   * (coarse and leaves) by each level.
-   * @param isParent: modify the vtkBitArray, a binary decomposition
-   * tree by level with constraint all describe children. It is
-   * useless to declare all the lastest values to False, especially
-   * the last level may not be defined.
-   * @param isMasked: modify the vtkBitArray, a binary mask
-   * corresponding. It is useless to declare all the latest values
-   * to False.
+   * @param descriptor is a binary descriptor, in breadth first order, that describes
+   * the tree topology. If vertex of index `id` in breadth first order has
+   * children, then the corresponding value in `descriptor` is one. Otherwise, it
+   * is set to zero. Remember that arrays are appended, meaning that the index
+   * in `descriptor` corresponding to `id` in the current tree
+   * would be the size of `descriptor`
+   * before calling this method, plus `id`.
+   *
+   * @param numberOfBits: Number of bits to be read in the descriptor to build
+   * the tree. Remember that the last depth of the tree is not encoded in the
+   * descriptor, as we know that they are full of zeros (because leaves have no children).
+   *
+   * @param startIndex: Input descriptor is being read starting at this index.
    */
-  virtual void GetByLevelForWriter(vtkBitArray* inIsMasked, vtkTypeInt64Array* nbVerticesbyLevel,
-    vtkBitArray* isParent, vtkBitArray* isMasked, vtkIdList* ids) = 0;
+  virtual void BuildFromBreadthFirstOrderDescriptor(
+    vtkBitArray* descriptor, vtkIdType numberOfBits, vtkIdType startIndex = 0) = 0;
+
+  /**
+   * This method computes the breadth first order descriptor of the current
+   * tree. It takes as input the input mask `inputMask` which should be provided
+   * by the `vtkHyperTreeGrid` in which this `vtkHyperTree` lies. In addition to
+   * computing the descriptor, it computes the mapping between the current
+   * memory layout of this tree with the breadth first order version of it.
+   *
+   * Outputs are `numberOfVerticesPerDepth`, `descriptor` and
+   * `breadthFirstIdMap`. Each of those arrays are appended with new data, so
+   * one can create one unique big array for an entire `vtkHyperTreeGrid`
+   * concatenating breadth first order description and mapping of concatenated
+   * trees.
+   *
+   * @param inputMask the mask provided by `vtkHyperTreeGrid`.
+   *
+   * @param numberOfVerticesPerDepth is self explanatory: from depth 0 to the maximum
+   * depth of the tree, it stores the number of vertices at each depth. If the
+   * input tree has masked subtrees such that getting rid of those subtrees
+   * reduces the depth, then `numberOfVerticesPerDepth` will take this smaller
+   * depth into account rather than adding zeros. In other words,
+   * `numberOfVerticesPerDepth` cannot have zero values.
+   *
+   * @param descriptor is a binary descriptor, in breadth first order, that describes
+   * the tree topology. If vertex of index `id` in breadth first order has
+   * children, then the corresponding value in `descriptor` is one. Otherwise, it
+   * is set to zero. Remember that arrays are appended, meaning that the index
+   * in `descriptor` corresponding to `id` in the current tree
+   * would be the size of `descriptor`
+   * before calling this method, plus `id`.
+   *
+   * @param breadthFirstIdMap maps breadth first ordering to current indexing of the
+   * current tree. In other word, the value at appended position `id` in this
+   * array gives the corresponding index in the current tree.
+   *
+   * @warning Masked subtrees of the input are ignored, so the topology of the
+   * output tree can differ from the input depending on that.
+   */
+  virtual void ComputeBreadthFirstOrderDescriptor(vtkBitArray* inputMask,
+    vtkTypeInt64Array* numberOfVerticesPerDepth, vtkBitArray* descriptor,
+    vtkIdList* breadthFirstIdMap) = 0;
 
   /**
    * Copy the structure by sharing the decomposition description
@@ -247,14 +293,14 @@ public:
    */
   virtual vtkHyperTree* Freeze(const char* mode) = 0;
 
-  //@{
+  ///@{
   /**
    * Set/Get tree index in hypertree grid.
    * Services for internal use between hypertree grid and hypertree.
    */
   void SetTreeIndex(vtkIdType treeIndex) { this->Datas->TreeIndex = treeIndex; }
   vtkIdType GetTreeIndex() const { return this->Datas->TreeIndex; }
-  //@}
+  ///@}
 
   /**
    * Return the number of levels.
@@ -299,7 +345,7 @@ public:
    */
   vtkIdType GetNumberOfChildren() const { return this->NumberOfChildren; }
 
-  //@{
+  ///@{
   /**
    * Set/Get scale of the tree in each direction for the ground
    * level (0).
@@ -307,7 +353,7 @@ public:
   void GetScale(double s[3]) const;
 
   double GetScale(unsigned int d) const;
-  //@}
+  ///@}
 
   /**
    * In an hypertree, all cells are the same size by level. This
@@ -445,7 +491,7 @@ public:
    */
   virtual const unsigned int* GetElderChildIndexArray(size_t& nbElements) const = 0;
 
-  //@{
+  ///@{
   /**
    * In an hypertree, all cells are the same size by level. This
    * fonction initializes this cache system is particulary used by
@@ -453,16 +499,16 @@ public:
    * Here, you set a scales since extern description (sharing).
    */
   void SetScales(std::shared_ptr<vtkHyperTreeGridScales> scales) const { this->Scales = scales; }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Return the existence scales.
    */
   bool HasScales() const { return (this->Scales != nullptr); }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Return all scales.
    */
@@ -471,7 +517,7 @@ public:
     assert(this->Scales != nullptr);
     return this->Scales;
   }
-  //@}
+  ///@}
 
 protected:
   vtkHyperTree();

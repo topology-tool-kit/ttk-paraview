@@ -43,6 +43,14 @@ if (BUILD_TESTING)
   include(CTest)
 endif()
 
+# Static builds take a lot of memory to link. Avoid stampeding them all at
+# once.
+if (NOT BUILD_SHARED_LIBS)
+  set_property(GLOBAL APPEND PROPERTY
+    JOB_POOLS serialize=1)
+  set(CMAKE_JOB_POOL_LINK serialize)
+endif ()
+
 add_subdirectory(CFullExample)
 add_subdirectory(CFullExample2)
 add_subdirectory(CxxFullExample)
@@ -55,8 +63,10 @@ add_subdirectory(CxxMultiChannelInputExample)
 add_subdirectory(CxxMultiPieceExample)
 add_subdirectory(CxxNonOverlappingAMRExample)
 add_subdirectory(CxxOverlappingAMRExample)
-add_subdirectory(CxxPVSMPipelineExample)
-add_subdirectory(CxxParticlePathExample)
+if (TARGET ParaView::RemotingMisc)
+  add_subdirectory(CxxPVSMPipelineExample)
+  add_subdirectory(CxxParticlePathExample)
+endif ()
 add_subdirectory(CxxSOADataArrayExample)
 if (TARGET ParaView::VTKExtensionsFiltersGeneral)
   add_subdirectory(CxxVTKPipelineExample)
@@ -66,7 +76,14 @@ add_subdirectory(PythonDolfinExample)
 #add_subdirectory(PythonFullExample)
 add_subdirectory(TemporalCacheExample)
 
-option(BUILD_FORTRAN_EXAMPLES "Build Fortran Catalyst Examples" OFF)
+include(CheckLanguage)
+check_language(Fortran)
+set(fortran_works OFF)
+if (CMAKE_Fortran_COMPILER)
+  enable_language(Fortran)
+  set(fortran_works ON)
+endif ()
+option(BUILD_FORTRAN_EXAMPLES "Build Fortran Catalyst Examples" "${fortran_works}")
 if (BUILD_FORTRAN_EXAMPLES)
   # Theoretically, CheckFortran should not be needed, but
   # enable_language(OPTIONAL) fails with Ninja generator.

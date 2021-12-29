@@ -44,6 +44,7 @@ set(classes
   pqAutoLoadPluginXMLBehavior
   pqAxesToolbar
   pqBackgroundEditorWidget
+  pqBlockContextMenu
   pqBoolPropertyWidgetDecorator
   pqBoxPropertyWidget
   pqCTHArraySelectionDecorator
@@ -85,6 +86,7 @@ set(classes
   pqDataAssemblyPropertyWidget
   pqDataQueryReaction
   pqDataTimeStepBehavior
+  pqDefaultContextMenu
   pqDefaultMainWindow
   pqDefaultViewBehavior
   pqDeleteReaction
@@ -98,8 +100,10 @@ set(classes
   pqExampleVisualizationsDialogReaction
   pqExportReaction
   pqExtractorsMenuReaction
+  pqFileListPropertyWidget
   pqFileNamePropertyWidget
   pqFiltersMenuReaction
+  pqFindDataWidget
   pqFontPropertyWidget
   pqGenericPropertyWidgetDecorator
   pqGlyphScaleFactorPropertyWidget
@@ -160,6 +164,7 @@ set(classes
   pqResetScalarRangeReaction
   pqResetDefaultSettingsReaction
   pqSaveAnimationGeometryReaction
+  pqAnimatedExportReaction
   pqSaveAnimationReaction
   pqSaveDataReaction
   pqSaveExtractsReaction
@@ -167,10 +172,12 @@ set(classes
   pqSaveStateReaction
   pqScalarBarVisibilityReaction
   pqSearchItemReaction
+  pqSelectionQueryPropertyWidget
   pqSelectionReaction
   pqSeriesEditorPropertyWidget
   pqServerConnectReaction
   pqServerDisconnectReaction
+  pqSessionTypeDecorator
   pqSetMainWindowTitleReaction
   pqShowHideAllReaction
   pqShowWidgetDecorator
@@ -205,21 +212,22 @@ set(classes
   pqWelcomeDialog
   pqYoungsMaterialPropertyWidget)
 
-set(built_shared 0)
-if (BUILD_SHARED_LIBS)
-  set(built_shared 1)
-endif ()
 set_property(SOURCE pqApplicationComponentsInit.cxx APPEND
   PROPERTY
-    COMPILE_DEFINITIONS "BUILD_SHARED_LIBS=${built_shared}")
+    COMPILE_DEFINITIONS "BUILD_SHARED_LIBS=$<BOOL:${BUILD_SHARED_LIBS}>")
 
 set(headers
-  pqCatalystContinueReaction.h)
+  pqCatalystContinueReaction.h
+  )
 
 if (TARGET ParaView::pqPython)
   list(APPEND classes
     pqMacroReaction
-    pqTraceReaction)
+    pqTraceReaction
+  )
+  list(APPEND headers
+    pqPythonScriptEditorReaction.h
+  )
 endif ()
 
 set(ui_files
@@ -243,6 +251,8 @@ set(ui_files
   Resources/UI/pqEmptyView.ui
   Resources/UI/pqExampleVisualizationsDialog.ui
   Resources/UI/pqFileMenuBuilder.ui
+  Resources/UI/pqFileListPropertyWidget.ui
+  Resources/UI/pqFindDataWidget.ui
   Resources/UI/pqFontPropertyWidget.ui
   Resources/UI/pqHandlePropertyWidget.ui
   Resources/UI/pqImageCompressorWidget.ui
@@ -275,6 +285,17 @@ set(qt_components
   Network
   Widgets
   Svg)
+
+if (paraview_use_materialeditor)
+  list(APPEND classes
+    pqMaterialAttributesDelegate
+    pqMaterialEditor
+    pqNewMaterialDialog)
+
+  list(APPEND ui_files
+    Resources/UI/pqMaterialEditor.ui
+    Resources/UI/pqNewMaterialDialog.ui)
+endif ()
 
 if (PARAVIEW_USE_QTHELP)
   list(APPEND qt_components

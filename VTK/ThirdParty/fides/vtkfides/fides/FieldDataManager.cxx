@@ -15,8 +15,8 @@ namespace fides
 namespace datamodel
 {
 
-void FieldDataManager::AddField(const std::string& name,
-  FieldData array)
+FIDES_DEPRECATED_SUPPRESS_BEGIN
+void FieldDataManager::AddField(const std::string& name, FieldData array)
 {
   auto rc = this->Data.insert(std::make_pair(name, array));
   if (!rc.second)
@@ -24,12 +24,14 @@ void FieldDataManager::AddField(const std::string& name,
     throw std::runtime_error("Field " + name + " already exists!");
   }
 }
+FIDES_DEPRECATED_SUPPRESS_END
 
 bool FieldDataManager::HasField(const std::string& name)
 {
   return this->Data.find(name) != this->Data.end();
 }
 
+FIDES_DEPRECATED_SUPPRESS_BEGIN
 FieldData& FieldDataManager::GetField(const std::string& name)
 {
   if (this->HasField(name))
@@ -51,6 +53,7 @@ void FieldDataManager::Clear()
 {
   this->Data.clear();
 }
+FIDES_DEPRECATED_SUPPRESS_END
 
 }
 }

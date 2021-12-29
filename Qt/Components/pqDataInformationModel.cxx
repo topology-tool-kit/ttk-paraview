@@ -59,7 +59,7 @@ struct pqSourceInfo
   bool GeometryInformationValid;
   double GeometrySize;
   double Bounds[6];
-  double TimeSpan[2];
+  double TimeRange[2];
 
   QString DataTypeName;
 
@@ -155,7 +155,7 @@ struct pqSourceInfo
   {
     if (this->DataInformationValid)
     {
-      if (this->TimeSpan[0] > this->TimeSpan[1])
+      if (this->TimeRange[0] > this->TimeRange[1])
       {
         QString times("[ALL]");
         return QVariant(times);
@@ -163,8 +163,8 @@ struct pqSourceInfo
       else
       {
         QString times("[ %1, %2]");
-        times = times.arg(this->TimeSpan[0], 0, 'g', 3);
-        times = times.arg(this->TimeSpan[1], 0, 'g', 3);
+        times = times.arg(this->TimeRange[0], 0, 'g', 3);
+        times = times.arg(this->TimeRange[1], 0, 'g', 3);
         return QVariant(times);
       }
     }
@@ -288,7 +288,7 @@ public:
 };
 
 //-----------------------------------------------------------------------------
-pqDataInformationModel::pqDataInformationModel(QObject* _parent /*=NULL*/)
+pqDataInformationModel::pqDataInformationModel(QObject* _parent /*=nullptr*/)
   : QAbstractTableModel(_parent)
 {
   this->Internal = new pqDataInformationModelInternal();
@@ -414,7 +414,7 @@ QVariant pqDataInformationModel::data(const QModelIndex& idx, int role /*= Qt::D
       }
       break;
 
-    case pqDataInformationModel::TimeSpan:
+    case pqDataInformationModel::TimeRange:
       // Temporal Bounds and steps
       switch (role)
       {
@@ -459,7 +459,7 @@ QVariant pqDataInformationModel::headerData(
           case pqDataInformationModel::Bounds:
             return QVariant("Spatial Bounds");
 
-          case pqDataInformationModel::TimeSpan:
+          case pqDataInformationModel::TimeRange:
             return QVariant("Temporal Bounds");
         }
         break;
@@ -498,7 +498,7 @@ void pqDataInformationModel::dataUpdated(pqPipelineSource* changedSource)
       iter->NumberOfPoints = dataInfo->GetNumberOfPoints();
       iter->MemorySize = dataInfo->GetMemorySize() / 1000.0;
       dataInfo->GetBounds(iter->Bounds);
-      dataInfo->GetTimeSpan(iter->TimeSpan);
+      dataInfo->GetTimeRange(iter->TimeRange);
       iter->DataInformationValid = true;
 
       Q_EMIT this->dataChanged(
@@ -546,7 +546,7 @@ void pqDataInformationModel::removeSource(pqPipelineSource* source)
     this->endRemoveRows();
   }
 
-  QObject::disconnect(source, 0, this, 0);
+  QObject::disconnect(source, nullptr, this, nullptr);
 }
 
 //-----------------------------------------------------------------------------
@@ -564,12 +564,12 @@ pqOutputPort* pqDataInformationModel::getItemFor(const QModelIndex& idx) const
 {
   if (!idx.isValid() && idx.model() != this)
   {
-    return NULL;
+    return nullptr;
   }
   if (idx.row() >= this->Internal->Sources.size())
   {
     qDebug() << "Index: " << idx.row() << " beyond range.";
-    return NULL;
+    return nullptr;
   }
   return this->Internal->Sources[idx.row()].OutputPort;
 }
@@ -584,7 +584,7 @@ void pqDataInformationModel::setActiveView(pqView* view)
 
   if (this->Internal->View)
   {
-    QObject::disconnect(this->Internal->View, 0, this, 0);
+    QObject::disconnect(this->Internal->View, nullptr, this, nullptr);
   }
 
   this->Internal->View = view;

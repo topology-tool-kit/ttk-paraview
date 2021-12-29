@@ -151,7 +151,8 @@ int vtkCompositeDataPipeline::ExecuteData(
     }
     else
     {
-      vtkErrorMacro("Can not execute simple algorithm without output ports");
+      vtkErrorMacro("Can not execute simple algorithm " << this->Algorithm->GetClassName()
+                                                        << " without output ports");
       return 0;
     }
   }
@@ -588,7 +589,7 @@ int vtkCompositeDataPipeline::NeedToExecuteData(
   }
 
   // First do the basic checks.
-  if (this->vtkDemandDrivenPipeline::NeedToExecuteData(outputPort, inInfoVec, outInfoVec))
+  if (this->Superclass::NeedToExecuteData(outputPort, inInfoVec, outInfoVec))
   {
     return 1;
   }

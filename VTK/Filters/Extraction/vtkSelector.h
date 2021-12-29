@@ -27,6 +27,8 @@
 #include "vtkObject.h"
 #include "vtkSmartPointer.h" // For vtkSmartPointer
 
+#include <set> // for std::set
+
 class vtkCompositeDataSet;
 class vtkDataObject;
 class vtkSelectionNode;
@@ -68,14 +70,14 @@ public:
    */
   virtual void Execute(vtkDataObject* input, vtkDataObject* output);
 
-  //@{
+  ///@{
   /**
    * Get/Set the name of the array to use for the insidedness array to add to
    * the output in `Execute` call.
    */
   vtkSetMacro(InsidednessArrayName, std::string);
   vtkGetMacro(InsidednessArrayName, std::string);
-  //@}
+  ///@}
 protected:
   vtkSelector();
   ~vtkSelector() override;
@@ -161,6 +163,9 @@ private:
   void ProcessAMR(vtkUniformGridAMR* input, vtkCompositeDataSet* output);
   void ProcessDataObjectTree(vtkDataObjectTree* input, vtkDataObjectTree* output,
     SelectionMode inheritedSelectionMode, unsigned int compositeIndex = 0);
+  void ProcessSelectors(vtkCompositeDataSet* input);
+
+  std::set<unsigned int> SubsetCompositeIds;
 };
 
 #endif

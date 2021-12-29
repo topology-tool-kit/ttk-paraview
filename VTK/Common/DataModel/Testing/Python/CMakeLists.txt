@@ -4,6 +4,7 @@ vtk_add_test_python(
   PerlinNoise.py
   SelectionLoop.py
   TestBoxPlaneIntersection.py
+  TestComputeBounds.py,NO_DATA,NO_VALID
   TestCopyStructuredData.py,NO_DATA,NO_VALID
   TestGetBounds.py,NO_DATA,NO_VALID
   TestGetBounds2.py,NO_DATA,NO_VALID
@@ -13,6 +14,7 @@ vtk_add_test_python(
   TestStaticPointLocator.py,NO_DATA,NO_VALID
   TestStaticPointLocator2.py,NO_DATA,NO_VALID
   TestStaticPointLocator2D.py,NO_DATA,NO_VALID
+  TestStaticPointLocatorWithDataSet.py,NO_DATA,NO_VALID
   TestStructuredGrid.py
   TestTemplates.py,NO_DATA,NO_VALID
   headBone.py

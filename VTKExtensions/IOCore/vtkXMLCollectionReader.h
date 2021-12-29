@@ -24,7 +24,7 @@
  * the file matching the restrictions will be read.  Each matching
  * data set becomes an output of this reader in the order in which
  * they appear in the file.
-*/
+ */
 
 #ifndef vtkXMLCollectionReader_h
 #define vtkXMLCollectionReader_h
@@ -44,7 +44,7 @@ public:
   //@{
   /**
    * Get/Set the required value for a particular named attribute.
-   * Only data sets matching this value will be read.  A NULL value or
+   * Only data sets matching this value will be read.  A nullptr value or
    * empty string will disable any restriction from the given
    * attribute.
    */

@@ -32,6 +32,7 @@
 #define vtkBezierTriangle_h
 
 #include "vtkCommonDataModelModule.h" // For export macro
+#include "vtkDeprecation.h"           // For VTK_DEPRECATED_IN_9_1_0
 #include "vtkHigherOrderTriangle.h"
 
 class vtkDoubleArray;
@@ -48,13 +49,15 @@ public:
   void PrintSelf(ostream& os, vtkIndent indent) override;
   int GetCellType() override { return VTK_BEZIER_TRIANGLE; }
   vtkCell* GetEdge(int edgeId) override;
+  VTK_DEPRECATED_IN_9_1_0(
+    "EvaluateLocationProjectedNode is deprecated, use instead EvaluateLocation.")
   void EvaluateLocationProjectedNode(
     int& subId, const vtkIdType point_id, double x[3], double* weights);
   void SetRationalWeightsFromPointData(vtkPointData* point_data, const vtkIdType numPts);
   void InterpolateFunctions(const double pcoords[3], double* weights) override;
   void InterpolateDerivs(const double pcoords[3], double* derivs) override;
 
-  vtkHigherOrderCurve* getEdgeCell() override;
+  vtkHigherOrderCurve* GetEdgeCell() override;
 
   vtkDoubleArray* GetRationalWeights();
 

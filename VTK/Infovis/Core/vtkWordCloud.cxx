@@ -51,6 +51,7 @@
 #endif
 // stl
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -90,8 +91,8 @@ struct ArchimedesValue
   double x, y;
 };
 void AddReplacementPairsToStopList(vtkWordCloud*, vtkWordCloud::StopWordsContainer&);
-bool AddWordToFinal(vtkWordCloud*, const std::string, const int, std::mt19937_64&,
-  double orientation, std::vector<ExtentOffset>&, vtkImageBlend*, std::string&);
+bool AddWordToFinal(vtkWordCloud*, std::string, int, std::mt19937_64&, double orientation,
+  std::vector<ExtentOffset>&, vtkImageBlend*, std::string&);
 
 void ArchimedesSpiral(std::vector<ExtentOffset>&, vtkWordCloud::SizesContainer&);
 void ReplaceMaskColorWithBackgroundColor(vtkImageData*, vtkWordCloud*);
@@ -510,8 +511,8 @@ void AddReplacementPairsToStopList(
   }
 }
 
-bool AddWordToFinal(vtkWordCloud* wordCloud, const std::string word, const int frequency,
-  std::mt19937_64& mt, double orientation, std::vector<ExtentOffset>& offset, vtkImageBlend* final,
+bool AddWordToFinal(vtkWordCloud* wordCloud, std::string word, int frequency, std::mt19937_64& mt,
+  double orientation, std::vector<ExtentOffset>& offset, vtkImageBlend* final,
   std::string& errorMessage)
 {
   // Skip words below MinFrequency
@@ -781,7 +782,6 @@ void ExtractWordsFromString(std::string& str, std::vector<std::string>& words)
   {
     words.push_back((*i).str());
   }
-  return;
 #else
   vtksys::RegularExpression re("([0-9A-Za-z]+)");
   size_t next = 0;
@@ -790,7 +790,6 @@ void ExtractWordsFromString(std::string& str, std::vector<std::string>& words)
     words.push_back(str.substr(next + re.start(), re.end() - re.start()));
     next += re.end();
   }
-  return;
 #endif
 }
 

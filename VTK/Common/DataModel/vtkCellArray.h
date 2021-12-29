@@ -183,7 +183,7 @@ public:
   using ArrayType32 = vtkTypeInt32Array;
   using ArrayType64 = vtkTypeInt64Array;
 
-  //@{
+  ///@{
   /**
    * Standard methods for instantiation, type information, and
    * printing.
@@ -192,7 +192,7 @@ public:
   vtkTypeMacro(vtkCellArray, vtkObject);
   void PrintSelf(ostream& os, vtkIndent indent) override;
   void PrintDebug(ostream& os);
-  //@}
+  ///@}
 
   /**
    * List of possible array types used for storage. May be used with
@@ -1541,7 +1541,7 @@ inline void vtkCellArray::GetCellAtId(vtkIdType cellId, vtkIdList* pts)
 }
 
 //----------------------------------------------------------------------------
-inline vtkIdType vtkCellArray::InsertNextCell(vtkIdType npts, const vtkIdType pts[])
+inline vtkIdType vtkCellArray::InsertNextCell(vtkIdType npts, const vtkIdType* pts)
   VTK_SIZEHINT(pts, npts)
 {
   return this->Visit(vtkCellArray_detail::InsertNextCellImpl{}, npts, pts);

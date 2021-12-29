@@ -74,7 +74,7 @@ vtkm::cont::CoordinateSystem deduce_container(vtkPoints* points)
   vtkmDataArray<T>* typedIn3 = vtkmDataArray<T>::SafeDownCast(points->GetData());
   if (typedIn3)
   {
-    return vtkm::cont::CoordinateSystem("coords", typedIn3->GetVtkmVariantArrayHandle());
+    return vtkm::cont::CoordinateSystem("coords", typedIn3->GetVtkmUnknownArrayHandle());
   }
 
   typedef vtkm::Vec<T, 3> Vec3;
@@ -240,11 +240,11 @@ bool Convert(const vtkm::cont::DataSet& vtkmOut, vtkRectilinearGrid* output, vtk
   auto coordsArray = vtkm::cont::Cast<coordType>(vtkmOut.GetCoordinateSystem().GetData());
 
   vtkSmartPointer<vtkDataArray> xArray =
-    Convert(vtkm::cont::make_FieldPoint("xArray", coordsArray.GetStorage().GetFirstArray()));
+    Convert(vtkm::cont::make_FieldPoint("xArray", coordsArray.GetFirstArray()));
   vtkSmartPointer<vtkDataArray> yArray =
-    Convert(vtkm::cont::make_FieldPoint("yArray", coordsArray.GetStorage().GetSecondArray()));
+    Convert(vtkm::cont::make_FieldPoint("yArray", coordsArray.GetSecondArray()));
   vtkSmartPointer<vtkDataArray> zArray =
-    Convert(vtkm::cont::make_FieldPoint("zArray", coordsArray.GetStorage().GetThirdArray()));
+    Convert(vtkm::cont::make_FieldPoint("zArray", coordsArray.GetThirdArray()));
 
   if (!xArray || !yArray || !zArray)
   {

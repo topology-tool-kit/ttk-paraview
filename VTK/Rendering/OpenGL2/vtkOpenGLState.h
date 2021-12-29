@@ -83,8 +83,9 @@ class VTKRENDERINGOPENGL2_EXPORT vtkOpenGLState : public vtkObject
 public:
   static vtkOpenGLState* New();
   vtkTypeMacro(vtkOpenGLState, vtkObject);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   // cached OpenGL methods. By calling these the context will check
   // the current value prior to making the OpenGL call. This can reduce
   // the burden on the driver.
@@ -129,9 +130,9 @@ public:
   void vtkReadBuffer(unsigned int, vtkOpenGLFramebufferObject*);
 
   void vtkglPixelStorei(unsigned int, int);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   // Methods to reset the state to the current OpenGL context value.
   // These methods are useful when interfacing with third party code
   // that may have changed the opengl state.
@@ -147,22 +148,22 @@ public:
   void ResetGLBlendEquationState();
   void ResetGLCullFaceState();
   void ResetGLActiveTexture();
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   // OpenGL functions that we provide an API for even though they may
   // not hold any state.
   void vtkglClear(unsigned int mask);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   // Get methods that can be used to query state if the state is not cached
   // they fall through and call the underlying opengl functions
   void vtkglGetBooleanv(unsigned int pname, unsigned char* params);
   void vtkglGetIntegerv(unsigned int pname, int* params);
   void vtkglGetDoublev(unsigned int pname, double* params);
   void vtkglGetFloatv(unsigned int pname, float* params);
-  //@}
+  ///@}
 
   // convenience to get all 4 values at once
   void GetBlendFuncState(int*);
@@ -215,7 +216,7 @@ public:
    */
   void VerifyNoActiveTextures();
 
-  //@{
+  ///@{
   /**
    * Store/Restore the current framebuffer bindings and buffers.
    */
@@ -236,7 +237,7 @@ public:
   void PopReadFramebufferBinding();
 
   void ResetFramebufferBindings();
-  //@}
+  ///@}
 
   // Scoped classes you can use to save state
   class VTKRENDERINGOPENGL2_EXPORT ScopedglDepthMask : public ScopedValue<unsigned char>
@@ -344,6 +345,12 @@ public:
    * Get the current stored state of the draw buffer and binding
    */
   void GetCurrentDrawFramebufferState(unsigned int& drawBinding, unsigned int& drawBuffer);
+
+  /**
+   * Perform a blit but handle some driver bugs safely. Use this instead of directly calling
+   * glBlitFrambuffer.
+   */
+  void vtkglBlitFramebuffer(int, int, int, int, int, int, int, int, unsigned int, unsigned int);
 
   /**
    * Record the OpenGL state into this class. Lots of get calls so probably
@@ -495,5 +502,3 @@ private:
 };
 
 #endif
-
-// VTK-HeaderTest-Exclude: vtkOpenGLState.h

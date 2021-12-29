@@ -51,12 +51,6 @@ public:
    * The name this codec goes by - should match the string the factory will take to create it
    */
   const char* Name() override { return "UTF-8"; }
-  bool CanHandle(const char* testStr) override;
-
-  /**
-   * is the given sample valid for this codec?
-   */
-  bool IsValid(istream& InputStream) override;
 
   /**
    * Iterate through the sequence represented by the stream assigning the result
@@ -66,10 +60,10 @@ public:
   void ToUnicode(istream& InputStream, vtkTextCodec::OutputIterator& output) override;
 
   /**
-   * Return the next code point from the sequence represented by the stream
-   * advancing the stream through however many places needed to assemble that code point
+   * Return the next code point from the sequence represented by the begin, end iterators
+   * advancing begin through however many places needed to assemble that code point
    */
-  vtkUnicodeString::value_type NextUnicode(istream& inputStream) override;
+  vtkTypeUInt32 NextUTF32CodePoint(istream& inputStream) override;
 
 protected:
   vtkUTF8TextCodec();

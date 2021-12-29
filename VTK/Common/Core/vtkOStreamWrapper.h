@@ -36,6 +36,8 @@ Do_not_include_vtkOStreamWrapper_directly_vtkSystemIncludes_includes_it;
 class vtkIndent;
 class vtkObjectBase;
 class vtkLargeInteger;
+template <typename T>
+class vtkSmartPointer;
 class vtkSmartPointerBase;
 class vtkStdString;
 
@@ -44,14 +46,14 @@ class VTKCOMMONCORE_EXPORT VTK_WRAPEXCLUDE vtkOStreamWrapper
   class std_string;
 
 public:
-  //@{
+  ///@{
   /**
    * Construct class to reference a real ostream.  All methods and
    * operators will be forwarded.
    */
   vtkOStreamWrapper(ostream& os);
   vtkOStreamWrapper(vtkOStreamWrapper& r);
-  //@}
+  ///@}
 
   virtual ~vtkOStreamWrapper();
 
@@ -62,7 +64,7 @@ public:
   {
   };
 
-  //@{
+  ///@{
   /**
    * Forward this output operator to the real ostream.
    */
@@ -87,7 +89,7 @@ public:
   vtkOStreamWrapper& operator<<(float);
   vtkOStreamWrapper& operator<<(double);
   vtkOStreamWrapper& operator<<(bool);
-  //@}
+  ///@}
 
   // Work-around for IBM Visual Age bug in overload resolution.
 #if defined(__IBMCPP__)
@@ -113,6 +115,14 @@ public:
   vtkOStreamWrapper& operator<<(const S<char, std::char_traits<char>, std::allocator<char>>& s)
   {
     return *this << reinterpret_cast<std_string const&>(s);
+  }
+
+  // Accept vtkSmartPointer for output.
+  template <typename T>
+  vtkOStreamWrapper& operator<<(const vtkSmartPointer<T>& ptr)
+  {
+    this->ostr << (static_cast<T*>(ptr));
+    return *this;
   }
 
   /**
@@ -142,13 +152,13 @@ public:
    */
   void flush();
 
-  //@{
+  ///@{
   /**
    * Implementation detail to allow macros to provide an endl that may
    * or may not be used.
    */
   static void UseEndl(const EndlType&) {}
-  //@}
+  ///@}
 protected:
   // Reference to the real ostream.
   ostream& ostr;

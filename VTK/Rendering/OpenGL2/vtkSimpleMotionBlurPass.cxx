@@ -267,13 +267,13 @@ void vtkSimpleMotionBlurPass::Render(const vtkRenderState* s)
 
   // now copy the result to the outer FO
   renWin->GetState()->PushReadFramebufferBinding();
-  this->FrameBufferObject->Bind(this->FrameBufferObject->GetReadMode());
+  this->FrameBufferObject->Bind(vtkOpenGLFramebufferObject::GetReadMode());
 
   ostate->vtkglViewport(
     this->ViewportX, this->ViewportY, this->ViewportWidth, this->ViewportHeight);
   ostate->vtkglScissor(this->ViewportX, this->ViewportY, this->ViewportWidth, this->ViewportHeight);
 
-  glBlitFramebuffer(0, 0, this->ViewportWidth, this->ViewportHeight, this->ViewportX,
+  ostate->vtkglBlitFramebuffer(0, 0, this->ViewportWidth, this->ViewportHeight, this->ViewportX,
     this->ViewportY, this->ViewportX + this->ViewportWidth, this->ViewportY + this->ViewportHeight,
     GL_COLOR_BUFFER_BIT, GL_LINEAR);
 

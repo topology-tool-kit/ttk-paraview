@@ -18,10 +18,6 @@
   the U.S. Government retains certain rights in this software.
 -------------------------------------------------------------------------*/
 
-// Check for Qt SQL module before defining this class.
-#include <qglobal.h>
-#if (QT_EDITION & QT_MODULE_SQL)
-
 #include "vtkQtSQLDatabase.h"
 
 #include "vtkObjectFactory.h"
@@ -65,7 +61,7 @@ vtkQtSQLDatabase::vtkQtSQLDatabase()
   this->HostName = nullptr;
   this->UserName = nullptr;
   this->DatabaseName = nullptr;
-  this->Port = -1;
+  this->DbPort = -1;
   this->ConnectOptions = nullptr;
   this->myTables = vtkStringArray::New();
   this->currentRecord = vtkStringArray::New();
@@ -99,7 +95,7 @@ bool vtkQtSQLDatabase::Open(const char* password)
 
   // We have to assign a unique ID to each database connection, so
   // Qt doesn't blow-away existing connections
-  const QString connection_name = QString::number(this->id++);
+  const QString connection_name = QString::number(vtkQtSQLDatabase::id++);
   this->QtDatabase = QSqlDatabase::addDatabase(this->DatabaseType, connection_name);
 
   if (this->HostName != nullptr)
@@ -114,9 +110,9 @@ bool vtkQtSQLDatabase::Open(const char* password)
   {
     this->QtDatabase.setConnectOptions(this->ConnectOptions);
   }
-  if (this->Port >= 0)
+  if (this->DbPort >= 0)
   {
-    this->QtDatabase.setPort(this->Port);
+    this->QtDatabase.setPort(this->DbPort);
   }
   if (this->QtDatabase.open(this->UserName, password))
   {
@@ -145,12 +141,12 @@ vtkSQLQuery* vtkQtSQLDatabase::GetQueryInstance()
 
 bool vtkQtSQLDatabase::HasError()
 {
-  return (this->QtDatabase.lastError().number() != QSqlError::NoError);
+  return this->QtDatabase.lastError().isValid();
 }
 
 const char* vtkQtSQLDatabase::GetLastErrorText()
 {
-  return this->QtDatabase.lastError().text().toLatin1();
+  return this->QtDatabase.lastError().text().toUtf8().data();
 }
 
 vtkStringArray* vtkQtSQLDatabase::GetTables()
@@ -177,7 +173,7 @@ vtkStringArray* vtkQtSQLDatabase::GetTables()
     QStringList tables = this->QtDatabase.tables(QSql::Tables);
     for (int i = 0; i < tables.size(); ++i)
     {
-      this->myTables->InsertNextValue(tables.at(i).toLatin1());
+      this->myTables->InsertNextValue(tables.at(i).toUtf8().data());
     }
   }
 
@@ -192,7 +188,7 @@ vtkStringArray* vtkQtSQLDatabase::GetRecord(const char* table)
   QSqlRecord columns = this->QtDatabase.record(table);
   for (int i = 0; i < columns.count(); i++)
   {
-    this->currentRecord->InsertNextValue(columns.fieldName(i).toLatin1());
+    this->currentRecord->InsertNextValue(columns.fieldName(i).toUtf8().data());
   }
 
   return currentRecord;
@@ -255,7 +251,7 @@ void vtkQtSQLDatabase::PrintSelf(ostream& os, vtkIndent indent)
   os << indent << "HostName: " << (this->HostName ? this->HostName : "nullptr") << endl;
   os << indent << "UserName: " << (this->UserName ? this->UserName : "nullptr") << endl;
   os << indent << "DatabaseName: " << (this->DatabaseName ? this->DatabaseName : "nullptr") << endl;
-  os << indent << "Port: " << this->Port << endl;
+  os << indent << "DbPort: " << this->DbPort << endl;
   os << indent << "ConnectOptions: " << (this->ConnectOptions ? this->ConnectOptions : "nullptr")
      << endl;
 }
@@ -293,14 +289,12 @@ bool vtkQtSQLDatabase::ParseURL(const char* URL)
   }
 
   // Create Qt 'version' of database prototcol type
-  QString qtType;
-  qtType = protocol.c_str();
-  qtType = "Q" + qtType.toUpper();
+  QString qtType = "Q" + QString::fromUtf8(protocol.c_str()).toUpper();
 
-  this->SetDatabaseType(qtType.toLatin1());
+  this->SetDatabaseType(qtType.toUtf8().data());
   this->SetUserName(username.c_str());
   this->SetHostName(hostname.c_str());
-  this->SetPort(atoi(dataport.c_str()));
+  this->SetDbPort(atoi(dataport.c_str()));
   this->SetDatabaseName(database.c_str());
   return true;
 }
@@ -327,10 +321,8 @@ vtkStdString vtkQtSQLDatabase::GetURL()
   url += "@";
   url += this->GetHostName();
   url += ":";
-  url += this->GetPort();
+  url += std::to_string(this->GetDbPort());
   url += "/";
   url += this->GetDatabaseName();
   return url;
 }
-
-#endif // (QT_EDITION & QT_MODULE_SQL)

@@ -69,7 +69,7 @@ struct ExplodeFunctor
 {
   ExplodeFunctor(vtkPMaterialClusterExplodeFilter* filter, vtkImageData* input,
     vtkDataArray* labelArray, double datasetCenter[3],
-    std::map<int, std::array<double, 3> >& barycenterMap)
+    std::map<int, std::array<double, 3>>& barycenterMap)
     : Filter(filter)
     , Input(input)
     , LabelArray(labelArray)
@@ -210,7 +210,7 @@ struct ExplodeFunctor
 
     vtkIdType totalNbPts = 0;
     vtkIdType totalNbCells = 0;
-    for (auto params : this->LocalData)
+    for (const auto& params : this->LocalData)
     {
       totalNbPts += params.Points->GetNumberOfPoints();
       totalNbCells += params.Cells->GetNumberOfCells();
@@ -268,7 +268,7 @@ struct ExplodeFunctor
   vtkDataArray* LabelArray;
   vtkUnsignedCharArray* GhostArray;
   vtkNew<vtkPolyData> Output;
-  std::map<int, std::array<double, 3> >& BarycenterMap;
+  std::map<int, std::array<double, 3>>& BarycenterMap;
   double DatasetCenter[3];
   double ExplodeFactor;
   int Extent[6];
@@ -409,7 +409,7 @@ int vtkPMaterialClusterExplodeFilter::RequestData(vtkInformation* vtkNotUsed(req
 
   // Build the label map
   std::array<double, 3> tmpBarycenter;
-  std::map<int, std::array<double, 3> > barycenterMap;
+  std::map<int, std::array<double, 3>> barycenterMap;
   for (vtkIdType i = 0; i < labelArray->GetNumberOfTuples(); i++)
   {
     centerArray->GetTuple(i, tmpBarycenter.data());

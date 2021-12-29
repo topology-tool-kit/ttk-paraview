@@ -42,34 +42,36 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class pqAnimationKeyFrame;
 
 // represents a track
-class PQWIDGETS_EXPORT pqAnimationTrack : public QObject, public QGraphicsItem
+class PQWIDGETS_EXPORT pqAnimationTrack
+  : public QObject
+  , public QGraphicsItem
 {
   Q_OBJECT
   Q_INTERFACES(QGraphicsItem)
   /**
-  * the property animated in this track
-  */
+   * the property animated in this track
+   */
   Q_PROPERTY(QVariant property READ property WRITE setProperty)
 public:
-  pqAnimationTrack(QObject* p = 0);
+  pqAnimationTrack(QObject* p = nullptr);
   ~pqAnimationTrack() override;
 
   /**
-  * number of keyframes
-  */
+   * number of keyframes
+   */
   int count();
   /**
-  * get a keyframe
-  */
+   * get a keyframe
+   */
   pqAnimationKeyFrame* keyFrame(int);
 
   /**
-  * add a keyframe
-  */
+   * add a keyframe
+   */
   pqAnimationKeyFrame* addKeyFrame();
   /**
-  * remove a keyframe
-  */
+   * remove a keyframe
+   */
   void removeKeyFrame(pqAnimationKeyFrame* frame);
 
   bool isDeletable() const { return this->Deletable; }
@@ -95,12 +97,10 @@ Q_SIGNALS:
   void enabledChanged();
 
 protected:
-  void adjustKeyFrameRects();
-
   void paint(QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget) override;
 
 private:
-  bool Deletable;
+  bool Deletable = true;
   QList<pqAnimationKeyFrame*> Frames;
   QVariant Property;
 

@@ -42,15 +42,15 @@ vtkCommandOptions::vtkCommandOptions()
   this->Internals = new vtkCommandOptionsInternal();
   this->Internals->CMD.SetUnknownArgumentCallback(vtkCommandOptions::UnknownArgumentHandler);
   this->Internals->CMD.SetClientData(this);
-  this->UnknownArgument = 0;
+  this->UnknownArgument = nullptr;
   this->HelpSelected = 0;
 
-  this->ErrorMessage = 0;
+  this->ErrorMessage = nullptr;
   this->Argc = 0;
-  this->Argv = 0;
-  this->ApplicationPath = 0;
+  this->Argv = nullptr;
+  this->ApplicationPath = nullptr;
 
-  this->XMLConfigFile = 0;
+  this->XMLConfigFile = nullptr;
 
   this->XMLParser = vtkCommandOptionsXMLParser::New();
   this->XMLParser->SetPVOptions(this);
@@ -59,20 +59,20 @@ vtkCommandOptions::vtkCommandOptions()
 //----------------------------------------------------------------------------
 vtkCommandOptions::~vtkCommandOptions()
 {
-  this->SetXMLConfigFile(0);
+  this->SetXMLConfigFile(nullptr);
 
   // Remove internals
-  this->SetUnknownArgument(0);
-  this->SetErrorMessage(0);
+  this->SetUnknownArgument(nullptr);
+  this->SetErrorMessage(nullptr);
   this->CleanArgcArgv();
   delete this->Internals;
 
-  this->SetApplicationPath(NULL);
+  this->SetApplicationPath(nullptr);
 
   if (this->XMLParser)
   {
     this->XMLParser->Delete();
-    this->XMLParser = 0;
+    this->XMLParser = nullptr;
   }
 }
 
@@ -92,9 +92,7 @@ const char* vtkCommandOptions::GetHelp()
 }
 
 //----------------------------------------------------------------------------
-void vtkCommandOptions::Initialize()
-{
-}
+void vtkCommandOptions::Initialize() {}
 
 //----------------------------------------------------------------------------
 int vtkCommandOptions::PostProcess(int, const char* const*)
@@ -109,10 +107,10 @@ int vtkCommandOptions::WrongArgument(const char* argument)
   if (this->XMLConfigFile && strcmp(argument, this->XMLConfigFile) == 0)
   {
     // if the UnknownArgument is the XMLConfigFile then set the
-    // UnknownArgument to null as it really is not Unknown anymore.
+    // UnknownArgument to nullptr as it really is not Unknown anymore.
     if (this->UnknownArgument && (strcmp(this->UnknownArgument, this->XMLConfigFile) == 0))
     {
-      this->SetUnknownArgument(0);
+      this->SetUnknownArgument(nullptr);
     }
     return 1;
   }
@@ -177,7 +175,7 @@ void vtkCommandOptions::CleanArgcArgv()
       delete[] this->Argv[cc];
     }
     delete[] this->Argv;
-    this->Argv = 0;
+    this->Argv = nullptr;
   }
 }
 //----------------------------------------------------------------------------
@@ -332,20 +330,20 @@ int vtkCommandOptions::GetLastArgument()
 //----------------------------------------------------------------------------
 void vtkCommandOptions::ComputeApplicationPath()
 {
-  this->SetApplicationPath(NULL);
+  this->SetApplicationPath(nullptr);
 
   std::string argv0 = this->GetArgv0();
-  if (argv0.size())
+  if (!argv0.empty())
   {
     if (argv0.rfind('/') != std::string::npos || argv0.rfind('\\') != std::string::npos)
     {
       // is a relative/absolute path, compute it based on cwd
-      argv0 = vtksys::SystemTools::CollapseFullPath(argv0.c_str());
+      argv0 = vtksys::SystemTools::CollapseFullPath(argv0);
     }
     else
     {
       // no path separator found, search PATH for it
-      argv0 = vtksys::SystemTools::FindProgram(argv0.c_str()).c_str();
+      argv0 = vtksys::SystemTools::FindProgram(argv0.c_str());
     }
     this->SetApplicationPath(argv0.c_str());
   }

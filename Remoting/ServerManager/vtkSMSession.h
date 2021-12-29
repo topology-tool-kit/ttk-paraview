@@ -17,16 +17,15 @@
  *
  * vtkSMSession is the default ParaView session. This class can be used as the
  * session for non-client-server configurations eg. builtin mode or batch.
-*/
+ */
 
 #ifndef vtkSMSession_h
 #define vtkSMSession_h
 
+#include "vtkLegacy.h" // for VTK_LEGACY
 #include "vtkPVSessionBase.h"
 #include "vtkRemotingServerManagerModule.h" //needed for exports
-#include "vtkSmartPointer.h"                // needed for vtkSmartPointer.
 
-class vtkProcessModuleAutoMPI;
 class vtkSMCollaborationManager;
 class vtkSMProxyLocator;
 class vtkSMSessionProxyManager;
@@ -48,9 +47,9 @@ public:
   /**
    * Return the instance of vtkSMCollaborationManager that will be
    * lazy created at the first call.
-   * By default we return NULL
+   * By default we return nullptr
    */
-  virtual vtkSMCollaborationManager* GetCollaborationManager() { return NULL; }
+  virtual vtkSMCollaborationManager* GetCollaborationManager() { return nullptr; }
 
   //---------------------------------------------------------------------------
   // API for client-side components of a session.
@@ -116,7 +115,7 @@ public:
    * Provide an access to the session state locator that can provide the last
    * state of a given remote object that have been pushed.
    * That locator will be filled by RemoteObject state only if
-   * the UndoStackBuilder in vtkSMProxyManager is non-null.
+   * the UndoStackBuilder in vtkSMProxyManager is non-nullptr.
    */
   vtkGetObjectMacro(StateLocator, vtkSMStateLocator);
   //@}
@@ -153,7 +152,9 @@ public:
   /**
    * Sends the message to all but the active client-session.
    */
-  void NotifyOtherClients(const vtkSMMessage*) override { /* nothing to do. */}
+  void NotifyOtherClients(const vtkSMMessage*) override
+  { /* nothing to do. */
+  }
 
   //---------------------------------------------------------------------------
   // API for Collaboration management
@@ -201,7 +202,7 @@ public:
    */
   static vtkIdType ReverseConnectToRemote(int port)
   {
-    return vtkSMSession::ReverseConnectToRemote(port, (bool (*)())NULL);
+    return vtkSMSession::ReverseConnectToRemote(port, (bool (*)()) nullptr);
   }
   static vtkIdType ReverseConnectToRemote(int port, bool (*callback)());
 
@@ -224,7 +225,7 @@ public:
    */
   static vtkIdType ReverseConnectToRemote(int dsport, int rsport)
   {
-    return vtkSMSession::ReverseConnectToRemote(dsport, rsport, NULL);
+    return vtkSMSession::ReverseConnectToRemote(dsport, rsport, nullptr);
   }
   static vtkIdType ReverseConnectToRemote(int dsport, int rsport, bool (*callback)());
 
@@ -240,12 +241,11 @@ public:
   //@}
 
   //@{
+
   /**
-   * This flag if set indicates that the current session
-   * module has automatically started "pvservers" as MPI processes as
-   * default pipeline.
+   * Deprecated. AutoMPI is no longer supported. This simply returns false.
    */
-  vtkGetMacro(IsAutoMPI, bool);
+  VTK_LEGACY(bool GetIsAutoMPI() const);
   //@}
 
 protected:
@@ -253,14 +253,13 @@ protected:
   // this->Initialize() is not called in constructor but only after the session
   // has been created/setup correctly.
   vtkSMSession(
-    bool initialize_during_constructor = true, vtkPVSessionCore* preExistingSessionCore = NULL);
+    bool initialize_during_constructor = true, vtkPVSessionCore* preExistingSessionCore = nullptr);
   ~vtkSMSession() override;
 
   /**
    * Internal method used by ConnectToRemote().
    */
-  static vtkIdType ConnectToRemoteInternal(
-    const char* hostname, int port, bool is_auto_mpi, int timeout = 60);
+  static vtkIdType ConnectToRemoteInternal(const char* hostname, int port, int timeout = 60);
 
   /**
    * Process the Notifation message sent using API to communicate from
@@ -285,14 +284,9 @@ protected:
   vtkSMStateLocator* StateLocator;
   vtkSMProxyLocator* ProxyLocator;
 
-  bool IsAutoMPI;
-
 private:
   vtkSMSession(const vtkSMSession&) = delete;
   void operator=(const vtkSMSession&) = delete;
-
-  // AutoMPI helper class
-  static vtkSmartPointer<vtkProcessModuleAutoMPI> AutoMPI;
 };
 
 #endif

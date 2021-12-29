@@ -56,7 +56,7 @@ int TestPWindBladeReader(int argc, char* argv[])
 {
   vtkMPIController* controller = vtkMPIController::New();
   controller->Initialize(&argc, &argv, 0);
-  controller->SetGlobalController(controller);
+  vtkMPIController::SetGlobalController(controller);
 
   // Read file name.
   char* fname =
@@ -153,7 +153,16 @@ int TestPWindBladeReader(int argc, char* argv[])
   // interact with data
   renWin->Render();
 
-  int retVal = vtkRegressionTestImage(renWin);
+  int retVal;
+  if (controller->GetLocalProcessId() == 0)
+  {
+    retVal = vtkRegressionTestImage(renWin);
+  }
+  else
+  {
+    // Let non-zero ranks believe they passed - rank 0 will do the regression testing
+    retVal = vtkRegressionTester::PASSED;
+  }
 
   if (retVal == vtkRegressionTester::DO_INTERACTOR)
   {
@@ -174,7 +183,7 @@ int TestPWindBladeReader(int argc, char* argv[])
   iren->Delete();
 
   controller->Finalize(0);
-  controller->SetGlobalController(nullptr);
+  vtkMPIController::SetGlobalController(nullptr);
   controller->Delete();
 
   return !retVal;

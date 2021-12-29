@@ -68,7 +68,7 @@ class vtkAMRVelodyneReaderInternal
 public:
   vtkAMRVelodyneReaderInternal();
   ~vtkAMRVelodyneReaderInternal();
-  void SetFileName(char* fileName);
+  void SetFileName(VTK_FILEPATH char* fileName);
   void ReadMetaData();
   void GetBlockAttribute(const char* attribute, int blockIdx, vtkUniformGrid* pDataSet);
 
@@ -103,3 +103,4 @@ private:
   std::unordered_map<std::string, int> arrayMap;
 };
 #endif
+// VTK-HeaderTest-Exclude: vtkAMRVelodyneReaderInternal.h

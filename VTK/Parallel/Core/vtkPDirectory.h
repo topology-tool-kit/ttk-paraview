@@ -38,7 +38,7 @@ public:
   vtkTypeMacro(vtkPDirectory, vtkObject);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Open/Load the specified directory and load the names of the files
    * in that directory. false/0 is returned if the directory can not be
@@ -48,7 +48,7 @@ public:
    */
   bool Load(const std::string&);
   int Open(const char* dir);
-  //@}
+  ///@}
 
   /**
    * Return the number of files in the current directory.
@@ -58,7 +58,7 @@ public:
   /**
    * Return the file at the given index, the indexing is 0 based
    */
-  const char* GetFile(vtkIdType index) const;
+  VTK_FILEPATH const char* GetFile(vtkIdType index) const;
 
   /**
    * Return true if the file is a directory.  If the file is not an
@@ -68,17 +68,17 @@ public:
    */
   int FileIsDirectory(const char* name);
 
-  //@{
+  ///@{
   /**
    * Get an array that contains all the file names.
    */
   vtkGetObjectMacro(Files, vtkStringArray);
-  //@}
+  ///@}
 
   /**
    * Return the path to Open'ed directory
    */
-  const char* GetPath() const;
+  VTK_FILEPATH const char* GetPath() const;
 
   /**
    * Clear the internal structure. Used internally at beginning of Load(...)
@@ -89,22 +89,22 @@ public:
   /**
    * Get the current working directory.
    */
-  static const char* GetCurrentWorkingDirectory(char* buf, unsigned int len);
+  static VTK_FILEPATH const char* GetCurrentWorkingDirectory(char* buf, unsigned int len);
 
   /**
    * Create directory.
    */
-  static int MakeDirectory(const char* dir);
+  static int MakeDirectory(VTK_FILEPATH const char* dir);
 
   /**
    * Remove a directory.
    */
-  static int DeleteDirectory(const char* dir);
+  static int DeleteDirectory(VTK_FILEPATH const char* dir);
 
   /**
    * Rename a file or directory.
    */
-  static int Rename(const char* oldname, const char* newname);
+  static int Rename(VTK_FILEPATH const char* oldname, VTK_FILEPATH const char* newname);
 
 protected:
   vtkPDirectory();

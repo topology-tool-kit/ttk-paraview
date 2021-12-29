@@ -23,7 +23,7 @@
  * To make such information available, we use vtkPVFileInformationHelper.
  * One creates a server side representation of vtkPVFileInformationHelper and
  * sets attributes on it, then requests a gather information on the helper object.
-*/
+ */
 
 #ifndef vtkPVFileInformationHelper_h
 #define vtkPVFileInformationHelper_h
@@ -116,18 +116,6 @@ public:
    * Returns if this->Path is a directory.
    */
   bool GetActiveFileIsDirectory();
-
-  /**
-   * Transform local code page string to UTF8 string
-   * on windows only, pass through otherwise
-   */
-  static std::string LocalToUtf8Win32(const std::string& path);
-
-  /**
-   * Transform utf8 string to local code page string
-   * on windows only, pass through otherwise
-   */
-  static std::string Utf8ToLocalWin32(const std::string& path);
 
   //@{
   /**

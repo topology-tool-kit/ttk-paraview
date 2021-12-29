@@ -59,6 +59,7 @@ using Ui::pqMemoryInspectorPanelForm;
 #include <QTreeWidgetItem>
 #include <QTreeWidgetItemIterator>
 
+#include <cmath>
 #include <map>
 using std::map;
 using std::pair;
@@ -67,16 +68,10 @@ using std::vector;
 #include <string>
 using std::string;
 #include <sstream>
-using std::ostringstream;
 using std::istringstream;
+using std::ostringstream;
 #include <iostream>
-using std::cerr;
 using std::endl;
-using std::left;
-using std::right;
-#include <iomanip>
-using std::setw;
-using std::setfill;
 #include <algorithm>
 using std::min;
 
@@ -261,7 +256,7 @@ void ClearVectorOfPointers(vector<T*> data)
     if (data[i])
     {
       delete data[i];
-      data[i] = NULL;
+      data[i] = nullptr;
     }
   }
   data.clear();
@@ -321,7 +316,6 @@ public:
 private:
   void InitializeMemoryUseWidget(QProgressBar*& loadWidget);
 
-private:
   int Rank;
   long long Pid;
   long long ProcMemoryUse;
@@ -491,9 +485,7 @@ private:
 
 //-----------------------------------------------------------------------------
 HostData::HostData()
-  : GroupName("")
-  , HostName("")
-  , HostMemoryTotal(0)
+  : HostMemoryTotal(0)
   , HostMemoryAvailable(0)
 {
 }
@@ -541,7 +533,7 @@ RankData* HostData::GetRankData(int i)
   {
     return this->Ranks[i];
   }
-  return NULL;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -562,7 +554,7 @@ RankData* HostData::AddRankData(int rank, long long pid, long long procMemAvail)
 long long HostData::GetTotalSystemMemoryUse()
 {
   long long load = 0;
-  if (this->Ranks.size())
+  if (!this->Ranks.empty())
   {
     load = this->Ranks[0]->GetHostMemoryUse();
   }
@@ -777,10 +769,7 @@ pqMemoryInspectorPanel::~pqMemoryInspectorPanel()
 //-----------------------------------------------------------------------------
 void pqMemoryInspectorPanel::ClearClient()
 {
-  if (this->ClientHost)
-  {
-    delete this->ClientHost;
-  }
+  delete this->ClientHost;
   this->ClientHost = nullptr;
 }
 
@@ -794,7 +783,7 @@ void pqMemoryInspectorPanel::ClearServer(map<string, HostData*>& hosts, vector<R
     if ((*it).second)
     {
       delete (*it).second;
-      (*it).second = NULL;
+      (*it).second = nullptr;
     }
     ++it;
   }
@@ -878,7 +867,6 @@ void pqMemoryInspectorPanel::RenderCompleted()
   }
 
   this->Update();
-  return;
 
   /*
   // This code is for updating on endRender regardless of whether
@@ -947,18 +935,18 @@ void pqMemoryInspectorPanel::InitializeServerGroup(long long clientPid,
     long long hostMemoryAvailable = configs->GetHostMemoryAvailable(i);
     long long procMemoryAvailable = configs->GetProcMemoryAvailable(i);
 
-// it's useful to have hostname's rank's and pid's in
-// the terminal. if the client hangs you can attach
-// gdb and see where it's stuck without a lot of effort
+    // it's useful to have hostname's rank's and pid's in
+    // the terminal. if the client hangs you can attach
+    // gdb and see where it's stuck without a lot of effort
 
 #ifdef MIP_PROCESS_TABLE
     cerr << setw(32) << hostName << setw(16) << pid << setw(8) << rank << endl << setw(1);
 #endif
 
     // host
-    HostData* serverHost = NULL;
+    HostData* serverHost = nullptr;
 
-    pair<string, HostData*> ins(hostName, (HostData*)0);
+    pair<string, HostData*> ins(hostName, (HostData*)nullptr);
     pair<map<string, HostData*>::iterator, bool> ret;
     ret = hosts.insert(ins);
     if (ret.second)
@@ -1060,8 +1048,8 @@ int pqMemoryInspectorPanel::Initialize()
   QWidget* groupWidget = this->NewGroupWidget("client", ":/pqWidgets/Icons/pqClient32.png");
   this->Ui->configView->setItemWidget(clientGroup, 0, groupWidget);
 
-  vtkSMSession* session = NULL;
-  vtkPVSystemConfigInformation* configs = NULL;
+  vtkSMSession* session = nullptr;
+  vtkPVSystemConfigInformation* configs = nullptr;
 
   configs = vtkPVSystemConfigInformation::New();
   session = server->session();
@@ -1138,7 +1126,7 @@ int pqMemoryInspectorPanel::Initialize()
     cerr << left << setw(56) << setfill('=') << "server" << endl
          << right << setw(1) << setfill(' ');
 #endif
-    QTreeWidgetItem* group = NULL;
+    QTreeWidgetItem* group = nullptr;
     group = new QTreeWidgetItem(this->Ui->configView);
     group->setChildIndicatorPolicy(QTreeWidgetItem::DontShowIndicatorWhenChildless);
     group->setExpanded(true);
@@ -1194,8 +1182,7 @@ int pqMemoryInspectorPanel::Initialize()
 
   //
   this->ClientOnly = false;
-  if ((this->RenderServerHosts.size() == 0) && (this->DataServerHosts.size() == 0) &&
-    (this->ServerHosts.size() == 0))
+  if (this->RenderServerHosts.empty() && this->DataServerHosts.empty() && this->ServerHosts.empty())
   {
     this->ClientOnly = true;
   }
@@ -1283,8 +1270,8 @@ void pqMemoryInspectorPanel::UpdateRanks()
   }
 
   // fectch latest numbers
-  vtkSMSession* session = NULL;
-  vtkPVMemoryUseInformation* infos = NULL;
+  vtkSMSession* session = nullptr;
+  vtkPVMemoryUseInformation* infos = nullptr;
   size_t nInfos = 0;
 
   // client
@@ -1340,7 +1327,7 @@ void pqMemoryInspectorPanel::UpdateRanks()
     switch (infos->GetProcessType((int)i))
     {
       case vtkProcessModule::PROCESS_SERVER:
-        if (this->ServerRanks.size())
+        if (!this->ServerRanks.empty())
         {
           this->ServerRanks[rank]->SetProcMemoryUse(procUse);
           this->ServerRanks[rank]->SetHostMemoryUse(hostUse);
@@ -1349,7 +1336,7 @@ void pqMemoryInspectorPanel::UpdateRanks()
         break;
 
       case vtkProcessModule::PROCESS_DATA_SERVER:
-        if (this->DataServerRanks.size())
+        if (!this->DataServerRanks.empty())
         {
           this->DataServerRanks[rank]->SetProcMemoryUse(procUse);
           this->DataServerRanks[rank]->SetHostMemoryUse(hostUse);
@@ -1358,7 +1345,7 @@ void pqMemoryInspectorPanel::UpdateRanks()
         break;
 
       case vtkProcessModule::PROCESS_RENDER_SERVER:
-        if (this->RenderServerRanks.size())
+        if (!this->RenderServerRanks.empty())
         {
           this->RenderServerRanks[rank]->SetProcMemoryUse(procUse);
           this->RenderServerRanks[rank]->SetHostMemoryUse(hostUse);
@@ -1478,7 +1465,7 @@ void pqMemoryInspectorPanel::ExecuteRemoteCommand()
     if (type == ITEM_DATA_CLIENT_GROUP)
     {
       item = item->child(0);
-      if (item == NULL)
+      if (item == nullptr)
         return;
       type = item->data(0, ITEM_KEY_PROCESS_TYPE).toInt();
     }
@@ -1493,8 +1480,8 @@ void pqMemoryInspectorPanel::ExecuteRemoteCommand()
       case ITEM_DATA_CLIENT_RANK:
       case ITEM_DATA_SERVER_RANK:
       {
-        string host((const char*)item->data(0, ITEM_KEY_HOST_NAME).toString().toLocal8Bit());
-        string pid((const char*)item->data(0, ITEM_KEY_PID).toString().toLocal8Bit());
+        string host(item->data(0, ITEM_KEY_HOST_NAME).toString().toUtf8().toStdString());
+        string pid(item->data(0, ITEM_KEY_PID).toString().toUtf8().toStdString());
 
         int serverSystemType = item->data(0, ITEM_KEY_SYSTEM_TYPE).toInt();
 
@@ -1590,7 +1577,7 @@ void pqMemoryInspectorPanel::ShowOnlyNodes()
 
   QTreeWidgetItem* item;
   QTreeWidgetItemIterator it(this->Ui->configView);
-  while ((item = *it) != (QTreeWidgetItem*)0)
+  while ((item = *it) != (QTreeWidgetItem*)nullptr)
   {
     bool ok;
     int type = item->data(0, ITEM_KEY_PROCESS_TYPE).toInt(&ok);
@@ -1645,7 +1632,7 @@ void pqMemoryInspectorPanel::ShowHostPropertiesDialog()
   if (type == ITEM_DATA_CLIENT_GROUP)
   {
     item = item->child(0);
-    if (item == NULL)
+    if (item == nullptr)
       return;
     type = item->data(0, ITEM_KEY_PROCESS_TYPE).toInt();
   }
@@ -1702,7 +1689,7 @@ void pqMemoryInspectorPanel::ConfigViewContextMenu(const QPoint& position)
       case ITEM_DATA_CLIENT_GROUP:
       {
         QTreeWidgetItem* child = item->child(0);
-        if (child == NULL)
+        if (child == nullptr)
           return;
         context.addAction("properties...", this, SLOT(ShowHostPropertiesDialog()));
         int sysType = child->data(0, ITEM_KEY_SYSTEM_TYPE).toInt(&ok);
@@ -1726,7 +1713,7 @@ void pqMemoryInspectorPanel::ConfigViewContextMenu(const QPoint& position)
         context.addAction("show all ranks", this, SLOT(ShowAllRanks()));
 
         QTreeWidgetItem* child = item->child(0);
-        if (child == NULL)
+        if (child == nullptr)
           return;
         int sysType = child->data(0, ITEM_KEY_SYSTEM_TYPE).toInt(&ok);
         if (!ok)

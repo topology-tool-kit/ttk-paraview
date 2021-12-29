@@ -25,6 +25,8 @@
 #include <vtkCellIntersections.h>
 #include <vtkVisItUtility.h>
 
+#include <cmath>
+
 
 //
 // Macros

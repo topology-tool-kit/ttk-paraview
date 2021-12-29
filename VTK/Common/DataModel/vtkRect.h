@@ -50,7 +50,7 @@ public:
   {
   }
 
-  //@{
+  ///@{
   /**
    * Set the x, y components of the rectangle, and the width/height.
    */
@@ -61,7 +61,7 @@ public:
     this->Data[2] = width;
     this->Data[3] = height;
   }
-  //@}
+  ///@}
 
   /**
    * Set the x component of the rectangle bottom corner, i.e. element 0.
@@ -146,7 +146,7 @@ public:
    */
   vtkVector<T, 2> GetTopRight() const { return vtkVector2<T>(this->GetRight(), this->GetTop()); }
 
-  //@{
+  ///@{
   /**
    * Expand this rect to contain the point passed in.
    */
@@ -166,7 +166,7 @@ public:
       T dx = point[0] - this->GetX();
       this->SetWidth(vtkMath::Max(dx, this->GetWidth()));
     }
-    //@}
+    ///@}
 
     if (point[1] < this->GetY())
     {
@@ -182,7 +182,7 @@ public:
     }
   }
 
-  //@{
+  ///@{
   /**
    * Expand this rect to contain the point passed in.
    */
@@ -191,9 +191,9 @@ public:
     T point[2] = { x, y };
     this->AddPoint(point);
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Expand this rect to contain the rect passed in.
    */
@@ -216,7 +216,7 @@ public:
       // this->GetX() is already correct
       this->SetWidth(vtkMath::Max(rect.GetWidth(), this->GetWidth()));
     }
-    //@}
+    ///@}
 
     if (rect.GetY() < this->GetY())
     {
@@ -306,6 +306,15 @@ public:
       return true;
     }
     return false;
+  }
+
+  /**
+   * Returns the center of the rect as a vtkVector2d.
+   */
+  vtkVector2d GetCenter() const
+  {
+    return vtkVector2d(
+      this->GetX() + 0.5 * this->GetWidth(), this->GetY() + 0.5 * this->GetHeight());
   }
 };
 

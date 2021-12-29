@@ -17,7 +17,7 @@ vtkm_install_headers(
   vtkm ${VTKm_BINARY_INCLUDE_DIR}/${kit_dir}/Version.h)
 
 set(headers
-  Algorithms.h
+  Algorithms.h # Deprecated, split into LowerBound.h, UpperBound.h
   Assert.h
   Atomic.h
   BinaryPredicates.h
@@ -35,6 +35,7 @@ set(headers
   ImplicitFunction.h
   List.h
   ListTag.h
+  LowerBound.h
   Math.h
   Matrix.h
   NewtonsMethod.h
@@ -58,10 +59,12 @@ set(headers
   VecFromPortalPermute.h
   VecFromVirtPortal.h
   VectorAnalysis.h
+  VecFlat.h
   VecTraits.h
   VecVariable.h
   VirtualObjectBase.h
   UnaryPredicates.h
+  UpperBound.h
 )
 
 set(template_sources

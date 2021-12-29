@@ -39,7 +39,7 @@
 #include "vtkSmartPointer.h"
 #define VTK_CREATE(type, name) vtkSmartPointer<type> name = vtkSmartPointer<type>::New()
 
-#include <math.h>
+#include <cmath>
 
 //=============================================================================
 vtkStandardNewMacro(vtkMomentGlyphs);
@@ -52,9 +52,7 @@ vtkMomentGlyphs::vtkMomentGlyphs()
   this->ScaleByDensity = 0;
 }
 
-vtkMomentGlyphs::~vtkMomentGlyphs()
-{
-}
+vtkMomentGlyphs::~vtkMomentGlyphs() = default;
 
 void vtkMomentGlyphs::PrintSelf(ostream& os, vtkIndent indent)
 {

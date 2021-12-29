@@ -40,8 +40,7 @@ namespace
  * method to determine which arrays from a field data can be flipped.
  * Only 3/6/9 component signed data array are considered flippable.
  */
-static void FindFlippableArrays(
-  vtkFieldData* fd, std::vector<std::pair<vtkIdType, int>>& flippableArrays)
+void FindFlippableArrays(vtkFieldData* fd, std::vector<std::pair<vtkIdType, int>>& flippableArrays)
 {
   // Find all flippable arrays
   for (int iArr = 0; iArr < fd->GetNumberOfArrays(); iArr++)
@@ -271,9 +270,10 @@ vtkIdType vtkReflectionFilter::ReflectNon3DCell(
       {
         vtkWarningMacro("Cell may be inverted");
       }
-      for (int j = numCellPts - 1; j >= 0; j--)
+      for (int j = 0; j != numCellPts; j++)
       {
-        newCellPts[numCellPts - 1 - j] = cellPts->GetId(j);
+        // Indexing in this way ensures proper reflection of quad triangulation
+        newCellPts[(numCellPts - j) % numCellPts] = cellPts->GetId(j);
       }
     }
   } // end switch
@@ -766,7 +766,7 @@ int vtkReflectionFilter::RequestDataInternal(
       case VTK_QUADRATIC_PYRAMID:
       {
         input->GetCellPoints(i, cellPts);
-        vtkIdType newCellPts[113] = { cellPts->GetId(2), cellPts->GetId(1), cellPts->GetId(0),
+        vtkIdType newCellPts[13] = { cellPts->GetId(2), cellPts->GetId(1), cellPts->GetId(0),
           cellPts->GetId(3), cellPts->GetId(4), cellPts->GetId(6), cellPts->GetId(5),
           cellPts->GetId(8), cellPts->GetId(7), cellPts->GetId(11), cellPts->GetId(10),
           cellPts->GetId(9), cellPts->GetId(12) };
@@ -798,6 +798,24 @@ int vtkReflectionFilter::RequestDataInternal(
           }
         }
         outputCellId = output->InsertNextCell(cellType, 27, newCellPts);
+        break;
+      }
+      case VTK_TRIQUADRATIC_PYRAMID:
+      {
+        input->GetCellPoints(i, cellPts);
+        vtkIdType newCellPts[19] = { cellPts->GetId(2), cellPts->GetId(1), cellPts->GetId(0),
+          cellPts->GetId(3), cellPts->GetId(4), cellPts->GetId(6), cellPts->GetId(5),
+          cellPts->GetId(8), cellPts->GetId(7), cellPts->GetId(11), cellPts->GetId(10),
+          cellPts->GetId(9), cellPts->GetId(12), cellPts->GetId(13), cellPts->GetId(15),
+          cellPts->GetId(14), cellPts->GetId(17), cellPts->GetId(16), cellPts->GetId(18) };
+        if (this->CopyInput)
+        {
+          for (int j = 0; j < 19; j++)
+          {
+            newCellPts[j] += numPts;
+          }
+        }
+        outputCellId = output->InsertNextCell(cellType, 19, newCellPts);
         break;
       }
       case VTK_QUADRATIC_LINEAR_WEDGE:

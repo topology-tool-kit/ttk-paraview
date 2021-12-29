@@ -43,24 +43,24 @@ public:
   vtkTypeMacro(vtkStructuredGridReader, vtkDataReader);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Get the output of this reader.
    */
   vtkStructuredGrid* GetOutput();
   vtkStructuredGrid* GetOutput(int idx);
   void SetOutput(vtkStructuredGrid* output);
-  //@}
+  ///@}
 
   /**
    * Read the meta information from the file (WHOLE_EXTENT).
    */
-  int ReadMetaDataSimple(const std::string& fname, vtkInformation* metadata) override;
+  int ReadMetaDataSimple(VTK_FILEPATH const std::string& fname, vtkInformation* metadata) override;
 
   /**
    * Actual reading happens here
    */
-  int ReadMeshSimple(const std::string& fname, vtkDataObject* output) override;
+  int ReadMeshSimple(VTK_FILEPATH const std::string& fname, vtkDataObject* output) override;
 
 protected:
   vtkStructuredGridReader();

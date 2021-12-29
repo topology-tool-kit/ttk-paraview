@@ -28,32 +28,40 @@
 #include "vtkAbstractContextItem.h"
 #include "vtkRenderingContext2DModule.h" // For export macro
 
+class vtkContextTransform;
+
 class VTKRENDERINGCONTEXT2D_EXPORT vtkContextItem : public vtkAbstractContextItem
 {
 public:
   vtkTypeMacro(vtkContextItem, vtkAbstractContextItem);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Get the opacity of the item.
    */
   vtkGetMacro(Opacity, double);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set the opacity of the item.
    * 1.0 by default.
    */
   vtkSetMacro(Opacity, double);
-  //@}
+  ///@}
+
+  /**
+   * Set the transform of the item.
+   */
+  vtkSetMacro(Transform, vtkContextTransform*);
 
 protected:
-  vtkContextItem();
-  ~vtkContextItem() override;
+  vtkContextItem() = default;
+  ~vtkContextItem() override = default;
 
-  double Opacity;
+  double Opacity = 1.0;
+  vtkContextTransform* Transform = nullptr;
 
 private:
   vtkContextItem(const vtkContextItem&) = delete;

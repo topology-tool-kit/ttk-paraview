@@ -20,9 +20,8 @@
  * Dini's surface is a surface that possesses constant negative
  * Gaussian curvature
  *
- * For further information about this surface, please consult the
- * technical description "Parametric surfaces" in http://www.vtk.org/publications
- * in the "VTK Technical Documents" section in the VTk.org web pages.
+ * For further information about this surface, please consult
+ * https://en.wikipedia.org/wiki/Dini%27s_surface
  *
  * @par Thanks:
  * Andrew Maclean andrew.amaclean@gmail.com for creating and contributing the
@@ -59,7 +58,7 @@ public:
    */
   int GetDimension() override { return 2; }
 
-  //@{
+  ///@{
   /**
    * Set/Get the scale factor.
    * See the definition in Parametric surfaces referred to above.
@@ -67,9 +66,9 @@ public:
    */
   vtkSetMacro(A, double);
   vtkGetMacro(A, double);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/Get the scale factor.
    * See the definition in Parametric surfaces referred to above.
@@ -77,7 +76,7 @@ public:
    */
   vtkSetMacro(B, double);
   vtkGetMacro(B, double);
-  //@}
+  ///@}
 
   /**
    * Dini's surface.

@@ -13,7 +13,8 @@
 
 =========================================================================*/
 
-// Hide VTK_DEPRECATED_IN_9_0_0() warnings for this class.
+// Hide VTK_DEPRECATED_IN_9_0_0() and VTK_DEPRECATED_IN_9_1_0() warnings for
+// this class.
 #define VTK_DEPRECATION_LEVEL 0
 
 #include "vtkHigherOrderWedge.h"
@@ -175,6 +176,34 @@ static bool linearWedgeLocationFromSubId(
   }
 
   return true;
+}
+
+vtkHigherOrderQuadrilateral* vtkHigherOrderWedge::getBdyQuad()
+{
+  VTK_LEGACY_REPLACED_BODY(
+    vtkHigherOrderWedge::getBdyQuad, "VTK 9.1", vtkHigherOrderWedge::GetBoundaryQuad);
+  return this->GetBoundaryQuad();
+}
+
+vtkHigherOrderTriangle* vtkHigherOrderWedge::getBdyTri()
+{
+  VTK_LEGACY_REPLACED_BODY(
+    vtkHigherOrderWedge::getBdyTri, "VTK 9.1", vtkHigherOrderWedge::GetBoundaryTri);
+  return this->GetBoundaryTri();
+}
+
+vtkHigherOrderCurve* vtkHigherOrderWedge::getEdgeCell()
+{
+  VTK_LEGACY_REPLACED_BODY(
+    vtkHigherOrderWedge::getEdgeCell, "VTK 9.1", vtkHigherOrderWedge::GetEdgeCell);
+  return this->GetEdgeCell();
+}
+
+vtkHigherOrderInterpolation* vtkHigherOrderWedge::getInterp()
+{
+  VTK_LEGACY_REPLACED_BODY(
+    vtkHigherOrderWedge::getInterp, "VTK 9.1", vtkHigherOrderWedge::GetInterpolation);
+  return this->GetInterpolation();
 }
 
 vtkHigherOrderWedge::vtkHigherOrderWedge()
@@ -551,7 +580,7 @@ int vtkHigherOrderWedge::Triangulate(int vtkNotUsed(index), vtkIdList* ptIds, vt
 void vtkHigherOrderWedge::Derivatives(
   int vtkNotUsed(subId), const double pcoords[3], const double* values, int dim, double* derivs)
 {
-  this->getInterp()->WedgeEvaluateDerivative(
+  this->GetInterpolation()->WedgeEvaluateDerivative(
     this->Order, pcoords, this->GetPoints(), values, dim, derivs);
 }
 
@@ -1109,7 +1138,7 @@ void vtkHigherOrderWedge::GetTriangularFace(vtkHigherOrderTriangle* result, int 
       bary[0] = ii;
       bary[1] = jj;
       bary[2] = rsOrder - ii - jj;
-      vtkIdType dstId = result->Index(bary, rsOrder);
+      vtkIdType dstId = vtkHigherOrderTriangle::Index(bary, rsOrder);
       set_ids_and_points(dstId, srcId);
 
       /*
@@ -1199,11 +1228,10 @@ void vtkHigherOrderWedge::GetQuadrilateralFace(vtkHigherOrderQuadrilateral* resu
 void vtkHigherOrderWedge::SetOrderFromCellData(
   vtkCellData* cell_data, const vtkIdType numPts, const vtkIdType cell_id)
 {
-  if (cell_data->SetActiveAttribute(
-        "HigherOrderDegrees", vtkDataSetAttributes::AttributeTypes::HIGHERORDERDEGREES) != -1)
+  vtkDataArray* v = cell_data->GetHigherOrderDegrees();
+  if (v)
   {
     double degs[3];
-    vtkDataArray* v = cell_data->GetHigherOrderDegrees();
     v->GetTuple(cell_id, degs);
     this->SetOrder(degs[0], degs[1], degs[2], numPts);
   }

@@ -285,7 +285,7 @@ void vtkOrderIndependentTranslucentPass::Render(const vtkRenderState* s)
 
   // bind the draw mode but leave read as the previous FO
   this->State->PushFramebufferBindings();
-  this->Framebuffer->Bind(this->Framebuffer->GetDrawMode());
+  this->Framebuffer->Bind(vtkOpenGLFramebufferObject::GetDrawMode());
   this->Framebuffer->ActivateDrawBuffers(2);
 
 #ifdef GL_MULTISAMPLE
@@ -307,9 +307,9 @@ void vtkOrderIndependentTranslucentPass::Render(const vtkRenderState* s)
   this->State->vtkglColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 #else
   // blit read buffer depth to FO depth texture
-  glBlitFramebuffer(this->ViewportX, this->ViewportY, this->ViewportX + this->ViewportWidth,
-    this->ViewportY + this->ViewportHeight, 0, 0, this->ViewportWidth, this->ViewportHeight,
-    GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+  this->State->vtkglBlitFramebuffer(this->ViewportX, this->ViewportY,
+    this->ViewportX + this->ViewportWidth, this->ViewportY + this->ViewportHeight, 0, 0,
+    this->ViewportWidth, this->ViewportHeight, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 #endif
 
   // now bind both read and draw

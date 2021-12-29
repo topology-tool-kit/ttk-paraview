@@ -17,7 +17,7 @@
  *
  * This is a subclass of vtkXMLParser that constructs a representation
  * of parsed XML using vtkPVXMLElement.
-*/
+ */
 
 #ifndef vtkPVXMLParser_h
 #define vtkPVXMLParser_h
@@ -58,7 +58,7 @@ public:
   //@}
 
   /**
-   * Convenience method to parse XML contents. Will return NULL is the
+   * Convenience method to parse XML contents. Will return nullptr is the
    * xmlcontents cannot be parsed.
    */
   static vtkSmartPointer<vtkPVXMLElement> ParseXML(

@@ -20,7 +20,6 @@
 #include "vtkPDirectory.h"
 #include "vtkPVConfig.h"
 #include "vtkPVLogger.h"
-#include "vtkPVOptions.h"
 #include "vtkPVPlugin.h"
 #include "vtkPVPluginTracker.h"
 #include "vtkPVPythonPluginInterface.h"
@@ -58,11 +57,13 @@ const char ENV_PATH_SEP = ':';
 namespace
 {
 // This is an helper class used for plugins constructed from XMLs.
-class vtkPVXMLOnlyPlugin : public vtkPVPlugin, public vtkPVServerManagerPluginInterface
+class vtkPVXMLOnlyPlugin
+  : public vtkPVPlugin
+  , public vtkPVServerManagerPluginInterface
 {
   std::string PluginName;
   std::string XML;
-  vtkPVXMLOnlyPlugin(){};
+  vtkPVXMLOnlyPlugin() = default;
   vtkPVXMLOnlyPlugin(const vtkPVXMLOnlyPlugin& other);
   void operator=(const vtkPVXMLOnlyPlugin& other);
 
@@ -73,7 +74,7 @@ public:
     parser->SetFileName(xmlfile);
     if (!parser->Parse())
     {
-      return NULL;
+      return nullptr;
     }
 
     vtkPVXMLOnlyPlugin* instance = new vtkPVXMLOnlyPlugin();
@@ -135,13 +136,13 @@ public:
 
   /**
    * Returns the callback function to call to initialize the interpretor for the
-   * new vtk/server-manager classes added by this plugin. Returning NULL is
+   * new vtk/server-manager classes added by this plugin. Returning nullptr is
    * perfectly valid.
    */
   vtkClientServerInterpreterInitializer::InterpreterInitializationCallback
   GetInitializeInterpreterCallback() override
   {
-    return NULL;
+    return nullptr;
   }
 
   /**
@@ -188,7 +189,7 @@ public:
     if (vtkPVPluginLoaderCleaner::LibCleaner)
     {
       vtkPVPluginLoaderCleaner* cleaner = vtkPVPluginLoaderCleaner::LibCleaner;
-      vtkPVPluginLoaderCleaner::LibCleaner = NULL;
+      vtkPVPluginLoaderCleaner::LibCleaner = nullptr;
       delete cleaner;
     }
   }
@@ -203,7 +204,7 @@ public:
 private:
   static vtkPVPluginLoaderCleaner* LibCleaner;
 };
-vtkPVPluginLoaderCleaner* vtkPVPluginLoaderCleaner::LibCleaner = NULL;
+vtkPVPluginLoaderCleaner* vtkPVPluginLoaderCleaner::LibCleaner = nullptr;
 };
 
 //=============================================================================
@@ -234,11 +235,11 @@ vtkStandardNewMacro(vtkPVPluginLoader);
 //-----------------------------------------------------------------------------
 vtkPVPluginLoader::vtkPVPluginLoader()
 {
-  this->ErrorString = NULL;
-  this->PluginName = NULL;
-  this->PluginVersion = NULL;
-  this->FileName = NULL;
-  this->SearchPaths = NULL;
+  this->ErrorString = nullptr;
+  this->PluginName = nullptr;
+  this->PluginVersion = nullptr;
+  this->FileName = nullptr;
+  this->SearchPaths = nullptr;
   this->Loaded = false;
   this->SetErrorString("No plugin loaded yet.");
 
@@ -260,15 +261,13 @@ vtkPVPluginLoader::vtkPVPluginLoader()
     PARAVIEW_PLUGIN_LOADER_PATHS);
 #endif
 
-  vtkProcessModule* pm = vtkProcessModule::GetProcessModule();
-  vtkPVOptions* opt = pm ? pm->GetOptions() : NULL;
-  if (opt)
+  if (auto pm = vtkProcessModule::GetProcessModule())
   {
-    std::string appDir = vtkProcessModule::GetProcessModule()->GetSelfDir();
-    if (appDir.size())
+    std::string appDir = pm->GetSelfDir();
+    if (!appDir.empty())
     {
       appDir += "/plugins";
-      if (paths.size())
+      if (!paths.empty())
       {
         paths += ENV_PATH_SEP;
       }
@@ -287,11 +286,11 @@ vtkPVPluginLoader::vtkPVPluginLoader()
 //-----------------------------------------------------------------------------
 vtkPVPluginLoader::~vtkPVPluginLoader()
 {
-  this->SetErrorString(0);
-  this->SetPluginName(0);
-  this->SetPluginVersion(0);
-  this->SetFileName(0);
-  this->SetSearchPaths(0);
+  this->SetErrorString(nullptr);
+  this->SetPluginName(nullptr);
+  this->SetPluginVersion(nullptr);
+  this->SetFileName(nullptr);
+  this->SetSearchPaths(nullptr);
 }
 
 //-----------------------------------------------------------------------------
@@ -322,7 +321,7 @@ void vtkPVPluginLoader::LoadPluginsFromPluginConfigFile()
 {
 #if BUILD_SHARED_LIBS
   const char* configFiles = vtksys::SystemTools::GetEnv("PV_PLUGIN_CONFIG_FILE");
-  if (configFiles != NULL)
+  if (configFiles != nullptr)
   {
     vtkVLogF(PARAVIEW_LOG_PLUGIN_VERBOSITY(),
       "Loading Plugins from standard PV_PLUGIN_CONFIG_FILE: %s", configFiles);
@@ -473,7 +472,7 @@ bool vtkPVPluginLoader::LoadPluginInternal(const char* file, bool no_errors)
         continue;
       }
 
-      if (strcmp(file, filename))
+      if (strcmp(file, filename) != 0)
       {
         continue;
       }
@@ -527,7 +526,10 @@ bool vtkPVPluginLoader::LoadPluginInternal(const char* file, bool no_errors)
   vtkLibHandle lib = vtkDynamicLoader::OpenLibrary(file, flags);
   if (!lib)
   {
-    vtkPVPluginLoaderErrorMacro(vtkDynamicLoader::LastError());
+    std::stringstream ostr;
+    ostr << file << ": " << vtkDynamicLoader::LastError();
+    std::string str = ostr.str();
+    vtkPVPluginLoaderErrorMacro(str.c_str());
     vtkVLogIfF(PARAVIEW_LOG_PLUGIN_VERBOSITY(), this->ErrorString != nullptr,
       "Failed to load the shared library.\n%s", this->ErrorString);
     return false;
@@ -585,7 +587,7 @@ bool vtkPVPluginLoader::LoadPluginInternal(const char* file, bool no_errors)
   // Load the shared library search path.
   const char* pLdLibPath = vtksys::SystemTools::GetEnv(LIB_PATH_NAME);
   bool pluginPathPresent =
-    pLdLibPath == NULL ? false : strstr(pLdLibPath, thisPluginsPath.c_str()) != NULL;
+    pLdLibPath == nullptr ? false : strstr(pLdLibPath, thisPluginsPath.c_str()) != nullptr;
   // Update it.
   if (!pluginPathPresent)
   {

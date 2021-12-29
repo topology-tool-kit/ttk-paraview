@@ -64,7 +64,7 @@ public:
    */
   int GetDataObjectType() override { return VTK_IMAGE_DATA; }
 
-  //@{
+  ///@{
   /**
    * Standard vtkDataSet API methods. See vtkDataSet for more information.
    * \warning If GetCell(int,int,int) gets overridden in a subclass, it is
@@ -94,20 +94,67 @@ public:
   int GetCellType(vtkIdType cellId) override;
   void GetCellPoints(vtkIdType cellId, vtkIdList* ptIds) override
   {
-    vtkStructuredData::GetCellPoints(cellId, ptIds, this->DataDescription, this->GetDimensions());
+    int dimensions[3];
+    this->GetDimensions(dimensions);
+    vtkStructuredData::GetCellPoints(cellId, ptIds, this->DataDescription, dimensions);
   }
   void GetPointCells(vtkIdType ptId, vtkIdList* cellIds) override
   {
-    vtkStructuredData::GetPointCells(ptId, cellIds, this->GetDimensions());
+    int dimensions[3];
+    this->GetDimensions(dimensions);
+    vtkStructuredData::GetPointCells(ptId, cellIds, dimensions);
   }
   void ComputeBounds() override;
   int GetMaxCellSize() override { return 8; } // voxel is the largest
-  //@}
+  void GetCellNeighbors(vtkIdType cellId, vtkIdList* ptIds, vtkIdList* cellIds) override;
+  ///@}
+
+  /**
+   * Get cell neighbors around cell located at `seedloc`, except cell of id `cellId`.
+   *
+   * @warning `seedloc` is the position in the grid with the origin shifted to (0, 0, 0).
+   * This is because the backend of this method is shared with `vtkRectilinearGrid` and
+   * `vtkStructuredGrid`.
+   */
+  void GetCellNeighbors(vtkIdType cellId, vtkIdList* ptIds, vtkIdList* cellIds, int* seedLoc);
 
   /**
    * Restore data object to initial state.
    */
   void Initialize() override;
+
+  /**
+   * Return non-zero value if specified point is visible.
+   * These methods should be called only after the dimensions of the
+   * grid are set.
+   */
+  unsigned char IsPointVisible(vtkIdType ptId);
+
+  /**
+   * Return non-zero value if specified point is visible.
+   * These methods should be called only after the dimensions of the
+   * grid are set.
+   */
+  unsigned char IsCellVisible(vtkIdType cellId);
+
+  /**
+   * Returns 1 if there is any visibility constraint on the points,
+   * 0 otherwise.
+   */
+  bool HasAnyBlankPoints() override;
+  /**
+   * Returns 1 if there is any visibility constraint on the cells,
+   * 0 otherwise.
+   */
+  bool HasAnyBlankCells() override;
+
+  /**
+   * Given the node dimensions of this grid instance, this method computes the
+   * node dimensions. The value in each dimension can will have a lowest value
+   * of "1" such that computing the total number of cells can be achieved by
+   * simply by cellDims[0]*cellDims[1]*cellDims[2].
+   */
+  void GetCellDims(int cellDims[3]);
 
   /**
    * Same as SetExtent(0, i-1, 0, j-1, 0, k-1)
@@ -186,16 +233,16 @@ public:
     return vtkStructuredData::ComputeCellIdForExtent(this->Extent, ijk);
   }
 
-  //@{
+  ///@{
   /**
    * Set / Get the extent on just one axis
    */
   virtual void SetAxisUpdateExtent(
     int axis, int min, int max, const int* updateExtent, int* axisUpdateExtent);
   virtual void GetAxisUpdateExtent(int axis, int& min, int& max, const int* updateExtent);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/Get the extent. On each axis, the extent is defined by the index
    * of the first point and the index of the last point.  The extent should
@@ -210,9 +257,9 @@ public:
   virtual void SetExtent(int extent[6]);
   virtual void SetExtent(int x1, int x2, int y1, int y2, int z1, int z2);
   vtkGetVector6Macro(Extent, int);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * These returns the minimum and maximum values the ScalarType can hold
    * without overflowing.
@@ -221,17 +268,17 @@ public:
   virtual double GetScalarTypeMin();
   virtual double GetScalarTypeMax(vtkInformation* meta_data);
   virtual double GetScalarTypeMax();
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the size of the scalar type in bytes.
    */
   virtual int GetScalarSize(vtkInformation* meta_data);
   virtual int GetScalarSize();
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Different ways to get the increments for moving around the data.
    * GetIncrements() calls ComputeIncrements() to ensure the increments are
@@ -245,9 +292,9 @@ public:
   virtual void GetIncrements(
     vtkDataArray* scalars, vtkIdType& incX, vtkIdType& incY, vtkIdType& incZ);
   virtual void GetIncrements(vtkDataArray* scalars, vtkIdType inc[3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Different ways to get the increments for moving around the data.
    * incX is always returned with 0.  incY is returned with the
@@ -265,9 +312,9 @@ public:
     int extent[6], vtkIdType& incX, vtkIdType& incY, vtkIdType& incZ);
   virtual void GetContinuousIncrements(
     vtkDataArray* scalars, int extent[6], vtkIdType& incX, vtkIdType& incY, vtkIdType& incZ);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Access the native pointer for the scalar data
    */
@@ -275,18 +322,18 @@ public:
   virtual void* GetScalarPointer(int coordinates[3]);
   virtual void* GetScalarPointer(int x, int y, int z);
   virtual void* GetScalarPointer();
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Access the index for the scalar data
    */
   virtual vtkIdType GetScalarIndexForExtent(int extent[6]);
   virtual vtkIdType GetScalarIndex(int coordinates[3]);
   virtual vtkIdType GetScalarIndex(int x, int y, int z);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * For access to data from wrappers
    */
@@ -294,7 +341,7 @@ public:
   virtual void SetScalarComponentFromFloat(int x, int y, int z, int component, float v);
   virtual double GetScalarComponentAsDouble(int x, int y, int z, int component);
   virtual void SetScalarComponentFromDouble(int x, int y, int z, int component, double v);
-  //@}
+  ///@}
 
   /**
    * Allocate the point scalars for this dataset. The data type determines
@@ -311,7 +358,7 @@ public:
    */
   virtual void AllocateScalars(vtkInformation* pipeline_info);
 
-  //@{
+  ///@{
   /**
    * This method is passed a input and output region, and executes the filter
    * algorithm to fill the output from the input.
@@ -330,7 +377,7 @@ public:
     e[5] = z1;
     this->CopyAndCastFrom(inData, e);
   }
-  //@}
+  ///@}
 
   /**
    * Reallocates and copies to set the Extent to updateExtent.
@@ -349,7 +396,7 @@ public:
    */
   unsigned long GetActualMemorySize() override;
 
-  //@{
+  ///@{
   /**
    * Set the spacing (width,height,length) of the cubical cells that
    * compose the data set.
@@ -357,9 +404,9 @@ public:
   vtkGetVector3Macro(Spacing, double);
   virtual void SetSpacing(double i, double j, double k);
   virtual void SetSpacing(const double ijk[3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/Get the origin of the dataset. The origin is the position in world
    * coordinates of the point of extent (0,0,0). This point does not have to be
@@ -371,9 +418,9 @@ public:
   vtkGetVector3Macro(Origin, double);
   virtual void SetOrigin(double i, double j, double k);
   virtual void SetOrigin(const double ijk[3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/Get the direction transform of the dataset. The direction matrix is
    * a 3x3 transformation matrix supporting scaling and rotation.
@@ -383,17 +430,17 @@ public:
   virtual void SetDirectionMatrix(const double elements[9]);
   virtual void SetDirectionMatrix(double e00, double e01, double e02, double e10, double e11,
     double e12, double e20, double e21, double e22);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the transformation matrix from the index space to the physical space
    * coordinate system of the dataset. The transform is a 4 by 4 matrix.
    */
   vtkGetObjectMacro(IndexToPhysicalMatrix, vtkMatrix4x4);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Convert coordinates from index space (ijk) to physical space (xyz).
    */
@@ -403,33 +450,33 @@ public:
   virtual void TransformIndexToPhysicalPoint(const int ijk[3], double xyz[3]);
   static void TransformContinuousIndexToPhysicalPoint(double i, double j, double k,
     double const origin[3], double const spacing[3], double const direction[9], double xyz[3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the transformation matrix from the physical space to the index space
    * coordinate system of the dataset. The transform is a 4 by 4 matrix.
    */
   vtkGetObjectMacro(PhysicalToIndexMatrix, vtkMatrix4x4);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Convert coordinates from physical space (xyz) to index space (ijk).
    */
   virtual void TransformPhysicalPointToContinuousIndex(double x, double y, double z, double ijk[3]);
   virtual void TransformPhysicalPointToContinuousIndex(const double xyz[3], double ijk[3]);
-  //@}
+  ///@}
 
   static void ComputeIndexToPhysicalMatrix(
     double const origin[3], double const spacing[3], double const direction[9], double result[16]);
 
-  //@{
+  ///@{
   /**
    * Convert normal from physical space (xyz) to index space (ijk).
    */
   virtual void TransformPhysicalNormalToContinuousIndex(const double xyz[3], double ijk[3]);
-  //@}
+  ///@}
 
   /**
    * Convert a plane from physical to a continuous index. The plane is represented as
@@ -443,7 +490,7 @@ public:
   int GetScalarType();
   const char* GetScalarTypeAsString() { return vtkImageScalarTypeNameMacro(this->GetScalarType()); }
 
-  //@{
+  ///@{
   /**
    * Set/Get the number of scalar components for points. As with the
    * SetScalarType method this is setting pipeline info.
@@ -452,7 +499,7 @@ public:
   static int GetNumberOfScalarComponents(vtkInformation* meta_data);
   static bool HasNumberOfScalarComponents(vtkInformation* meta_data);
   int GetNumberOfScalarComponents();
-  //@}
+  ///@}
 
   /**
    * Override these to handle origin, spacing, scalar type, and scalar
@@ -474,20 +521,20 @@ public:
    */
   void PrepareForNewData() override;
 
-  //@{
+  ///@{
   /**
    * Shallow and Deep copy.
    */
   void ShallowCopy(vtkDataObject* src) override;
   void DeepCopy(vtkDataObject* src) override;
-  //@}
+  ///@}
 
   //--------------------------------------------------------------------------
   // Methods that apply to any array (not just scalars).
   // I am starting to experiment with generalizing imaging filters
   // to operate on more than just scalars.
 
-  //@{
+  ///@{
   /**
    * These are convenience methods for getting a pointer
    * from any filed array.  It is a start at expanding image filters
@@ -495,9 +542,9 @@ public:
    */
   void* GetArrayPointerForExtent(vtkDataArray* array, int extent[6]);
   void* GetArrayPointer(vtkDataArray* array, int coordinates[3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Given a data array and a coordinate, return the index of the tuple in the
    * array corresponding to that coordinate.
@@ -506,7 +553,7 @@ public:
    * of vtkGenericDataArray.
    */
   vtkIdType GetTupleIndex(vtkDataArray* array, int coordinates[3]);
-  //@}
+  ///@}
 
   /**
    * Since various arrays have different number of components,
@@ -527,13 +574,13 @@ public:
    */
   int GetExtentType() override { return VTK_3D_EXTENT; }
 
-  //@{
+  ///@{
   /**
    * Retrieve an instance of this class from an information object.
    */
   static vtkImageData* GetData(vtkInformation* info);
   static vtkImageData* GetData(vtkInformationVector* v, int i = 0);
-  //@}
+  ///@}
 
 protected:
   vtkImageData();

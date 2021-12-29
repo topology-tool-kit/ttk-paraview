@@ -56,12 +56,20 @@
 #include <algorithm>
 #include <sstream>
 
-#include "vtkCompositePolyDataMapper2Internal.h"
+#include "vtkCompositeMapperHelper2.h"
 
 typedef std::map<vtkPolyData*, vtkCompositeMapperHelperData*>::iterator dataIter;
 typedef std::map<const std::string, vtkCompositeMapperHelper2*>::iterator helpIter;
 
 vtkStandardNewMacro(vtkCompositeMapperHelper2);
+
+void vtkCompositeMapperHelper2::PrintSelf(ostream& os, vtkIndent indent)
+{
+  this->Superclass::PrintSelf(os, indent);
+  os << indent << "Marked: " << this->Marked << endl;
+  os << indent << "Primary ID Used: " << this->PrimIDUsed << endl;
+  os << indent << "Override Color Used: " << this->OverideColorUsed << endl;
+}
 
 vtkCompositeMapperHelper2::~vtkCompositeMapperHelper2()
 {
@@ -325,6 +333,11 @@ void vtkCompositeMapperHelper2::RenderPiece(vtkRenderer* ren, vtkActor* actor)
 
 void vtkCompositeMapperHelper2::UpdateCameraShiftScale(vtkRenderer* ren, vtkActor* actor)
 {
+  if (this->PauseShiftScale)
+  {
+    return;
+  }
+
   // handle camera shift scale
   if (this->ShiftScaleMethod == vtkOpenGLVertexBufferObject::NEAR_PLANE_SHIFT_SCALE ||
     this->ShiftScaleMethod == vtkOpenGLVertexBufferObject::FOCAL_POINT_SHIFT_SCALE)
@@ -498,6 +511,29 @@ vtkCompositeMapperHelperData* vtkCompositeMapperHelper2::AddData(
 }
 
 //------------------------------------------------------------------------------
+bool vtkCompositeMapperHelper2::GetNeedToRebuildBufferObjects(
+  vtkRenderer* vtkNotUsed(ren), vtkActor* act)
+{
+  // Same as vtkOpenGLPolyDataMapper::GetNeedToRebuildBufferObjects(), but
+  // we need to check all inputs, not just this->CurrentInput
+  this->TempState.Clear();
+  this->TempState.Append(act->GetProperty()->GetMTime(), "actor mtime");
+  for (dataIter iter = this->Data.begin(); iter != this->Data.end(); ++iter)
+  {
+    this->TempState.Append(iter->first ? iter->first->GetMTime() : 0, "input mtime");
+  }
+  this->TempState.Append(act->GetTexture() ? act->GetTexture()->GetMTime() : 0, "texture mtime");
+
+  if (this->VBOBuildState != this->TempState || this->VBOBuildTime < this->GetMTime())
+  {
+    this->VBOBuildState = this->TempState;
+    return true;
+  }
+
+  return false;
+}
+
+//------------------------------------------------------------------------------
 void vtkCompositeMapperHelper2::BuildBufferObjects(vtkRenderer* ren, vtkActor* act)
 {
   // render using the composite data attributes
@@ -612,7 +648,7 @@ void vtkCompositeMapperHelper2::BuildBufferObjects(vtkRenderer* ren, vtkActor* a
     }
   }
 
-  if (this->EdgeValues.size())
+  if (!this->EdgeValues.empty())
   {
     if (!this->EdgeTexture)
     {
@@ -809,7 +845,7 @@ void vtkCompositeMapperHelper2::AppendOneBufferObject(vtkRenderer* ren, vtkActor
   if (c)
   {
     int cellFlag = 0; // not used
-    vtkAbstractArray* abstractArray = this->GetAbstractScalars(
+    vtkAbstractArray* abstractArray = vtkCompositeMapperHelper2::GetAbstractScalars(
       poly, this->ScalarMode, this->ArrayAccessMode, this->ArrayId, this->ArrayName, cellFlag);
 
     auto iter = this->ColorArrayMap.find(abstractArray);
@@ -1392,7 +1428,7 @@ bool vtkCompositePolyDataMapper2::RecursiveHasTranslucentGeometry(
   {
     vtkScalarsToColors* lut = this->GetLookupTable();
     int cellFlag;
-    vtkDataArray* scalars = this->GetScalars(
+    vtkDataArray* scalars = vtkCompositePolyDataMapper2::GetScalars(
       pd, this->ScalarMode, this->ArrayAccessMode, this->ArrayId, this->ArrayName, cellFlag);
     if (lut->IsOpaque(scalars, this->ColorMode, this->ArrayComponent) == 0)
     {
@@ -1509,7 +1545,7 @@ void vtkCompositePolyDataMapper2::RemoveBlockVisibilities()
 }
 
 //------------------------------------------------------------------------------
-void vtkCompositePolyDataMapper2::SetBlockColor(unsigned int index, double color[3])
+void vtkCompositePolyDataMapper2::SetBlockColor(unsigned int index, const double color[3])
 {
   if (this->CompositeAttributes)
   {
@@ -1681,6 +1717,20 @@ void vtkCompositePolyDataMapper2::SetVBOShiftScaleMethod(int m)
   for (helpIter hiter = this->Helpers.begin(); hiter != this->Helpers.end(); ++hiter)
   {
     hiter->second->SetVBOShiftScaleMethod(m);
+  }
+}
+
+void vtkCompositePolyDataMapper2::SetPauseShiftScale(bool pauseShiftScale)
+{
+  if (pauseShiftScale == this->PauseShiftScale)
+  {
+    return;
+  }
+
+  this->Superclass::SetPauseShiftScale(pauseShiftScale);
+  for (helpIter hiter = this->Helpers.begin(); hiter != this->Helpers.end(); ++hiter)
+  {
+    hiter->second->SetPauseShiftScale(pauseShiftScale);
   }
 }
 
@@ -1995,7 +2045,7 @@ void vtkCompositePolyDataMapper2::BuildRenderValues(
       {
         vtkScalarsToColors* lut = this->GetLookupTable();
         int cellFlag;
-        vtkDataArray* scalars = this->GetScalars(
+        vtkDataArray* scalars = vtkCompositePolyDataMapper2::GetScalars(
           pd, this->ScalarMode, this->ArrayAccessMode, this->ArrayId, this->ArrayName, cellFlag);
         if (lut->IsOpaque(scalars, this->ColorMode, this->ArrayComponent) == 0)
         {
@@ -2071,4 +2121,14 @@ void vtkCompositePolyDataMapper2::ProcessSelectorPixelBuffers(
   {
     helper.second->ProcessSelectorPixelBuffers(sel, pixeloffsets, prop);
   }
+}
+
+//-----------------------------------------------------------------------------
+vtkMTimeType vtkCompositePolyDataMapper2::GetMTime()
+{
+  if (this->CompositeAttributes)
+  {
+    return std::max(this->Superclass::GetMTime(), this->CompositeAttributes->GetMTime());
+  }
+  return this->Superclass::GetMTime();
 }

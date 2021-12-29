@@ -272,14 +272,12 @@ std::vector<double> GetOpacityTransferFunction(bool full_combination, int number
 
 vtkStandardNewMacro(vtkSMCinemaVolumetricImageExtractWriterProxy);
 //----------------------------------------------------------------------------
-vtkSMCinemaVolumetricImageExtractWriterProxy::vtkSMCinemaVolumetricImageExtractWriterProxy()
-{
-}
+vtkSMCinemaVolumetricImageExtractWriterProxy::vtkSMCinemaVolumetricImageExtractWriterProxy() =
+  default;
 
 //----------------------------------------------------------------------------
-vtkSMCinemaVolumetricImageExtractWriterProxy::~vtkSMCinemaVolumetricImageExtractWriterProxy()
-{
-}
+vtkSMCinemaVolumetricImageExtractWriterProxy::~vtkSMCinemaVolumetricImageExtractWriterProxy() =
+  default;
 
 //----------------------------------------------------------------------------
 bool vtkSMCinemaVolumetricImageExtractWriterProxy::WriteInternal(
@@ -410,8 +408,8 @@ bool vtkSMCinemaVolumetricImageExtractWriterProxy::WriteInternal(
     {
       std::ostringstream str;
       str << "/cinemavolume_" << otf_index << ".json";
-      std::string name = vtksys::SystemTools::JoinPath(
-        { extractor->GetRealExtractsOutputDirectory(), str.str().c_str() });
+      std::string name =
+        vtksys::SystemTools::JoinPath({ extractor->GetRealExtractsOutputDirectory(), str.str() });
       vtkSMTransferFunctionProxy::ExportTransferFunction(
         colorTFProxy, opacityTFProxy, "cinemavolume", name.c_str());
     }

@@ -24,6 +24,7 @@
 
 #include "vtkCell.h"
 #include "vtkCommonDataModelModule.h" // For export macro
+#include "vtkDeprecation.h"           // For VTK_DEPRECATED_IN_9_1_0
 class vtkIncrementalPointLocator;
 
 class VTKCOMMONDATAMODEL_EXPORT vtkLine : public vtkCell
@@ -33,7 +34,7 @@ public:
   vtkTypeMacro(vtkLine, vtkCell);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * See the vtkCell API for descriptions of these methods.
    */
@@ -54,7 +55,7 @@ public:
   void Derivatives(
     int subId, const double pcoords[3], const double* values, int dim, double* derivs) override;
   double* GetParametricCoords() override;
-  //@}
+  ///@}
 
   /**
    * Inflates this line by extending both end by dist. A degenerate line remains
@@ -84,15 +85,45 @@ public:
   int IntersectWithLine(const double p1[3], const double p2[3], double tol, double& t, double x[3],
     double pcoords[3], int& subId) override;
 
+  // Return result type for Intersection() and Intersection3D()
+  enum IntersectionType
+  {
+    NoIntersect = 0,
+    Intersect = 2,
+    OnLine = 3
+  };
+
+  // Control the meaning of the provided tolerance.  Fuzzy tolerances allow
+  // intersections to occur outside of the range (0<=u,v<=1) as long as they
+  // fall within the tolerance provided. Thus non-fuzzy tolerances must be
+  // within the (0,1) parametric range (inclusive)
+  enum ToleranceType
+  {
+    Relative = 0,
+    Absolute = 1,
+    RelativeFuzzy = 2,
+    AbsoluteFuzzy = 3
+  };
+
   /**
    * Performs intersection of the projection of two finite 3D lines onto a 2D
    * plane. An intersection is found if the projection of the two lines onto
    * the plane perpendicular to the cross product of the two lines intersect.
    * The parameters (u,v) are the parametric coordinates of the lines at the
    * position of closest approach.
+   *
+   * The results are of type vtkLine::IntersectionType. An intersection occurs
+   * if (u,v) are in the interval [0,1] and the intersection point falls within
+   * the tolerance specified. Different types of tolerancing can be used by
+   * specifying a tolerance type with the enum provided (vtkLine::ToleranceType).
+   * The tolerance types may be: Relative) relative to the projection line lengths
+   * (this is default); or Absolute) the distance between the points at (u,v) on
+   * the two lines must be less than or equal to the tolerance specified.
+   *
    */
   static int Intersection(const double p1[3], const double p2[3], const double x1[3],
-    const double x2[3], double& u, double& v);
+    const double x2[3], double& u, double& v, const double tolerance = 1e-6,
+    int toleranceType = ToleranceType::Relative);
 
   /**
    * Performs intersection of two finite 3D lines. An intersection is found if
@@ -101,13 +132,14 @@ public:
    * closest points of approach are within a relative tolerance. The parameters
    * (u,v) are the parametric coordinates of the lines at the position of
    * closest approach.
-
-   * NOTE: "Unlike Intersection(), which determines whether the projections of
-   * two lines onto a plane intersect, Intersection3D() determines whether the
-   * lines themselves in 3D space intersect, within a tolerance.
+   *
+   * The results are of type vtkLine::IntersectionType.
+   *
+   * NOTE: Legacy method, returns vtkLine::Intersection(...).
    */
-  static int Intersection3D(
-    double p1[3], double p2[3], double x1[3], double x2[3], double& u, double& v);
+  VTK_DEPRECATED_IN_9_1_0("Use vtkLine::Intersection(...) instead.")
+  static int Intersection3D(double p1[3], double p2[3], double x1[3], double x2[3], double& u,
+    double& v, const double tolerance = 1e-6);
 
   /**
    * Compute the distance of a point x to a finite line (p1,p2). The method
@@ -151,7 +183,7 @@ public:
 
   static void InterpolationFunctions(const double pcoords[3], double weights[2]);
   static void InterpolationDerivs(const double pcoords[3], double derivs[2]);
-  //@{
+  ///@{
   /**
    * Compute the interpolation functions/derivatives
    * (aka shape functions/derivatives)
@@ -164,7 +196,7 @@ public:
   {
     vtkLine::InterpolationDerivs(pcoords, derivs);
   }
-  //@}
+  ///@}
 
 protected:
   vtkLine();

@@ -401,7 +401,7 @@ void vtkOpenGLFramebufferObject::SetContext(vtkRenderWindow* rw)
     return;
   }
   // check for support
-  if (!this->LoadRequiredExtensions(renWin))
+  if (!vtkOpenGLFramebufferObject::LoadRequiredExtensions(renWin))
   {
     vtkErrorMacro("Context does not support the required extensions");
     return;
@@ -880,6 +880,11 @@ vtkTextureObject* vtkOpenGLFramebufferObject::GetColorAttachmentAsTextureObject(
     return i->second->Texture;
   }
   return nullptr;
+}
+
+vtkTextureObject* vtkOpenGLFramebufferObject::GetDepthAttachmentAsTextureObject()
+{
+  return this->DepthBuffer ? this->DepthBuffer->Texture : nullptr;
 }
 
 void vtkOpenGLFramebufferObject::AddColorAttachment(unsigned int index, vtkTextureObject* tex,
@@ -1448,7 +1453,7 @@ vtkPixelBufferObject* vtkOpenGLFramebufferObject::Download(
   vtkPixelBufferObject* pbo = vtkPixelBufferObject::New();
   pbo->SetContext(this->Context);
 
-  this->Download(extent, vtkType, nComps, oglType, oglFormat, pbo);
+  vtkOpenGLFramebufferObject::Download(extent, vtkType, nComps, oglType, oglFormat, pbo);
 
   return pbo;
 }
@@ -1478,7 +1483,14 @@ void vtkOpenGLFramebufferObject::Download(
 int vtkOpenGLFramebufferObject::GetMultiSamples()
 {
   int abuff = this->ActiveBuffers[0];
-  return this->ColorBuffers[abuff]->GetSamples();
+  foIter colorBufferIt = this->ColorBuffers.find(abuff);
+  if (colorBufferIt == this->ColorBuffers.end())
+  {
+    // vtkFOInfo::GetSamples() returns 0 if no Texture and Renderbuffer is set,
+    // therefore we return the same value if no active framebuffer object is found
+    return 0;
+  }
+  return colorBufferIt->second->GetSamples();
 }
 
 bool vtkOpenGLFramebufferObject::PopulateFramebuffer(int width, int height)

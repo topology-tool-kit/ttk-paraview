@@ -196,9 +196,15 @@ void vtkDataObjectTree::CopyStructure(vtkCompositeDataSet* compositeSource)
     vtkDataObjectTree* compositeSrc = vtkDataObjectTree::SafeDownCast(srcIter->DataObject);
     if (compositeSrc)
     {
-      vtkDataObjectTree* copy = compositeSrc->NewInstance();
-      myIter->DataObject.TakeReference(copy);
-      copy->CopyStructure(compositeSrc);
+      if (vtkDataObjectTree* copy = this->CreateForCopyStructure(compositeSrc))
+      {
+        myIter->DataObject.TakeReference(copy);
+        copy->CopyStructure(compositeSrc);
+      }
+      else
+      {
+        vtkErrorMacro("CopyStructure has encountered an error and will fail!");
+      }
     }
 
     // shallow copy meta data.
@@ -211,6 +217,12 @@ void vtkDataObjectTree::CopyStructure(vtkCompositeDataSet* compositeSource)
     }
   }
   this->Modified();
+}
+
+//------------------------------------------------------------------------------
+vtkDataObjectTree* vtkDataObjectTree::CreateForCopyStructure(vtkDataObjectTree* other)
+{
+  return other ? other->NewInstance() : nullptr;
 }
 
 //------------------------------------------------------------------------------
@@ -530,6 +542,42 @@ void vtkDataObjectTree::DeepCopy(vtkDataObject* src)
           vtkInformation* toInfo = this->GetChildMetaData(cc);
           toInfo->Copy(from->GetChildMetaData(cc), /*deep=*/1);
         }
+      }
+    }
+  }
+  this->Modified();
+}
+
+//------------------------------------------------------------------------------
+void vtkDataObjectTree::RecursiveShallowCopy(vtkDataObject* src)
+{
+  if (src == this)
+  {
+    return;
+  }
+
+  this->Internals->Children.clear();
+  this->Superclass::ShallowCopy(src);
+
+  vtkDataObjectTree* from = vtkDataObjectTree::SafeDownCast(src);
+  if (from)
+  {
+    unsigned int numChildren = from->GetNumberOfChildren();
+    this->SetNumberOfChildren(numChildren);
+    for (unsigned int cc = 0; cc < numChildren; cc++)
+    {
+      vtkDataObject* child = from->GetChild(cc);
+      if (child)
+      {
+        auto clone = child->NewInstance();
+        clone->ShallowCopy(child);
+        this->SetChild(cc, clone);
+        clone->FastDelete();
+      }
+      if (from->HasChildMetaData(cc))
+      {
+        vtkInformation* toInfo = this->GetChildMetaData(cc);
+        toInfo->Copy(from->GetChildMetaData(cc), /*deep=*/0);
       }
     }
   }

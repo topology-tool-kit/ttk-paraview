@@ -45,10 +45,10 @@
 #ifndef vtkAbstractArrayMeasurement_h
 #define vtkAbstractArrayMeasurement_h
 
-#include "vtkDataObject.h"
 #include "vtkFiltersHyperTreeGridADRModule.h" // For export macro
+#include "vtkObject.h"
 
-#include <vector>
+#include <vector> // for std::vector
 
 // Macro to implement automatically the pure virtual methods in the subclasses.
 // It assumes a few static methods / attributs are implemented.
@@ -82,10 +82,10 @@ class vtkAbstractAccumulator;
 class vtkDataArray;
 class vtkDoubleArray;
 
-class VTKFILTERSHYPERTREEGRIDADR_EXPORT vtkAbstractArrayMeasurement : public vtkDataObject
+class VTKFILTERSHYPERTREEGRIDADR_EXPORT vtkAbstractArrayMeasurement : public vtkObject
 {
 public:
-  vtkAbstractTypeMacro(vtkAbstractArrayMeasurement, vtkDataObject);
+  vtkAbstractTypeMacro(vtkAbstractArrayMeasurement, vtkObject);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
   static vtkAbstractArrayMeasurement* New();
@@ -169,7 +169,7 @@ public:
   /**
    * Set object into initial state.
    */
-  void Initialize() override;
+  virtual void Initialize();
 
   /**
    * Accessor for the number of values already fed for the measurement
@@ -202,12 +202,12 @@ public:
   /**
    * ShallowCopy implementation.
    */
-  virtual void ShallowCopy(vtkDataObject* o) override;
+  virtual void ShallowCopy(vtkObject* o);
 
   /**
    * DeepCopy implementation.
    */
-  virtual void DeepCopy(vtkDataObject* o) override;
+  virtual void DeepCopy(vtkObject* o);
 
 protected:
   //@{
@@ -236,8 +236,8 @@ protected:
   double TotalWeight;
 
 private:
-  vtkAbstractArrayMeasurement(vtkAbstractArrayMeasurement&) = delete;
-  void operator=(vtkAbstractArrayMeasurement&) = delete;
+  vtkAbstractArrayMeasurement(const vtkAbstractArrayMeasurement&) = delete;
+  void operator=(const vtkAbstractArrayMeasurement&) = delete;
 };
 
 #endif

@@ -37,7 +37,7 @@ vtkSMViewProxyInteractorHelper::~vtkSMViewProxyInteractorHelper()
 {
   vtkMemberFunctionCommand<vtkSMViewProxyInteractorHelper>::SafeDownCast(this->Observer)->Reset();
   this->Observer->Delete();
-  this->Observer = NULL;
+  this->Observer = nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -124,9 +124,25 @@ void vtkSMViewProxyInteractorHelper::Execute(vtkObject* caller, unsigned long ev
   switch (event)
   {
     case vtkCommand::WindowResizeEvent:
+    {
       this->Resize();
-      break;
 
+      // When we resize the window, we want to do an interactive render
+      // to avoid slowing down the application
+      // As there is no good way to catch an EndResizeEvent, we render
+      // interactively and we wait some time (stored in the
+      // WindowResizeNonInteractiveRenderDelay property) until a still render.
+      double delay = vtkSMPropertyHelper(
+        this->ViewProxy, "WindowResizeNonInteractiveRenderDelay", /*quiet*/ true)
+                       .GetAsDouble();
+      if (delay > 0.0)
+      {
+        this->Interacting = true;
+        this->EndWindowResizeTimerId = iren->CreateOneShotTimer(delay * 1000);
+      }
+
+      break;
+    }
     case vtkCommand::RenderEvent:
       this->CleanupTimer();
       this->Render();
@@ -172,6 +188,13 @@ void vtkSMViewProxyInteractorHelper::Execute(vtkObject* caller, unsigned long ev
       {
         this->InvokeEvent(vtkCommand::TimerEvent, &this->DelayedRenderTimerId);
         this->DelayedRenderTimerId = -1;
+        this->Render();
+      }
+      else if (this->EndWindowResizeTimerId == timerId)
+      {
+        this->Interacting = false;
+        this->InvokeEvent(vtkCommand::TimerEvent, &this->EndWindowResizeTimerId);
+        this->EndWindowResizeTimerId = -1;
         this->Render();
       }
     }

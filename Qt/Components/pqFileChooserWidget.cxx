@@ -29,7 +29,6 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 =========================================================================*/
-
 #include "pqFileChooserWidget.h"
 
 // Qt includes
@@ -41,9 +40,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqCoreUtilities.h"
 #include "pqFileDialog.h"
 
+//-----------------------------------------------------------------------------
 pqFileChooserWidget::pqFileChooserWidget(QWidget* p)
   : QWidget(p)
-  , Server(NULL)
+  , Server(nullptr)
 {
   this->ForceSingleFile = false;
   this->UseDirectoryMode = false;
@@ -68,10 +68,10 @@ pqFileChooserWidget::pqFileChooserWidget(QWidget* p)
     SLOT(handleFileLineEditChanged(const QString&)));
 }
 
-pqFileChooserWidget::~pqFileChooserWidget()
-{
-}
+//-----------------------------------------------------------------------------
+pqFileChooserWidget::~pqFileChooserWidget() = default;
 
+//-----------------------------------------------------------------------------
 QStringList pqFileChooserWidget::filenames() const
 {
   if (this->UseFilenameList)
@@ -84,6 +84,7 @@ QStringList pqFileChooserWidget::filenames() const
   }
 }
 
+//-----------------------------------------------------------------------------
 void pqFileChooserWidget::setFilenames(const QStringList& files)
 {
   this->UseFilenameList = false;
@@ -114,6 +115,7 @@ void pqFileChooserWidget::setFilenames(const QStringList& files)
   }
 }
 
+//-----------------------------------------------------------------------------
 QString pqFileChooserWidget::singleFilename() const
 {
   QStringList files = this->filenames();
@@ -127,31 +129,37 @@ QString pqFileChooserWidget::singleFilename() const
   }
 }
 
+//-----------------------------------------------------------------------------
 void pqFileChooserWidget::setSingleFilename(const QString& file)
 {
   this->setFilenames(QStringList(file));
 }
 
+//-----------------------------------------------------------------------------
 QString pqFileChooserWidget::extension()
 {
   return this->Extension;
 }
 
+//-----------------------------------------------------------------------------
 void pqFileChooserWidget::setExtension(const QString& ext)
 {
   this->Extension = ext;
 }
 
+//-----------------------------------------------------------------------------
 pqServer* pqFileChooserWidget::server()
 {
   return this->Server;
 }
 
+//-----------------------------------------------------------------------------
 void pqFileChooserWidget::setServer(pqServer* s)
 {
   this->Server = s;
 }
 
+//-----------------------------------------------------------------------------
 void pqFileChooserWidget::chooseFile()
 {
   QString filters = this->Extension;
@@ -204,13 +212,14 @@ void pqFileChooserWidget::chooseFile()
     {
       files << selectedFiles;
     }
-    if (files.size())
+    if (!files.empty())
     {
       this->setFilenames(files);
     }
   }
 }
 
+//-----------------------------------------------------------------------------
 void pqFileChooserWidget::handleFileLineEditChanged(const QString& fileString)
 {
   if (this->UseFilenameList)
@@ -222,6 +231,7 @@ void pqFileChooserWidget::handleFileLineEditChanged(const QString& fileString)
   this->emitFilenamesChanged(fileList);
 }
 
+//-----------------------------------------------------------------------------
 void pqFileChooserWidget::emitFilenamesChanged(const QStringList& fileList)
 {
   Q_EMIT this->filenamesChanged(fileList);

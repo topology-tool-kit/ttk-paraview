@@ -50,39 +50,42 @@ public:
   VTKM_EXEC_CONT void ClearTookAnySteps() { this->reset(this->TOOK_ANY_STEPS_BIT); }
   VTKM_EXEC_CONT bool CheckTookAnySteps() const { return this->test(this->TOOK_ANY_STEPS_BIT); }
 
+  VTKM_EXEC_CONT void SetInGhostCell() { this->set(this->IN_GHOST_CELL_BIT); }
+  VTKM_EXEC_CONT void ClearInGhostCell() { this->reset(this->IN_GHOST_CELL_BIT); }
+  VTKM_EXEC_CONT bool CheckInGhostCell() const { return this->test(this->IN_GHOST_CELL_BIT); }
+
 private:
   static constexpr vtkm::Id SUCCESS_BIT = 0;
   static constexpr vtkm::Id TERMINATE_BIT = 1;
   static constexpr vtkm::Id SPATIAL_BOUNDS_BIT = 2;
   static constexpr vtkm::Id TEMPORAL_BOUNDS_BIT = 3;
   static constexpr vtkm::Id TOOK_ANY_STEPS_BIT = 4;
+  static constexpr vtkm::Id IN_GHOST_CELL_BIT = 5;
 };
 
 inline VTKM_CONT std::ostream& operator<<(std::ostream& s, const vtkm::ParticleStatus& status)
 {
-  s << "[" << status.CheckOk() << " " << status.CheckTerminate() << " "
-    << status.CheckSpatialBounds() << " " << status.CheckTemporalBounds() << "]";
+  s << "[ok= " << status.CheckOk();
+  s << " term= " << status.CheckTerminate();
+  s << " spat= " << status.CheckSpatialBounds();
+  s << " temp= " << status.CheckTemporalBounds();
+  s << " ghst= " << status.CheckInGhostCell();
+  s << "]";
   return s;
 }
 
-class ParticleBase
+class Particle
 {
 public:
   VTKM_EXEC_CONT
-  ParticleBase() {}
-
-  VTKM_EXEC_CONT virtual ~ParticleBase() noexcept
-  {
-    // This must not be defaulted, since defaulted virtual destructors are
-    // troublesome with CUDA __host__ __device__ markup.
-  }
+  Particle() {}
 
   VTKM_EXEC_CONT
-  ParticleBase(const vtkm::Vec3f& p,
-               const vtkm::Id& id,
-               const vtkm::Id& numSteps = 0,
-               const vtkm::ParticleStatus& status = vtkm::ParticleStatus(),
-               const vtkm::FloatDefault& time = 0)
+  Particle(const vtkm::Vec3f& p,
+           const vtkm::Id& id,
+           const vtkm::Id& numSteps = 0,
+           const vtkm::ParticleStatus& status = vtkm::ParticleStatus(),
+           const vtkm::FloatDefault& time = 0)
     : Pos(p)
     , ID(id)
     , NumSteps(numSteps)
@@ -92,7 +95,7 @@ public:
   }
 
   VTKM_EXEC_CONT
-  ParticleBase(const vtkm::ParticleBase& p)
+  Particle(const vtkm::Particle& p)
     : Pos(p.Pos)
     , ID(p.ID)
     , NumSteps(p.NumSteps)
@@ -101,20 +104,31 @@ public:
   {
   }
 
-  vtkm::ParticleBase& operator=(const vtkm::ParticleBase&) = default;
+  vtkm::Particle& operator=(const vtkm::Particle&) = default;
 
-  // The basic particle is only meant to be advected in a velocity
-  // field. In that case it is safe to assume that the velocity value
-  // will always be stored in the first location of vectors
-  VTKM_EXEC_CONT
-  virtual vtkm::Vec3f Next(const vtkm::VecVariable<vtkm::Vec3f, 2>&, const vtkm::FloatDefault&) = 0;
+  VTKM_EXEC_CONT ~Particle() noexcept
+  {
+    // This must not be defaulted, since defaulted virtual destructors are
+    // troublesome with CUDA __host__ __device__ markup.
+  }
 
-  // The basic particle is only meant to be advected in a velocity
-  // field. In that case it is safe to assume that the velocity value
-  // will always be stored in the first location of vectors
   VTKM_EXEC_CONT
-  virtual vtkm::Vec3f Velocity(const vtkm::VecVariable<vtkm::Vec3f, 2>&,
-                               const vtkm::FloatDefault&) = 0;
+  vtkm::Vec3f Next(const vtkm::VecVariable<vtkm::Vec3f, 2>& vectors,
+                   const vtkm::FloatDefault& length)
+  {
+    VTKM_ASSERT(vectors.GetNumberOfComponents() > 0);
+    return this->Pos + length * vectors[0];
+  }
+
+  VTKM_EXEC_CONT
+  vtkm::Vec3f Velocity(const vtkm::VecVariable<vtkm::Vec3f, 2>& vectors,
+                       const vtkm::FloatDefault& vtkmNotUsed(length))
+  {
+    // Velocity is evaluated from the Velocity field
+    // and is not influenced by the particle
+    VTKM_ASSERT(vectors.GetNumberOfComponents() > 0);
+    return vectors[0];
+  }
 
   vtkm::Vec3f Pos;
   vtkm::Id ID = -1;
@@ -123,69 +137,7 @@ public:
   vtkm::FloatDefault Time = 0;
 };
 
-class Particle : public vtkm::ParticleBase
-{
-public:
-  VTKM_EXEC_CONT
-  Particle() {}
-
-  VTKM_EXEC_CONT Particle(const vtkm::Particle& rhs)
-    : ParticleBase(rhs)
-  {
-    // This must not be defaulted, since defaulted copy constructors are
-    // troublesome with CUDA __host__ __device__ markup.
-  }
-
-  VTKM_EXEC_CONT ~Particle() noexcept override
-  {
-    // This must not be defaulted, since defaulted virtual destructors are
-    // troublesome with CUDA __host__ __device__ markup.
-  }
-
-
-  VTKM_EXEC_CONT
-  Particle(const vtkm::Vec3f& p,
-           const vtkm::Id& id,
-           const vtkm::Id& numSteps = 0,
-           const vtkm::ParticleStatus& status = vtkm::ParticleStatus(),
-           const vtkm::FloatDefault& time = 0)
-    : ParticleBase(p, id, numSteps, status, time)
-  {
-  }
-
-  VTKM_EXEC_CONT Particle& operator=(const vtkm::Particle& rhs)
-  {
-    // This must not be defaulted, since defaulted assignment operators are
-    // troublesome with CUDA __host__ __device__ markup.
-
-    if (&rhs == this)
-    {
-      return *this;
-    }
-    vtkm::ParticleBase::operator=(rhs);
-    return *this;
-  }
-
-  VTKM_EXEC_CONT
-  vtkm::Vec3f Next(const vtkm::VecVariable<vtkm::Vec3f, 2>& vectors,
-                   const vtkm::FloatDefault& length) override
-  {
-    VTKM_ASSERT(vectors.GetNumberOfComponents() > 0);
-    return this->Pos + length * vectors[0];
-  }
-
-  VTKM_EXEC_CONT
-  vtkm::Vec3f Velocity(const vtkm::VecVariable<vtkm::Vec3f, 2>& vectors,
-                       const vtkm::FloatDefault& vtkmNotUsed(length)) override
-  {
-    // Velocity is evaluated from the Velocity field
-    // and is not influenced by the particle
-    VTKM_ASSERT(vectors.GetNumberOfComponents() > 0);
-    return vectors[0];
-  }
-};
-
-class Electron : public vtkm::ParticleBase
+class Electron
 {
 public:
   VTKM_EXEC_CONT
@@ -201,7 +153,11 @@ public:
            const vtkm::Id& numSteps = 0,
            const vtkm::ParticleStatus& status = vtkm::ParticleStatus(),
            const vtkm::FloatDefault& time = 0)
-    : ParticleBase(position, id, numSteps, status, time)
+    : Pos(position)
+    , ID(id)
+    , NumSteps(numSteps)
+    , Status(status)
+    , Time(time)
     , Mass(mass)
     , Charge(charge)
     , Weighting(weighting)
@@ -218,7 +174,7 @@ public:
 
   VTKM_EXEC_CONT
   vtkm::Vec3f Next(const vtkm::VecVariable<vtkm::Vec3f, 2>& vectors,
-                   const vtkm::FloatDefault& length) override
+                   const vtkm::FloatDefault& length)
   {
     // TODO: implement Lorentz force calculation
     return this->Pos + length * this->Velocity(vectors, length);
@@ -226,7 +182,7 @@ public:
 
   VTKM_EXEC_CONT
   vtkm::Vec3f Velocity(const vtkm::VecVariable<vtkm::Vec3f, 2>& vectors,
-                       const vtkm::FloatDefault& length) override
+                       const vtkm::FloatDefault& length)
   {
     VTKM_ASSERT(vectors.GetNumberOfComponents() == 2);
 
@@ -261,6 +217,12 @@ public:
 
     return velocity;
   }
+
+  vtkm::Vec3f Pos;
+  vtkm::Id ID = -1;
+  vtkm::Id NumSteps = 0;
+  vtkm::ParticleStatus Status;
+  vtkm::FloatDefault Time = 0;
 
 private:
   vtkm::FloatDefault Mass;

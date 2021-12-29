@@ -104,7 +104,7 @@ protected:
       pos[1] = vpos.GetY();
       double bounds[4];
       this->ControlPointsItem->GetBounds(bounds);
-      return (!this->ControlPointsItem->ClampPos(pos, bounds));
+      return (!vtkControlPointsItem::ClampPos(pos, bounds));
     }
     return false;
   }
@@ -249,7 +249,7 @@ bool vtkControlPointsItem::Paint(vtkContext2D* painter)
       this->DrawSelectedPoints(painter);
     }
     this->ScreenPointRadius = oldScreenPointRadius;
-    this->Transform->SetMatrix(painter->GetTransform()->GetMatrix());
+    this->ControlPointsTransform->SetMatrix(painter->GetTransform()->GetMatrix());
     painter->GetDevice()->EnableClipping(true);
   }
   this->PaintChildren(painter);
@@ -390,7 +390,7 @@ bool vtkControlPointsItem::Hit(const vtkContextMouseEvent& mouse)
     pos[1] = vpos.GetY();
     double bounds[4];
     this->GetBounds(bounds);
-    bool clamped = this->ClampPos(pos, bounds);
+    bool clamped = vtkControlPointsItem::ClampPos(pos, bounds);
     if (!clamped)
     {
       return true;
@@ -429,9 +429,9 @@ bool vtkControlPointsItem::ClampValidScreenPos(double pos[2])
   {
     double bounds[4];
     this->GetBounds(bounds);
-    return this->ClampPos(pos, bounds);
+    return vtkControlPointsItem::ClampPos(pos, bounds);
   }
-  return this->ClampPos(pos, validBounds);
+  return vtkControlPointsItem::ClampPos(pos, validBounds);
 }
 
 //------------------------------------------------------------------------------
@@ -543,7 +543,7 @@ void vtkControlPointsItem::DrawPoint(vtkContext2D* painter, vtkIdType index)
   {
     translation->Translate(0, radius + 5);
     painter->SetTransform(translation);
-    vtkStdString label = this->GetControlPointLabel(index);
+    std::string label = this->GetControlPointLabel(index);
 
     vtkVector2f bounds[2];
     painter->ComputeStringBounds(label, bounds[0].GetData());
@@ -725,12 +725,12 @@ bool vtkControlPointsItem::IsOverPoint(double* pos, vtkIdType pointId)
   }
 
   double screenPos[2];
-  this->Transform->TransformPoints(pos, screenPos, 1);
+  this->ControlPointsTransform->TransformPoints(pos, screenPos, 1);
 
   double point[4];
   this->GetControlPoint(pointId, point);
   double screenPoint[2];
-  this->Transform->TransformPoints(point, screenPoint, 1);
+  this->ControlPointsTransform->TransformPoints(point, screenPoint, 1);
 
   double distance2 = (screenPoint[0] - screenPos[0]) * (screenPoint[0] - screenPos[0]) +
     (screenPoint[1] - screenPos[1]) * (screenPoint[1] - screenPos[1]);
@@ -748,7 +748,7 @@ vtkIdType vtkControlPointsItem::FindPoint(double* posData)
   double tolerance = 1.3;
   double radius2 = this->ScreenPointRadius * this->ScreenPointRadius * tolerance * tolerance;
 
-  this->Transform->TransformPoints(pos, pos, 1);
+  this->ControlPointsTransform->TransformPoints(pos, pos, 1);
   vtkIdType pointId = -1;
   double minDist = VTK_DOUBLE_MAX;
   const int numberOfPoints = this->GetNumberOfPoints();
@@ -757,7 +757,7 @@ vtkIdType vtkControlPointsItem::FindPoint(double* posData)
     double point[4];
     this->GetControlPoint(i, point);
     this->TransformDataToScreen(point[0], point[1], point[0], point[1]);
-    this->Transform->TransformPoints(point, point, 1);
+    this->ControlPointsTransform->TransformPoints(point, point, 1);
     double distance2 =
       (point[0] - pos[0]) * (point[0] - pos[0]) + (point[1] - pos[1]) * (point[1] - pos[1]);
     if (distance2 <= radius2)
@@ -1500,28 +1500,28 @@ bool vtkControlPointsItem::MouseButtonReleaseEvent(const vtkContextMouseEvent& m
 bool vtkControlPointsItem::KeyPressEvent(const vtkContextKeyEvent& key)
 {
   bool move = key.GetInteractor()->GetAltKey() != 0 ||
-    key.GetInteractor()->GetKeySym() == vtkStdString("plus") ||
-    key.GetInteractor()->GetKeySym() == vtkStdString("minus");
+    key.GetInteractor()->GetKeySym() == std::string("plus") ||
+    key.GetInteractor()->GetKeySym() == std::string("minus");
   bool select = !move && key.GetInteractor()->GetShiftKey() != 0;
   bool control = key.GetInteractor()->GetControlKey() != 0;
   bool current = !select && !move && !control;
   if (current)
   {
-    if (key.GetInteractor()->GetKeySym() == vtkStdString("Right") ||
-      key.GetInteractor()->GetKeySym() == vtkStdString("Up"))
+    if (key.GetInteractor()->GetKeySym() == std::string("Right") ||
+      key.GetInteractor()->GetKeySym() == std::string("Up"))
     {
       this->SetCurrentPoint(std::min(this->GetNumberOfPoints() - 1, this->GetCurrentPoint() + 1));
     }
-    else if (key.GetInteractor()->GetKeySym() == vtkStdString("Left") ||
-      key.GetInteractor()->GetKeySym() == vtkStdString("Down"))
+    else if (key.GetInteractor()->GetKeySym() == std::string("Left") ||
+      key.GetInteractor()->GetKeySym() == std::string("Down"))
     {
       this->SetCurrentPoint(std::max(0, static_cast<int>(this->GetCurrentPoint()) - 1));
     }
-    else if (key.GetInteractor()->GetKeySym() == vtkStdString("End"))
+    else if (key.GetInteractor()->GetKeySym() == std::string("End"))
     {
       this->SetCurrentPoint(this->GetNumberOfPoints() - 1);
     }
-    else if (key.GetInteractor()->GetKeySym() == vtkStdString("Home"))
+    else if (key.GetInteractor()->GetKeySym() == std::string("Home"))
     {
       this->SetCurrentPoint(0);
     }
@@ -1542,7 +1542,7 @@ bool vtkControlPointsItem::KeyPressEvent(const vtkContextKeyEvent& key)
       this->SetCurrentPoint(std::max(0, static_cast<int>(this->GetCurrentPoint()) - 1));
       this->SelectPoint(this->CurrentPoint);
     }
-    else if (key.GetInteractor()->GetKeySym() == vtkStdString("End"))
+    else if (key.GetInteractor()->GetKeySym() == std::string("End"))
     {
       vtkIdType newCurrentPointId = this->GetNumberOfPoints() - 1;
       for (vtkIdType pointId = this->CurrentPoint; pointId < newCurrentPointId; ++pointId)
@@ -1552,7 +1552,7 @@ bool vtkControlPointsItem::KeyPressEvent(const vtkContextKeyEvent& key)
       this->SelectPoint(newCurrentPointId);
       this->SetCurrentPoint(newCurrentPointId);
     }
-    else if (key.GetInteractor()->GetKeySym() == vtkStdString("Home"))
+    else if (key.GetInteractor()->GetKeySym() == std::string("Home"))
     {
       vtkIdType newCurrentPointId = 0;
       for (vtkIdType pointId = this->CurrentPoint; pointId > newCurrentPointId; --pointId)
@@ -1645,11 +1645,11 @@ bool vtkControlPointsItem::KeyPressEvent(const vtkContextKeyEvent& key)
       this->SelectAllPoints();
     }
   }
-  if (key.GetInteractor()->GetKeySym() == vtkStdString("space"))
+  if (key.GetInteractor()->GetKeySym() == std::string("space"))
   {
     this->ToggleSelectPoint(this->GetCurrentPoint());
   }
-  else if (key.GetInteractor()->GetKeySym() == vtkStdString("Escape"))
+  else if (key.GetInteractor()->GetKeySym() == std::string("Escape"))
   {
     this->DeselectAllPoints();
   }
@@ -1722,17 +1722,15 @@ bool vtkControlPointsItem::IsPointRemovable(vtkIdType pointId)
 }
 
 //------------------------------------------------------------------------------
-vtkStdString vtkControlPointsItem::GetControlPointLabel(vtkIdType pointId)
+std::string vtkControlPointsItem::GetControlPointLabel(vtkIdType pointId)
 {
-  vtkStdString result;
+  std::string result;
   if (this->LabelFormat)
   {
-    char* buffer = new char[1024];
+    result.resize(1024);
     double point[4];
     this->GetControlPoint(pointId, point);
-    snprintf(buffer, 1024, this->LabelFormat, point[0], point[1], point[2], point[3]);
-    result = buffer;
-    delete[] buffer;
+    snprintf(&result[0], 1024, this->LabelFormat, point[0], point[1], point[2], point[3]);
   }
   return result;
 }

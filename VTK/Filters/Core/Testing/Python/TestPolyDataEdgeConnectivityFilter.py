@@ -61,7 +61,6 @@ tessMapper.SetInputConnection(conn.GetOutputPort())
 tessMapper.ScalarVisibilityOn()
 tessMapper.SetScalarModeToUseCellData()
 tessMapper.SetScalarRange(0,conn.GetNumberOfExtractedRegions()-1)
-tessMapper.SetScalarRange(0,5)
 print("Num cells: ",conn.GetOutput().GetNumberOfCells())
 print("Num regions: ",conn.GetNumberOfExtractedRegions())
 

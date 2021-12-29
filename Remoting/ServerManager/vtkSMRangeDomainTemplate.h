@@ -50,7 +50,7 @@
  * property is less than the number of default specified, the last value is
  * assumed to be repeated. Thus, "min,max,min" is same as the regular expression
  * "min,max,min(,min)*".
-*/
+ */
 
 #ifndef vtkSMRangeDomainTemplate_h
 #define vtkSMRangeDomainTemplate_h
@@ -64,7 +64,7 @@ template <class T>
 class VTKREMOTINGSERVERMANAGER_EXPORT vtkSMRangeDomainTemplate : public vtkSMDomain
 {
 public:
-  typedef vtkSMDomain Superclass;
+  vtkTypeMacro(vtkSMRangeDomainTemplate, vtkSMDomain);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /**
@@ -263,5 +263,3 @@ extern VTK_SM_RANGE_DOMAIN_TEMPLATE_INSTANTIATE(VTK_SM_RANGE_DOMAIN_TEMPLATE_TYP
 #endif
 #undef VTK_SM_RANGE_DOMAIN_TEMPLATE_TYPE
 #endif
-
-// VTK-HeaderTest-Exclude: vtkSMRangeDomainTemplate.h

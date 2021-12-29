@@ -38,7 +38,7 @@
 #include "vtkUnstructuredGrid.h"
 #include "vtkUnstructuredGridAlgorithm.h"
 
-#include <assert.h>
+#include <cassert>
 #include <map>
 #include <set>
 #include <vector>
@@ -46,7 +46,7 @@
 class vtkPVDataSetAlgorithmSelectorFilter::vtkInternals
 {
 public:
-  std::vector<vtkSmartPointer<vtkAlgorithm> > RegisteredFilters;
+  std::vector<vtkSmartPointer<vtkAlgorithm>> RegisteredFilters;
   int ActiveFilter;
   vtkObject* Owner;
 
@@ -78,7 +78,7 @@ vtkPVDataSetAlgorithmSelectorFilter::~vtkPVDataSetAlgorithmSelectorFilter()
   this->SetActiveFilter(-1);
   this->InternalProgressObserver->Delete();
   delete this->Internal;
-  this->Internal = NULL;
+  this->Internal = nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -189,7 +189,7 @@ void vtkPVDataSetAlgorithmSelectorFilter::UnRegisterFilter(int index)
     {
       this->SetActiveFilter(-1);
     }
-    std::vector<vtkSmartPointer<vtkAlgorithm> >::iterator iter =
+    std::vector<vtkSmartPointer<vtkAlgorithm>>::iterator iter =
       this->Internal->RegisteredFilters.begin();
     iter += index;
     this->Internal->RegisteredFilters.erase(iter);
@@ -218,7 +218,7 @@ vtkAlgorithm* vtkPVDataSetAlgorithmSelectorFilter::GetFilter(int index)
   {
     return this->Internal->RegisteredFilters.at(index);
   }
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -251,7 +251,7 @@ vtkAlgorithm* vtkPVDataSetAlgorithmSelectorFilter::SetActiveFilter(int index)
       this->Internal->ActiveFilter = -1;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -262,7 +262,7 @@ vtkMTimeType vtkPVDataSetAlgorithmSelectorFilter::GetMTime()
   vtkMTimeType maxMTime = this->Superclass::GetMTime(); // My MTime
 
   // let's check internals MTimes
-  std::vector<vtkSmartPointer<vtkAlgorithm> >::iterator filterIter =
+  std::vector<vtkSmartPointer<vtkAlgorithm>>::iterator filterIter =
     this->Internal->RegisteredFilters.begin();
   while (filterIter != this->Internal->RegisteredFilters.end())
   {

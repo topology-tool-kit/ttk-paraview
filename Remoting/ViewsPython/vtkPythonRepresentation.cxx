@@ -30,15 +30,15 @@ public:
     this->AttributeArrayEnabled.resize(vtkDataObject::NUMBER_OF_ATTRIBUTE_TYPES);
   }
 
-  std::vector<std::map<std::string, bool> > AttributeArrayEnabled;
+  std::vector<std::map<std::string, bool>> AttributeArrayEnabled;
 };
 
 vtkStandardNewMacro(vtkPythonRepresentation);
 //----------------------------------------------------------------------------
 vtkPythonRepresentation::vtkPythonRepresentation()
 {
-  this->LocalInput = NULL;
-  this->ClientDataObject = NULL;
+  this->LocalInput = nullptr;
+  this->ClientDataObject = nullptr;
   this->Internal = new vtkPythonRepresentationInternal();
 }
 
@@ -53,10 +53,7 @@ vtkPythonRepresentation::~vtkPythonRepresentation()
   {
     this->ClientDataObject->Delete();
   }
-  if (this->Internal)
-  {
-    delete this->Internal;
-  }
+  delete this->Internal;
 }
 
 //----------------------------------------------------------------------------
@@ -102,7 +99,7 @@ const char* vtkPythonRepresentation::GetAttributeArrayName(int attributeType, in
       if (arrayIndex < 0 || arrayIndex >= attributeData->GetNumberOfArrays())
       {
         vtkErrorMacro(<< "Invalid array index " << arrayIndex);
-        return NULL;
+        return nullptr;
       }
       return attributeData->GetArrayName(arrayIndex);
     }
@@ -114,7 +111,7 @@ const char* vtkPythonRepresentation::GetAttributeArrayName(int attributeType, in
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -226,9 +223,9 @@ int vtkPythonRepresentation::RequestData(
 void vtkPythonRepresentation::InitializePreGatherHelper(
   vtkReductionFilter* reductionFilter, vtkDataObject* input)
 {
-  if (input == NULL)
+  if (input == nullptr)
   {
-    reductionFilter->SetPreGatherHelper(NULL);
+    reductionFilter->SetPreGatherHelper(nullptr);
     return;
   }
 
@@ -265,7 +262,7 @@ void vtkPythonRepresentation::InitializePreGatherHelper(
   {
     vtkErrorMacro(<< "Unhandled input data type '" << input->GetClassName()
                   << "' for deciding pre-gather helper");
-    reductionFilter->SetPreGatherHelper(NULL);
+    reductionFilter->SetPreGatherHelper(nullptr);
   }
 }
 
@@ -273,9 +270,9 @@ void vtkPythonRepresentation::InitializePreGatherHelper(
 void vtkPythonRepresentation::InitializePostGatherHelper(
   vtkReductionFilter* reductionFilter, vtkDataObject* input)
 {
-  if (input == NULL)
+  if (input == nullptr)
   {
-    reductionFilter->SetPostGatherHelper(NULL);
+    reductionFilter->SetPostGatherHelper(nullptr);
     return;
   }
 
@@ -320,7 +317,7 @@ void vtkPythonRepresentation::InitializePostGatherHelper(
   {
     vtkErrorMacro(<< "Unhandled input data type '" << input->GetClassName()
                   << "' for deciding post-gather helper");
-    reductionFilter->SetPostGatherHelper(NULL);
+    reductionFilter->SetPostGatherHelper(nullptr);
   }
 }
 
@@ -353,7 +350,7 @@ bool vtkPythonRepresentation::IsDataServerProcess()
 //----------------------------------------------------------------------------
 int vtkPythonRepresentation::SendDataTypeToClient(int& dataType)
 {
-  vtkMultiProcessController* controller = NULL;
+  vtkMultiProcessController* controller = nullptr;
   int processType = 0;
   enum
   {

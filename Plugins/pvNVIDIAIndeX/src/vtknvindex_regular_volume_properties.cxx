@@ -1,29 +1,29 @@
 /* Copyright 2021 NVIDIA Corporation. All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions
-* are met:
-*  * Redistributions of source code must retain the above copyright
-*    notice, this list of conditions and the following disclaimer.
-*  * Redistributions in binary form must reproduce the above copyright
-*    notice, this list of conditions and the following disclaimer in the
-*    documentation and/or other materials provided with the distribution.
-*  * Neither the name of NVIDIA CORPORATION nor the names of its
-*    contributors may be used to endorse or promote products derived
-*    from this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-* EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-* PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-* CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-* EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-* PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-* PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-* OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include "vtkCellData.h"
 #include "vtkCellIterator.h"
@@ -42,6 +42,8 @@ vtknvindex_regular_volume_properties::vtknvindex_regular_volume_properties()
   , m_time_steps_written(0)
   , m_nb_time_steps(1)
   , m_current_time_step(0)
+  , m_time_step_start(0)
+  , m_scalar_components(1)
   , m_ghost_levels(0)
 
 {
@@ -51,10 +53,7 @@ vtknvindex_regular_volume_properties::vtknvindex_regular_volume_properties()
 }
 
 // ------------------------------------------------------------------------------------------------
-vtknvindex_regular_volume_properties::~vtknvindex_regular_volume_properties()
-{
-  // empty
-}
+vtknvindex_regular_volume_properties::~vtknvindex_regular_volume_properties() = default;
 
 // ------------------------------------------------------------------------------------------------
 void vtknvindex_regular_volume_properties::set_scalar_type(std::string scalar_type)
@@ -63,9 +62,21 @@ void vtknvindex_regular_volume_properties::set_scalar_type(std::string scalar_ty
 }
 
 // ------------------------------------------------------------------------------------------------
-void vtknvindex_regular_volume_properties::get_scalar_type(std::string& scalar_type) const
+std::string vtknvindex_regular_volume_properties::get_scalar_type() const
 {
-  scalar_type = m_scalar_type;
+  return m_scalar_type;
+}
+
+// ------------------------------------------------------------------------------------------------
+void vtknvindex_regular_volume_properties::set_scalar_components(mi::Sint32 components)
+{
+  m_scalar_components = components;
+}
+
+// ------------------------------------------------------------------------------------------------
+mi::Sint32 vtknvindex_regular_volume_properties::get_scalar_components() const
+{
+  return m_scalar_components;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -237,7 +248,7 @@ template <typename T>
 void vtknvindex_regular_volume_properties::transform_zyx_to_xyz(
   T* pv_volume, T* shm_volume, mi::Sint32* bounds) const
 {
-  if (shm_volume == NULL || pv_volume == NULL)
+  if (shm_volume == nullptr || pv_volume == nullptr)
     return;
 
   mi::Uint64 dx = bounds[1] - bounds[0] + 1;
@@ -335,6 +346,7 @@ bool vtknvindex_regular_volume_properties::write_shared_memory(vtkDataArray* sca
   }
   else
   {
+    // Disabled intentionally in r318862:
     // shm_info->m_subset_ptr = scalar_array->GetVoidPointer(0);
   }
 
@@ -369,7 +381,7 @@ bool vtknvindex_regular_volume_properties::write_shared_memory(
   std::string shm_memory_name;
   mi::math::Bbox<mi::Float32, 3> shm_bbox;
   mi::Uint64 shm_size = 0;
-  void* subset_ptr = NULL;
+  void* subset_ptr = nullptr;
 
   if (!host_properties->get_shminfo(ivol_data->subregion_bbox, shm_memory_name, shm_bbox, shm_size,
         &subset_ptr, current_timestep))
@@ -434,6 +446,7 @@ bool vtknvindex_regular_volume_properties::write_shared_memory(
     mi::math::Vector<mi::Float64, 3> point_pv;
     ugrid->GetPoint(i, point_pv.begin());
     const mi::math::Vector<mi::Float32, 3> point_index(point_pv);
+    // NOLINTNEXTLINE(bugprone-undefined-memory-manipulation)
     memcpy(shm_offset, &point_index, size_elm);
     shm_offset += size_elm;
   }
@@ -509,6 +522,15 @@ bool vtknvindex_regular_volume_properties::write_shared_memory(
 void vtknvindex_regular_volume_properties::print_info() const
 {
   INFO_LOG << "Scalar type: " << m_scalar_type;
+  if (m_scalar_components > 1)
+  {
+    INFO_LOG << "Components:  " << m_scalar_components;
+  }
+  else if (m_scalar_components < 0)
+  {
+    INFO_LOG << "Original components: " << std::abs(m_scalar_components)
+             << " (only one will be used)";
+  }
   INFO_LOG << "Volume bbox: " << m_ivol_volume_extents;
   INFO_LOG << "Volume size: " << m_ivol_volume_extents.max - m_ivol_volume_extents.min;
   INFO_LOG << "Data values: " << m_voxel_range;
@@ -523,6 +545,7 @@ void vtknvindex_regular_volume_properties::serialize(mi::neuraylib::ISerializer*
   serializer->write(&scalar_typename_size);
   serializer->write(
     reinterpret_cast<const mi::Uint8*>(m_scalar_type.c_str()), scalar_typename_size);
+  serializer->write(&m_scalar_components);
 
   serializer->write(&m_voxel_range.x, 2);
 
@@ -537,6 +560,7 @@ void vtknvindex_regular_volume_properties::deserialize(mi::neuraylib::IDeseriali
   deserializer->read(&scalar_typename_size);
   m_scalar_type.resize(scalar_typename_size);
   deserializer->read(reinterpret_cast<mi::Uint8*>(&m_scalar_type[0]), scalar_typename_size);
+  deserializer->read(&m_scalar_components);
 
   deserializer->read(&m_voxel_range.x, 2);
 
@@ -555,6 +579,10 @@ mi::Size vtknvindex_regular_volume_properties::get_scalar_size(const std::string
   else if (scalar_type == "short" || scalar_type == "unsigned short")
   {
     scalar_size = sizeof(mi::Uint16);
+  }
+  else if (scalar_type == "int" || scalar_type == "unsigned int")
+  {
+    scalar_size = sizeof(mi::Uint32);
   }
   else if (scalar_type == "float")
   {

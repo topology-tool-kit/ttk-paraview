@@ -29,7 +29,7 @@
 #include "vtkTrivialProducer.h"
 #include "vtkUnsignedCharArray.h"
 
-#include <assert.h>
+#include <cassert>
 
 vtkStandardNewMacro(vtkExtractsDeliveryHelper);
 //----------------------------------------------------------------------------
@@ -42,9 +42,7 @@ vtkExtractsDeliveryHelper::vtkExtractsDeliveryHelper()
 }
 
 //----------------------------------------------------------------------------
-vtkExtractsDeliveryHelper::~vtkExtractsDeliveryHelper()
-{
-}
+vtkExtractsDeliveryHelper::~vtkExtractsDeliveryHelper() = default;
 
 //----------------------------------------------------------------------------
 void vtkExtractsDeliveryHelper::SetSimulation2VisualizationController(vtkSocketController* cont)
@@ -78,7 +76,7 @@ void vtkExtractsDeliveryHelper::ClearAllExtracts()
 void vtkExtractsDeliveryHelper::AddExtractConsumer(const char* key, vtkTrivialProducer* consumer)
 {
   assert(this->ProcessIsProducer == false);
-  assert(key != NULL && consumer != NULL);
+  assert(key != nullptr && consumer != nullptr);
 
   this->ExtractConsumers[key] =
     std::make_pair<vtkSmartPointer<vtkTrivialProducer>, bool>(consumer, false);
@@ -95,7 +93,7 @@ void vtkExtractsDeliveryHelper::AddExtractProducer(
   const char* key, vtkAlgorithmOutput* producerPort)
 {
   assert(this->ProcessIsProducer == true);
-  assert(key != NULL && producerPort != NULL);
+  assert(key != nullptr && producerPort != nullptr);
 
   this->ExtractProducers[key] = producerPort;
 }
@@ -109,7 +107,7 @@ vtkDataObject* vtkExtractsDeliveryHelper::Collect(int node_count, vtkDataObject*
   {
     int destination = myId % node_count;
     this->ParallelController->Send(dObj, destination, 13001);
-    return NULL;
+    return nullptr;
   }
   else
   {
@@ -128,7 +126,7 @@ vtkDataObject* vtkExtractsDeliveryHelper::Collect(int node_count, vtkDataObject*
       }
     }
 
-    vtkDataObject* result = NULL;
+    vtkDataObject* result = nullptr;
     if (pieces.size() > 1)
     {
       result = vtkMultiProcessControllerHelper::MergePieces(
@@ -143,7 +141,7 @@ vtkDataObject* vtkExtractsDeliveryHelper::Collect(int node_count, vtkDataObject*
     for (size_t cc = 0; cc < pieces.size(); cc++)
     {
       pieces[cc]->Delete();
-      pieces[cc] = NULL;
+      pieces[cc] = nullptr;
     }
 
     return result;
@@ -176,7 +174,7 @@ bool vtkExtractsDeliveryHelper::Update()
     int M = this->NumberOfSimulationProcesses;
     int N = this->NumberOfVisualizationProcesses;
 
-    std::map<std::string, vtkSmartPointer<vtkDataObject> > gathered_extracts;
+    std::map<std::string, vtkSmartPointer<vtkDataObject>> gathered_extracts;
     if (M > N)
     {
       // when simulation processes in greater than vis processes, the simulation
@@ -222,7 +220,7 @@ bool vtkExtractsDeliveryHelper::Update()
     vtkSocketController* comm = this->Simulation2VisualizationController;
     if (comm)
     {
-      std::vector<vtkSmartPointer<vtkCompositeDataSet> > compositeDSToShare;
+      std::vector<vtkSmartPointer<vtkCompositeDataSet>> compositeDSToShare;
       vtkMultiProcessStream data_types_stream;
       while (true)
       {
@@ -252,23 +250,26 @@ bool vtkExtractsDeliveryHelper::Update()
         // Composite dataset need to convey their data structure across
         // processes, let's create those empty data object with the proper
         // data structure to share ONLY if needed.
-        if (extract->IsA("vtkCompositeDataSet"))
+        if (extract != nullptr)
         {
-          vtkCompositeDataSet* dsToShare = vtkCompositeDataSet::SafeDownCast(
-            vtkDataObjectTypes::NewDataObject(extract->GetClassName()));
-          compositeDSToShare.push_back(dsToShare);
-          dsToShare->CopyStructure(vtkCompositeDataSet::SafeDownCast(extract));
-          dsToShare->FastDelete();
-          needToShare = 1;
+          if (extract->IsA("vtkCompositeDataSet"))
+          {
+            vtkCompositeDataSet* dsToShare = vtkCompositeDataSet::SafeDownCast(
+              vtkDataObjectTypes::NewDataObject(extract->GetClassName()));
+            compositeDSToShare.push_back(dsToShare);
+            dsToShare->CopyStructure(vtkCompositeDataSet::SafeDownCast(extract));
+            dsToShare->FastDelete();
+            needToShare = 1;
+          }
+          data_types_stream << key.c_str() << extract->GetClassName() << needToShare;
+          extract->Delete();
         }
-        data_types_stream << key.c_str() << extract->GetClassName() << needToShare;
-        extract->Delete();
       }
       data_types_stream << "null";
       this->ParallelController->Broadcast(data_types_stream, 0);
 
       // Send the empty data object that need to share its structure
-      std::vector<vtkSmartPointer<vtkCompositeDataSet> >::iterator dsIter;
+      std::vector<vtkSmartPointer<vtkCompositeDataSet>>::iterator dsIter;
       for (dsIter = compositeDSToShare.begin(); dsIter != compositeDSToShare.end(); dsIter++)
       {
         this->ParallelController->Broadcast(dsIter->GetPointer(), 0);

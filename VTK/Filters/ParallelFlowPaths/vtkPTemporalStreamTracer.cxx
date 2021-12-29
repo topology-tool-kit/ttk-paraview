@@ -49,7 +49,6 @@ PURPOSE.  See the above copyright notice for more information.
 #include "vtkRungeKutta45.h"
 #include "vtkSmartPointer.h"
 #include "vtkTemporalInterpolatedVelocityField.h"
-#include "vtkToolkits.h"
 #include <cassert>
 
 using namespace vtkTemporalStreamTracerNamespace;
@@ -162,7 +161,7 @@ void vtkPTemporalStreamTracer::AssignUniqueIds(
   if (this->UpdateNumPieces > 1)
   {
     vtkMPICommunicator* com = vtkMPICommunicator::SafeDownCast(this->Controller->GetCommunicator());
-    if (com == 0)
+    if (com == nullptr)
     {
       vtkErrorMacro("MPICommunicator needed for this operation.");
       return;
@@ -203,7 +202,7 @@ void vtkPTemporalStreamTracer::TransmitReceiveParticles(
   ParticleVector& sending, ParticleVector& received, bool removeself)
 {
   vtkMPICommunicator* com = vtkMPICommunicator::SafeDownCast(this->Controller->GetCommunicator());
-  if (com == 0)
+  if (com == nullptr)
   {
     vtkErrorMacro("MPICommunicator needed for this operation.");
     return;
@@ -233,7 +232,7 @@ void vtkPTemporalStreamTracer::TransmitReceiveParticles(
   if (TotalParticles == 0)
     return;
   // Gather the data from all procs.
-  char* sendbuf = (char*)((sending.size() > 0) ? &(sending[0]) : nullptr);
+  char* sendbuf = (char*)(!sending.empty() ? &(sending[0]) : nullptr);
   char* recvbuf = (char*)(&(received[0]));
   com->AllGatherV(sendbuf, recvbuf, OurParticles * TypeSize, &recvLengths[0], &recvOffsets[0]);
   // Now all particles from all processors are in one big array

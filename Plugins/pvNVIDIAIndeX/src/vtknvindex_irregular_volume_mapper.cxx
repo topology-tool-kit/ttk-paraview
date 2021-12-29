@@ -68,6 +68,7 @@
 
 #include "vtknvindex_cluster_properties.h"
 #include "vtknvindex_forwarding_logger.h"
+#include "vtknvindex_global_settings.h"
 #include "vtknvindex_instance.h"
 #include "vtknvindex_irregular_volume_mapper.h"
 #include "vtknvindex_utilities.h"
@@ -97,10 +98,7 @@ vtknvindex_irregular_volume_mapper::vtknvindex_irregular_volume_mapper()
 }
 
 //----------------------------------------------------------------------------
-vtknvindex_irregular_volume_mapper::~vtknvindex_irregular_volume_mapper()
-{
-  // empty
-}
+vtknvindex_irregular_volume_mapper::~vtknvindex_irregular_volume_mapper() = default;
 
 //----------------------------------------------------------------------------
 double* vtknvindex_irregular_volume_mapper::GetBounds()
@@ -223,7 +221,8 @@ bool vtknvindex_irregular_volume_mapper::initialize_mapper(vtkRenderer* /*ren*/,
 
   // Check for valid data types
   const std::string scalar_type = m_scalar_array->GetDataTypeAsString();
-  if (scalar_type != "unsigned char" && scalar_type != "unsigned short" && scalar_type != "float" &&
+  if (scalar_type != "unsigned char" && scalar_type != "unsigned short" &&
+    scalar_type != "unsigned int" && scalar_type != "int" && scalar_type != "float" &&
     scalar_type != "double")
   {
     ERROR_LOG << "The data array '" << this->ArrayName << "' uses the scalar type '" << scalar_type
@@ -233,12 +232,15 @@ bool vtknvindex_irregular_volume_mapper::initialize_mapper(vtkRenderer* /*ren*/,
   else if (scalar_type == "double" && is_data_supported)
   {
     // Only print the warning once per data array, and do not repeat when switching between arrays.
+    // No warning for "unsigned int" because there is no memory overhead and only minimal CPU
+    // overhead.
     if (m_data_array_warning_printed.find(this->ArrayName) == m_data_array_warning_printed.end())
     {
-      WARN_LOG << "The data array '" << this->ArrayName << "' has scalar values "
-               << "in double precision format, which is not natively supported by NVIDIA IndeX. "
-               << "The plugin will proceed to convert the values from double to float with the "
-               << "corresponding overhead.";
+      WARN_LOG << "The data array '" << this->ArrayName << "' has scalar "
+               << "values  in " << scalar_type << " format, which is not natively "
+               << "supported by NVIDIA IndeX for unstructured grids. "
+               << "The plugin will proceed to convert the values from " << scalar_type << " "
+               << "to float with the corresponding overhead.";
       m_data_array_warning_printed.emplace(this->ArrayName);
     }
   }
@@ -379,6 +381,7 @@ bool vtknvindex_irregular_volume_mapper::initialize_mapper(vtkRenderer* /*ren*/,
     vtknvindex_dataset_parameters dataset_parameters;
     dataset_parameters.volume_type = vtknvindex_scene::VOLUME_TYPE_IRREGULAR;
     dataset_parameters.scalar_type = scalar_type;
+    dataset_parameters.scalar_components = m_scalar_array->GetNumberOfComponents();
     dataset_parameters.voxel_range[0] = static_cast<mi::Float32>(m_scalar_array->GetRange(0)[0]);
     dataset_parameters.voxel_range[1] = static_cast<mi::Float32>(m_scalar_array->GetRange(0)[1]);
     dataset_parameters.scalar_range[0] = static_cast<mi::Float32>(m_scalar_array->GetDataTypeMin());
@@ -516,24 +519,32 @@ void vtknvindex_irregular_volume_mapper::opacity_changed()
 }
 
 //-------------------------------------------------------------------------------------------------
-void vtknvindex_irregular_volume_mapper::rtc_kernel_changed(vtknvindex_rtc_kernels kernel,
+bool vtknvindex_irregular_volume_mapper::rtc_kernel_changed(vtknvindex_rtc_kernels kernel,
   const std::string& kernel_program, const void* params_buffer, mi::Uint32 buffer_size)
 {
+  bool kernel_changed = false;
   if (kernel != m_volume_rtc_kernel.rtc_kernel)
   {
     m_volume_rtc_kernel.rtc_kernel = kernel;
-    m_rtc_kernel_changed = true;
+    kernel_changed = true;
   }
 
   if (kernel_program != m_volume_rtc_kernel.kernel_program)
   {
     m_volume_rtc_kernel.kernel_program = kernel_program;
+    kernel_changed = true;
+  }
+
+  if (kernel_changed)
+  {
     m_rtc_kernel_changed = true;
   }
 
   m_volume_rtc_kernel.params_buffer = params_buffer;
   m_volume_rtc_kernel.buffer_size = buffer_size;
   m_rtc_param_changed = true;
+
+  return kernel_changed;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -617,7 +628,7 @@ void vtknvindex_irregular_volume_mapper::Render(vtkRenderer* ren, vtkVolume* vol
   // Wait all ranks finish to write volume data before the render starts.
   m_controller->Barrier();
 
-  if (m_index_instance->is_index_viewer() && m_index_instance->is_index_initialized())
+  if (m_index_instance->is_index_viewer() && m_index_instance->ensure_index_initialized())
   {
     vtkTimerLog::MarkStartEvent("NVIDIA-IndeX: Rendering");
 
@@ -709,9 +720,9 @@ void vtknvindex_irregular_volume_mapper::Render(vtkRenderer* ren, vtkVolume* vol
           m_index_instance->m_iindex_rendering->render(m_index_instance->m_session_tag,
             &(m_index_instance->m_opengl_canvas), // Opengl canvas.
             dice_transaction.get(),
-            0,    // No progress_callback.
-            0,    // No Frame information
-            true, // = g_immediate_final_parallel_compositing
+            nullptr, // No progress_callback.
+            nullptr, // No Frame information
+            true,    // = g_immediate_final_parallel_compositing
             use_depth_buffer ? &m_index_instance->m_opengl_app_buffer : nullptr));
 
         const mi::base::Handle<nv::index::IError_set> err_set(frame_results->get_error_set());
@@ -731,7 +742,8 @@ void vtknvindex_irregular_volume_mapper::Render(vtkRenderer* ren, vtkVolume* vol
                     << os.str();
         }
 
-        if (m_cluster_properties->get_config_settings()->is_log_performance())
+        // log performance values if requested
+        if (vtknvindex_global_settings::GetInstance()->GetOutputPerformanceValues())
           m_performance_values.print_perf_values(frame_results);
       }
 
@@ -739,13 +751,6 @@ void vtknvindex_irregular_volume_mapper::Render(vtkRenderer* ren, vtkVolume* vol
     }
 
     vtkTimerLog::MarkEndEvent("NVIDIA-IndeX: Rendering");
-  }
-  else if (m_index_instance->is_index_viewer())
-  {
-    static bool first = true;
-    if (first)
-      ERROR_LOG << "The NVIDIA IndeX plugin was not initialized! See the log output for details.";
-    first = false;
   }
 
   m_volume_changed = false;

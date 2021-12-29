@@ -103,6 +103,7 @@ class vtkQuadraticWedge;
 class vtkQuadraticPyramid;
 class vtkBiQuadraticQuad;
 class vtkTriQuadraticHexahedron;
+class vtkTriQuadraticPyramid;
 class vtkQuadraticLinearQuad;
 class vtkQuadraticLinearWedge;
 class vtkBiQuadraticQuadraticWedge;
@@ -189,6 +190,7 @@ public:
   static State Check(vtkQuadraticPyramid*, double tolerance);
   static State Check(vtkBiQuadraticQuad*, double tolerance);
   static State Check(vtkTriQuadraticHexahedron*, double tolerance);
+  static State Check(vtkTriQuadraticPyramid*, double tolerance);
   static State Check(vtkQuadraticLinearQuad*, double tolerance);
   static State Check(vtkQuadraticLinearWedge*, double tolerance);
   static State Check(vtkBiQuadraticQuadraticWedge*, double tolerance);
@@ -210,7 +212,7 @@ public:
   static State Check(vtkBezierHexahedron*, double tolerance);
   static State Check(vtkBezierWedge*, double tolerance);
 
-  //@{
+  ///@{
   /**
    * Set/Get the tolerance. This value is used as an epsilon for floating point
    * equality checks throughout the cell checking process. The default value is
@@ -218,7 +220,7 @@ public:
    */
   vtkSetClampMacro(Tolerance, double, 0.0, VTK_DOUBLE_MAX);
   vtkGetMacro(Tolerance, double);
-  //@}
+  ///@}
 
 protected:
   vtkCellValidator();

@@ -75,7 +75,8 @@ public:
     this->Destination = this->DestinationGroups.top();
     this->Domain->insert(dest);
   }
-  void WriteDataObject(vtkDataObject* dataSet, bool hasTime, double time, const char* name = 0)
+  void WriteDataObject(
+    vtkDataObject* dataSet, bool hasTime, double time, const char* name = nullptr)
   {
     if (!dataSet)
     {
@@ -164,7 +165,7 @@ vtkXdmf3Writer::vtkXdmf3Writer()
   this->LightDataLimit = 100;
   this->WriteAllTimeSteps = false;
   this->TimeValues = nullptr;
-  this->TimeValues = 0;
+  this->TimeValues = nullptr;
   this->InitWriters = true;
 
   this->Internal = new Internals();
@@ -387,7 +388,7 @@ void vtkXdmf3Writer::WriteDataInternal(vtkInformation* request)
       std::string rankGridName = "/Xdmf/Domain/Grid[1]";
 
       shared_ptr<XdmfGridController> partController =
-        XdmfGridController::New(rankFileName.c_str(), rankGridName.c_str());
+        XdmfGridController::New(rankFileName, rankGridName);
 
       // tricky part is we have to state what type we are referencing to.
       // otherwise readback fails.

@@ -43,13 +43,14 @@ class VTKFILTERSMODELING_EXPORT vtkLinearSubdivisionFilter
   : public vtkInterpolatingSubdivisionFilter
 {
 public:
-  //@{
+  ///@{
   /**
    * Construct object with NumberOfSubdivisions set to 1.
    */
   static vtkLinearSubdivisionFilter* New();
   vtkTypeMacro(vtkLinearSubdivisionFilter, vtkInterpolatingSubdivisionFilter);
-  //@}
+  void PrintSelf(ostream& os, vtkIndent indent) override;
+  ///@}
 
 protected:
   vtkLinearSubdivisionFilter() = default;
@@ -64,5 +65,3 @@ private:
 };
 
 #endif
-
-// VTK-HeaderTest-Exclude: vtkLinearSubdivisionFilter.h

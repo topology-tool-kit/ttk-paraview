@@ -19,6 +19,7 @@
 
 #include "vtkMPICommunicator.h"
 #include "vtkMPIController.h"
+#include "vtkNew.h"
 #include "vtkObjectFactory.h"
 #include "vtkProcess.h"
 #include "vtkSmartPointer.h"
@@ -107,7 +108,7 @@ int TestXdmf3Parallel(int argc, char** argv)
 
   // Note that this will create a vtkMPIController if MPI
   // is configured, vtkThreadedController otherwise.
-  vtkMPIController* contr = vtkMPIController::New();
+  vtkNew<vtkMPIController> contr;
   contr->Initialize(&argc, &argv, 1);
 
   int retVal = 1; // 1 == failed
@@ -117,7 +118,6 @@ int TestXdmf3Parallel(int argc, char** argv)
   if (numProcs < 2 && false)
   {
     cout << "This test requires at least 2 processes" << endl;
-    contr->Delete();
     return retVal;
   }
 
@@ -142,7 +142,7 @@ int TestXdmf3Parallel(int argc, char** argv)
     }
   }
   MyProcess* p = MyProcess::New();
-  p->SetArgs(argc, argv, ifile.c_str(), ofile.c_str());
+  p->SetArgs(argc, argv, ifile, ofile);
 
   contr->SetSingleProcessObject(p);
   contr->SingleMethodExecute();
@@ -151,13 +151,12 @@ int TestXdmf3Parallel(int argc, char** argv)
 
   p->Delete();
   contr->Finalize();
-  contr->Delete();
-  vtkMultiProcessController::SetGlobalController(0);
+  vtkMultiProcessController::SetGlobalController(nullptr);
 
   if (retVal)
   {
     // test passed, remove the files we wrote
-    vtksys::SystemTools::RemoveADirectory(tempdir.c_str());
+    vtksys::SystemTools::RemoveADirectory(tempdir);
   }
   return !retVal;
 }

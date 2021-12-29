@@ -16,28 +16,24 @@
 #define vtkPVDataDeliveryManagerInternals_h
 #ifndef __WRAP__
 
-#include "vtkDataObject.h"
-#include "vtkInformation.h"
-#include "vtkNew.h"
-#include "vtkObjectFactory.h"
+#include "vtkDataObject.h"  // for vtkDataObject
+#include "vtkInformation.h" // for vtkInformation
+#include "vtkNew.h"         // for vtkNew
 #include "vtkPVDataDeliveryManager.h"
-#include "vtkPVDataRepresentation.h"
-#include "vtkPVLogger.h"
-#include "vtkPVTrivialProducer.h"
-#include "vtkSmartPointer.h"
-#include "vtkWeakPointer.h"
+#include "vtkPVDataRepresentation.h" // for vtkPVDataRepresentation
+#include "vtkPVTrivialProducer.h"    // for vtkPVTrivialProducer
+#include "vtkSmartPointer.h"         // for vtkSmartPointer
+#include "vtkWeakPointer.h"          // for vtkWeakPointer
 
-#include <cassert>
-#include <map>
-#include <numeric>
-#include <queue>
-#include <sstream>
-#include <utility>
+#include <cassert> // for assert
+#include <map>     // for std::map
+#include <numeric> // for std::accumulate
+#include <utility> // for std::pair
 
 class vtkPVDataDeliveryManager::vtkInternals
 {
   friend class vtkItem;
-  std::map<int, vtkSmartPointer<vtkDataObject> > EmptyDataObjectTypes;
+  std::map<int, vtkSmartPointer<vtkDataObject>> EmptyDataObjectTypes;
 
   // This helps us avoid creating new instances of various data object types to use as
   // empty datasets. Instead, we build a map and keep reusing objects.
@@ -68,7 +64,7 @@ public:
     vtkSmartPointer<vtkDataObject> DataObject;
 
     // Data object available after delivery to the "rendering" node.
-    std::map<int, vtkSmartPointer<vtkDataObject> > DeliveredDataObjects;
+    std::map<int, vtkSmartPointer<vtkDataObject>> DeliveredDataObjects;
 
     // Some useful meta-data.
     vtkMTimeType TimeStamp{ 0 };
@@ -207,10 +203,10 @@ public:
 
   // First is repr unique id, second is the input port.
   typedef std::pair<unsigned int, int> ReprPortType;
-  typedef std::map<ReprPortType, std::pair<vtkItem, vtkItem> > ItemsMapType;
+  typedef std::map<ReprPortType, std::pair<vtkItem, vtkItem>> ItemsMapType;
 
   // Keep track of representation and its uid.
-  typedef std::map<unsigned int, vtkWeakPointer<vtkPVDataRepresentation> > RepresentationsMapType;
+  typedef std::map<unsigned int, vtkWeakPointer<vtkPVDataRepresentation>> RepresentationsMapType;
 
   vtkItem* GetItem(unsigned int index, bool use_second, int port, bool create_if_needed = false)
   {
@@ -225,7 +221,7 @@ public:
       std::pair<vtkItem, vtkItem>& itemsPair = this->ItemsMap[key];
       return use_second ? &(itemsPair.second) : &(itemsPair.first);
     }
-    return NULL;
+    return nullptr;
   }
 
   vtkItem* GetItem(
@@ -275,7 +271,7 @@ public:
   bool IsRepresentationVisible(unsigned int id) const
   {
     RepresentationsMapType::const_iterator riter = this->RepresentationsMap.find(id);
-    return (riter != this->RepresentationsMap.end() && riter->second.GetPointer() != NULL &&
+    return (riter != this->RepresentationsMap.end() && riter->second.GetPointer() != nullptr &&
       riter->second->GetVisibility());
   }
 

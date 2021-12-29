@@ -17,7 +17,7 @@
  *
  * Map property that manage double value to be set through a method
  * on a vtkObject.
-*/
+ */
 
 #ifndef vtkSIDoubleMapProperty_h
 #define vtkSIDoubleMapProperty_h
@@ -32,9 +32,11 @@ public:
   vtkTypeMacro(vtkSIDoubleMapProperty, vtkSIProperty);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  vtkGetStringMacro(CleanCommand) vtkSetStringMacro(CleanCommand)
+  vtkGetStringMacro(CleanCommand);
+  vtkSetStringMacro(CleanCommand);
 
-    protected : vtkSIDoubleMapProperty();
+protected:
+  vtkSIDoubleMapProperty();
   ~vtkSIDoubleMapProperty() override;
 
   bool Push(vtkSMMessage*, int) override;

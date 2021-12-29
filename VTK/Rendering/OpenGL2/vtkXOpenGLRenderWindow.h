@@ -28,11 +28,11 @@
 #include "vtkOpenGLRenderWindow.h"
 #include "vtkRenderingOpenGL2Module.h" // For export macro
 #include <X11/Xlib.h>                  // Needed for X types used in the public interface
-#include <X11/Xutil.h>                 // Needed for X types used in the public interface
 #include <stack>                       // for ivar
 
 class vtkIdList;
 class vtkXOpenGLRenderWindowInternal;
+struct vtkXVisualInfo;
 
 class VTKRENDERINGOPENGL2_EXPORT vtkXOpenGLRenderWindow : public vtkOpenGLRenderWindow
 {
@@ -106,15 +106,15 @@ public:
    */
   void SetSizeNoXResize(int, int);
 
-  //@{
+  ///@{
   /**
    * Get the X properties of an ideal rendering window.
    */
   virtual Colormap GetDesiredColormap();
   virtual Visual* GetDesiredVisual();
-  virtual XVisualInfo* GetDesiredVisualInfo();
+  virtual vtkXVisualInfo* GetDesiredVisualInfo();
   virtual int GetDesiredDepth();
-  //@}
+  ///@}
 
   /**
    * Prescribe that the window be created in a stereo-capable mode. This
@@ -133,6 +133,11 @@ public:
    * Tells if this window is the current OpenGL context for the calling thread.
    */
   bool IsCurrent() override;
+
+  /**
+   * Release the current context.
+   */
+  void ReleaseCurrent() override;
 
   /**
    * If called, allow MakeCurrent() to skip cache-check when called.
@@ -179,40 +184,40 @@ public:
    */
   Display* GetDisplayId();
 
-  //@{
+  ///@{
   /**
    * Set the X display id for this RenderWindow to use to a pre-existing
    * X display id.
    */
   void SetDisplayId(Display*);
   void SetDisplayId(void*) override;
-  //@}
+  ///@}
 
   /**
    * Get this RenderWindow's parent X window id.
    */
   Window GetParentId();
 
-  //@{
+  ///@{
   /**
    * Sets the parent of the window that WILL BE created.
    */
   void SetParentId(Window);
   void SetParentId(void*) override;
-  //@}
+  ///@}
 
   /**
    * Get this RenderWindow's X window id.
    */
   Window GetWindowId();
 
-  //@{
+  ///@{
   /**
    * Set this RenderWindow's X window id to a pre-existing window.
    */
   void SetWindowId(Window);
   void SetWindowId(void*) override;
-  //@}
+  ///@}
 
   /**
    * Specify the X window id to use if a WindowRemap is done.
@@ -248,7 +253,7 @@ public:
    */
   bool GetPlatformSupportsRenderWindowSharing() override { return true; }
 
-  //@{
+  ///@{
   /**
    * Set the position (x and y) of the rendering window in
    * screen coordinates (in pixels). This resizes the operating
@@ -256,16 +261,16 @@ public:
    */
   void SetPosition(int x, int y) override;
   void SetPosition(int a[2]) override { this->SetPosition(a[0], a[1]); }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Hide or Show the mouse cursor, it is nice to be able to hide the
    * default cursor if you want VTK to display a 3D cursor instead.
    */
   void HideCursor() override;
   void ShowCursor() override;
-  //@}
+  ///@}
 
   /**
    * Change the shape of the cursor
@@ -300,7 +305,7 @@ public:
    */
   void Render() override;
 
-  //@{
+  ///@{
   /**
    * Ability to push and pop this window's context
    * as the current context. The idea being to
@@ -310,7 +315,7 @@ public:
    */
   void PushContext() override;
   void PopContext() override;
-  //@}
+  ///@}
 
   /**
    * Set the number of vertical syncs required between frames.

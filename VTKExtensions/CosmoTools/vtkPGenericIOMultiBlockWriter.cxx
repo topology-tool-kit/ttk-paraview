@@ -36,11 +36,11 @@
 class vtkPGenericIOMultiBlockWriter::vtkInternals
 {
 public:
-  vtkInternals() { this->Writer = NULL; }
+  vtkInternals() { this->Writer = nullptr; }
 
   ~vtkInternals()
   {
-    if (this->Writer != NULL)
+    if (this->Writer != nullptr)
     {
       delete this->Writer;
     }
@@ -55,7 +55,7 @@ vtkPGenericIOMultiBlockWriter::vtkPGenericIOMultiBlockWriter()
 {
   this->Internals = new vtkInternals;
   this->Controller = vtkMultiProcessController::GetGlobalController();
-  this->FileName = NULL;
+  this->FileName = nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -84,7 +84,7 @@ int vtkPGenericIOMultiBlockWriter::FillInputPortInformation(int port, vtkInforma
 
 //----------------------------------------------------------------------------
 static inline void addCoordinates(
-  std::map<std::pair<int, std::string>, std::vector<char> >& dataArrays,
+  std::map<std::pair<int, std::string>, std::vector<char>>& dataArrays,
   gio::GenericIOWriter* writer, vtkUnstructuredGrid* grid, uint64_t blockId)
 {
   std::string xName = "x", yName = "y", zName = "z";
@@ -147,27 +147,27 @@ static inline void addCoordinates(
 //----------------------------------------------------------------------------
 static inline gio::GenericIOPrimitiveTypes getGIOTypeFor(vtkDataArray* array)
 {
-  if (vtkDoubleArray::FastDownCast(array) != NULL)
+  if (vtkDoubleArray::FastDownCast(array) != nullptr)
   {
     return gio::GENERIC_IO_DOUBLE_TYPE;
   }
-  else if (vtkFloatArray::FastDownCast(array) != NULL)
+  else if (vtkFloatArray::FastDownCast(array) != nullptr)
   {
     return gio::GENERIC_IO_FLOAT_TYPE;
   }
-  else if (vtkIntArray::FastDownCast(array) != NULL)
+  else if (vtkIntArray::FastDownCast(array) != nullptr)
   {
     return gio::GENERIC_IO_INT32_TYPE;
   }
-  else if (vtkTypeInt64Array::FastDownCast(array) != NULL)
+  else if (vtkTypeInt64Array::FastDownCast(array) != nullptr)
   {
     return gio::GENERIC_IO_INT64_TYPE;
   }
-  else if (vtkUnsignedIntArray::FastDownCast(array) != NULL)
+  else if (vtkUnsignedIntArray::FastDownCast(array) != nullptr)
   {
     return gio::GENERIC_IO_UINT32_TYPE;
   }
-  else if (vtkTypeUInt64Array::FastDownCast(array) != NULL)
+  else if (vtkTypeUInt64Array::FastDownCast(array) != nullptr)
   {
     return gio::GENERIC_IO_UINT64_TYPE;
   }
@@ -255,9 +255,9 @@ static inline void computeDataForArray(
 
 //----------------------------------------------------------------------------
 static inline void addArray(vtkDataArray* array, gio::GenericIOWriter* writer, int blockId,
-  std::map<std::pair<int, std::string>, std::vector<char> >& dataBuffers)
+  std::map<std::pair<int, std::string>, std::vector<char>>& dataBuffers)
 {
-  if (array != NULL)
+  if (array != nullptr)
   {
     gio::GenericIOPrimitiveTypes type = getGIOTypeFor(array);
     // if it is a scalar array, just use the existing data
@@ -297,7 +297,7 @@ static inline void addArray(vtkDataArray* array, gio::GenericIOWriter* writer, i
 void vtkPGenericIOMultiBlockWriter::WriteData()
 {
   vtkMultiBlockDataSet* input = vtkMultiBlockDataSet::SafeDownCast(GetInput());
-  if (input == NULL)
+  if (input == nullptr)
   {
     vtkErrorMacro(<< "Input to the vtkPGenericIOMultiBlockWriter must be a vtkMultiBlockDataSet.");
     return;
@@ -308,7 +308,7 @@ void vtkPGenericIOMultiBlockWriter::WriteData()
   }
   this->Internals->Writer = vtkGenericIOUtilities::GetWriter(
     vtkGenericIOUtilities::GetMPICommunicator(this->Controller), this->FileName);
-  std::map<std::pair<int, std::string>, std::vector<char> > dataArrays;
+  std::map<std::pair<int, std::string>, std::vector<char>> dataArrays;
   vtkFieldData* fieldData = input->GetFieldData();
   if (fieldData->HasArray("genericio_phys_origin"))
   {
@@ -382,7 +382,7 @@ void vtkPGenericIOMultiBlockWriter::WriteData()
     for (unsigned i = 0; i < input->GetNumberOfBlocks(); ++i)
     {
       vtkUnstructuredGrid* grid = vtkUnstructuredGrid::SafeDownCast(input->GetBlock(i));
-      if (grid != NULL)
+      if (grid != nullptr)
       {
         hasBlock[i] = 1;
       }
@@ -404,7 +404,7 @@ void vtkPGenericIOMultiBlockWriter::WriteData()
   for (unsigned i = 0; i < input->GetNumberOfBlocks(); ++i)
   {
     vtkUnstructuredGrid* grid = vtkUnstructuredGrid::SafeDownCast(input->GetBlock(i));
-    if (grid != NULL)
+    if (grid != nullptr)
     {
       uint64_t coords[3] = { 0, 0, i }; // TODO get real coordinates, default to this
       vtkFieldData* blockFD = grid->GetFieldData();

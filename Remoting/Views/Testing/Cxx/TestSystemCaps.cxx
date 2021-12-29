@@ -16,8 +16,8 @@
 #include <string>
 #include <vtksys/SystemInformation.hxx>
 
-using std::string;
 using std::ostringstream;
+using std::string;
 
 // Description:
 // Get python version
@@ -95,7 +95,7 @@ string GetMPILibraryVersion()
 }
 #endif
 
-#define safes(arg) (arg ? ((const char*)arg) : "<null>")
+#define safes(arg) ((arg) ? ((const char*)(arg)) : "<null>")
 
 string GetOpenGLInfo()
 {

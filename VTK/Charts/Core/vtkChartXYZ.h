@@ -29,7 +29,7 @@
 #include "vtkNew.h"          // For ivars
 #include "vtkRect.h"         // For vtkRectf ivars
 #include "vtkSmartPointer.h" // For ivars
-#include "vtkStdString.h"
+#include "vtkStdString.h"    // For vtkStdString
 #include "vtkTextProperty.h" // For axes text properties
 #include <vector>            // For ivars
 
@@ -97,13 +97,13 @@ public:
    */
   virtual void SetAxis(int axisIndex, vtkAxis* axis);
 
-  //@{
+  ///@{
   /**
    * Set the color for the axes.
    */
   void SetAxisColor(const vtkColor4ub& color);
   vtkColor4ub GetAxisColor();
-  //@}
+  ///@}
 
   /**
    * Get the text property for axes. Useful for changing font size, font family, font file.
@@ -668,14 +668,14 @@ protected:
    */
   int SceneWidth;
 
-  //@{
+  ///@{
   /**
    * Which line to label.
    */
   int XAxisToLabel[3];
   int YAxisToLabel[3];
   int ZAxisToLabel[3];
-  //@}
+  ///@}
 
   /**
    * What direction the data is from each labeled axis line.

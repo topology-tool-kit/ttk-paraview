@@ -20,7 +20,7 @@
  * for the data time using the format specified.
  * The input to this filter is optional. If no input is specified, it will show
  * produce request time in the output.
-*/
+ */
 
 #ifndef vtkTimeToTextConvertor_h
 #define vtkTimeToTextConvertor_h
@@ -38,8 +38,8 @@ public:
   //@{
   /**
    * Get/Set the format in which the to display the
-   * input update time. Use printf formatting.
-   * Default is "Time: %f".
+   * input update time. Use fmt formatting.
+   * Default is "Time: {time:f}".
    */
   vtkSetStringMacro(Format);
   vtkGetStringMacro(Format);

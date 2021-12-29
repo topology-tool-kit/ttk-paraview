@@ -111,10 +111,10 @@
                             number_of_elements="1"
                             default_values="">
         <Documentation>
-          Set the title to use for the chart. Use ${TIME} to display the current time.
+          Set the title to use for the chart. Use {time} to display the current time.
         </Documentation>
         <Hints>
-          <PlaceholderText>Use ${TIME} to display current time</PlaceholderText>
+          <PlaceholderText>Use {time} to display current time</PlaceholderText>
         </Hints>
       </StringVectorProperty>
       <IntVectorProperty command="SetTitleAlignment"
@@ -1913,11 +1913,22 @@
           wants to manage renders explicitly, set this to 0 (Off). 1 (On) by default.
         </Documentation>
       </IntVectorProperty>
+      <DoubleVectorProperty default_values="0.3"
+                         name="WindowResizeNonInteractiveRenderDelay"
+                         panel_visibility="never"
+                         number_of_elements="1">
+        <Documentation>Set the delay (in seconds) before doing a full resolution render after the last resize of the window.</Documentation>
+        <Hints>
+          <PropertyLink group="settings"
+                        proxy="RenderViewSettings"
+                        property="WindowResizeNonInteractiveRenderDelay"/>
+        </Hints>
+      </DoubleVectorProperty>
       <IntVectorProperty name="Camera3DManipulators"
         command="SetCamera3DManipulators"
         argument_is_array="1"
         number_of_elements="9"
-        default_values="4 1 2 3 4 1 2 4 6"
+        default_values="4 1 2 3 4 7 2 4 6"
         panel_visibility="never">
         <Documentation>
           Set the interactions mode for 3D interaction. The values are specified
@@ -1937,6 +1948,7 @@
           <Entry text="Rotate" value="4" />
           <Entry text="Multi-Rotate" value="5" />
           <Entry text="ZoomToMouse" value="6" />
+          <Entry text="SkyboxRotate" value="7" />
         </EnumerationDomain>
       </IntVectorProperty>
 
@@ -2604,6 +2616,7 @@
           <Property name="CameraFocalPoint" panel_visibility="never"/>
           <Property name="CameraViewUpInfo" panel_visibility="never"/>
           <Property name="CameraViewUp" panel_visibility="never"/>
+          <Property name="CameraViewAngleInfo" panel_visibility="never"/>
           <Property name="CameraViewAngle" panel_visibility="never"/>
           <Property name="CameraFocalDiskInfo" panel_visibility="never"/>
           <Property name="CameraFocalDisk" panel_visibility="never"/>
@@ -2628,52 +2641,80 @@
         </Documentation>
       </IntVectorProperty>
 
-      <DoubleVectorProperty command="SetBackground"
-                            default_values="0.329 0.349 0.427"
-                            name="Background"
-                            panel_widget="color_selector_with_palette"
-                            number_of_elements="3">
-        <DoubleRangeDomain max="1 1 1"
-                           min="0 0 0"
-                           name="range" />
+      <IntVectorProperty command="SetUseRenderViewSettingsForBackground"
+                         name="UseColorPaletteForBackground"
+                         number_of_elements="1"
+                         default_values="1">
+        <BooleanDomain name="bool" />
+        <Documentation>
+            When set, the view uses the background color settings as specified in
+            global color palette.
+        </Documentation>
+      </IntVectorProperty>
+      <IntVectorProperty command="SetBackgroundColorMode"
+                         name="BackgroundColorMode"
+                         number_of_elements="1"
+                         default_values="0">
+        <EnumerationDomain name="enum">
+          <Entry text="Single Color" value="0" />
+          <Entry text="Gradient" value="1" />
+          <Entry text="Texture" value="2" />
+          <Entry text="Skybox" value="3" />
+          <Entry text="Stereo Skybox" value="4" />
+        </EnumerationDomain>
+        <Documentation>
+          Select the background for the view.
+        </Documentation>
         <Hints>
-          <PropertyLink group="settings" proxy="ColorPalette" property="BackgroundColor" unlink_if_modified="1" />
+          <PropertyWidgetDecorator type="GenericDecorator" mode="enabled_state"
+            property="UseColorPaletteForBackground" values="0" />
         </Hints>
-      </DoubleVectorProperty>
+      </IntVectorProperty>
+      <ProxyProperty command="SetBackgroundTexture"
+                     name="BackgroundTexture" panel_widget="texture_selector">
+        <ProxyGroupDomain name="groups">
+          <Group name="textures" />
+        </ProxyGroupDomain>
+        <Hints>
+          <!-- hide widget unless mode is "Texture" or "Skybox" -->
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility"
+            property="BackgroundColorMode" values="2 3 4" />
+          <PropertyWidgetDecorator type="GenericDecorator" mode="enabled_state"
+            property="UseColorPaletteForBackground" values="0" />
+        </Hints>
+      </ProxyProperty>
       <DoubleVectorProperty command="SetBackground2"
                             default_values="0 0 0.165"
                             name="Background2"
+                            label="Background 2"
+                            panel_widget="color_selector"
+                            number_of_elements="3">
+        <DoubleRangeDomain max="1 1 1" min="0 0 0" name="range" />
+        <Hints>
+          <!-- hide widget unless mode is "Gradient" -->
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility"
+            property="BackgroundColorMode" value="1" />
+          <PropertyWidgetDecorator type="GenericDecorator" mode="enabled_state"
+            property="UseColorPaletteForBackground" values="0" />
+        </Hints>
+        <Documentation>
+          Specify the color to use for the upper half of the viewport when using **Gradient**
+          background color mode.
+        </Documentation>
+      </DoubleVectorProperty>
+      <DoubleVectorProperty command="SetBackground"
+                            default_values="0.329 0.349 0.427"
+                            name="Background"
                             panel_widget="color_selector"
                             number_of_elements="3">
         <DoubleRangeDomain max="1 1 1"
                            min="0 0 0"
                            name="range" />
-      </DoubleVectorProperty>
-      <IntVectorProperty command="SetGradientBackground"
-                         default_values="0"
-                         name="UseGradientBackground"
-                         number_of_elements="1">
-        <BooleanDomain name="bool" />
         <Hints>
-          <PropertyLink group="settings" proxy="ColorPalette" property="UseGradientBackground"
-            unlink_if_modified="1" />
+          <PropertyWidgetDecorator type="GenericDecorator" mode="enabled_state"
+            property="UseColorPaletteForBackground" values="0" />
         </Hints>
-      </IntVectorProperty>
-      <IntVectorProperty command="SetTexturedBackground"
-                         default_values="0"
-                         name="UseTexturedBackground"
-                         number_of_elements="1">
-        <BooleanDomain name="bool" />
-      </IntVectorProperty>
-      <IntVectorProperty command="SetSkyboxBackground"
-                         default_values="0"
-                         name="UseSkyboxBackground"
-                         number_of_elements="1">
-        <Documentation>
-          Enable skybox texture.
-        </Documentation>
-        <BooleanDomain name="bool" />
-      </IntVectorProperty>
+      </DoubleVectorProperty>
       <IntVectorProperty command="SetUseEnvironmentLighting"
                          default_values="0"
                          name="UseEnvironmentLighting"
@@ -2682,13 +2723,14 @@
           Enable skybox light contribution. This feature is only compatible with PBR interpolation.
         </Documentation>
         <BooleanDomain name="bool" />
+        <Hints>
+          <!-- hide widget unless mode is "Skybox" -->
+          <PropertyWidgetDecorator type="GenericDecorator" mode="visibility"
+            property="BackgroundColorMode" value="3" />
+          <PropertyWidgetDecorator type="GenericDecorator" mode="enabled_state"
+            property="UseColorPaletteForBackground" values="0" />
+        </Hints>
       </IntVectorProperty>
-      <ProxyProperty command="SetBackgroundTexture"
-                     name="BackgroundTexture" panel_widget="texture_selector">
-        <ProxyGroupDomain name="groups">
-          <Group name="textures" />
-        </ProxyGroupDomain>
-      </ProxyProperty>
       <Property
           name="CaptureZBuffer"
           command="CaptureZBuffer"
@@ -2707,13 +2749,6 @@
         <DoubleRangeDomain name="range" />
         <Documentation>Set the most conservative clipping range.</Documentation>
       </DoubleVectorProperty>
-      <Property
-          name="CaptureValuesFloat"
-          command="CaptureValuesFloat"
-          >
-        <Documentation>A helper function to get the FLOATING_POINT value
-        buffer from the vtkValuePass.</Documentation>
-      </Property>
       <IntVectorProperty
           name="LockBounds"
           command="SetLockBounds"
@@ -2725,110 +2760,6 @@
         <Documentation>A helper function to force consistent Z buffer
         captures from a RenderView.</Documentation>
       </IntVectorProperty>
-      <Property
-          name="BeginValueCapture"
-          command="BeginValueCapture"
-          >
-        <Documentation>Initiates a render state where RGB colors
-        encode values from a particular array.</Documentation>
-      </Property>
-      <IntVectorProperty
-          name="DrawCells"
-          command="SetDrawCells"
-          default_values="0"
-          animateable="0"
-          number_of_elements="1"
-          >
-        <BooleanDomain name="bool" />
-        <Documentation>RGB colors will come directly from a cell (1)
-        or point (0) aligned array.</Documentation>
-      </IntVectorProperty>
-      <StringVectorProperty
-          name="ArrayNameToDraw"
-          command="SetArrayNameToDraw"
-          default_values=""
-          animateable="0"
-          number_of_elements="1"
-          >
-        <Documentation>RGB colors will come directly from a named
-        array.</Documentation>
-      </StringVectorProperty>
-      <IntVectorProperty
-          name="ArrayNumberToDraw"
-          command="SetArrayNumberToDraw"
-          default_values="0"
-          animateable="0"
-          number_of_elements="1"
-          >
-        <IntRangeDomain name="range" />
-        <Documentation>RGB colors will come directly from the numbered
-        array.</Documentation>
-      </IntVectorProperty>
-      <IntVectorProperty
-          name="ValueRenderingMode"
-          command="SetValueRenderingModeCommand"
-          default_values="1"
-          animateable="0"
-          number_of_elements="1"
-          >
-        <IntRangeDomain name="range" />
-        <Documentation>Select rendering mode of the value pass (either INVERTIBLE_LUT (1) or
-        FLOATING_POINT (2)).</Documentation>
-      </IntVectorProperty>
-      <IntVectorProperty
-          name="ValueRenderingModeGet"
-          command="GetValueRenderingModeCommand"
-          default_values="1"
-          information_only="1"
-          >
-        <Documentation>Get active rendering mode of the value pass (either INVERTIBLE_LUT (1) or
-        FLOATING_POINT (2)).</Documentation>
-      </IntVectorProperty>
-      <IntVectorProperty
-          name="ArrayComponentToDraw"
-          command="SetArrayComponentToDraw"
-          default_values="0"
-          animateable="0"
-          number_of_elements="1"
-          >
-        <IntRangeDomain name="range" />
-        <Documentation>RGB colors will come directly from the numbered
-        component of the array.</Documentation>
-      </IntVectorProperty>
-      <DoubleVectorProperty
-          name="ScalarRange"
-          argument_is_array="0"
-          command="SetScalarRange"
-          default_values="0.0 -1.0"
-          animateable="0"
-          number_of_elements="2"
-          >
-        <DoubleRangeDomain name="range" />
-        <Documentation>Map linearly between the min and max values to
-        produce RGB colors.</Documentation>
-      </DoubleVectorProperty>
-      <Property
-          name="EndValueCapture"
-          command="EndValueCapture"
-          >
-        <Documentation>Terminates the render state where RGB colors
-        encode values from a particular array and returns to normal
-        behavior.</Documentation>
-      </Property>
-      <Property
-          name="StartCaptureLuminance"
-          command="StartCaptureLuminance"
-          >
-        <Documentation>Initiates a render state where lighting contributions are
-        encoded into RGB.</Documentation>
-      </Property>
-      <Property
-          name="StopCaptureLuminance"
-          command="StopCaptureLuminance"
-        >
-        <Documentation>Terminates the render state where lighting contributions
-        are encoded into RGB.</Documentation>
-      </Property>
       <IntVectorProperty name="EnableOSPRay"
           label="Enable Ray Tracing"
           command="SetEnableOSPRay"
@@ -3297,14 +3228,13 @@
         <Property name="HeadLightK:H Ratio"/>
         <Property name="MaintainLuminance"/>
       </PropertyGroup>
-      <PropertyGroup label="Background" panel_widget="BackgroundEditor" panel_visibility="advanced">
-        <Property name="Background"/>
+      <PropertyGroup label="Background" >
+        <Property name="UseColorPaletteForBackground" />
+        <Property name="BackgroundColorMode" />
         <Property name="Background2"/>
-        <Property name="UseGradientBackground"/>
-        <Property name="UseTexturedBackground"/>
-        <Property name="UseSkyboxBackground"/>
-        <Property name="UseEnvironmentLighting"/>
+        <Property name="Background"/>
         <Property name="BackgroundTexture"/>
+        <Property name="UseEnvironmentLighting"/>
       </PropertyGroup>
       <PropertyGroup label="Stereo">
         <Property name="StereoCapableWindow" />
@@ -3314,21 +3244,9 @@
       </PropertyGroup>
       <PropertyGroup label="Cinema Export"
                      panel_visibility="never">
-        <Property name="ValueRenderingMode"/>
-        <Property name="ValueRenderingModeGet"/>
         <Property name="CaptureZBuffer"/>
         <Property name="MaxClipBounds"/>
         <Property name="LockBounds"/>
-        <Property name="BeginValueCapture" />
-        <Property name="DrawCells"/>
-        <Property name="ArrayNameToDraw"/>
-        <Property name="ArrayNumberToDraw"/>
-        <Property name="ArrayComponentToDraw"/>
-        <Property name="ScalarRange"/>
-        <Property name="EndValueCapture"/>
-        <Property name="CaptureValuesFloat" />
-        <Property name="StartCaptureLuminance" />
-        <Property name="StopCaptureLuminance" />
       </PropertyGroup>
       <PropertyGroup label="Ray Traced Rendering"
                      panel_visibility="advanced">
@@ -4371,6 +4289,15 @@
             <Property name="EdgeTint"
                       panel_widget="color_selector"
                       panel_visibility="advanced"/>
+            <Property name="Anisotropy" panel_visibility="advanced"/>
+            <Property name="AnisotropyRotation" panel_visibility="advanced"/>
+            <Property name="BaseIOR" panel_visibility="advanced"/>
+            <Property name="CoatStrength" panel_visibility="advanced"/>
+            <Property name="CoatIOR" panel_visibility="advanced"/>
+            <Property name="CoatRoughness" panel_visibility="advanced"/>
+            <Property name="CoatColor"
+                      panel_widget="color_selector"
+                      panel_visibility="advanced" />
             <Property name="SelectTCoordArray" panel_visibility="advanced"/>
             <Property name="SelectNormalArray" panel_visibility="advanced"/>
             <Property name="SelectTangentArray" panel_visibility="advanced"/>
@@ -4380,11 +4307,15 @@
             <Property name="SeamlessU" panel_visibility="advanced"/>
             <Property name="SeamlessV" panel_visibility="advanced"/>
             <Property name="UseMipmapTextures" panel_visibility="advanced"/>
+            <Property name="ShowTexturesOnBackface" panel_visibility="advanced"/>
             <Property name="BaseColorTexture" panel_visibility="advanced"/>
             <Property name="NormalTexture" panel_visibility="advanced"/>
             <Property name="NormalScale" panel_visibility="advanced"/>
+            <Property name="CoatNormalTexture" panel_visibility="advanced"/>
+            <Property name="CoatNormalScale" panel_visibility="advanced"/>
             <Property name="MaterialTexture" panel_visibility="advanced"/>
             <Property name="OcclusionStrength" panel_visibility="advanced"/>
+            <Property name="AnisotropyTexture" panel_visibility="advanced"/>
             <Property name="EmissiveTexture" panel_visibility="advanced"/>
             <Property name="EmissiveFactor" panel_visibility="advanced"/>
             <Property name="FlipTextures" panel_visibility="advanced"/>
@@ -4467,12 +4398,6 @@
                       panel_visibility="advanced" />
             <Property name="NonlinearSubdivisionLevel"
                       panel_visibility="advanced" />
-            <Property name="BlockVisibility"
-                      panel_visibility="never" />
-            <Property name="BlockColor"
-                      panel_visibility="never" />
-            <Property name="BlockOpacity"
-                      panel_visibility="never" />
             <Property name="BlockColorsDistinctValues"
                       panel_visibility="advanced" />
             <Property name="UseDataPartitions"
@@ -4485,6 +4410,21 @@
             <Property name="OSPRayScaleArray" />
             <Property name="OSPRayScaleFunction" />
             <Property name="OSPRayMaterial" />
+          </PropertyGroup>
+
+          <PropertyGroup label="Blocks"
+                         panel_widget="DataAssemblyEditor"
+                         panel_visibility="multiblock_inspector">
+            <!--
+               place holder for future work
+               <Property name="Assembly"       function="ActiveAssembly" />
+            -->
+            <Property name="BlockSelectors" function="Selectors" />
+            <Property name="BlockColors"    function="Colors" />
+            <Property name="BlockOpacities" function="Opacities" />
+            <Hints>
+              <DataAssemblyPropertyWidget use_inputname_as_header="1" link_active_selection="1"/>
+            </Hints>
           </PropertyGroup>
 
         </ExposedProperties>
@@ -4641,7 +4581,7 @@
           </PropertyGroup>
           <Property exposed_name="SelectionCellLabelFormat" name="CellLabelFormat" panel_visibility="never"/>
           <Property exposed_name="SelectionPointLabelVisibility" name="PointLabelVisibility" panel_visibility="never"/>
-          <Property exposed_name="SelectionMaximumNumberOfLabels" name="MaximumNumberOfLabels"/>
+          <Property exposed_name="SelectionMaximumNumberOfLabels" name="MaximumNumberOfLabels" panel_visibility="never"/>
           <PropertyGroup label="Point Label Font" panel_visibility="never" panel_widget="FontEditor">
             <Property exposed_name="SelectionPointLabelBold" name="PointLabelBold" function="Bold"/>
             <Property exposed_name="SelectionPointLabelColor" name="PointLabelColor" function="Color"/>
@@ -4694,6 +4634,13 @@
           <DataType value="vtkDataSet" />
           <DataType value="vtkGenericDataSet" />
           <DataType value="vtkHyperTreeGrid" />
+
+          <!-- for MB, we want to match if any of the leaf nodes is of the following type -->
+          <DataType value="vtkDataObjectTree" child_match="any">
+            <DataType value="vtkDataSet" />
+            <DataType value="vtkGenericDataSet" />
+            <DataType value="vtkHyperTreeGrid" />
+          </DataType>
         </DataTypeDomain>
         <InputArrayDomain attribute_type="cell"
                           name="input_array_cell"
@@ -4761,8 +4708,6 @@
             <Property name="OpacityArrayName"
                       panel_visibility="advanced" />
             <Property name="OpacityComponent"
-                      panel_visibility="advanced" />
-            <Property name="ExtractedBlockIndex"
                       panel_visibility="advanced" />
             <Property name="SelectMapper"
                       panel_visibility="advanced"
@@ -4834,8 +4779,6 @@
             <Property name="ScalarOpacityFunction" />
             <Property name="ScalarOpacityUnitDistance"
                       panel_visibility="advanced" />
-            <Property name="ExtractedBlockIndex"
-                      panel_visibility="never" />
             <Property name="SelectMapper"
                       panel_visibility="advanced"
                       panel_visibility_default_for_representation="volume" />
@@ -6014,22 +5957,43 @@
           </PropertyWidgetDecorator>
         </Hints>
       </IntVectorProperty>
-      <IntVectorProperty command="SetExtractedBlockIndex"
-                         default_values="0"
-                         name="ExtractedBlockIndex"
-                         number_of_elements="1">
-        <Documentation>In case of multiblock datasets, choose the index of
-        the dataset to volume render. The index must point to an
-        unstructured grid dataset. If the input is not a multiblock dataset
-        then this index is ignored.</Documentation>
-        <CompositeTreeDomain mode="leaves"
-                             name="tree">
+
+      <StringVectorProperty name="Assembly"
+        command="SetActiveAssembly"
+        number_of_elements="1"
+        default_values="Hierarchy"
+        panel_visibility="multiblock_inspector">
+        <DataAssemblyListDomain name="data_assembly">
           <RequiredProperties>
-            <Property function="Input"
-                      name="Input" />
+            <Property function="Input" name="Input" />
           </RequiredProperties>
-        </CompositeTreeDomain>
-      </IntVectorProperty>
+        </DataAssemblyListDomain>
+        <Documentation>
+          Select which assembly is used when specify selectors
+          to choose block visibilities, block colors, etc. for composite datasets.
+        </Documentation>
+      </StringVectorProperty>
+
+      <StringVectorProperty name="BlockSelectors"
+        command="AddBlockSelector"
+        clean_command="RemoveAllBlockSelectors"
+        repeat_command="1"
+        number_of_elements_per_command="1"
+        panel_visibility="multiblock_inspector"
+        number_of_elements="1"
+        default_values="/">
+        <DataAssemblyDomain name="data_assembly">
+          <RequiredProperties>
+            <Property function="Input" name="Input" />
+            <Property function="ActiveAssembly" name="Assembly" />
+          </RequiredProperties>
+        </DataAssemblyDomain>
+        <Documentation>
+          For composite datasets, specify selectors to limit the view
+          to a chosen subset of blocks.
+        </Documentation>
+      </StringVectorProperty>
+
       <DoubleVectorProperty command="SetPosition"
                             default_values="0 0 0"
                             name="Position"
@@ -7801,14 +7765,14 @@
                          number_of_elements="1">
         <EnumerationDomain name="enum">
           <!-- for now, we skip interactive placement functionality
-          <Entry text="AnyLocation" value="0" />
+          <Entry text="Any Location" value="0" />
           -->
-          <Entry text="LowerLeftCorner" value="1" />
-          <Entry text="LowerRightCorner" value="2" />
-          <Entry text="LowerCenter" value="3" />
-          <Entry text="UpperLeftCorner" value="4" />
-          <Entry text="UpperRightCorner" value="5" />
-          <Entry text="UpperCenter" value="6" />
+          <Entry text="Lower Left Corner" value="1" />
+          <Entry text="Lower Right Corner" value="2" />
+          <Entry text="Lower Center" value="3" />
+          <Entry text="Upper Left Corner" value="4" />
+          <Entry text="Upper Right Corner" value="5" />
+          <Entry text="Upper Center" value="6" />
         </EnumerationDomain>
         <Documentation>Specify placement of the scalar bar actor.</Documentation>
       </IntVectorProperty>
@@ -7881,7 +7845,12 @@
           </RequiredProperties>
         </CompositeTreeDomain>
         <Documentation>This property lists the ids of the blocks to extract
-        from the input multiblock dataset.</Documentation>
+          from the input multiblock dataset.</Documentation>
+        <Hints>
+          <!-- we don't want to show this property, except for MBs. -->
+          <PropertyWidgetDecorator type="InputDataTypeDecorator"
+            mode="visibility" name="vtkMultiBlockDataSet" />
+        </Hints>
       </IntVectorProperty>
       <IntVectorProperty command="SetFieldAssociation"
                          default_values="0"
@@ -8496,6 +8465,11 @@
                       name="Input" />
           </RequiredProperties>
         </CompositeTreeDomain>
+        <Hints>
+          <!-- we don't want to show this property, except for MBs. -->
+          <PropertyWidgetDecorator type="InputDataTypeDecorator"
+            mode="visibility" name="vtkMultiBlockDataSet" />
+        </Hints>
       </IntVectorProperty>
       <IntVectorProperty command="SetFieldAssociation"
                          default_values="0"
@@ -8684,6 +8658,11 @@
             <Property function="Input"
                       name="Input" />
           </RequiredProperties>
+          <Hints>
+            <!-- we don't want to show this property, except for MBs. -->
+            <PropertyWidgetDecorator type="InputDataTypeDecorator"
+              mode="visibility" name="vtkMultiBlockDataSet" />
+          </Hints>
         </CompositeTreeDomain>
       </IntVectorProperty>
       <IntVectorProperty command="SetFieldAssociation"
@@ -9176,31 +9155,51 @@
         set. If ForcedCacheKey is true, it overrides UseCache and CacheKey.
         Instead, ForcedCacheKey is used.</Documentation>
       </DoubleVectorProperty>
-      <IntVectorProperty clean_command="RemoveAllCompositeDataSetIndices"
-                         command="AddCompositeDataSetIndex"
-                         name="CompositeDataSetIndex"
-                         number_of_elements_per_command="1"
-                         number_of_elements="1"
-                         default_values="0"
-                         panel_visibility="default"
-                         repeat_command="1">
-        <CompositeTreeDomain mode="all" name="tree">
+
+      <StringVectorProperty name="Assembly"
+        command="SetActiveAssemblyForSelectors"
+        number_of_elements="1"
+        default_values="Hierarchy"
+        panel_visibility="multiblock_inspector">
+        <DataAssemblyListDomain name="data_assembly">
           <RequiredProperties>
             <Property function="Input" name="Input" />
           </RequiredProperties>
-        </CompositeTreeDomain>
-        <Hints>
-          <WidgetHeight number_of_rows="20" />
-        </Hints>
+        </DataAssemblyListDomain>
         <Documentation>
-          In case of composite datasets, set the list of flat indices to
-          show in the spreadsheet view. If the input is not a composite dataset
-          the value is ignored. If nothing is selected for composite dataset, it
-          is same as selecting the root node i.e. all blocks in the dataset.
-          Note, then multiple blocks are being shown in the spreadsheet view,
-          partial arrays, if any are skipped.
+          Select which assembly is used when specify selectors
+          to choose blocks to show for composite datasets.
         </Documentation>
-      </IntVectorProperty>
+      </StringVectorProperty>
+
+      <StringVectorProperty name="BlockVisibilities"
+        command="AddSelector"
+        clean_command="ClearSelectors"
+        repeat_command="1"
+        number_of_elements_per_command="1"
+        panel_visibility="multiblock_inspector"
+        default_values="/">
+        <DataAssemblyDomain name="data_assembly">
+          <RequiredProperties>
+            <Property function="Input" name="Input" />
+            <Property function="ActiveAssembly" name="Assembly" />
+          </RequiredProperties>
+        </DataAssemblyDomain>
+        <Documentation>
+          For composite datasets, specify selectors to limit the view
+          to a chosen subset of blocks.
+        </Documentation>
+      </StringVectorProperty>
+
+      <PropertyGroup label="Blocks" panel_widget="DataAssemblyEditor"
+        panel_visibility="multiblock_inspector">
+        <Property name="Assembly" function="ActiveAssembly" />
+        <Property name="BlockVisibilities" function="Selectors" />
+        <Hints>
+          <DataAssemblyPropertyWidget use_inputname_as_header="1" link_active_selection="1"/>
+        </Hints>
+      </PropertyGroup>
+
       <InputProperty command="SetInputConnection"
                      is_internal="1"
                      name="InternalInput1"
@@ -9208,9 +9207,6 @@
         <Documentation>Internal property. Please don't touch
         this.</Documentation>
       </InputProperty>
-      <Hints>
-        <InitializationHelper class="vtkSMSpreadSheetRepresentationInitializationHelper" />
-      </Hints>
       <!-- end of SpreadSheetRepresentation -->
     </SpreadSheetRepresentationProxy>
     <!-- =================================================================== -->
@@ -9285,9 +9281,14 @@
         </Documentation>
         <Hints>
           <PropertyWidgetDecorator type="GenericDecorator"
-                                  mode="visibility"
-                                  property="TextPropMode"
-                                  value="0" />
+                                   mode="visibility"
+                                   property="TextPropMode"
+                                   value="0" />
+
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   mode="enabled_state"
+                                   property="WindowLocation"
+                                   value="0" />
         </Hints>
       </IntVectorProperty>
 
@@ -9296,21 +9297,8 @@
                proxygroup="representations"
                proxyname="TextWidgetRepresentation"></Proxy>
         <ExposedProperties>
-          <!-- properties for Text -->
-          <Property name="Orientation" panel_visibility="never"/>
-          <PropertyGroup label="Font Properties" panel_widget="FontEditor">
-            <Property name="Color" function="Color"/>
-            <Property name="Opacity" function="Opacity"/>
-            <Property name="FontFamily" function="Family"/>
-            <Property name="FontFile" function="File"/>
-            <Property name="Bold" function="Bold"/>
-            <Property name="Italic" function="Italics" />
-            <Property name="Shadow" function="Shadow"/>
-            <Property name="FontSize" function="Size"/>
-            <Property name="Justification" function="Justification"/>
-          </PropertyGroup>
           <!-- properties for Text Position-->
-          <PropertyGroup label="Text Position" panel_widget="TextLocationEditor">
+          <PropertyGroup name="TextPosition" label="Text Position" panel_widget="TextLocationEditor">
             <Property name="WindowLocation" />
             <Property name="Position" />
             <Property name="Position2" panel_visibility="never"/>
@@ -9325,6 +9313,52 @@
           </PropertyGroup>
           <Property name="TextScaleMode" panel_visibility="never" default_values="0"/>
           <Property name="Resizable" panel_visibility="never"/>
+
+          <!-- properties for Text -->
+          <Property name="Orientation" panel_visibility="never"/>
+          <PropertyGroup label="Font Properties" panel_widget="FontEditor">
+            <Property name="Color" function="Color"/>
+            <Property name="Opacity" function="Opacity"/>
+            <Property name="FontFamily" function="Family"/>
+            <Property name="FontFile" function="File"/>
+            <Property name="Bold" function="Bold"/>
+            <Property name="Italic" function="Italics" />
+            <Property name="Shadow" function="Shadow"/>
+            <Property name="FontSize" function="Size"/>
+            <Property name="Justification" function="Justification" default_values="1" />
+            <Property name="VerticalJustification" function="VerticalJustification"/>
+          </PropertyGroup>
+
+          <Property name="ShowBorder" label="Show Background" />
+          <PropertyGroup label="Background Properties">
+            <Property name="BackgroundColor" default_values="1 1 1 0.2"/>
+            <Property name="BorderColor" panel_visibility="advanced"/>
+            <Property name="BorderThickness" panel_visibility="advanced"/>
+            <Property name="CornerRadius" panel_visibility="advanced"/>
+            <Property name="Padding" panel_visibility="advanced" default_values="1" />
+
+            <Hints>
+              <PropertyWidgetDecorator type="GenericDecorator"
+                                    mode="visibility"
+                                    property="TextPropMode"
+                                    value="0" />
+
+              <PropertyWidgetDecorator type="CompositeDecorator">
+                <Expression type="or">
+                  <PropertyWidgetDecorator type="GenericDecorator"
+                    mode="visibility"
+                    property="ShowBorder"
+                    value="1" />
+
+                  <PropertyWidgetDecorator type="GenericDecorator"
+                    mode="visibility"
+                    property="ShowBorder"
+                    value="2" />
+                </Expression>
+              </PropertyWidgetDecorator>
+            </Hints>
+
+          </PropertyGroup>
         </ExposedProperties>
       </SubProxy>
 
@@ -10886,14 +10920,13 @@
                     panel_visibility="advanced"/>
           <Property name="EyeAngle" panel_visibility="never"/>
 
-          <PropertyGroup label="Background" panel_widget="BackgroundEditor" panel_visibility="advanced">
-            <Property name="Background"/>
+          <PropertyGroup label="Background">
+            <Property name="UseColorPaletteForBackground" />
+            <Property name="BackgroundColorMode" />
             <Property name="Background2"/>
-            <Property name="UseGradientBackground"/>
-            <Property name="UseTexturedBackground"/>
-            <Property name="UseSkyboxBackground"/>
-            <Property name="UseEnvironmentLighting"/>
+            <Property name="Background"/>
             <Property name="BackgroundTexture"/>
+            <Property name="UseEnvironmentLighting"/>
           </PropertyGroup>
 
           <PropertyGroup label="Render Passes">
@@ -10923,6 +10956,7 @@
           <Property name="RotationFactor" panel_visibility="never"/>
           <Property name="NonInteractiveRenderDelay" panel_visibility="never"/>
           <Property name="EnableRenderOnInteraction" panel_visibility="never"/>
+          <Property name="WindowResizeNonInteractiveRenderDelay" panel_visibility="never"/>
           <!-- Renderer -->
           <PropertyGroup label="Stereo">
             <Property name="StereoRender"/>
@@ -11900,7 +11934,7 @@
                             name="Roughness"
                             number_of_elements="1">
         <Documentation>
-          Set how rough is the surface
+          Set how rough is the surface.
         </Documentation>
         <DoubleRangeDomain max="1"
                            min="0"
@@ -11938,12 +11972,135 @@
         </Documentation>
         <DoubleRangeDomain max="1 1 1"
                            min="0 0 0"
+                          name="range" />
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   mode="visibility"
+                                   property="Interpolation"
+                                   value="3" />
+        </Hints>
+      </DoubleVectorProperty>
+      <DoubleVectorProperty command="SetBaseIOR"
+                            default_values="1.5"
+                            name="BaseIOR"
+                            number_of_elements="1">
+        <Documentation>
+          Set the index of refraction of the base layer.
+        </Documentation>
+        <DoubleRangeDomain max="4"
+                           min="1"
                            name="range" />
         <Hints>
           <PropertyWidgetDecorator type="GenericDecorator"
                                    mode="visibility"
                                    property="Interpolation"
                                    value="3" />
+        </Hints>
+      </DoubleVectorProperty>
+      <DoubleVectorProperty command="SetCoatIOR"
+                            default_values="2.0"
+                            name="CoatIOR"
+                            number_of_elements="1">
+        <Documentation>
+          Set the index of refraction of the coat layer.
+        </Documentation>
+        <DoubleRangeDomain max="4"
+                           min="1"
+                           name="range" />
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   mode="visibility"
+                                   property="Interpolation"
+                                   value="3" />
+        </Hints>
+      </DoubleVectorProperty>
+      <DoubleVectorProperty command="SetCoatStrength"
+                            default_values="0.0"
+                            name="CoatStrength"
+                            number_of_elements="1">
+        <Documentation>
+          Set the strength of the coat layer.
+        </Documentation>
+        <DoubleRangeDomain max="1"
+                           min="0"
+                           name="range" />
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   mode="visibility"
+                                   property="Interpolation"
+                                   value="3" />
+        </Hints>
+      </DoubleVectorProperty>
+      <DoubleVectorProperty command="SetCoatRoughness"
+                            default_values="0.0"
+                            name="CoatRoughness"
+                            number_of_elements="1">
+        <Documentation>
+          Set the roughness of the coat layer.
+        </Documentation>
+        <DoubleRangeDomain max="1"
+                           min="0"
+                           name="range" />
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   mode="visibility"
+                                   property="Interpolation"
+                                   value="3" />
+        </Hints>
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty command="SetCoatColor"
+                            default_values="1.0 1.0 1.0"
+                            name="CoatColor"
+                            number_of_elements="3">
+        <DoubleRangeDomain max="1 1 1"
+                           min="0 0 0"
+                           name="range" />
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   mode="visibility"
+                                   property="Interpolation"
+                                   value="3" />
+        </Hints>
+      </DoubleVectorProperty>
+      <DoubleVectorProperty command="SetAnisotropy"
+                            default_values="0.0"
+                            name="Anisotropy"
+                            number_of_elements="1">
+        <Documentation>
+          Set the anisotropy coefficient of the surface.
+        </Documentation>
+        <DoubleRangeDomain max="1"
+                           min="0"
+                           name="range" />
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   mode="visibility"
+                                   property="Interpolation"
+                                   value="3" />
+          <!-- Enable widget only if normals and tangents are here -->
+          <PropertyWidgetDecorator type="GenericDecorator" mode="enabled_state" property="SelectNormalArray" value="None" inverse="1"/>
+          <PropertyWidgetDecorator type="GenericDecorator" mode="enabled_state" property="SelectTangentArray" value="None" inverse="1"/>
+        </Hints>
+      </DoubleVectorProperty>
+      <DoubleVectorProperty command="SetAnisotropyRotation"
+                            default_values="0.0"
+                            name="AnisotropyRotation"
+                            number_of_elements="1">
+        <Documentation>
+          Set the anisotropy rotation coefficient of the surface.
+        </Documentation>
+        <DoubleRangeDomain max="1"
+                           min="0"
+                           name="range" />
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   mode="visibility"
+                                   property="Interpolation"
+                                   value="3" />
+          <!-- Enable widget only if normals and tangents are here -->
+          <PropertyWidgetDecorator type="GenericDecorator" mode="enabled_state" property="SelectNormalArray" value="None" inverse="1"/>
+          <PropertyWidgetDecorator type="GenericDecorator" mode="enabled_state" property="SelectTangentArray" value="None" inverse="1"/>
         </Hints>
       </DoubleVectorProperty>
       <ProxyProperty command="SetTexture"
@@ -12003,6 +12160,15 @@
                                    value="1" />
         </Hints>
       </IntVectorProperty>
+      <IntVectorProperty command="SetShowTexturesOnBackface"
+                         default_values="1"
+                         name="ShowTexturesOnBackface"
+                         number_of_elements="1">
+        <BooleanDomain name="bool" />
+        <Documentation>
+          Should textures be applied to the backface of a surface.
+        </Documentation>
+      </IntVectorProperty>
       <ProxyProperty command="SetBaseColorTexture"
                      name="BaseColorTexture"
                      panel_widget="texture_selector"
@@ -12041,6 +12207,26 @@
                                    value="3" />
           <TextureSelectorWidget check_tcoords="1" />
           <!-- enable the texture selector only when tcoords is available. -->
+        </Hints>
+      </ProxyProperty>
+      <ProxyProperty command="SetAnisotropyTexture"
+                     name="AnisotropyTexture"
+                     panel_widget="texture_selector"
+                     null_on_empty="1" >
+        <Documentation>
+          Set the anisotropy texture. This texture encodes anisotropy strength on the red and anisotropy rotation
+          on the green channel.
+        </Documentation>
+        <ProxyGroupDomain name="groups">
+          <Group name="textures" />
+        </ProxyGroupDomain>
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   mode="visibility"
+                                   property="Interpolation"
+                                   value="3" />
+          <TextureSelectorWidget check_tcoords="1" check_tangents="1" />
+          <!-- enable the texture selector only when tcoords and tangents are available. -->
         </Hints>
       </ProxyProperty>
       <DoubleVectorProperty command="SetOcclusionStrength"
@@ -12095,6 +12281,44 @@
           <PropertyWidgetDecorator type="GenericDecorator"
                                    mode="visibility"
                                    property="NormalTexture"
+                                   value="null"
+                                   inverse="1" />
+        </Hints>
+      </DoubleVectorProperty>
+      <ProxyProperty command="SetCoatNormalTexture"
+                     name="CoatNormalTexture"
+                     panel_widget="texture_selector"
+                     null_on_empty="1" >
+        <Documentation>
+          Set the coat normal mapping texture.
+        </Documentation>
+        <ProxyGroupDomain name="groups">
+          <Group name="textures" />
+        </ProxyGroupDomain>
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   mode="visibility"
+                                   property="Interpolation"
+                                   value="0"
+                                   inverse="1" />
+          <TextureSelectorWidget check_tcoords="1" check_tangents="1" />
+          <!-- enable the texture selector only when tcoords is available. -->
+        </Hints>
+      </ProxyProperty>
+      <DoubleVectorProperty command="SetCoatNormalScale"
+                            default_values="1.0"
+                            name="CoatNormalScale"
+                            number_of_elements="1">
+        <Documentation>
+          Set the scale of coat normal mapping deviation.
+        </Documentation>
+        <DoubleRangeDomain max="5"
+                           min="0"
+                           name="range" />
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   mode="visibility"
+                                   property="CoatNormalTexture"
                                    value="null"
                                    inverse="1" />
         </Hints>
@@ -12502,38 +12726,93 @@
                          number_of_elements="1">
         <BooleanDomain name="bool" />
       </IntVectorProperty>
-      <IntVectorProperty name="BlockVisibility"
-                         command="SetBlockVisibility"
-                         clean_command="RemoveBlockVisibilities"
-                         number_of_elements_per_command="2"
-                         repeatable="1">
+
+      <StringVectorProperty name="Assembly"
+        command="SetActiveAssembly"
+        number_of_elements="1"
+        default_values="Hierarchy"
+        panel_visibility="multiblock_inspector">
+        <DataAssemblyListDomain name="data_assembly">
+          <RequiredProperties>
+            <Property function="Input" name="Input" />
+          </RequiredProperties>
+        </DataAssemblyListDomain>
         <Documentation>
-          Set the visibility for blocks. In Python, assign the value from an interleaved
-          list of block indices and visibilities, e.g., [index1, visibility1, index2, visibility2, ...].
-          The list does not need to contain all block indices.
+          Select which assembly is used when specify selectors
+          to choose block visibilities, block colors, etc. for composite datasets.
         </Documentation>
-      </IntVectorProperty>
-      <DoubleMapProperty name="BlockColor"
-                         command="SetBlockColor"
-                         clean_command="RemoveBlockColors"
-                         number_of_components="3"
-                         repeatable="1">
+      </StringVectorProperty>
+
+      <StringVectorProperty name="BlockSelectors"
+        command="AddBlockSelector"
+        clean_command="RemoveAllBlockSelectors"
+        repeat_command="1"
+        number_of_elements_per_command="1"
+        panel_visibility="multiblock_inspector"
+        number_of_elements="1"
+        default_values="/">
+        <DataAssemblyDomain name="data_assembly">
+          <RequiredProperties>
+            <Property function="Input" name="Input" />
+            <Property function="ActiveAssembly" name="Assembly" />
+          </RequiredProperties>
+        </DataAssemblyDomain>
         <Documentation>
-          Set the colors for blocks.
-          In Python, assign the value from a dictionary of the form
-          {index1:, [r1, g1, b1], index2: [r2, g2, b2], ...}.
+          For composite datasets, specify selectors to limit the view
+          to a chosen subset of blocks.
         </Documentation>
-      </DoubleMapProperty>
-      <DoubleMapProperty name="BlockOpacity"
-                         command="SetBlockOpacity"
-                         clean_command="RemoveBlockOpacities"
-                         number_of_components="1"
-                         repeatable="1">
+      </StringVectorProperty>
+
+      <StringVectorProperty name="BlockColors"
+                            command="SetBlockColor"
+                            clean_command="RemoveAllBlockColors"
+                            element_types="2 1 1 1"
+                            number_of_elements_per_command="4"
+                            repeat_command="1"
+                            panel_visibility="multiblock_inspector">
+         <DataAssemblyDomain name="data_assembly">
+          <RequiredProperties>
+            <Property function="Input" name="Input" />
+            <Property function="ActiveAssembly" name="Assembly" />
+          </RequiredProperties>
+        </DataAssemblyDomain>
         <Documentation>
-          Set the opacity for blocks.
-          In Python, assign the value from a dictionary of the form {index1:, [a1], index2: [a2], ...}.
+          For composite datasets, specify colors associated with selectors
+          on the assembly chosen using **Assembly**.
         </Documentation>
-      </DoubleMapProperty>
+      </StringVectorProperty>
+
+      <StringVectorProperty name="BlockOpacities"
+                            command="SetBlockOpacity"
+                            clean_command="RemoveAllBlockOpacities"
+                            element_types="2 1"
+                            number_of_elements_per_command="2"
+                            repeat_command="1"
+                            panel_visibility="multiblock_inspector">
+         <DataAssemblyDomain name="data_assembly">
+          <RequiredProperties>
+            <Property function="Input" name="Input" />
+            <Property function="ActiveAssembly" name="Assembly" />
+          </RequiredProperties>
+        </DataAssemblyDomain>
+        <Documentation>
+          For composite datasets, specify opacities associated with selectors
+          on the assembly chosen using **Assembly**.
+        </Documentation>
+      </StringVectorProperty>
+
+      <PropertyGroup label="Blocks"
+                     panel_widget="DataAssemblyEditor"
+                     panel_visibility="multiblock_inspector">
+        <Property name="Assembly"       function="ActiveAssembly" />
+        <Property name="BlockSelectors" function="Selectors" />
+        <Property name="BlockColors"    function="Colors" />
+        <Property name="BlockOpacities" function="Opacities" />
+        <Hints>
+          <DataAssemblyPropertyWidget use_inputname_as_header="1"  link_active_selection="1"/>
+        </Hints>
+      </PropertyGroup>
+
       <IntVectorProperty command="SetBlockColorsDistinctValues"
                          default_values="7"
                          name="BlockColorsDistinctValues"

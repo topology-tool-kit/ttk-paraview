@@ -36,14 +36,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "pqCoreUtilities.h"
 #include "pqPythonManager.h"
-#include <vtksys/SystemTools.hxx>
+#include "vtksys/SystemTools.hxx"
 
 #include <QAction>
 #include <QApplication>
 #include <QDebug>
 #include <QDir>
 #include <QFile>
-#include <QFileInfo>
 #include <QFileInfo>
 #include <QMenu>
 #include <QPointer>
@@ -63,19 +62,19 @@ class pqPythonMacroSupervisor::pqInternal
 {
 public:
   // Container widget that have an RunMacro action context
-  QList<QPointer<QWidget> > RunWidgetContainers;
+  QList<QPointer<QWidget>> RunWidgetContainers;
   // List of action linked to widget/menuItem used to start a macro
   QMap<QString, QAction*> RunActionMap;
 
   // Container widget that have an EditMacro action context
-  QList<QPointer<QWidget> > EditWidgetContainers;
+  QList<QPointer<QWidget>> EditWidgetContainers;
   // List of action linked to widget/menuItem used to edit a macro
   QMap<QString, QAction*> EditActionMap;
 
   // Container widget that have an DeleteMacro action context
-  QList<QPointer<QWidget> > DeleteWidgetContainers;
+  QList<QPointer<QWidget>> DeleteWidgetContainers;
   // List of action linked to widget/menuItem used to delete a macro
-  QMap<QString, QPointer<QAction> > DeleteActionMap;
+  QMap<QString, QPointer<QAction>> DeleteActionMap;
 };
 
 //----------------------------------------------------------------------------
@@ -91,7 +90,7 @@ pqPythonMacroSupervisor::pqPythonMacroSupervisor(QObject* p)
 pqPythonMacroSupervisor::~pqPythonMacroSupervisor()
 {
   delete this->Internal;
-  this->Internal = 0;
+  this->Internal = nullptr;
 }
 
 // Util methods
@@ -120,7 +119,7 @@ void removePlaceHolderIfNeeded(QWidget* widget)
     }
   }
 }
-void addActionToWidgets(QAction* action, QList<QPointer<QWidget> >& widgets)
+void addActionToWidgets(QAction* action, QList<QPointer<QWidget>>& widgets)
 {
   foreach (QWidget* widget, widgets)
   {
@@ -131,7 +130,7 @@ void addActionToWidgets(QAction* action, QList<QPointer<QWidget> >& widgets)
     }
   }
 }
-void removeActionFromWidgets(QAction* action, QList<QPointer<QWidget> >& widgets)
+void removeActionFromWidgets(QAction* action, QList<QPointer<QWidget>>& widgets)
 {
   foreach (QWidget* widget, widgets)
   {
@@ -151,7 +150,7 @@ QAction* pqPythonMacroSupervisor::getMacro(const QString& fileName)
   {
     return this->Internal->RunActionMap[fileName];
   }
-  return NULL;
+  return nullptr;
 }
 //----------------------------------------------------------------------------
 void pqPythonMacroSupervisor::addWidgetForRunMacros(QWidget* widget)
@@ -171,7 +170,7 @@ void pqPythonMacroSupervisor::addWidgetForDeleteMacros(QWidget* widget)
 //----------------------------------------------------------------------------
 void pqPythonMacroSupervisor::addWidgetForMacros(QWidget* widget, int actionType)
 {
-  QList<QPointer<QWidget> >* widgetContainers = NULL;
+  QList<QPointer<QWidget>>* widgetContainers = nullptr;
   switch (actionType)
   {
     case 0: // run
@@ -365,7 +364,7 @@ void pqPythonMacroSupervisor::onMacroTriggered()
   {
     if (itr.value() == action)
     {
-      QString filename = itr.key();
+      const QString& filename = itr.key();
       Q_EMIT this->executeScriptRequested(filename);
     }
   }
@@ -375,13 +374,13 @@ void pqPythonMacroSupervisor::onDeleteMacroTriggered()
 {
   QObject* action = this->sender();
   QList<QString> listOfMacroToDelete;
-  QMap<QString, QPointer<QAction> >::const_iterator itr =
+  QMap<QString, QPointer<QAction>>::const_iterator itr =
     this->Internal->DeleteActionMap.constBegin();
   for (; itr != this->Internal->DeleteActionMap.constEnd(); ++itr)
   {
     if (itr.value() == action)
     {
-      QString filename = itr.key();
+      const QString& filename = itr.key();
       listOfMacroToDelete.append(filename);
     }
   }
@@ -400,7 +399,7 @@ void pqPythonMacroSupervisor::onEditMacroTriggered()
   {
     if (itr.value() == action)
     {
-      QString filename = itr.key();
+      const QString& filename = itr.key();
       Q_EMIT onEditMacro(filename);
     }
   }
@@ -429,7 +428,7 @@ QStringList pqPythonMacroSupervisor::getMacrosFilePaths()
   const char* env = vtksys::SystemTools::GetEnv("PV_MACRO_PATH");
   if (env)
   {
-    QStringList macroPathDirs = QString::fromLocal8Bit(env).split(ENV_PATH_SEP);
+    QStringList macroPathDirs = QString::fromUtf8(env).split(ENV_PATH_SEP);
     macroDirs << macroPathDirs;
   }
 

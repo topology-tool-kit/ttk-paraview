@@ -17,26 +17,24 @@
 #define vtkMaterialInterfaceUtilities_h
 
 // Vtk
-#include <vtkCommunicator.h>
+#include "vtkCommunicator.h" // for vtkCommunicator
 // Vtk containers
-#include <vtkDataArraySelection.h>
-#include <vtkDoubleArray.h>
-#include <vtkFloatArray.h>
-#include <vtkIntArray.h>
-#include <vtkUnsignedIntArray.h>
+#include "vtkDoubleArray.h"      // for vtkDoubleArray
+#include "vtkFloatArray.h"       // for vtkFloatArray
+#include "vtkIntArray.h"         // for vtkIntArray
+#include "vtkUnsignedIntArray.h" // for vtkUnsignedIntArray
 // STL
-#include <fstream>
-using std::ofstream;
+#include <fstream> // for file operations
 using std::ifstream;
-#include <sstream>
+using std::ofstream;
+#include <sstream> // for std::ostringstream
 using std::ostringstream;
-#include <vector>
+#include <vector> // for std::vector
 using std::vector;
-#include <string>
+#include <string> // for std::string
 using std::string;
-#include <algorithm>
 // other
-#include <assert.h>
+#include <cassert> // for assert
 
 // some useful functionality that stradles multiple filters
 // and has file scope.
@@ -431,7 +429,7 @@ ostream& operator<<(ostream& sout, vector<vtkDoubleArray*>& vda)
   return sout;
 }
 //
-ostream& operator<<(ostream& sout, vector<vector<int> >& vvi)
+ostream& operator<<(ostream& sout, vector<vector<int>>& vvi)
 {
   size_t nv = vvi.size();
   for (size_t i = 0; i < nv; ++i)
@@ -565,4 +563,3 @@ void PrintHistogram(vector<TCnt>& bins)
 }
 };
 #endif
-// VTK-HeaderTest-Exclude: vtkMaterialInterfaceUtilities.h

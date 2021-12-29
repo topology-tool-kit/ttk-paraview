@@ -6,7 +6,7 @@ scientific data producers) to analyze and visualize data in situ.
 
 It also includes the following:
 
-* A light-weight implementation of the Catalyst API also provided. This implementation
+* A light-weight implementation of the Catalyst API. This implementation
   is called **stub**. [TODO:  need a better name]
 * An SDK for developers to develop implementations of the Catalyst API to perform
   custom data processing and visualization tasks.
@@ -20,16 +20,16 @@ Relationship with ParaView
 
 Starting with 5.9, ParaView releases come with an implementation of the Catalyst
 API. This implementation can be used in lieu of the **stub** to analyze and
-visualization simulation results using ParaView's data-processing and
+visualize simulation results using ParaView's data-processing and
 visualization capabilities.
 
 Relationship with Conduit
 =========================
 
-Catalyst API uses `Conduit`_ for desribe the data and other parameters for
-communication between simulation and Catalyst.
+The Catalyst API uses `Conduit`_ for describing data and other parameters
+which can be communicated between a simulation and Catalyst.
 
-Conduit also provides standard way to describe computational simulation meshes.
+Conduit provides a standard way to describe computational simulation meshes.
 This is called the `Mesh Blueprint`_. ParaView's implementation of the Catalyst
 API supports a subset of the Mesh Blueprint. Simulations that can use the Mesh
 Blueprint to describe their data can directly use ParaView's Catalyst
@@ -38,11 +38,11 @@ implementation for in situ analysis and visualization.
 ParaView Catalyst
 =================
 
-**ParaView Catalyst** is the name used to refer to ParaView's implementation of the
+**ParaView Catalyst** is the name now used to refer to ParaView's implementation of the
 Catalyst API. Prior to this API separation (i.e. ParaView 5.8 and earlier),
 ParaView Catalyst or simply Catalyst was used to denote the in situ API together
-with the data analysis and viz. capabilities it provided. In other words,
-ParaView used in situ was called Catalyst.
+with the data analysis and visualization capabilities it provided. In other words,
+the in-situ capabilities of ParaView were collectively called Catalyst.
 
 With ParaView 5.9, while legacy uses will still be supported for a few more
 releases, we use the names to refer to specific components:

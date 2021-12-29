@@ -476,7 +476,8 @@ int vtkCCSTriangulate(const vtkCCSPoly& poly, vtkPoints* points, const vtkCCSPol
               side = !side;
               foundNegative = true;
               double s, t;
-              foundEar = (vtkLine::Intersection(ppoint, npoint, x, y, s, t) == 0);
+              foundEar =
+                (vtkLine::Intersection(ppoint, npoint, x, y, s, t) == vtkLine::NoIntersect);
             }
           }
 
@@ -2199,7 +2200,7 @@ int vtkCCSFindCuts(const std::vector<vtkCCSPoly>& polys, const vtkCCSPolyGroup& 
           points->GetPoint(innerPoly[j], q2);
 
           double u, v;
-          if (vtkLine::Intersection(p1, p2, q1, q2, u, v) == 2)
+          if (vtkLine::Intersection(p1, p2, q1, q2, u, v) == vtkLine::Intersect)
           {
             continue;
           }
@@ -2385,7 +2386,7 @@ int vtkCCSCutHoleyPolys(std::vector<vtkCCSPoly>& polys, vtkPoints* points,
         // Only add if innerPolyId hasn't been set already.
         // Having the same poly occur as both polyGroup and
         // innerPoly would cause an infinite loop.
-        if (polyGroups[innerPolyId].size() < 1)
+        if (polyGroups[innerPolyId].empty())
         {
           polyGroups[innerPolyId].push_back(innerPolyId);
         }
@@ -2399,7 +2400,7 @@ int vtkCCSCutHoleyPolys(std::vector<vtkCCSPoly>& polys, vtkPoints* points,
           // Only add if innerPolyId hasn't been set already.
           // Having the same poly occur as both polyGroup and
           // innerPoly would cause an infinite loop.
-          if (polyGroups[innerPolyId].size() < 1)
+          if (polyGroups[innerPolyId].empty())
           {
             polyGroups[innerPolyId].push_back(innerPolyId);
           }

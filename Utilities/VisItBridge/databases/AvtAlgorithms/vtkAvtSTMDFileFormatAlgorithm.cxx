@@ -70,21 +70,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "avtVectorMetaData.h"
 #include "TimingsManager.h"
 
-#include "limits.h"
+#include <climits>
 #include <set>
 
 struct vtkAvtSTMDFileFormatAlgorithm::vtkAvtSTMDFileFormatAlgorithmInternal
 {
-  unsigned int MinDataset;
-  unsigned int MaxDataset;
-  bool HasUpdateRestriction;
+  unsigned int MinDataset{0};
+  unsigned int MaxDataset{0};
+  bool HasUpdateRestriction{false};
   std::set<int> UpdateIndices;
-  vtkAvtSTMDFileFormatAlgorithmInternal():
-    MinDataset(0),
-    MaxDataset(0),
-    HasUpdateRestriction(false),
-    UpdateIndices()
-    {}
+  vtkAvtSTMDFileFormatAlgorithmInternal() = default;
 };
 
 vtkStandardNewMacro(vtkAvtSTMDFileFormatAlgorithm);
@@ -177,7 +172,7 @@ int vtkAvtSTMDFileFormatAlgorithm::RequestDataObject(vtkInformation *,
     {
     return 1;
     }
-  else if ( !output || output->GetDataObjectType() != this->OutputType )
+  if ( !output || output->GetDataObjectType() != this->OutputType )
     {
     switch( this->OutputType )
       {
@@ -200,8 +195,8 @@ int vtkAvtSTMDFileFormatAlgorithm::RequestDataObject(vtkInformation *,
   }
 
 //-----------------------------------------------------------------------------
-int vtkAvtSTMDFileFormatAlgorithm::RequestData(vtkInformation *request,
-        vtkInformationVector **inputVector, vtkInformationVector *outputVector)
+int vtkAvtSTMDFileFormatAlgorithm::RequestData(vtkInformation *vtkNotUsed(request),
+        vtkInformationVector **vtkNotUsed(inputVector), vtkInformationVector *outputVector)
   {
   if (!this->InitializeAVTReader())
     {
@@ -271,7 +266,7 @@ int vtkAvtSTMDFileFormatAlgorithm::RequestData(vtkInformation *request,
       }
     output->SetNumberOfBlocks( size );
 
-    vtkMultiBlockDataSet* tempData = NULL;
+    vtkMultiBlockDataSet* tempData = nullptr;
     int blockIndex=0;
     for ( int i=0; i < this->MetaData->GetNumMeshes(); ++i)
       {
@@ -299,7 +294,7 @@ int vtkAvtSTMDFileFormatAlgorithm::RequestData(vtkInformation *request,
           this->FillBlock( tempData, &meshMetaData, 0 );
           output->SetBlock(blockIndex,tempData);
           tempData->Delete();
-          tempData = NULL;
+          tempData = nullptr;
           break;
         }
       output->GetMetaData(blockIndex)->Set(vtkCompositeDataSet::NAME(),name.c_str());
@@ -308,7 +303,7 @@ int vtkAvtSTMDFileFormatAlgorithm::RequestData(vtkInformation *request,
     }
 
   this->CleanupAVTReader();
-  this->SetupGhostInformation(outInfo);
+  vtkAvtFileFormatAlgorithm::SetupGhostInformation(outInfo);
   return 1;
 }
 
@@ -358,7 +353,7 @@ int vtkAvtSTMDFileFormatAlgorithm::FillAMR(
     numDataSets[i] = 0; //clear the array
     }
   intVector groupIdsBasedOnRange = meshMetaData->groupIdsBasedOnRange;
-  if (groupIdsBasedOnRange.size() > 0)
+  if (!groupIdsBasedOnRange.empty())
     {
       for (int i = 0; i < groupIdsBasedOnRange.size() - 1; ++i)
         {
@@ -369,15 +364,15 @@ int vtkAvtSTMDFileFormatAlgorithm::FillAMR(
     {
     //count the grids at each level
     intVector gids = meshMetaData->groupIds;
-    for ( int i=0; i < gids.size(); ++i )
+    for (int gid : gids)
       {
-      ++numDataSets[gids.at(i)];
+      ++numDataSets[gid];
       }
     }
 
   ghostedAMR->Initialize(numGroups, numDataSets);
 
-  avtDomainNesting *domainNesting = reinterpret_cast<avtDomainNesting*>(*vr);
+  auto *domainNesting = reinterpret_cast<avtDomainNesting*>(*vr);
   for ( int i=1; i < numGroups; ++i) //don't need a ratio for level 0
     {
     intVector ratios = domainNesting->GetRatiosForLevel(i,domain);
@@ -400,7 +395,7 @@ int vtkAvtSTMDFileFormatAlgorithm::FillAMR(
   int meshIndex=0;
   for (int j=0; j < numDataSets[0]; ++j)
     {
-    vtkRectilinearGrid *rgrid = NULL;
+    vtkRectilinearGrid *rgrid = nullptr;
     //get the rgrid from the VisIt reader
     //so we have the origin/spacing/dims
     CATCH_VISIT_EXCEPTIONS(rgrid,
@@ -449,7 +444,7 @@ int vtkAvtSTMDFileFormatAlgorithm::FillAMR(
     bool spacingSet = false;
     for (int j=0; j < numDataSets[i]; ++j)
       {
-      vtkRectilinearGrid *rgrid = NULL;
+      vtkRectilinearGrid *rgrid = nullptr;
       //get the rgrid from the VisIt reader
       //so we have the origin/spacing/dims
       CATCH_VISIT_EXCEPTIONS(rgrid,
@@ -486,7 +481,7 @@ int vtkAvtSTMDFileFormatAlgorithm::FillAMR(
 
       //don't need the rgrid anymoe
       rgrid->Delete();
-      rgrid = NULL;
+      rgrid = nullptr;
 
       vtkAMRBox box(origin, dims, spacing, globalOrigin, ghostedAMR->GetGridDescription());
       if (!spacingSet)
@@ -551,7 +546,7 @@ void vtkAvtSTMDFileFormatAlgorithm::FillBlock(
       {
       continue;
       }
-    vtkDataSet *data=NULL;
+    vtkDataSet *data=nullptr;
     CATCH_VISIT_EXCEPTIONS(data,
       this->AvtFile->GetMesh(timestep, i, name.c_str()) );
     if ( data )
@@ -622,7 +617,7 @@ void vtkAvtSTMDFileFormatAlgorithm::FillBlockWithCSG(
     this->MetaData->ConvertCSGDomainToBlockAndRegion(meshName.c_str(),
       &blockIndex, &csgRegion);
 
-    vtkDataSet *data=NULL;
+    vtkDataSet *data=nullptr;
     CATCH_VISIT_EXCEPTIONS(data,
       this->AvtFile->GetMesh(timestep, i, meshName.c_str()) );
     vtkCSGGrid *csgGrid = vtkCSGGrid::SafeDownCast(data);
@@ -646,56 +641,9 @@ void vtkAvtSTMDFileFormatAlgorithm::FillBlockWithCSG(
       }
     }
 }
+
 //-----------------------------------------------------------------------------
-bool vtkAvtSTMDFileFormatAlgorithm::ValidAMR( const avtMeshMetaData *meshMetaData )
-{
-
-  //I can't find an easy way to determine the type of a sub mesh
-  std::string name = meshMetaData->name;
-  vtkRectilinearGrid *rgrid = NULL;
-
-  for ( int i=0; i < meshMetaData->numBlocks; ++i )
-    {
-    //lets get the mesh for each amr box
-    vtkRectilinearGrid *rgrid = NULL;
-    CATCH_VISIT_EXCEPTIONS(rgrid, vtkRectilinearGrid::SafeDownCast(
-      this->AvtFile->GetMesh(0, i, name.c_str()) ) );
-    if ( !rgrid )
-      {
-      //this is not an AMR that ParaView supports
-      return false;
-      }
-
-      if (!(this->Cache->HasVoidRef(
-            meshMetaData->name.c_str(), AUXILIARY_DATA_DOMAIN_NESTING_INFORMATION, 0, -1)) &&
-        !(this->Cache->HasVoidRef("any_mesh", AUXILIARY_DATA_DOMAIN_NESTING_INFORMATION, 0, -1)))
-      {
-        return false;
-      }
-
-    //verify the spacing of the grid is uniform
-    if (!this->IsEvenlySpacedDataArray( rgrid->GetXCoordinates()) )
-      {
-      rgrid->Delete();
-      return false;
-      }
-    if (!this->IsEvenlySpacedDataArray( rgrid->GetYCoordinates()) )
-      {
-      rgrid->Delete();
-      return false;
-      }
-    if (!this->IsEvenlySpacedDataArray( rgrid->GetZCoordinates()) )
-      {
-      rgrid->Delete();
-      return false;
-      }
-    rgrid->Delete();
-    }
-
-  return true;
-}
-//-----------------------------------------------------------------------------
-bool vtkAvtSTMDFileFormatAlgorithm::IsEvenlySpacedDataArray(vtkDataArray *data)
+static bool IsEvenlySpacedDataArray(vtkDataArray *data)
 {
   if ( !data )
     {
@@ -716,6 +664,54 @@ bool vtkAvtSTMDFileFormatAlgorithm::IsEvenlySpacedDataArray(vtkDataArray *data)
       }
     }
   return valid;
+}
+//-----------------------------------------------------------------------------
+bool vtkAvtSTMDFileFormatAlgorithm::ValidAMR( const avtMeshMetaData *meshMetaData )
+{
+
+  //I can't find an easy way to determine the type of a sub mesh
+  std::string name = meshMetaData->name;
+  vtkRectilinearGrid *rgrid = nullptr;
+
+  for ( int i=0; i < meshMetaData->numBlocks; ++i )
+    {
+    //lets get the mesh for each amr box
+    vtkRectilinearGrid *rgrid = nullptr;
+    CATCH_VISIT_EXCEPTIONS(rgrid, vtkRectilinearGrid::SafeDownCast(
+      this->AvtFile->GetMesh(0, i, name.c_str()) ) );
+    if ( !rgrid )
+      {
+      //this is not an AMR that ParaView supports
+      return false;
+      }
+
+      if (!(this->Cache->HasVoidRef(
+            meshMetaData->name.c_str(), AUXILIARY_DATA_DOMAIN_NESTING_INFORMATION, 0, -1)) &&
+        !(this->Cache->HasVoidRef("any_mesh", AUXILIARY_DATA_DOMAIN_NESTING_INFORMATION, 0, -1)))
+      {
+        return false;
+      }
+
+    //verify the spacing of the grid is uniform
+    if (!IsEvenlySpacedDataArray( rgrid->GetXCoordinates()) )
+      {
+      rgrid->Delete();
+      return false;
+      }
+    if (!IsEvenlySpacedDataArray( rgrid->GetYCoordinates()) )
+      {
+      rgrid->Delete();
+      return false;
+      }
+    if (!IsEvenlySpacedDataArray( rgrid->GetZCoordinates()) )
+      {
+      rgrid->Delete();
+      return false;
+      }
+    rgrid->Delete();
+    }
+
+  return true;
 }
 
 //----------------------------------------------------------------------------
@@ -764,6 +760,16 @@ bool vtkAvtSTMDFileFormatAlgorithm::ShouldReadDataSet(const int &index)
         this->Internal->UpdateIndices.end());
     }
   return shouldRead;
+}
+
+
+//-----------------------------------------------------------------------------
+int vtkAvtSTMDFileFormatAlgorithm::RequestInformation(vtkInformation* request,
+                         vtkInformationVector** inputVector,
+                         vtkInformationVector* outputVector)
+{
+  outputVector->GetInformationObject(0)->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
+  return this->Superclass::RequestInformation(request, inputVector, outputVector);
 }
 
 //-----------------------------------------------------------------------------

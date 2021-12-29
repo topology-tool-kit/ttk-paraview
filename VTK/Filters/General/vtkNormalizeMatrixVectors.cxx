@@ -24,6 +24,7 @@
 
 #include "vtkNormalizeMatrixVectors.h"
 #include "vtkArrayCoordinates.h"
+#include "vtkArrayData.h"
 #include "vtkCommand.h"
 #include "vtkInformation.h"
 #include "vtkInformationVector.h"
@@ -32,6 +33,7 @@
 #include "vtkTypedArray.h"
 
 #include <algorithm>
+#include <cmath>
 
 ///////////////////////////////////////////////////////////////////////////////
 // vtkNormalizeMatrixVectors

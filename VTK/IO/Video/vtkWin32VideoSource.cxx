@@ -14,7 +14,6 @@
 =========================================================================*/
 #include "vtkWin32VideoSource.h"
 
-#include "vtkCriticalSection.h"
 #include "vtkObjectFactory.h"
 #include "vtkTimerLog.h"
 #include "vtkUnsignedCharArray.h"
@@ -206,7 +205,7 @@ void vtkWin32VideoSource::Initialize()
   strcpy(this->WndClassName, "VTKVideo");
 
   // set up a class for the main window
-  WNDCLASS wc;
+  WNDCLASSA wc;
   wc.lpszClassName = this->WndClassName;
   wc.hInstance = hinstance;
   wc.lpfnWndProc = reinterpret_cast<WNDPROC>(&vtkWin32VideoSourceWinProc);
@@ -220,7 +219,7 @@ void vtkWin32VideoSource::Initialize()
 
   for (i = 1; i <= 10; i++)
   {
-    if (RegisterClass(&wc))
+    if (RegisterClassA(&wc))
     {
       break;
     }
@@ -254,7 +253,7 @@ void vtkWin32VideoSource::Initialize()
     vtkWarningMacro("Initialize: AdjustWindowRect failed, error: " << GetLastError());
   }
 
-  this->Internal->ParentWnd = CreateWindow(this->WndClassName, "VTK Video Window", style, 0, 0,
+  this->Internal->ParentWnd = CreateWindowA(this->WndClassName, "VTK Video Window", style, 0, 0,
     r.right - r.left, r.bottom - r.top, nullptr, nullptr, hinstance, nullptr);
 
   if (!this->Internal->ParentWnd)
@@ -471,7 +470,7 @@ void vtkWin32VideoSource::LocalInternalGrab(void* lpptr)
   unsigned char* cptrDIB = lpVHdr->lpData;
 
   // get a thread lock on the frame buffer
-  this->FrameBufferMutex->Lock();
+  this->FrameBufferMutex.lock();
 
   if (this->AutoAdvance)
   {
@@ -531,7 +530,7 @@ void vtkWin32VideoSource::LocalInternalGrab(void* lpptr)
 
   this->Modified();
 
-  this->FrameBufferMutex->Unlock();
+  this->FrameBufferMutex.unlock();
 }
 
 //------------------------------------------------------------------------------
@@ -889,9 +888,9 @@ void vtkWin32VideoSource::VideoFormatDialog()
   int success = capDlgVideoFormat(this->Internal->CapWnd);
   if (success)
   {
-    this->FrameBufferMutex->Lock();
+    this->FrameBufferMutex.lock();
     this->DoVFWFormatCheck();
-    this->FrameBufferMutex->Unlock();
+    this->FrameBufferMutex.unlock();
   }
 }
 
@@ -922,9 +921,9 @@ void vtkWin32VideoSource::VideoSourceDialog()
   int success = capDlgVideoSource(this->Internal->CapWnd);
   if (success)
   {
-    this->FrameBufferMutex->Lock();
+    this->FrameBufferMutex.lock();
     this->DoVFWFormatCheck();
-    this->FrameBufferMutex->Unlock();
+    this->FrameBufferMutex.unlock();
   }
 }
 
@@ -950,10 +949,10 @@ void vtkWin32VideoSource::SetFrameSize(int x, int y, int z)
 
   if (this->Initialized)
   {
-    this->FrameBufferMutex->Lock();
+    this->FrameBufferMutex.lock();
     this->UpdateFrameBuffer();
     this->DoVFWFormatSetup();
-    this->FrameBufferMutex->Unlock();
+    this->FrameBufferMutex.unlock();
   }
 }
 
@@ -1016,14 +1015,14 @@ void vtkWin32VideoSource::SetOutputFormat(int format)
 
   if (this->FrameBufferBitsPerPixel != numComponents * 8)
   {
-    this->FrameBufferMutex->Lock();
+    this->FrameBufferMutex.lock();
     this->FrameBufferBitsPerPixel = numComponents * 8;
     if (this->Initialized)
     {
       this->UpdateFrameBuffer();
       this->DoVFWFormatSetup();
     }
-    this->FrameBufferMutex->Unlock();
+    this->FrameBufferMutex.unlock();
   }
 
   this->Modified();

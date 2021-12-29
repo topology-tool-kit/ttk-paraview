@@ -130,8 +130,8 @@ char* vtk_Py_EncodeLocale(const wchar_t* arg, size_t* size)
 }
 #endif
 
-static std::vector<vtkWeakPointer<vtkPythonInterpreter>>* GlobalInterpreters;
-static std::vector<std::string> PythonPaths;
+std::vector<vtkWeakPointer<vtkPythonInterpreter>>* GlobalInterpreters;
+std::vector<std::string> PythonPaths;
 
 void NotifyInterpreters(unsigned long eventid, void* calldata = nullptr)
 {
@@ -249,11 +249,16 @@ bool vtkPythonInterpreter::Initialize(int initsigs /*=0*/)
     PySys_SetArgvEx(0, nullptr, 0);
 
 #ifdef VTK_PYTHON_FULL_THREADSAFE
+#if PY_VERSION_HEX < 0x03090000
+    // In Python 3.9 and higher, PyEval_ThreadsInitialized() and
+    // PyEval_InitThreads() are deprecated and do nothing.
+    // GIL initialization is handled by Py_InitializeEx().
     int threadInit = PyEval_ThreadsInitialized();
     if (!threadInit)
     {
       PyEval_InitThreads(); // initialize and acquire GIL
     }
+#endif
     // Always release GIL, as it has been acquired either by PyEval_InitThreads
     // prior to Python 3.7 or by Py_InitializeEx in Python 3.7 and after
     PyEval_SaveThread();

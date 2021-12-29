@@ -15,6 +15,12 @@
 #ifndef vtkAOSDataArrayTemplate_txx
 #define vtkAOSDataArrayTemplate_txx
 
+#ifdef VTK_AOS_DATA_ARRAY_TEMPLATE_INSTANTIATING
+#define VTK_GDA_VALUERANGE_INSTANTIATING
+#include "vtkDataArrayPrivate.txx"
+#undef VTK_GDA_VALUERANGE_INSTANTIATING
+#endif
+
 #include "vtkAOSDataArrayTemplate.h"
 
 #include "vtkArrayIteratorTemplate.h"
@@ -24,6 +30,26 @@ template <class ValueTypeT>
 vtkAOSDataArrayTemplate<ValueTypeT>* vtkAOSDataArrayTemplate<ValueTypeT>::New()
 {
   VTK_STANDARD_NEW_BODY(vtkAOSDataArrayTemplate<ValueType>);
+}
+
+//-----------------------------------------------------------------------------
+template <class ValueTypeT>
+vtkAOSDataArrayTemplate<typename vtkAOSDataArrayTemplate<ValueTypeT>::ValueType>*
+vtkAOSDataArrayTemplate<ValueTypeT>::FastDownCast(vtkAbstractArray* source)
+{
+  if (source)
+  {
+    switch (source->GetArrayType())
+    {
+      case vtkAbstractArray::AoSDataArrayTemplate:
+        if (vtkDataTypesCompare(source->GetDataType(), vtkTypeTraits<ValueType>::VTK_TYPE_ID))
+        {
+          return static_cast<vtkAOSDataArrayTemplate<ValueType>*>(source);
+        }
+        break;
+    }
+  }
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------

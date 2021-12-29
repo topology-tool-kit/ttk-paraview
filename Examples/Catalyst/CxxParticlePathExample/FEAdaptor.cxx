@@ -11,7 +11,6 @@
 #include <vtkDoubleArray.h>
 #include <vtkFloatArray.h>
 #include <vtkLogger.h>
-#include <vtkLogger.h>
 #include <vtkNew.h>
 #include <vtkPointData.h>
 #include <vtkPoints.h>
@@ -19,7 +18,7 @@
 
 namespace
 {
-vtkCPProcessor* Processor = NULL;
+vtkCPProcessor* Processor = nullptr;
 
 void BuildVTKGrid(Grid& grid, vtkUnstructuredGrid* vtkgrid)
 {
@@ -103,7 +102,7 @@ namespace FEAdaptor
 {
 void Initialize(std::vector<std::string>& scripts)
 {
-  if (Processor == NULL)
+  if (Processor == nullptr)
   {
     Processor = vtkCPProcessor::New();
     Processor->Initialize();
@@ -130,7 +129,7 @@ void Finalize()
   if (Processor)
   {
     Processor->Delete();
-    Processor = NULL;
+    Processor = nullptr;
   }
 }
 

@@ -47,6 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /////////////////////////////////////////////////////////////////////
 // Icons
+// NOLINTNEXTLINE(readability-redundant-member-init)
 Q_GLOBAL_STATIC(pqFileDialogModelIconProvider, Icons);
 
 //-----------------------------------------------------------------------------
@@ -57,7 +58,7 @@ pqFileDialogRecentDirsModel::pqFileDialogRecentDirsModel(
   this->FileDialogModel = fileDialogModel;
 
   // We need to determine the URI for this server to get the list of recent dirs
-  // from the pqSettings. If server==NULL, we use the "builtin:" resource.
+  // from the pqSettings. If server==nullptr, we use the "builtin:" resource.
   pqServerResource resource = server ? server->getResource() : pqServerResource("builtin:");
 
   QString uri = resource.configuration().URI();
@@ -118,10 +119,10 @@ QVariant pqFileDialogRecentDirsModel::data(const QModelIndex& idx, int role) con
         QString path = this->Directories[idx.row()];
         // We don't use QFileInfo here since it messes the paths up if the client and
         // the server are heterogeneous systems.
-        std::string unix_path = path.toLocal8Bit().data();
+        std::string unix_path = path.toUtf8().toStdString();
         vtksys::SystemTools::ConvertToUnixSlashes(unix_path);
         std::string filename;
-        std::string::size_type slashPos = unix_path.rfind("/");
+        std::string::size_type slashPos = unix_path.rfind('/');
         if (slashPos != std::string::npos)
         {
           filename = unix_path.substr(slashPos + 1);
@@ -180,7 +181,7 @@ void pqFileDialogRecentDirsModel::setChosenDir(const QString& dir)
 //-----------------------------------------------------------------------------
 void pqFileDialogRecentDirsModel::setChosenFiles(const QList<QStringList>& files)
 {
-  if (files.size() <= 0)
+  if (files.empty())
   {
     return;
   }
@@ -188,11 +189,11 @@ void pqFileDialogRecentDirsModel::setChosenFiles(const QList<QStringList>& files
 
   // We don't use QFileInfo here since it messes the paths up if the client and
   // the server are heterogeneous systems.
-  std::string unix_path = filename.toLocal8Bit().data();
+  std::string unix_path = filename.toUtf8().toStdString();
   vtksys::SystemTools::ConvertToUnixSlashes(unix_path);
 
   std::string dirname;
-  std::string::size_type slashPos = unix_path.rfind("/");
+  std::string::size_type slashPos = unix_path.rfind('/');
   if (slashPos == std::string::npos)
   {
     return;

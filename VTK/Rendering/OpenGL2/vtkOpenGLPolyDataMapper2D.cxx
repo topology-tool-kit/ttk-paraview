@@ -416,25 +416,16 @@ void vtkOpenGLPolyDataMapper2D::SetCameraShaderParameters(
     top = bottom + 1.0;
   }
 
-  float nearV = 0;
-  float farV = VTK_FLOAT_MAX;
-  if (actor->GetProperty()->GetDisplayLocation() != VTK_FOREGROUND_LOCATION)
-  {
-    nearV = -VTK_FLOAT_MAX;
-    farV = 0;
-  }
-
   // compute the combined ModelView matrix and send it down to save time in the shader
   vtkMatrix4x4* tmpMat = vtkMatrix4x4::New();
   tmpMat->SetElement(0, 0, 2.0 / (right - left));
   tmpMat->SetElement(1, 1, 2.0 / (top - bottom));
-  // XXX(cppcheck): possible division by zero
-  tmpMat->SetElement(2, 2, -2.0 / (farV - nearV));
-  tmpMat->SetElement(3, 3, 1.0);
   tmpMat->SetElement(0, 3, -1.0 * (right + left) / (right - left));
   tmpMat->SetElement(1, 3, -1.0 * (top + bottom) / (top - bottom));
-  // XXX(cppcheck): possible division by zero
-  tmpMat->SetElement(2, 3, -1.0 * (farV + nearV) / (farV - nearV));
+  tmpMat->SetElement(2, 2, 0.0);
+  tmpMat->SetElement(
+    2, 3, actor->GetProperty()->GetDisplayLocation() == VTK_FOREGROUND_LOCATION ? -1.0 : 1.0);
+  tmpMat->SetElement(3, 3, 1.0);
   tmpMat->Transpose();
   /*
     if (this->VBO->GetCoordShiftAndScaleEnabled())

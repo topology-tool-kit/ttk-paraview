@@ -491,7 +491,9 @@ vtkAbstractImageInterpolator* vtkImageReslice::GetInterpolator()
 {
   if (this->Interpolator == nullptr)
   {
-    this->Interpolator = vtkImageInterpolator::New();
+    vtkImageInterpolator* i = vtkImageInterpolator::New();
+    i->SetInterpolationMode(this->InterpolationMode);
+    this->Interpolator = i;
   }
 
   return this->Interpolator;
@@ -1085,9 +1087,26 @@ int vtkImageReslice::RequestInformation(vtkInformation* vtkNotUsed(request),
   outInfo->Set(vtkDataObject::SPACING(), outSpacing, 3);
   outInfo->Set(vtkDataObject::ORIGIN(), outOrigin, 3);
 
+  return this->RequestInformationBase(inputVector, outputVector);
+}
+
+//------------------------------------------------------------------------------
+int vtkImageReslice::RequestInformationBase(
+  vtkInformationVector** inputVector, vtkInformationVector* outputVector)
+{
+  vtkInformation* inInfo = inputVector[0]->GetInformationObject(0);
+  vtkInformation* outInfo = outputVector->GetInformationObject(0);
   vtkInformation* outStencilInfo = outputVector->GetInformationObject(1);
+
+  int outWholeExt[6];
+  outInfo->Get(vtkStreamingDemandDrivenPipeline::WHOLE_EXTENT(), outWholeExt);
+
   if (this->GenerateStencilOutput)
   {
+    double outSpacing[3], outOrigin[3];
+    outInfo->Get(vtkDataObject::SPACING(), outSpacing);
+    outInfo->Get(vtkDataObject::ORIGIN(), outOrigin);
+
     outStencilInfo->Set(vtkStreamingDemandDrivenPipeline::WHOLE_EXTENT(), outWholeExt, 6);
     outStencilInfo->Set(vtkDataObject::SPACING(), outSpacing, 3);
     outStencilInfo->Set(vtkDataObject::ORIGIN(), outOrigin, 3);
@@ -1772,7 +1791,7 @@ void vtkImageResliceClearExecute(
   for (; !iter.IsAtEnd(); iter.NextSpan())
   {
     // clear the pixels to background color and go to next row
-    outPtr = iter.GetVoidPointer(outData, iter.GetId());
+    outPtr = vtkImagePointDataIterator::GetVoidPointer(outData, iter.GetId());
     setpixels(outPtr, background, numscalars, outExt[1] - outExt[0] + 1);
   }
 
@@ -1926,7 +1945,7 @@ void vtkImageResliceExecute(vtkImageReslice* self, vtkDataArray* scalars,
 
   // create an iterator to march through the data
   vtkImagePointDataIterator iter(outData, outExt, stencil, self, threadId);
-  char* outPtr0 = static_cast<char*>(iter.GetVoidPointer(outData));
+  char* outPtr0 = static_cast<char*>(vtkImagePointDataIterator::GetVoidPointer(outData));
   for (; !iter.IsAtEnd(); iter.NextSpan())
   {
     int span = static_cast<int>(iter.SpanEndId() - iter.GetId());

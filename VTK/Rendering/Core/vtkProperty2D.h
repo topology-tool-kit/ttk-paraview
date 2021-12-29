@@ -51,41 +51,41 @@ public:
    */
   void DeepCopy(vtkProperty2D* p);
 
-  //@{
+  ///@{
   /**
    * Set/Get the RGB color of this property.
    */
   vtkSetVector3Macro(Color, double);
   vtkGetVector3Macro(Color, double);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/Get the Opacity of this property.
    */
   vtkGetMacro(Opacity, double);
   vtkSetMacro(Opacity, double);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/Get the diameter of a Point. The size is expressed in screen units.
    * This is only implemented for OpenGL. The default is 1.0.
    */
   vtkSetClampMacro(PointSize, float, 0, VTK_FLOAT_MAX);
   vtkGetMacro(PointSize, float);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/Get the width of a Line. The width is expressed in screen units.
    * This is only implemented for OpenGL. The default is 1.0.
    */
   vtkSetClampMacro(LineWidth, float, 0, VTK_FLOAT_MAX);
   vtkGetMacro(LineWidth, float);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/Get the stippling pattern of a Line, as a 16-bit binary pattern
    * (1 = pixel on, 0 = pixel off).
@@ -93,9 +93,9 @@ public:
    */
   vtkSetMacro(LineStipplePattern, int);
   vtkGetMacro(LineStipplePattern, int);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/Get the stippling repeat factor of a Line, which specifies how
    * many times each bit in the pattern is to be repeated.
@@ -103,14 +103,14 @@ public:
    */
   vtkSetClampMacro(LineStippleRepeatFactor, int, 1, VTK_INT_MAX);
   vtkGetMacro(LineStippleRepeatFactor, int);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * The DisplayLocation is either background or foreground.
    * If it is background, then this 2D actor will be drawn
    * behind all 3D props or foreground 2D actors. If it is
-   * background, then this 2D actor will be drawn in front of
+   * foreground, then this 2D actor will be drawn in front of
    * all 3D props and background 2D actors. Within 2D actors
    * of the same DisplayLocation type, order is determined by
    * the order in which the 2D actors were added to the viewport.
@@ -119,7 +119,7 @@ public:
   vtkGetMacro(DisplayLocation, int);
   void SetDisplayLocationToBackground() { this->DisplayLocation = VTK_BACKGROUND_LOCATION; }
   void SetDisplayLocationToForeground() { this->DisplayLocation = VTK_FOREGROUND_LOCATION; }
-  //@}
+  ///@}
 
   /**
    * Have the device specific subclass render this property.

@@ -26,14 +26,14 @@
  * Note that is vtkObject::GlobalWarningDisplay is off, this class will not
  * receive any ErrorEvents and hence will not report any errors that were
  * raised.
-*/
+ */
 
 #ifndef vtkCommunicationErrorCatcher_h
 #define vtkCommunicationErrorCatcher_h
 
 #include "vtkPVVTKExtensionsCoreModule.h" // needed for export macro
 #include "vtkWeakPointer.h"               // needed for vtkWeakPointer.
-#include <string>
+#include <string>                         // for std::string
 
 class vtkCommunicator;
 class vtkMultiProcessController;

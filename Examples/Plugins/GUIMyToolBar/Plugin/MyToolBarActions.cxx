@@ -14,11 +14,9 @@ MyToolBarActions::MyToolBarActions(QObject* p)
   QObject::connect(a, SIGNAL(triggered(bool)), this, SLOT(onAction()));
 }
 
-MyToolBarActions::~MyToolBarActions()
-{
-}
+MyToolBarActions::~MyToolBarActions() = default;
 
 void MyToolBarActions::onAction()
 {
-  QMessageBox::information(NULL, "MyAction", "MyAction was invoked\n");
+  QMessageBox::information(nullptr, "MyAction", "MyAction was invoked\n");
 }

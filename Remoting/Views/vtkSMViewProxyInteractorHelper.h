@@ -22,7 +22,7 @@
  * subclass). It's primarily designed to work with vtkSMRenderViewProxy (and
  * subclasses), but it should work with other types of views too.
  *
- * To use this helper, the view typically creates a instance for itself as register
+ * To use this helper, the view typically creates an instance for itself as register
  * itself (using vtkSMViewProxyInteractorHelper::SetViewProxy) and then calls
  * vtkSMViewProxyInteractorHelper::SetupInteractor(). This method will initialize
  * the interactor (potentially changing some ivars on the interactor to avoid
@@ -39,10 +39,15 @@
  * vtkRenderWindowInteractor fires the vtkCommand::EndInteractionEvent. If
  * missing, or less than 0.01, the view will immediately render.
  *
+ * \li \c WindowResizeNonInteractiveRenderDelay :- when present provides time in seconds to
+ * delay the StillRender() call after the window has been resized, ie. the interactor
+ * fires a vtkCommand::WindowResizeEvent. If missing or equals 0, the view will
+ * immediately render.
+ *
  * \li \c EnableRenderOnInteraction :- when present provides a flag whether the interactor
  * should trigger the render calls (either StillRender or InteractiveRender) as
  * a consequence of interaction. If missing, we treat EnableRender as ON.
-*/
+ */
 
 #ifndef vtkSMViewProxyInteractorHelper_h
 #define vtkSMViewProxyInteractorHelper_h
@@ -80,7 +85,7 @@ public:
    */
   void SetupInteractor(vtkRenderWindowInteractor* iren);
   vtkRenderWindowInteractor* GetInteractor();
-  void CleanupInteractor() { this->SetupInteractor(NULL); }
+  void CleanupInteractor() { this->SetupInteractor(nullptr); }
   //@}
 
 protected:
@@ -103,6 +108,8 @@ protected:
   int DelayedRenderTimerId;
   bool Interacting;
   bool Interacted;
+
+  int EndWindowResizeTimerId;
 
 private:
   vtkSMViewProxyInteractorHelper(const vtkSMViewProxyInteractorHelper&) = delete;

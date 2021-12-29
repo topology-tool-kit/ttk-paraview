@@ -54,23 +54,32 @@ public:
    */
   void ThresholdBetween(double lower, double upper);
 
-  //@{
+  ///@{
   /**
    * Set/Get the upper threshold.
    */
   vtkSetMacro(UpperThreshold, double);
   vtkGetMacro(UpperThreshold, double);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/Get the lower threshold.
    */
   vtkSetMacro(LowerThreshold, double);
   vtkGetMacro(LowerThreshold, double);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
+  /**
+   * Set/Get the component to threshold. Set this to a value greater than the number of
+   * components in the selected data array to threshold by magnitude.
+   */
+  vtkSetMacro(InputArrayComponent, int);
+  vtkGetMacro(InputArrayComponent, int);
+  ///@}
+
+  ///@{
   /**
    * Set/get the desired precision for the output types. See the documentation
    * for the vtkAlgorithm::DesiredOutputPrecision enum for an explanation of
@@ -78,7 +87,7 @@ public:
    */
   vtkSetMacro(OutputPointsPrecision, int);
   vtkGetMacro(OutputPointsPrecision, int);
-  //@}
+  ///@}
 
 protected:
   vtkThresholdPoints();
@@ -91,6 +100,7 @@ protected:
 
   double LowerThreshold;
   double UpperThreshold;
+  int InputArrayComponent;
   int OutputPointsPrecision;
 
   int (vtkThresholdPoints::*ThresholdFunction)(double s);

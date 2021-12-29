@@ -55,15 +55,15 @@ void pqCameraReaction::updateEnableState()
   pqView* view = pqActiveObjects::instance().activeView();
   pqPipelineSource* source = pqActiveObjects::instance().activeSource();
   pqRenderView* rview = qobject_cast<pqRenderView*>(view);
-  if (view && this->ReactionMode == RESET_CAMERA)
+  if (view && (this->ReactionMode == RESET_CAMERA || this->ReactionMode == RESET_CAMERA_CLOSEST))
   {
     this->parentAction()->setEnabled(true);
   }
   else if (rview)
   {
-    if (this->ReactionMode == ZOOM_TO_DATA)
+    if (this->ReactionMode == ZOOM_TO_DATA || this->ReactionMode == ZOOM_CLOSEST_TO_DATA)
     {
-      this->parentAction()->setEnabled(source != 0);
+      this->parentAction()->setEnabled(source != nullptr);
     }
     else
     {
@@ -73,7 +73,7 @@ void pqCameraReaction::updateEnableState()
       if (hints)
       {
         cameraResetButtonsEnabled =
-          hints->FindNestedElementByName("DisableCameraToolbarButtons") == NULL;
+          hints->FindNestedElementByName("DisableCameraToolbarButtons") == nullptr;
       }
 
       this->parentAction()->setEnabled(cameraResetButtonsEnabled);
@@ -123,22 +123,30 @@ void pqCameraReaction::onTriggered()
       break;
 
     case ROTATE_CAMERA_CW:
-      this->rotateCamera(90.0);
+      this->rotateCamera(-90.0);
       break;
 
     case ROTATE_CAMERA_CCW:
-      this->rotateCamera(-90.0);
+      this->rotateCamera(90.0);
+      break;
+
+    case ZOOM_CLOSEST_TO_DATA:
+      this->zoomToData(true);
+      break;
+
+    case RESET_CAMERA_CLOSEST:
+      this->resetCamera(true);
       break;
   }
 }
 
 //-----------------------------------------------------------------------------
-void pqCameraReaction::resetCamera()
+void pqCameraReaction::resetCamera(bool closest)
 {
   pqView* view = pqActiveObjects::instance().activeView();
   if (view)
   {
-    view->resetDisplay();
+    view->resetDisplay(closest);
   }
 }
 
@@ -190,7 +198,7 @@ void pqCameraReaction::resetNegativeZ()
 }
 
 //-----------------------------------------------------------------------------
-void pqCameraReaction::zoomToData()
+void pqCameraReaction::zoomToData(bool closest)
 {
   pqRenderView* renModule = qobject_cast<pqRenderView*>(pqActiveObjects::instance().activeView());
   pqPipelineRepresentation* repr =
@@ -198,7 +206,7 @@ void pqCameraReaction::zoomToData()
   if (renModule && repr)
   {
     vtkSMRenderViewProxy* rm = renModule->getRenderViewProxy();
-    rm->ZoomTo(repr->getProxy());
+    rm->ZoomTo(repr->getProxy(), closest);
     renModule->render();
   }
 }

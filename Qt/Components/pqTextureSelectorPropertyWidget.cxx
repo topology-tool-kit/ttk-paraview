@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqView.h"
 
 // Server Manager Includes
+#include "vtkDataSetAttributes.h"
 #include "vtkPVDataInformation.h"
 #include "vtkPVDataSetAttributesInformation.h"
 #include "vtkPVXMLElement.h"
@@ -89,7 +90,7 @@ pqTextureSelectorPropertyWidget::pqTextureSelectorPropertyWidget(
   // Valid only for a RepresentationProxy
   vtkPVXMLElement* hints = smProperty->GetHints()
     ? smProperty->GetHints()->FindNestedElementByName("TextureSelectorWidget")
-    : NULL;
+    : nullptr;
   if (hints)
   {
     bool checkTCoords = strcmp(hints->GetAttributeOrDefault("check_tcoords", ""), "1") == 0;
@@ -124,7 +125,8 @@ void pqTextureSelectorPropertyWidget::onTextureChanged(vtkSMProxy* texture)
 void pqTextureSelectorPropertyWidget::onPropertyChanged()
 {
   bool block = this->blockSignals(true);
-  this->Selector->updateFromTexture(vtkSMPropertyHelper(this->property()).GetAsProxy());
+  vtkSMProxy* proxy = vtkSMPropertyHelper(this->property()).GetAsProxy();
+  this->Selector->updateFromTexture(proxy);
   this->blockSignals(block);
 }
 

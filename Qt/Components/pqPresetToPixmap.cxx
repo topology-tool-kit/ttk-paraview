@@ -51,7 +51,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QPainterPath>
 #include <QPen>
 #include <QPixmap>
-#include <QPixmap>
 #include <QSize>
 
 class pqPresetToPixmap::pqInternals
@@ -101,9 +100,7 @@ pqPresetToPixmap::pqPresetToPixmap(QObject* parentObject)
 }
 
 //-----------------------------------------------------------------------------
-pqPresetToPixmap::~pqPresetToPixmap()
-{
-}
+pqPresetToPixmap::~pqPresetToPixmap() = default;
 
 //-----------------------------------------------------------------------------
 QPixmap pqPresetToPixmap::render(const Json::Value& preset, const QSize& resolution) const
@@ -124,7 +121,7 @@ QPixmap pqPresetToPixmap::render(const Json::Value& preset, const QSize& resolut
   }
   else
   {
-    vtkPiecewiseFunction* pf = NULL;
+    vtkPiecewiseFunction* pf = nullptr;
     auto presets = vtkSMTransferFunctionPresets::GetInstance();
     if (presets->GetPresetHasOpacities(preset))
     {

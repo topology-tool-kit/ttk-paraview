@@ -18,7 +18,7 @@ namespace
 void Assemble(vtkDataAssembly* assembly, const std::vector<int>& children, int& count,
   int parent = 0, int depth = 1)
 {
-  if (children.size() == 0)
+  if (children.empty())
   {
     return;
   }
@@ -26,8 +26,9 @@ void Assemble(vtkDataAssembly* assembly, const std::vector<int>& children, int& 
   std::copy(std::next(children.begin(), 1), children.end(), subset.begin());
   for (auto cc = 0; cc < children.front(); ++cc)
   {
-    auto child = assembly->AddNode(
-      ("Child[" + std::to_string(depth) + "]#" + std::to_string(cc)).c_str(), parent);
+    auto name = ("Child[" + std::to_string(depth) + "]#" + std::to_string(cc));
+    auto child =
+      assembly->AddNode(vtkDataAssembly::MakeValidNodeName(name.c_str()).c_str(), parent);
     ++count;
     Assemble(assembly, subset, count, child, (depth + 1));
   }
@@ -100,8 +101,8 @@ int TestDataAssembly(int, char*[])
 
     VERIFY((assembly->SelectNodes({ "/" }) == std::vector<int>{ 0 }));
     VERIFY((assembly->SelectNodes({ "//sets" }) == std::vector<int>{ 2 }));
-    VERIFY((assembly->SelectNodes({ "/sets" }) == std::vector<int>{}));
-    VERIFY((assembly->SelectNodes({ "//sets/" }) == std::vector<int>{ 6, 7, 8 }));
+    VERIFY(assembly->SelectNodes({ "/sets" }).empty());
+    VERIFY((assembly->SelectNodes({ "//sets/*" }) == std::vector<int>{ 6, 7, 8 }));
     assembly->Print(cout);
 
     vtkNew<vtkDataAssembly> subset;
@@ -111,8 +112,10 @@ int TestDataAssembly(int, char*[])
     subset->RemapDataSetIndices({ { 11, 0 }, { 6, 1 } }, /*remove_unmapped=*/true);
     subset->Print(cout);
     VERIFY((subset->GetDataSetIndices(0) == std::vector<unsigned int>{ 0, 1 }));
-    VERIFY((subset->GetDataSetIndices(14) == std::vector<unsigned int>{}));
+    VERIFY(subset->GetDataSetIndices(14).empty());
     VERIFY((subset->GetDataSetIndices(15) == std::vector<unsigned int>{ 1 }));
+
+    VERIFY(vtkDataAssembly::IsNodeNameValid("Ying-Yang"));
   }
   catch (const TestFailed&)
   {

@@ -125,16 +125,16 @@ struct vtkScalarTreeMap;
 class VTKFILTERSCORE_EXPORT vtkContour3DLinearGrid : public vtkDataObjectAlgorithm
 {
 public:
-  //@{
+  ///@{
   /**
    * Standard methods for construction, type info, and printing.
    */
   static vtkContour3DLinearGrid* New();
   vtkTypeMacro(vtkContour3DLinearGrid, vtkDataObjectAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Methods to set / get contour values.
    */
@@ -146,9 +146,9 @@ public:
   vtkIdType GetNumberOfContours();
   void GenerateValues(int numContours, double range[2]);
   void GenerateValues(int numContours, double rangeStart, double rangeEnd);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Indicate whether to merge coincident points. This takes extra time and
    * produces fewer output points, creating a "watertight" contour
@@ -157,9 +157,9 @@ public:
   vtkSetMacro(MergePoints, vtkTypeBool);
   vtkGetMacro(MergePoints, vtkTypeBool);
   vtkBooleanMacro(MergePoints, vtkTypeBool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Indicate whether to interpolate input attributes onto the isosurface. By
    * default this option is off.
@@ -167,9 +167,9 @@ public:
   vtkSetMacro(InterpolateAttributes, vtkTypeBool);
   vtkGetMacro(InterpolateAttributes, vtkTypeBool);
   vtkBooleanMacro(InterpolateAttributes, vtkTypeBool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Indicate whether to compute output point normals. An averaging method is
    * used to average shared triangle normals. By default this if off. This is
@@ -178,9 +178,21 @@ public:
   vtkSetMacro(ComputeNormals, vtkTypeBool);
   vtkGetMacro(ComputeNormals, vtkTypeBool);
   vtkBooleanMacro(ComputeNormals, vtkTypeBool);
-  //@}
+  ///@}
 
   //@{
+  /**
+   * Set/Get flag to compute scalars. When enabled, and when the
+    InterpolateAttributes option is on, vtkContour3DLinearGrid will add an
+    array corresponding to the array used to compute the contour and
+    populate it with values.
+   */
+  vtkSetMacro(ComputeScalars, vtkTypeBool);
+  vtkGetMacro(ComputeScalars, vtkTypeBool);
+  vtkBooleanMacro(ComputeScalars, vtkTypeBool);
+  //@}
+
+  ///@{
   /**
    * Set/get the desired precision for the output types. See the documentation
    * for the vtkAlgorithm::Precision enum for an explanation of the available
@@ -188,7 +200,7 @@ public:
    */
   void SetOutputPointsPrecision(int precision);
   int GetOutputPointsPrecision() const;
-  //@}
+  ///@}
 
   /**
    * Overloaded GetMTime() because of delegation to the internal
@@ -196,7 +208,7 @@ public:
    */
   vtkMTimeType GetMTime() override;
 
-  //@{
+  ///@{
   /**
    * Enable the use of a scalar tree to accelerate contour extraction. By
    * default this is off. If enabled, and a scalar tree is not specified, then
@@ -205,18 +217,18 @@ public:
   vtkSetMacro(UseScalarTree, vtkTypeBool);
   vtkGetMacro(UseScalarTree, vtkTypeBool);
   vtkBooleanMacro(UseScalarTree, vtkTypeBool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Specify the scalar tree to use. By default a vtkSpanSpace scalar tree is
    * used.
    */
   virtual void SetScalarTree(vtkScalarTree*);
   vtkGetObjectMacro(ScalarTree, vtkScalarTree);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Force sequential processing (i.e. single thread) of the contouring
    * process. By default, sequential processing is off. Note this flag only
@@ -228,7 +240,7 @@ public:
   vtkSetMacro(SequentialProcessing, vtkTypeBool);
   vtkGetMacro(SequentialProcessing, vtkTypeBool);
   vtkBooleanMacro(SequentialProcessing, vtkTypeBool);
-  //@}
+  ///@}
 
   /**
    *  Return the number of threads actually used during execution. This is
@@ -263,6 +275,7 @@ protected:
   vtkTypeBool MergePoints;
   vtkTypeBool InterpolateAttributes;
   vtkTypeBool ComputeNormals;
+  vtkTypeBool ComputeScalars;
   vtkTypeBool SequentialProcessing;
   int NumberOfThreadsUsed;
   bool LargeIds; // indicate whether integral ids are large(==true) or not

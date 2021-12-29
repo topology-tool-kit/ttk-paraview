@@ -47,7 +47,8 @@ struct vtkTestUtilities
    * is true, appends a slash to the resulting string. The returned string has
    * to be deleted (with delete[]) by the user.
    */
-  static inline char* ExpandDataFileName(int argc, char* argv[], const char* fname, int slash = 0);
+  static inline VTK_FILEPATH char* ExpandDataFileName(
+    int argc, char* argv[], VTK_FILEPATH const char* fname, int slash = 0);
   /**
    * Function returning either a command line argument, an environment variable
    * or a default value. The returned string has to be deleted (with delete[])
@@ -56,7 +57,7 @@ struct vtkTestUtilities
   static inline char* GetArgOrEnvOrDefault(
     const char* arg, int argc, char* argv[], const char* env, const char* def);
 
-  //@{
+  ///@{
   /**
    * Given a file name, this function returns a new string which is (in theory)
    * the full path. This path is constructed by prepending the file name with a
@@ -64,9 +65,9 @@ struct vtkTestUtilities
    * slash is true, appends a slash to the resulting string. The returned
    * string has to be deleted (with delete[]) by the user.
    */
-  static inline char* ExpandFileNameWithArgOrEnvOrDefault(const char* arg, int argc, char* argv[],
-    const char* env, const char* def, const char* fname, int slash = 0);
-  //@}
+  static inline VTK_FILEPATH char* ExpandFileNameWithArgOrEnvOrDefault(const char* arg, int argc,
+    char* argv[], const char* env, const char* def, VTK_FILEPATH const char* fname, int slash = 0);
+  ///@}
 };
 
 inline char* vtkTestUtilities::GetDataRoot(int argc, char* argv[])

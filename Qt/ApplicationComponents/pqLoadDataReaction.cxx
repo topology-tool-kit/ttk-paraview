@@ -65,7 +65,7 @@ void pqLoadDataReaction::updateEnableState()
 {
   pqActiveObjects& activeObjects = pqActiveObjects::instance();
   // TODO: also is there's a pending accept.
-  bool enable_state = (activeObjects.activeServer() != NULL);
+  bool enable_state = (activeObjects.activeServer() != nullptr);
   this->parentAction()->setEnabled(enable_state);
 }
 
@@ -119,21 +119,21 @@ pqPipelineSource* pqLoadDataReaction::loadData(
 {
   if (files.empty())
   {
-    return NULL;
+    return nullptr;
   }
 
-  server = server != NULL ? server : pqActiveObjects::instance().activeServer();
+  server = server != nullptr ? server : pqActiveObjects::instance().activeServer();
   if (!server)
   {
     qCritical() << "Cannot create reader without an active server.";
-    return NULL;
+    return nullptr;
   }
 
   vtkSMReaderFactory* readerFactory = vtkSMProxyManager::GetProxyManager()->GetReaderFactory();
-  pqPipelineSource* reader = NULL;
+  pqPipelineSource* reader = nullptr;
 
   // Extension to ReaderType,ReaderGroup Hash table
-  QHash<QString, QPair<QString, QString> > extensionToReaderSelection;
+  QHash<QString, QPair<QString, QString>> extensionToReaderSelection;
   foreach (const QStringList& filegroup, files)
   {
     QPair<QString, QString> readerInfo; // type,group
@@ -153,7 +153,7 @@ pqPipelineSource* pqLoadDataReaction::loadData(
     else
     {
       // Determine reader type based on if we have asked the user for this extension before
-      QHash<QString, QPair<QString, QString> >::const_iterator it =
+      QHash<QString, QPair<QString, QString>>::const_iterator it =
         extensionToReaderSelection.find(fi.suffix());
       if (it != extensionToReaderSelection.end())
       {

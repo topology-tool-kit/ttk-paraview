@@ -294,6 +294,13 @@ void vtkQtTreeRingLabelMapper::RenderOpaqueGeometry(vtkViewport* viewport, vtkAc
 }
 
 void vtkQtTreeRingLabelMapper::LabelTree(vtkTree* tree, vtkDataArray* sectorInfo,
+  vtkDataArray* numericData, vtkStringArray* stringData, int activeComp, int numComps,
+  vtkViewport* viewport)
+{
+  LabelTree(tree, sectorInfo, numericData, stringData, nullptr, activeComp, numComps, viewport);
+}
+
+void vtkQtTreeRingLabelMapper::LabelTree(vtkTree* tree, vtkDataArray* sectorInfo,
   vtkDataArray* numericData, vtkStringArray* stringData, vtkUnicodeStringArray* uStringData,
   int activeComp, int numComps, vtkViewport* viewport)
 {
@@ -360,10 +367,15 @@ void vtkQtTreeRingLabelMapper::LabelTree(vtkTree* tree, vtkDataArray* sectorInfo
     // set ellipsis bounds for this piece of text
     // Note, don't use ellipsis unless at least 5 characters (w's) can be displayed...
     QString minString("wwwww");
+#if (QT_VERSION <= QT_VERSION_CHECK(5, 11, 0))
+    int minStringWidth = fontMetric.width(minString);
+#else
+    int minStringWidth = fontMetric.horizontalAdvance(minString);
+#endif
     double allowedTextWidth = 0;
     if (sdimDC[0] > sdimDC[1])
     {
-      if (sdimDC[0] < fontMetric.width(minString))
+      if (sdimDC[0] < minStringWidth)
       {
         continue;
       }
@@ -371,7 +383,7 @@ void vtkQtTreeRingLabelMapper::LabelTree(vtkTree* tree, vtkDataArray* sectorInfo
     }
     else
     {
-      if (sdimDC[1] < fontMetric.width(minString))
+      if (sdimDC[1] < minStringWidth)
       {
         continue;
       }
@@ -408,11 +420,19 @@ void vtkQtTreeRingLabelMapper::LabelTree(vtkTree* tree, vtkDataArray* sectorInfo
         break;
       case VTK_TEXT_CENTERED:
         // FIXME - The width is not correct for html encodings...
+#if (QT_VERSION <= QT_VERSION_CHECK(5, 11, 0))
         delta_x = -(fontMetric.width(testString)) / 2.;
+#else
+        delta_x = -(fontMetric.horizontalAdvance(testString)) / 2.;
+#endif
         break;
       case VTK_TEXT_RIGHT:
         // FIXME - The width is not correct for html encodings...
+#if (QT_VERSION <= QT_VERSION_CHECK(5, 11, 0))
         delta_x = -fontMetric.width(testString);
+#else
+        delta_x = -fontMetric.horizontalAdvance(testString);
+#endif
         break;
     }
 
@@ -580,7 +600,14 @@ void vtkQtTreeRingLabelMapper::PrintSelf(ostream& os, vtkIndent indent)
 }
 
 void vtkQtTreeRingLabelMapper::GetVertexLabel(vtkIdType vertex, vtkDataArray* numericData,
-  vtkStringArray* stringData, vtkUnicodeStringArray* uStringData, int activeComp, int numComp,
+  vtkStringArray* stringData, int activeComp, int numComps, char* string, size_t stringSize)
+{
+  GetVertexLabel(
+    vertex, numericData, stringData, nullptr, activeComp, numComps, string, stringSize);
+}
+
+void vtkQtTreeRingLabelMapper::GetVertexLabel(vtkIdType vertex, vtkDataArray* numericData,
+  vtkStringArray* stringData, vtkUnicodeStringArray* uStringData, int activeComp, int numComps,
   char* string, size_t stringSize)
 {
   char format[1024];
@@ -588,7 +615,7 @@ void vtkQtTreeRingLabelMapper::GetVertexLabel(vtkIdType vertex, vtkDataArray* nu
   int j;
   if (numericData)
   {
-    if (numComp == 1)
+    if (numComps == 1)
     {
       if (numericData->GetDataType() == VTK_CHAR)
       {
@@ -611,14 +638,14 @@ void vtkQtTreeRingLabelMapper::GetVertexLabel(vtkIdType vertex, vtkDataArray* nu
     {
       strcpy(format, "(");
       strcat(format, this->LabelFormat);
-      for (j = 0; j < (numComp - 1); j++)
+      for (j = 0; j < (numComps - 1); j++)
       {
         snprintf(string, stringSize, format, numericData->GetComponent(vertex, j));
         strcpy(format, string);
         strcat(format, ", ");
         strcat(format, this->LabelFormat);
       }
-      snprintf(string, stringSize, format, numericData->GetComponent(vertex, numComp - 1));
+      snprintf(string, stringSize, format, numericData->GetComponent(vertex, numComps - 1));
       strcat(string, ")");
     }
   }

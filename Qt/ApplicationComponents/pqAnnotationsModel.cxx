@@ -334,7 +334,7 @@ QVariant pqAnnotationsModel::data(const QModelIndex& idx, int role) const
     {
       auto value = this->Internals->Items[idx.row()].Value;
       unsigned int unused = 0;
-      res = this->VisibilityDomain->IsInDomain(value.toLocal8Bit().data(), unused) != 0;
+      res = this->VisibilityDomain->IsInDomain(value.toUtf8().data(), unused) != 0;
     }
 
     return res ? true : false;
@@ -372,12 +372,12 @@ QVariant pqAnnotationsModel::headerData(int section, Qt::Orientation orientation
   }
   else if (orientation == Qt::Horizontal && role == Qt::CheckStateRole && section == VISIBILITY)
   {
-    if (this->Internals->Items.size() == 0)
+    if (this->Internals->Items.empty())
     {
       return Qt::Unchecked;
     }
     Qt::CheckState ret = this->Internals->Items[0].Visibility;
-    for (const auto item : this->Internals->Items)
+    for (const auto& item : this->Internals->Items)
     {
       if (item.Visibility != ret)
       {
@@ -581,13 +581,13 @@ QModelIndex pqAnnotationsModel::removeAnnotations(const QModelIndexList& toRemov
     Q_EMIT this->endRemoveRows();
   }
 
-  if (rowsToRemove.size() > 0 &&
+  if (!rowsToRemove.empty() &&
     *rowsToRemove.begin() > static_cast<int>(this->Internals->Items.size()))
   {
     return this->index(*rowsToRemove.begin(), 0);
   }
 
-  if (this->Internals->Items.size() > 0)
+  if (!this->Internals->Items.empty())
   {
     return this->index(static_cast<int>(this->Internals->Items.size()) - 1, 0);
   }
@@ -604,9 +604,9 @@ void pqAnnotationsModel::removeAllAnnotations()
 
 //-----------------------------------------------------------------------------
 void pqAnnotationsModel::setAnnotations(
-  const std::vector<std::pair<QString, QString> >& newAnnotations)
+  const std::vector<std::pair<QString, QString>>& newAnnotations)
 {
-  if (newAnnotations.size() == 0)
+  if (newAnnotations.empty())
   {
     this->removeAllAnnotations();
   }
@@ -687,9 +687,9 @@ void pqAnnotationsModel::setAnnotations(
 }
 
 //-----------------------------------------------------------------------------
-std::vector<std::pair<QString, QString> > pqAnnotationsModel::annotations() const
+std::vector<std::pair<QString, QString>> pqAnnotationsModel::annotations() const
 {
-  std::vector<std::pair<QString, QString> > strAnnotations;
+  std::vector<std::pair<QString, QString>> strAnnotations;
   strAnnotations.reserve(this->Internals->Items.size());
   for (const AnnotationItem& item : this->Internals->Items)
   {
@@ -700,11 +700,11 @@ std::vector<std::pair<QString, QString> > pqAnnotationsModel::annotations() cons
 
 //-----------------------------------------------------------------------------
 void pqAnnotationsModel::setVisibilities(
-  const std::vector<std::pair<QString, int> >& newVisibilities)
+  const std::vector<std::pair<QString, int>>& newVisibilities)
 {
   bool visibilityFlag = false;
 
-  for (auto vis : newVisibilities)
+  for (const auto& vis : newVisibilities)
   {
     auto name = vis.first;
     auto foundItem = std::find_if(this->Internals->Items.begin(), this->Internals->Items.end(),
@@ -730,9 +730,9 @@ void pqAnnotationsModel::setVisibilities(
 }
 
 //-----------------------------------------------------------------------------
-std::vector<std::pair<QString, int> > pqAnnotationsModel::visibilities() const
+std::vector<std::pair<QString, int>> pqAnnotationsModel::visibilities() const
 {
-  std::vector<std::pair<QString, int> > visibilities;
+  std::vector<std::pair<QString, int>> visibilities;
   for (const AnnotationItem& item : this->Internals->Items)
   {
     visibilities.push_back(std::make_pair(item.Value, item.Visibility));
@@ -784,7 +784,7 @@ std::vector<QColor> pqAnnotationsModel::indexedColors() const
 //-----------------------------------------------------------------------------
 bool pqAnnotationsModel::hasColors() const
 {
-  return this->Internals->Colors.size() != 0;
+  return !this->Internals->Colors.empty();
 }
 
 //-----------------------------------------------------------------------------

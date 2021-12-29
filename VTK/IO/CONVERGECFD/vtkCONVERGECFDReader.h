@@ -31,7 +31,9 @@
  * Time series are supported. The reader assumes a time series is defined
  * in a sequence of files that follow the naming convention
  *
+ * \code
  * <prefix><zero-padded index>[_][<time>].h5
+ * \endcode
  *
  * where the prefix is determined from the FileName property passed to
  * the reader. The underscore and time elements are optional. The time
@@ -45,19 +47,19 @@
 
 #include "vtkIOCONVERGECFDModule.h" // For export macro
 
-#include "vtkMultiBlockDataSetAlgorithm.h"
-#include "vtkNew.h"
+#include "vtkNew.h" // for vtkNew
+#include "vtkPartitionedDataSetCollectionAlgorithm.h"
 
-#include <string>
-#include <vector>
+#include <string> // for std::string
+#include <vector> // for std::vector
 
 class vtkDataArraySelection;
 
-class VTKIOCONVERGECFD_EXPORT vtkCONVERGECFDReader : public vtkMultiBlockDataSetAlgorithm
+class VTKIOCONVERGECFD_EXPORT vtkCONVERGECFDReader : public vtkPartitionedDataSetCollectionAlgorithm
 {
 public:
   static vtkCONVERGECFDReader* New();
-  vtkTypeMacro(vtkCONVERGECFDReader, vtkMultiBlockDataSetAlgorithm);
+  vtkTypeMacro(vtkCONVERGECFDReader, vtkPartitionedDataSetCollectionAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /**
@@ -76,15 +78,15 @@ public:
   /**
    * Determine if the file can be read with this reader.
    */
-  virtual int CanReadFile(const char* fname);
+  virtual int CanReadFile(VTK_FILEPATH const char* fname);
 
-  //@{
+  ///@{
   /**
    * Specify file name of the Exodus file.
    */
-  vtkSetStringMacro(FileName);
-  vtkGetStringMacro(FileName);
-  //@}
+  vtkSetFilePathMacro(FileName);
+  vtkGetFilePathMacro(FileName);
+  ///@}
 
 protected:
   vtkCONVERGECFDReader();

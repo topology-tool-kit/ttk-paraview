@@ -24,7 +24,7 @@
  * type arguments.
  * @sa
  * vtkSMVectorProperty vtkSMDoubleVectorProperty vtkSMIntVectorProperty
-*/
+ */
 
 #ifndef vtkSMStringVectorProperty_h
 #define vtkSMStringVectorProperty_h
@@ -98,6 +98,14 @@ public:
    * Fills up the vtkStringList instance with the current value.
    */
   void GetElements(vtkStringList* list);
+
+  ///@{
+  /**
+   * Another API to access all elements.
+   */
+  const std::vector<std::string>& GetElements() const;
+  const std::vector<std::string>& GetUncheckedElements() const;
+  ///@}
 
   /**
    * Returns the value of 1 element.

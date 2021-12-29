@@ -105,6 +105,34 @@
     </Proxy>
 
     <!-- ================================================================== -->
+    <Proxy class="vtkPVRotateAroundOriginTransform" label="RotateAroundOriginTransform" name="RotateAroundOriginTransform">
+      <DoubleVectorProperty command="SetOriginOfRotation"
+                            default_values="0.0 0.0 0.0"
+                            label="Origin of rotation"
+                            name="OriginOfRotation"
+                            number_of_elements="3">
+        <DoubleRangeDomain name="range" />
+      </DoubleVectorProperty>
+      <DoubleVectorProperty command="SetAbsoluteRotation"
+                            default_values="0.0 0.0 0.0"
+                            label="Rotate"
+                            information_property="RotationInfo"
+                            name="Rotation"
+                            number_of_elements="3">
+        <DoubleRangeDomain name="range" />
+      </DoubleVectorProperty>
+      <DoubleVectorProperty command="GetAbsoluteRotation"
+                            default_values="0.0 0.0 0.0"
+                            information_only="1"
+                            name="RotationInfo"
+                            number_of_elements="3" />
+      <InputProperty is_internal="1" name="DummyInput" />
+      <PropertyGroup label="Origin of rotation" panel_widget="InteractiveHandle">
+        <Property function="WorldPosition" name="OriginOfRotation" />
+      </PropertyGroup>
+    </Proxy>
+
+    <!-- ================================================================== -->
   </ProxyGroup>
 
   <!-- ==================================================================== -->
@@ -450,5 +478,94 @@
     </Proxy>
 
     <!-- ================================================================== -->
+    <Proxy class="vtkPerlinNoise" name="PerlinNoise">
+      <InputProperty is_internal="1" name="Input" />
+      <DoubleVectorProperty
+          name="Frequency"
+          command="SetFrequency"
+          number_of_elements="3"
+          default_values="1 1 1">
+        <Documentation>
+          Set the frequency, or physical scale, of the noise function
+          (higher is finer scale).
+        </Documentation>
+      </DoubleVectorProperty>
+      <DoubleVectorProperty
+          name="Phase"
+          command="SetPhase"
+          number_of_elements="3"
+          default_values="0 0 0">
+        <Documentation>
+          This parameter can be used to shift the noise function within
+          space (perhaps to avoid a beat with a noise pattern at another
+          scale). Phase tends to repeat about every unit, so a phase of
+          0.5 is a half-cycle shift.
+        </Documentation>
+      </DoubleVectorProperty>
+      <DoubleVectorProperty
+          name="Amplitude"
+          command="SetAmplitude"
+          number_of_elements="1"
+          default_values="1">
+        <Documentation>
+          Amplitude can be negative. The noise function varies randomly
+          between -|Amplitude| and |Amplitude|.
+        </Documentation>
+      </DoubleVectorProperty>
+      <Hints>
+        <ProxyList>
+          <Link name="Input" with_property="Input" />
+        </ProxyList>
+      </Hints>
+    </Proxy>
+  </ProxyGroup>
+  <!-- ================================================================== -->
+  <ProxyGroup name="slice_implicit_functions">
+    <Proxy group="implicit_functions"
+           name="Plane" />
+    <Proxy group="implicit_functions"
+           name="Box" />
+    <Proxy group="implicit_functions"
+           name="Sphere" />
+    <Proxy group="implicit_functions"
+           name="Cylinder" />
+  </ProxyGroup>
+  <ProxyGroup name="slice_htg_implicit_functions">
+    <Proxy group="implicit_functions"
+           name="Plane" />
+    <Proxy group="implicit_functions"
+           name="Axis Aligned Plane" />
+  </ProxyGroup>
+  <ProxyGroup name="extract_implicit_functions">
+    <Proxy group="implicit_functions"
+           name="Plane" />
+    <Proxy group="implicit_functions"
+           name="Box" />
+    <Proxy group="implicit_functions"
+           name="Sphere" />
+  </ProxyGroup>
+  <ProxyGroup name="clip_implicit_functions">
+    <Proxy group="implicit_functions"
+           name="Plane" />
+    <Proxy group="implicit_functions"
+           name="Box" />
+    <Proxy group="implicit_functions"
+           name="Sphere" />
+    <Proxy group="implicit_functions"
+           name="Cylinder" />
+    <Proxy group="implicit_functions"
+           name="Scalar" />
+  </ProxyGroup>
+  <ProxyGroup name="clip_htg_implicit_functions">
+    <Proxy group="implicit_functions"
+           name="Plane" />
+    <Proxy group="implicit_functions"
+           name="Axis Aligned Box" />
+    <Proxy group="implicit_functions"
+           name="Sphere" />
+    <Proxy group="implicit_functions"
+           name="Cylinder" />
+    <Proxy group="implicit_functions"
+           name="Scalar" />
   </ProxyGroup>
 </ServerManagerConfiguration>

@@ -39,7 +39,7 @@ To report an issue.
    **Assignee**, **Milestone**, or **Labels**. These get set by members of the
    development team.
 4. If developers need more information on an issue, they will add the
-   `triage:needinfo` label as add a comment for the reporter soliciting more
+   `triage:needinfo` label and add a comment for the reporter soliciting more
    information. Once the reporter has provided the necessary information, he/she
    should remove the `triage:needinfo` label from the issue to notify the
    development team.
@@ -167,7 +167,7 @@ and to provide support.
 [developer setup script]: /Utilities/SetupForDevelopment.sh
 [Setup]: Documentation/dev/git/develop.md#Setup
 [Build Paraview]: Documentation/dev/build.md
-[Create a Topic][]: Documentation/dev/git/develop.md#create-a-topic
+[Create a Topic]: Documentation/dev/git/develop.md#create-a-topic
 [Share a Topic]: Documentation/dev/git/develop.md#share-a-topic
 [Create a Merge Request]: Documentation/dev/git/develop.md#create-a-merge-request
 [Review a Merge Request]: Documentation/dev/git/develop.md#review-a-merge-request

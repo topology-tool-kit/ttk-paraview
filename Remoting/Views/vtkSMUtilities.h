@@ -17,7 +17,7 @@
  * @brief   collection of utility methods.
  *
  * vtkSMUtilities defines a collection of useful static methods.
-*/
+ */
 
 #ifndef vtkSMUtilities_h
 #define vtkSMUtilities_h
@@ -82,14 +82,14 @@ public:
    * are determined by their extents.
    */
   static void Merge(vtkImageData* dest, vtkImageData* src, int borderWidth = 0,
-    const unsigned char* borderColorRGB = NULL);
+    const unsigned char* borderColorRGB = nullptr);
 
   /**
    * Merges multiple images into a single one and returns that.
    */
   static vtkSmartPointer<vtkImageData> MergeImages(
-    const std::vector<vtkSmartPointer<vtkImageData> >& images, int borderWidth = 0,
-    const unsigned char* borderColorRGB = NULL);
+    const std::vector<vtkSmartPointer<vtkImageData>>& images, int borderWidth = 0,
+    const unsigned char* borderColorRGB = nullptr);
 
   /**
    * Fill the specified extents in the image with the given color.

@@ -33,11 +33,11 @@
 #include "vtkSMSessionProxyManager.h"
 #include "vtkSmartPointer.h"
 #include "vtkSmartPyObject.h"
+#include "vtkStringList.h"
 
 #include <cassert>
 #include <map>
 #include <string>
-#include <tuple>
 #include <vector>
 
 #if VTK_MODULE_ENABLE_ParaView_RemotingLive
@@ -72,15 +72,20 @@ public:
   vtkNew<vtkCollection> Extractors;
 
   // Collection of views created in this pipeline.
-  std::vector<vtkSmartPointer<vtkSMProxy> > Views;
+  std::vector<vtkSmartPointer<vtkSMProxy>> Views;
 
-  // Collection of trivial producers created for `vtkCPPythonScriptV2Pipeline`
-  // along with the timestep that they're available at.
-  std::map<std::string, std::tuple<vtkSmartPointer<vtkSMProxy>, vtkIdType> > TrivialProducers;
+  // Collection of trivial producers created for `vtkCPPythonScriptV2Pipeline`.
+  std::map<std::string, vtkSmartPointer<vtkSMProxy>> TrivialProducers;
 
 #if VTK_MODULE_ENABLE_ParaView_RemotingLive
   vtkSmartPointer<vtkLiveInsituLink> LiveLink;
 #endif
+
+  // Keeps track of arguments
+  vtkNew<vtkStringList> ArgumentsList;
+
+  // Keeps track of execute parameters
+  vtkNew<vtkStringList> ParametersList;
 
   // flag that tells us the module has custom "execution" methods.
   bool HasCustomExecutionLogic = false;
@@ -101,7 +106,7 @@ public:
   /**
    * Imports the module.
    */
-  bool Import();
+  bool Import(const std::vector<std::string>& args);
 
   /**
    * Returns false is any error had occurred and was flushed, otherwise returns
@@ -172,13 +177,12 @@ bool vtkCPPythonScriptV2Helper::vtkInternals::Prepare(const std::string& fname)
 }
 
 //----------------------------------------------------------------------------
-bool vtkCPPythonScriptV2Helper::vtkInternals::Import()
+bool vtkCPPythonScriptV2Helper::vtkInternals::Import(const std::vector<std::string>& args)
 {
   if (!this->PackageName)
   {
     // not "prepared".
-    vtkLogF(ERROR, "Cannot determine package name. "
-                   "Did you forget to call 'PrepareFromScript'?");
+    vtkLogF(ERROR, "Cannot determine package name. Did you forget to call 'PrepareFromScript'?");
     return false;
   }
 
@@ -192,6 +196,13 @@ bool vtkCPPythonScriptV2Helper::vtkInternals::Import()
   {
     // avoid re-importing if it already failed.
     return false;
+  }
+
+  // populate args.
+  this->ArgumentsList->RemoveAllItems();
+  for (auto& argcc : args)
+  {
+    this->ArgumentsList->AddString(argcc.c_str());
   }
 
   vtkPythonScopeGilEnsurer gilEnsurer;
@@ -229,7 +240,6 @@ vtkCxxSetObjectMacro(vtkCPPythonScriptV2Helper, Options, vtkSMProxy);
 vtkCPPythonScriptV2Helper::vtkCPPythonScriptV2Helper()
   : Internals(new vtkCPPythonScriptV2Helper::vtkInternals())
   , Options(nullptr)
-  , Filename{}
   , DataDescription(nullptr)
 {
 }
@@ -267,12 +277,12 @@ bool vtkCPPythonScriptV2Helper::IsImported() const
 }
 
 //----------------------------------------------------------------------------
-bool vtkCPPythonScriptV2Helper::Import()
+bool vtkCPPythonScriptV2Helper::Import(const std::vector<std::string>& args /*={}*/)
 {
   vtkScopedSet<vtkCPPythonScriptV2Helper*> scoped(vtkCPPythonScriptV2Helper::ActiveInstance, this);
 
   auto& internals = (*this->Internals);
-  return internals.Import();
+  return internals.Import(args);
 }
 
 //----------------------------------------------------------------------------
@@ -296,12 +306,12 @@ bool vtkCPPythonScriptV2Helper::CatalystInitialize()
 {
   vtkScopedSet<vtkCPPythonScriptV2Helper*> scoped(vtkCPPythonScriptV2Helper::ActiveInstance, this);
 
-  auto& internals = (*this->Internals);
-  if (!internals.Import())
+  if (!this->IsImported())
   {
     return false;
   }
 
+  auto& internals = (*this->Internals);
   vtkPythonScopeGilEnsurer gilEnsurer;
   vtkSmartPyObject method(PyString_FromString("do_catalyst_initialize"));
   vtkSmartPyObject result(PyObject_CallMethodObjArgs(
@@ -361,12 +371,12 @@ bool vtkCPPythonScriptV2Helper::CatalystFinalize()
 }
 
 //----------------------------------------------------------------------------
-bool vtkCPPythonScriptV2Helper::CatalystExecute(int timestep, double time)
+bool vtkCPPythonScriptV2Helper::CatalystExecute(
+  int timestep, double time, const std::vector<std::string>& params)
 {
   vtkScopedSet<vtkCPPythonScriptV2Helper*> scoped(vtkCPPythonScriptV2Helper::ActiveInstance, this);
 
-  auto& internals = (*this->Internals);
-  if (!internals.Import())
+  if (!this->IsImported())
   {
     return false;
   }
@@ -375,6 +385,15 @@ bool vtkCPPythonScriptV2Helper::CatalystExecute(int timestep, double time)
   {
     // skip calling RequestDataDescription.
     return true;
+  }
+
+  auto& internals = (*this->Internals);
+
+  // populate execute parameters.
+  internals.ParametersList->RemoveAllItems();
+  for (auto& param : params)
+  {
+    internals.ParametersList->AddString(param.c_str());
   }
 
   // Update ViewTime on each of the views.
@@ -412,17 +431,10 @@ bool vtkCPPythonScriptV2Helper::CatalystExecute(vtkCPDataDescription* dataDesc)
 {
   assert(dataDesc != nullptr);
   auto& internals = (*this->Internals);
-  for (auto& pair : internals.TrivialProducers)
+  for (const auto& pair : internals.TrivialProducers)
   {
     const auto name = pair.first;
-    const vtkIdType timestep = std::get<1>(pair.second);
-    if (timestep == dataDesc->GetTimeStep())
-    {
-      // we've already set the trivial producer for internals.TrivialProducers for this timestep
-      continue;
-    }
-    std::get<1>(pair.second) = dataDesc->GetTimeStep();
-    const auto producer = std::get<0>(pair.second);
+    const auto producer = pair.second;
     auto ipdesc = dataDesc->GetInputDescriptionByName(name.c_str());
     assert(ipdesc);
 
@@ -436,7 +448,7 @@ bool vtkCPPythonScriptV2Helper::CatalystExecute(vtkCPDataDescription* dataDesc)
   // We raise a warning if no TrivialProducers are know by this time since it
   // may indicate that the script does not depend on any simulation data at all
   // which it more often than not a bug.
-  if (internals.TrivialProducers.size() == 0)
+  if (internals.TrivialProducers.empty())
   {
     vtkLogF(WARNING, "script may not depend on simulation data; is that expected?");
   }
@@ -453,8 +465,7 @@ bool vtkCPPythonScriptV2Helper::RequestDataDescription(vtkCPDataDescription* dat
   vtkScopedSet<vtkCPPythonScriptV2Helper*> scoped(vtkCPPythonScriptV2Helper::ActiveInstance, this);
   vtkScopedSet<vtkCPDataDescription*> scopedDD(this->DataDescription, dataDesc);
 
-  auto& internals = (*this->Internals);
-  if (!internals.Import())
+  if (!this->IsImported())
   {
     return false;
   }
@@ -465,9 +476,10 @@ bool vtkCPPythonScriptV2Helper::RequestDataDescription(vtkCPDataDescription* dat
     return true;
   }
 
+  auto& internals = (*this->Internals);
+
   vtkPythonScopeGilEnsurer gilEnsurer;
-  vtkSmartPyObject method(PyString_FromString(
-    "do_request_data_description")); // calls to Wrapping/Pyhon/paraview/catalyst/v2_internals.py
+  vtkSmartPyObject method(PyString_FromString("do_request_data_description"));
   vtkSmartPyObject pyarg(vtkPythonUtil::GetObjectFromPointer(dataDesc));
   vtkSmartPyObject result(PyObject_CallMethodObjArgs(
     internals.APIModule, method, internals.Package.GetPointer(), pyarg.GetPointer(), nullptr));
@@ -510,6 +522,18 @@ vtkCPPythonScriptV2Helper* vtkCPPythonScriptV2Helper::GetActiveInstance()
 }
 
 //----------------------------------------------------------------------------
+vtkStringList* vtkCPPythonScriptV2Helper::GetArgumentsAsStringList() const
+{
+  auto& internals = (*this->Internals);
+  return internals.ArgumentsList;
+}
+
+vtkStringList* vtkCPPythonScriptV2Helper::GetParametersAsStringList() const
+{
+  auto& internals = (*this->Internals);
+  return internals.ParametersList;
+}
+//----------------------------------------------------------------------------
 void vtkCPPythonScriptV2Helper::RegisterExtractor(vtkSMProxy* extractor)
 {
   auto& internals = (*this->Internals);
@@ -534,7 +558,7 @@ vtkSMProxy* vtkCPPythonScriptV2Helper::GetTrivialProducer(const char* inputname)
   auto iter = internals.TrivialProducers.find(inputname);
   if (iter != internals.TrivialProducers.end())
   {
-    return std::get<0>(iter->second);
+    return iter->second;
   }
 
   assert(this->DataDescription != nullptr);
@@ -546,15 +570,14 @@ vtkSMProxy* vtkCPPythonScriptV2Helper::GetTrivialProducer(const char* inputname)
   controller->InitializeProxy(producer);
   if (auto tp = vtkPVTrivialProducer::SafeDownCast(producer->GetClientSideObject()))
   {
-    tp->SetOutput(ipdesc->GetGrid(), this->DataDescription->GetTime()); // first call
+    tp->SetOutput(ipdesc->GetGrid(), this->DataDescription->GetTime());
     tp->SetWholeExtent(ipdesc->GetWholeExtent());
   }
   producer->UpdateVTKObjects();
 
   controller->RegisterPipelineProxy(producer, inputname);
   // add it to map.
-  std::get<0>(internals.TrivialProducers[inputname]).TakeReference(producer);
-  std::get<1>(internals.TrivialProducers[inputname]) = this->DataDescription->GetTimeStep();
+  internals.TrivialProducers[inputname].TakeReference(producer);
 
   return producer;
 }
@@ -646,7 +669,7 @@ void vtkCPPythonScriptV2Helper::DoLive(int timestep, double time)
   vtkVLogScopeFunction(PARAVIEW_LOG_CATALYST_VERBOSITY());
   auto& internals = (*this->Internals);
 
-  if (this->DataDescription && internals.TrivialProducers.size() == 0)
+  if (this->DataDescription && internals.TrivialProducers.empty())
   {
     vtkVLogF(
       PARAVIEW_LOG_CATALYST_VERBOSITY(), "live: create producers since none created in analysis");
@@ -665,7 +688,7 @@ void vtkCPPythonScriptV2Helper::DoLive(int timestep, double time)
     vtkVLogF(PARAVIEW_LOG_CATALYST_VERBOSITY(), "live: creating vtkLiveInsituLink");
     internals.LiveLink.TakeReference(vtkLiveInsituLink::New());
     const std::string url = vtkSMPropertyHelper(this->Options, "CatalystLiveURL").GetAsString();
-    auto split_idx = url.find(":");
+    auto split_idx = url.find(':');
     std::string hostname;
     int port = -1;
     if (split_idx == std::string::npos)

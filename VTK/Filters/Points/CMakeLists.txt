@@ -1,6 +1,7 @@
 set(classes
   vtkBoundedPointSource
   vtkConnectedPointsFilter
+  vtkConvertToPointCloud
   vtkDensifyPointCloudFilter
   vtkEllipsoidalGaussianKernel
   vtkEuclideanClusterExtraction
@@ -24,6 +25,7 @@ set(classes
   vtkPointInterpolator2D
   vtkPointOccupancyFilter
   vtkPointSmoothingFilter
+  vtkPoissonDiskSampler
   vtkProbabilisticVoronoiKernel
   vtkRadiusOutlierRemoval
   vtkSPHCubicKernel

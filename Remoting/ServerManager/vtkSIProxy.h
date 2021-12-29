@@ -17,7 +17,7 @@
  *
  * vtkSIProxy is the server-implementation for a vtkSMProxy that helps the
  * vtkSMProxy with managing/updating VTK objects.
-*/
+ */
 
 #ifndef vtkSIProxy_h
 #define vtkSIProxy_h
@@ -101,7 +101,7 @@ public:
    * Return true if that Proxy is supposed to have NO vtk class, which means
    * its a NullProxy.
    */
-  bool IsNullProxy() { return (VTKClassName == NULL); };
+  bool IsNullProxy() { return (VTKClassName == nullptr); };
 
   //@{
   /**

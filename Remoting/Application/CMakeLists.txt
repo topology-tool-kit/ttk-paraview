@@ -55,8 +55,12 @@ endif ()
 
 if (TARGET VTK::DomainsChemistry)
   list(APPEND xml_files
-    Resources/filters_domainschemistry.xml
-    Resources/readers_domainschemistry.xml)
+    Resources/filters_domainschemistry.xml)
+endif ()
+
+if (TARGET VTK::IOChemistry)
+  list(APPEND xml_files
+    Resources/readers_iochemistry.xml)
 endif ()
 
 if (TARGET VTK::FiltersAMR)
@@ -69,6 +73,11 @@ if (TARGET VTK::FiltersCore)
   list(APPEND xml_files
     Resources/filters_filterscore.xml
     Resources/sources_filterscore.xml)
+endif ()
+
+if (TARGET VTK::FiltersPoints)
+  list(APPEND xml_files
+    Resources/filters_filterspoints.xml)
 endif ()
 
 if (TARGET VTK::FiltersExtraction)
@@ -239,6 +248,11 @@ if (TARGET VTK::IOCityGML)
     Resources/proxies_citygml.xml)
 endif ()
 
+if (TARGET VTK::IOHDF)
+  list(APPEND xml_files
+    Resources/readers_iohdf.xml)
+endif ()
+
 if (TARGET VTK::IOSegY)
   list(APPEND xml_files
     Resources/proxies_segy.xml)
@@ -256,6 +270,11 @@ endif ()
 if (TARGET VTK::IOFides)
   list(APPEND xml_files
     Resources/proxies_fides.xml)
+endif()
+
+if (TARGET VTK::IOOMF)
+  list(APPEND xml_files
+    Resources/proxies_omf.xml)
 endif()
 
 if (TARGET VTK::IOMotionFX)
@@ -334,6 +353,11 @@ if (TARGET VTK::IOCONVERGECFD)
     Resources/readers_ioconvergecfd.xml)
 endif()
 
+if (TARGET VTK::IOCGNSReader)
+  list(APPEND xml_files
+    Resources/readers_iocgnsreader.xml)
+endif()
+
 if (TARGET VTK::FiltersOpenTURNS)
   list(APPEND xml_files
     Resources/proxies_openturns.xml)
@@ -372,14 +396,20 @@ if (TARGET VTK::FiltersParallel AND
     Resources/filters_selectionfftovertime.xml)
 endif()
 
-if (TARGET VTK::IOIoss AND FALSE) # disabling for now
+if (TARGET VTK::IOIOSS)
   list(APPEND xml_files
     Resources/readers_ioioss.xml)
 endif()
 
+if (TARGET VTK::IOOpenVDB)
+  list(APPEND xml_files
+    Resources/writers_ioopenvdb.xml)
+endif()
+
 if (PARAVIEW_USE_PYTHON)
   list(APPEND xml_files
-    Resources/readers_openpmd.xml)
+    Resources/readers_openpmd.xml
+    Resources/readers_savg.xml)
 endif()
 
 paraview_add_server_manager_xmls(

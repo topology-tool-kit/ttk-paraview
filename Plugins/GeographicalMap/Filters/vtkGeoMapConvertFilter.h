@@ -26,8 +26,11 @@
 #ifndef vtkGeoMapConvertFilter_h
 #define vtkGeoMapConvertFilter_h
 
-#include "vtkGeographicalMapModule.h"
+#include "vtkGeographicalMapModule.h" // for export macro
 #include "vtkStructuredGridAlgorithm.h"
+
+#include <array>  // for std::array
+#include <string> // for std::string
 
 class VTKGEOGRAPHICALMAP_EXPORT vtkGeoMapConvertFilter : public vtkStructuredGridAlgorithm
 {
@@ -38,35 +41,70 @@ public:
 
   enum ProjectionType
   {
-    Custom = 0,
-    Orthographic = 1,
-    Lambert93 = 2
+    Orthographic = 0,
+    Lambert93,
+    LatLong,
+
+    // For devs : let Custom be the last in the enum to keep coherency in the implementation
+    Custom
   };
 
   //@{
   /**
    * Set/Get the destination projection.
    */
-  vtkSetClampMacro(Projection, int, Custom, Lambert93);
-  vtkGetMacro(Projection, int);
+  vtkSetClampMacro(DestProjection, int, 0, Custom);
+  vtkGetMacro(DestProjection, int);
   //@}
 
+  //@{
   /**
-   * Set the custom PROJ.4 string.
+   * Get/Set the custom PROJ.4 destination projection string.
    */
-  void SetPROJ4String(const char* projString);
+  vtkGetMacro(CustomDestProjection, std::string);
+  vtkSetMacro(CustomDestProjection, std::string);
+  //@}
+
+  //@{
+  /**
+   * Get/Set the source projection.
+   */
+  vtkSetClampMacro(SourceProjection, int, 0, Custom);
+  vtkGetMacro(SourceProjection, int);
+  //@}
+
+  //@{
+  /**
+   * Set the custom PROJ.4 source projection string.
+   */
+  vtkGetMacro(CustomSourceProjection, std::string);
+  vtkSetMacro(CustomSourceProjection, std::string);
+  //@}
 
 protected:
   vtkGeoMapConvertFilter() = default;
   ~vtkGeoMapConvertFilter() override = default;
 
-  int RequestData(vtkInformation* request, vtkInformationVector** inputVector,
-    vtkInformationVector* outputVector) override;
-
   int FillInputPortInformation(int port, vtkInformation* info) override;
+  int RequestData(vtkInformation*, vtkInformationVector**, vtkInformationVector*) override;
 
-  std::string PROJ4String;
-  int Projection = Lambert93;
+  int DestProjection = Lambert93;
+  std::string CustomDestProjection;
+
+  int SourceProjection = LatLong;
+  std::string CustomSourceProjection;
+
+  // clang-format off
+  /**
+   * Array of PROJ4 projection strings.
+   * See enum ProjectionType to see which projection they represent.
+   */
+  static constexpr std::array<const char*, static_cast<int>(Custom)> PROJ4Strings = {
+    "+proj=ortho +ellps=GRS80",
+    "+proj=lcc +ellps=GRS80 +lon_0=3 +lat_0=46.5 +lat_1=49 +lat_2=44 +x_0=700000 +y_0=6600000",
+    ""
+  };
+  // clang-format on
 
 private:
   vtkGeoMapConvertFilter(const vtkGeoMapConvertFilter&) = delete;

@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ========================================================================*/
 #include "pqServerConfiguration.h"
 
+#include "pqQtDeprecated.h"
 #include "pqServerResource.h"
 #include "vtkNew.h"
 #include "vtkPVXMLElement.h"
@@ -75,14 +76,12 @@ void pqServerConfiguration::constructor(vtkPVXMLElement* xml, int connectionTime
 }
 
 //-----------------------------------------------------------------------------
-pqServerConfiguration::~pqServerConfiguration()
-{
-}
+pqServerConfiguration::~pqServerConfiguration() = default;
 
 //-----------------------------------------------------------------------------
 void pqServerConfiguration::setName(const QString& arg_name)
 {
-  this->XML->SetAttribute("name", arg_name.toLocal8Bit().data());
+  this->XML->SetAttribute("name", arg_name.toUtf8().data());
 }
 
 //-----------------------------------------------------------------------------
@@ -124,7 +123,7 @@ void pqServerConfiguration::setResource(const pqServerResource& arg_resource)
 //-----------------------------------------------------------------------------
 void pqServerConfiguration::setResource(const QString& str)
 {
-  this->XML->SetAttribute("resource", str.toLocal8Bit().data());
+  this->XML->SetAttribute("resource", str.toUtf8().data());
 
   // Make sure this->ActualURI is correctly updated if needed
   this->parseSshPortForwardingXML();
@@ -161,11 +160,11 @@ pqServerConfiguration::StartupType pqServerConfiguration::startupType() const
 vtkPVXMLElement* pqServerConfiguration::optionsXML() const
 {
   vtkPVXMLElement* startup = this->startupXML();
-  if (startup != NULL)
+  if (startup != nullptr)
   {
     return startup->FindNestedElementByName("Options");
   }
-  return NULL;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -204,7 +203,7 @@ vtkPVXMLElement* pqServerConfiguration::startupXML() const
     }
     default:
     {
-      return NULL;
+      return nullptr;
       break;
     }
   }
@@ -227,7 +226,7 @@ QString pqServerConfiguration::termCommand()
   QStringList termNames = { "cmd" };
 #endif
 
-  for (auto term : termNames)
+  for (const auto& term : termNames)
   {
     QString termCommand = pqServerConfiguration::lookForCommand(term);
     if (!termCommand.isEmpty())
@@ -249,7 +248,7 @@ QString pqServerConfiguration::sshCommand()
   QStringList sshNames = { "ssh" };
 #endif
 
-  for (auto sshName : sshNames)
+  for (const auto& sshName : sshNames)
   {
     QString sshCommand = pqServerConfiguration::lookForCommand(sshName);
     if (!sshCommand.isEmpty())
@@ -270,7 +269,7 @@ QString pqServerConfiguration::sshCommand()
             "In Windows 10, ssh is available since Spring 2018 update,"
             "Alternativaly, Putty can be installed to provide a ssh implementation.");
 #else
-    );
+  );
 #endif
   return QString();
 }
@@ -502,10 +501,7 @@ QString pqServerConfiguration::command(double& timeout, double& delay) const
       }
     }
   }
-  else
-  {
-    stream << execCommand;
-  }
+  else { stream << execCommand; }
   return reply;
 }
 
@@ -638,10 +634,10 @@ void pqServerConfiguration::setStartupToCommand(
   vtkPVXMLElement* xmlCommand =
     startupElement->FindNestedElementByName(CommandXMLString.toUtf8().data());
 
-  QStringList commandList = command_str.split(" ", QString::SkipEmptyParts);
+  QStringList commandList = command_str.split(" ", PV_QT_SKIP_EMPTY_PARTS);
   assert(commandList.size() >= 1);
 
-  xmlCommand->SetAttribute("exec", commandList[0].toLocal8Bit().data());
+  xmlCommand->SetAttribute("exec", commandList[0].toUtf8().data());
   xmlCommand->SetAttribute("timeout", QString::number(timeout).toUtf8().data());
   xmlCommand->SetAttribute("delay", QString::number(delay).toUtf8().data());
 
@@ -660,7 +656,7 @@ void pqServerConfiguration::setStartupToCommand(
     vtkNew<vtkPVXMLElement> xmlArgument;
     xmlArgument->SetName("Argument");
     xmlArguments->AddNestedElement(xmlArgument.GetPointer());
-    xmlArgument->AddAttribute("value", commandList[i].toLocal8Bit().data());
+    xmlArgument->AddAttribute("value", commandList[i].toUtf8().data());
   }
 }
 

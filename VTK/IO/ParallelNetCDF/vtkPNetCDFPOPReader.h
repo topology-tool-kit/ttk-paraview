@@ -46,23 +46,23 @@ public:
   static vtkPNetCDFPOPReader* New();
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * The file to open
    */
-  vtkSetStringMacro(FileName);
-  vtkGetStringMacro(FileName);
-  //@}
+  vtkSetFilePathMacro(FileName);
+  vtkGetFilePathMacro(FileName);
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Enable subsampling in i,j and k dimensions in the vtkRectilinearGrid
    */
   vtkSetVector3Macro(Stride, int);
   vtkGetVector3Macro(Stride, int);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Variable array selection.
    */
@@ -70,7 +70,7 @@ public:
   virtual const char* GetVariableArrayName(int idx);
   virtual int GetVariableArrayStatus(const char* name);
   virtual void SetVariableArrayStatus(const char* name, int status);
-  //@}
+  ///@}
 
   /**
    * Set ranks that will actually open and read the netCDF files.  Pass in
@@ -110,7 +110,7 @@ protected:
 
   char* FileName;
   char* OpenedFileName;
-  vtkSetStringMacro(OpenedFileName);
+  vtkSetFilePathMacro(OpenedFileName);
 
   int NCDFFD; // netcdf file descriptor
 

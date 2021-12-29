@@ -19,7 +19,7 @@
  * activity of those connections. This is an abstract class that defines the
  * interface. Concrete implementations of this class can be written to support
  * tcp/ip socket or ssl or ssh based network connections among processes.
-*/
+ */
 
 #ifndef vtkNetworkAccessManager_h
 #define vtkNetworkAccessManager_h
@@ -48,7 +48,7 @@ public:
    * To abort the connection and cancel the waiting, simply call
    * AbortPendingConnection() in the vtkCommand::ProgressEvent callback.
 
-   * Returns the new connection instance on success, otherwise NULL.
+   * Returns the new connection instance on success, otherwise nullptr.
 
    * URLs are of the following form:
    * \p \<transport\>://\<address\>

@@ -19,9 +19,6 @@
 -------------------------------------------------------------------------*/
 // Tests vtkQtSQLDatabase.
 
-// Check for Qt SQL module before defining this test.
-#include <qglobal.h>
-#if (QT_EDITION & QT_MODULE_SQL)
 #include "vtkQtSQLDatabase.h"
 #include "vtkQtTableModelAdapter.h"
 #include "vtkRowQueryToTable.h"
@@ -43,7 +40,7 @@ int TestQtSQLDatabase(int argc, char* argv[])
   // QCoreApplication app(argc, argv);
   // for (int i = 0; i < QCoreApplication::libraryPaths().count(); i++)
   //  {
-  //  cerr << QCoreApplication::libraryPaths().at(i).toLatin1().data() << endl;
+  //  cerr << QCoreApplication::libraryPaths().at(i).toUtf8().data() << endl;
   //  }
 
   bool interactive = false;
@@ -133,11 +130,11 @@ int TestQtSQLDatabase(int argc, char* argv[])
   }
 
   vtkQtSQLDatabase* db = vtkQtSQLDatabase::New();
-  db->SetDatabaseType(dbtype.toLatin1().data());
-  db->SetDatabaseName(database.toLatin1().data());
-  db->SetUserName(user.toLatin1().data());
+  db->SetDatabaseType(dbtype.toUtf8().data());
+  db->SetDatabaseName(database.toUtf8().data());
+  db->SetUserName(user.toUtf8().data());
   db->SetPort(port);
-  if (!db->Open(password.toLatin1().data()))
+  if (!db->Open(password.toUtf8().data()))
   {
     cerr << "Unable to open database" << endl;
     return 1;
@@ -155,8 +152,8 @@ int TestQtSQLDatabase(int argc, char* argv[])
   if (!dataExists)
   {
     QString createQuery("CREATE TABLE IF NOT EXISTS people (name TEXT, age INTEGER, weight FLOAT)");
-    cout << createQuery.toLatin1().data() << endl;
-    query->SetQuery(createQuery.toLatin1().data());
+    cout << createQuery.toUtf8().data() << endl;
+    query->SetQuery(createQuery.toUtf8().data());
     if (!query->Execute())
     {
       cerr << "Create query failed" << endl;
@@ -167,8 +164,8 @@ int TestQtSQLDatabase(int argc, char* argv[])
     {
       QString insertQuery =
         QString("INSERT INTO people VALUES('John Doe %1', %1, %2)").arg(i).arg(10 * i);
-      cout << insertQuery.toLatin1().data() << endl;
-      query->SetQuery(insertQuery.toLatin1().data());
+      cout << insertQuery.toUtf8().data() << endl;
+      query->SetQuery(insertQuery.toUtf8().data());
       if (!query->Execute())
       {
         cerr << "Insert query failed" << endl;
@@ -177,7 +174,7 @@ int TestQtSQLDatabase(int argc, char* argv[])
     }
   }
 
-  query->SetQuery(queryText.toLatin1().data());
+  query->SetQuery(queryText.toUtf8().data());
   cerr << endl << "Running query: " << query->GetQuery() << endl;
 
   cerr << endl << "Using vtkSQLQuery directly to execute query:" << endl;
@@ -266,7 +263,7 @@ int TestQtSQLDatabase(int argc, char* argv[])
     view->setModel(model);
     view->show();
 
-    app.exec();
+    QApplication::exec();
 
     delete view;
     delete model;
@@ -277,11 +274,3 @@ int TestQtSQLDatabase(int argc, char* argv[])
   db->Delete();
   return 0;
 }
-#else
-#include "vtkObject.h" // for cerr.
-int TestQtSQLDatabase(int, char*[])
-{
-  cerr << "QT_MODULE_SQL not enabled in this edition, so nothing to test." << endl;
-  return 0;
-}
-#endif                 // (QT_EDITION & QT_MODULE_SQL)

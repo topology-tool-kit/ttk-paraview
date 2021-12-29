@@ -53,7 +53,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class pqComparativeContextView::pqInternal
 {
 public:
-  QMap<vtkSMViewProxy*, QPointer<pqQVTKWidget> > RenderWidgets;
+  QMap<vtkSMViewProxy*, QPointer<pqQVTKWidget>> RenderWidgets;
   vtkSmartPointer<vtkEventQtSlotConnect> VTKConnect;
 
   pqInternal() { this->VTKConnect = vtkSmartPointer<vtkEventQtSlotConnect>::New(); }
@@ -154,7 +154,7 @@ void pqComparativeContextView::updateViewWidgets()
 
   currentViews->InitTraversal();
   vtkSMViewProxy* temp = vtkSMViewProxy::SafeDownCast(currentViews->GetNextItemAsObject());
-  for (; temp != 0; temp = vtkSMViewProxy::SafeDownCast(currentViews->GetNextItemAsObject()))
+  for (; temp != nullptr; temp = vtkSMViewProxy::SafeDownCast(currentViews->GetNextItemAsObject()))
   {
     currentViewsSet.insert(temp);
   }

@@ -23,15 +23,14 @@
  * This class will take advantage of some meta information, if available
  * from a coprocessing adaptor.  If not available, it will compute the
  * information.
-*/
+ */
 
 #ifndef vtkAMRDualGridHelper_h
 #define vtkAMRDualGridHelper_h
 
 #include "vtkObject.h"
 #include "vtkPVVTKExtensionsAMRModule.h" //needed for exports
-#include <map>
-#include <vector>
+#include <vector>                        // for std::vector
 
 class vtkDataArray;
 class vtkIntArray;
@@ -350,5 +349,3 @@ private:
 };
 
 #endif
-
-// VTK-HeaderTest-Exclude: vtkAMRDualGridHelper.h

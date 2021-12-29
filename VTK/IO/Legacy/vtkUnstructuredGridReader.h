@@ -43,19 +43,19 @@ public:
   vtkTypeMacro(vtkUnstructuredGridReader, vtkDataReader);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Get the output of this reader.
    */
   vtkUnstructuredGrid* GetOutput();
   vtkUnstructuredGrid* GetOutput(int idx);
   void SetOutput(vtkUnstructuredGrid* output);
-  //@}
+  ///@}
 
   /**
    * Actual reading happens here
    */
-  int ReadMeshSimple(const std::string& fname, vtkDataObject* output) override;
+  int ReadMeshSimple(VTK_FILEPATH const std::string& fname, vtkDataObject* output) override;
 
 protected:
   vtkUnstructuredGridReader();

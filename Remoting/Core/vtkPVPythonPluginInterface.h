@@ -17,12 +17,11 @@
  *
  * vtkPVPythonPluginInterface defines the interface required by ParaView plugins
  * that add python modules to ParaView.
-*/
+ */
 
 #ifndef vtkPVPythonPluginInterface_h
 #define vtkPVPythonPluginInterface_h
 
-#include "vtkObject.h"
 #include "vtkRemotingCoreModule.h" //needed for exports
 #include <string>                  // STL Header
 #include <vector>                  // STL Header

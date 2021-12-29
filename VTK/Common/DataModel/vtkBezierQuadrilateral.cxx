@@ -31,10 +31,7 @@
 
 vtkStandardNewMacro(vtkBezierQuadrilateral);
 
-vtkBezierQuadrilateral::vtkBezierQuadrilateral()
-  : vtkHigherOrderQuadrilateral()
-{
-}
+vtkBezierQuadrilateral::vtkBezierQuadrilateral() = default;
 
 vtkBezierQuadrilateral::~vtkBezierQuadrilateral() = default;
 
@@ -181,10 +178,9 @@ void vtkBezierQuadrilateral::InterpolateDerivs(const double pcoords[3], double* 
 void vtkBezierQuadrilateral::SetRationalWeightsFromPointData(
   vtkPointData* point_data, const vtkIdType numPts)
 {
-  if (point_data->SetActiveAttribute(
-        "RationalWeights", vtkDataSetAttributes::AttributeTypes::RATIONALWEIGHTS) != -1)
+  vtkDataArray* v = point_data->GetRationalWeights();
+  if (v)
   {
-    vtkDataArray* v = point_data->GetRationalWeights();
     this->GetRationalWeights()->SetNumberOfTuples(numPts);
     for (vtkIdType i = 0; i < numPts; i++)
     {
@@ -199,7 +195,7 @@ vtkDoubleArray* vtkBezierQuadrilateral::GetRationalWeights()
 {
   return RationalWeights.Get();
 }
-vtkHigherOrderCurve* vtkBezierQuadrilateral::getEdgeCell()
+vtkHigherOrderCurve* vtkBezierQuadrilateral::GetEdgeCell()
 {
   return EdgeCell;
 }

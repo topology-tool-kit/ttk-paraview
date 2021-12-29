@@ -34,7 +34,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqApplicationCore.h"
 #include "pqExtractor.h"
 #include "pqInterfaceTracker.h"
-#include "pqOptions.h"
 #include "pqOutputPort.h"
 #include "pqPipelineSource.h"
 #include "pqProxy.h"
@@ -59,7 +58,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkSMSession.h"
 #include "vtkSMSessionClient.h"
 #include "vtkSMSessionProxyManager.h"
-#include "vtkSMSessionProxyManager.h"
 #include "vtkSMSourceProxy.h"
 #include "vtkSMStringVectorProperty.h"
 #include "vtkSmartPointer.h"
@@ -77,16 +75,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class pqServerManagerModel::pqInternal
 {
 public:
-  typedef QMap<vtkIdType, QPointer<pqServer> > ServerMap;
+  typedef QMap<vtkIdType, QPointer<pqServer>> ServerMap;
   ServerMap Servers;
 
-  typedef QMap<vtkSMProxy*, QPointer<pqProxy> > ProxyMap;
+  typedef QMap<vtkSMProxy*, QPointer<pqProxy>> ProxyMap;
   ProxyMap Proxies;
 
-  typedef QMap<vtkSMOutputPort*, QPointer<pqOutputPort> > OutputPortMap;
+  typedef QMap<vtkSMOutputPort*, QPointer<pqOutputPort>> OutputPortMap;
   OutputPortMap OutputPorts;
 
-  QList<QPointer<pqServerManagerModelItem> > ItemList;
+  QList<QPointer<pqServerManagerModelItem>> ItemList;
 
   pqServerResource ActiveResource;
 };
@@ -145,7 +143,7 @@ pqServer* pqServerManagerModel::findServer(vtkIdType cid) const
     return iter.value();
   }
 
-  return 0;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -158,7 +156,7 @@ pqServer* pqServerManagerModel::findServer(const pqServerResource& resource) con
       return server;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -188,7 +186,7 @@ pqServerManagerModelItem* pqServerManagerModel::findItemHelper(
     }
   }
 
-  return 0;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -207,7 +205,7 @@ pqServerManagerModelItem* pqServerManagerModel::findItemHelper(
     }
   }
 
-  return 0;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -226,7 +224,7 @@ pqServerManagerModelItem* pqServerManagerModel::findItemHelper(
     }
   }
 
-  return 0;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -259,7 +257,7 @@ void pqServerManagerModel::findItemsHelper(const pqServerManagerModel* const mod
 void pqServerManagerModel::onProxyRegistered(
   const QString& group, const QString& name, vtkSMProxy* proxy)
 {
-  if (group.endsWith("_prototypes") || proxy->GetSession() == NULL)
+  if (group.endsWith("_prototypes") || proxy->GetSession() == nullptr)
   {
     // Ignore prototype proxies.
     return;
@@ -292,7 +290,7 @@ void pqServerManagerModel::onProxyRegistered(
     return;
   }
 
-  pqProxy* item = 0;
+  pqProxy* item = nullptr;
 
   QObjectList ifaces = pqApplicationCore::instance()->interfaceTracker()->interfaces();
   foreach (QObject* iface, ifaces)
@@ -415,7 +413,7 @@ void pqServerManagerModel::onProxyUnRegistered(
   // If so, we are simply renaming the proxy.
   vtkSmartPointer<vtkStringList> names = vtkSmartPointer<vtkStringList>::New();
   vtkSMSessionProxyManager* pxm = proxy->GetSessionProxyManager();
-  pxm->GetProxyNames(group.toLocal8Bit().data(), proxy, names);
+  pxm->GetProxyNames(group.toUtf8().data(), proxy, names);
   for (int cc = 0; cc < names->GetLength(); cc++)
   {
     if (name == names->GetString(cc))
@@ -452,7 +450,7 @@ void pqServerManagerModel::onProxyUnRegistered(
   Q_EMIT this->preProxyRemoved(item);
   Q_EMIT this->preItemRemoved(item);
 
-  QObject::disconnect(item, 0, this, 0);
+  QObject::disconnect(item, nullptr, this, nullptr);
   this->Internal->ItemList.removeAll(item);
   this->Internal->Proxies.remove(item->getProxy());
 
@@ -489,7 +487,7 @@ void pqServerManagerModel::onConnectionCreated(vtkIdType id)
   }
 
   vtkProcessModule* pm = vtkProcessModule::GetProcessModule();
-  pqServer* server = new pqServer(id, pm->GetOptions(), this);
+  pqServer* server = new pqServer(id, this);
 
   // Make sure the server resource is valid otherwise use session URL information
   // (this is used when we connect from Python in multi-server mode)
@@ -588,7 +586,7 @@ void pqServerManagerModel::updateSettingsFromQSettings(pqServer* server)
       }
       else if (vtkSMStringVectorProperty* svp = vtkSMStringVectorProperty::SafeDownCast(prop))
       {
-        svp->SetElement(0, value.toString().toLocal8Bit().data());
+        svp->SetElement(0, value.toString().toUtf8().data());
       }
       else
       {

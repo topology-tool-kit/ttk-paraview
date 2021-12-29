@@ -11,7 +11,7 @@
 #ifndef fides_datamodel_Value_H_
 #define fides_datamodel_Value_H_
 
-#include <vtkm/cont/VariantArrayHandle.h>
+#include <vtkm/cont/UnknownArrayHandle.h>
 
 #include <fides/DataModel.h>
 
@@ -24,16 +24,15 @@ struct ValueBase : public DataModelBase
 {
   /// Reads and returns array handles. Has to be implemented
   /// by subclasses.
-  virtual std::vector<vtkm::cont::VariantArrayHandle> Read(
+  virtual std::vector<vtkm::cont::UnknownArrayHandle> Read(
     const std::unordered_map<std::string, std::string>& paths,
     DataSourcesType& sources,
     const fides::metadata::MetaData& selections) = 0;
 
-  virtual size_t GetNumberOfBlocks(
-    const std::unordered_map<std::string, std::string>& paths,
-    DataSourcesType& sources) = 0;
+  virtual size_t GetNumberOfBlocks(const std::unordered_map<std::string, std::string>& paths,
+                                   DataSourcesType& sources) = 0;
 
-    virtual ~ValueBase() {};
+  virtual ~ValueBase(){};
 };
 
 /// \brief Class to handle values needed at dataset creation time.
@@ -46,24 +45,22 @@ struct ValueBase : public DataModelBase
 struct Value : public DataModelBase
 {
   /// Overridden to handle Value specific items.
-  void ProcessJSON(const rapidjson::Value& json,
-                   DataSourcesType& sources) override;
+  void ProcessJSON(const rapidjson::Value& json, DataSourcesType& sources) override;
 
   /// Reads and returns values.
   /// This method should not depend on DataSource::ReadVariable
   /// as actual IO for the variable is done after this method is
   /// called whereas the return value of this method is used
   /// immediately.
-  std::vector<vtkm::cont::VariantArrayHandle> Read(
+  std::vector<vtkm::cont::UnknownArrayHandle> Read(
     const std::unordered_map<std::string, std::string>& paths,
     DataSourcesType& sources,
     const fides::metadata::MetaData& selections);
 
   /// Returns the number of blocks in the underlying variable (if any).
   /// Used by the reader to provide meta-data on blocks.
-  size_t GetNumberOfBlocks(
-    const std::unordered_map<std::string, std::string>& paths,
-    DataSourcesType& sources);
+  size_t GetNumberOfBlocks(const std::unordered_map<std::string, std::string>& paths,
+                           DataSourcesType& sources);
 
 private:
   std::unique_ptr<ValueBase> ValueImpl = nullptr;
@@ -79,15 +76,30 @@ struct ValueVariableDimensions : public ValueBase
   /// Reads the dimensions (shape) as well as the
   /// start of an n-dimensional variable. The first n values are the dimensions
   /// and the following are the start indices.
-  std::vector<vtkm::cont::VariantArrayHandle> Read(
+  std::vector<vtkm::cont::UnknownArrayHandle> Read(
     const std::unordered_map<std::string, std::string>& paths,
     DataSourcesType& sources,
     const fides::metadata::MetaData& selections) override;
 
   /// Returns the number of blocks in the underlying variable.
-  size_t GetNumberOfBlocks(
+  size_t GetNumberOfBlocks(const std::unordered_map<std::string, std::string>& paths,
+                           DataSourcesType& sources) override;
+};
+
+/// \brief \c ValueBase subclass that provides values from an array
+///
+/// \c ValueArrayVariable reads its values from the provided array name.
+/// Currently, the values are assumed to be double, or std::size_t and are
+/// used for the metadata describing uniform grids.
+struct ValueArrayVariable : public ValueBase
+{
+  std::vector<vtkm::cont::UnknownArrayHandle> Read(
     const std::unordered_map<std::string, std::string>& paths,
-    DataSourcesType& sources) override;
+    DataSourcesType& sources,
+    const fides::metadata::MetaData& selections) override;
+
+  size_t GetNumberOfBlocks(const std::unordered_map<std::string, std::string>& paths,
+                           DataSourcesType& sources) override;
 };
 
 /// \brief \c ValueBase subclass that provides array of values from json.
@@ -97,16 +109,17 @@ struct ValueVariableDimensions : public ValueBase
 struct ValueArray : public ValueBase
 {
   /// These values are assumed to be global so always returns 1.
-  size_t GetNumberOfBlocks(
-    const std::unordered_map<std::string, std::string>&,
-    DataSourcesType&) override {return 1;}
+  size_t GetNumberOfBlocks(const std::unordered_map<std::string, std::string>&,
+                           DataSourcesType&) override
+  {
+    return 1;
+  }
 
   /// Overridden to parse the value array.
-  void ProcessJSON(const rapidjson::Value& json,
-                   DataSourcesType& sources) override;
+  void ProcessJSON(const rapidjson::Value& json, DataSourcesType& sources) override;
 
   /// Returns array values read from json.
-  std::vector<vtkm::cont::VariantArrayHandle> Read(
+  std::vector<vtkm::cont::UnknownArrayHandle> Read(
     const std::unordered_map<std::string, std::string>& paths,
     DataSourcesType& sources,
     const fides::metadata::MetaData& selections) override;
@@ -119,12 +132,14 @@ struct ValueArray : public ValueBase
 struct ValueScalar : public ValueBase
 {
   /// Always a single value, so always returns 1.
-  size_t GetNumberOfBlocks(
-    const std::unordered_map<std::string, std::string>&,
-    DataSourcesType&) override {return 1;}
+  size_t GetNumberOfBlocks(const std::unordered_map<std::string, std::string>&,
+                           DataSourcesType&) override
+  {
+    return 1;
+  }
 
   /// Reads the variable
-  std::vector<vtkm::cont::VariantArrayHandle> Read(
+  std::vector<vtkm::cont::UnknownArrayHandle> Read(
     const std::unordered_map<std::string, std::string>& paths,
     DataSourcesType& sources,
     const fides::metadata::MetaData& selections) override;

@@ -50,21 +50,21 @@ public:
    * Get/Set the number of pieces into which the inputs are split.
    */
 
-  //@{
+  ///@{
   /**
    * Get/Set the number of ghost levels to be written.
    */
   vtkGetMacro(GhostLevel, int);
   vtkSetMacro(GhostLevel, int);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get/Set whether this instance will write the meta-file.
    */
   vtkGetMacro(WriteMetaFile, int);
   virtual void SetWriteMetaFile(int flag);
-  //@}
+  ///@}
 
   /**
    * See the vtkAlgorithm for a description of what these do
@@ -124,8 +124,8 @@ protected:
 
   // Methods to help construct internal file names.
   void SplitFileName();
-  const char* GetFilePrefix();
-  const char* GetFilePath();
+  VTK_FILEPATH const char* GetFilePrefix();
+  VTK_FILEPATH const char* GetFilePath();
 
   /**
    * Returns the default extension to use for the given dataset type.

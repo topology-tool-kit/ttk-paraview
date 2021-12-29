@@ -51,15 +51,15 @@ public:
   vtkTypeMacro(vtkDataSetReader, vtkDataReader);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Get the output of this filter
    */
   vtkDataSet* GetOutput();
   vtkDataSet* GetOutput(int idx);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the output as various concrete types. This method is typically used
    * when you know exactly what type of data is being read.  Otherwise, use
@@ -72,7 +72,7 @@ public:
   vtkStructuredGrid* GetStructuredGridOutput();
   vtkUnstructuredGrid* GetUnstructuredGridOutput();
   vtkRectilinearGrid* GetRectilinearGridOutput();
-  //@}
+  ///@}
 
   /**
    * This method can be used to find out the type of output expected without
@@ -83,12 +83,12 @@ public:
   /**
    * Read metadata from file.
    */
-  int ReadMetaDataSimple(const std::string& fname, vtkInformation* metadata) override;
+  int ReadMetaDataSimple(VTK_FILEPATH const std::string& fname, vtkInformation* metadata) override;
 
   /**
    * Actual reading happens here
    */
-  int ReadMeshSimple(const std::string& fname, vtkDataObject* output) override;
+  int ReadMeshSimple(VTK_FILEPATH const std::string& fname, vtkDataObject* output) override;
 
 protected:
   vtkDataSetReader();

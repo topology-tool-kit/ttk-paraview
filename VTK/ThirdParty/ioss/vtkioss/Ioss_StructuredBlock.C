@@ -1,34 +1,8 @@
-// Copyright(C) 1999-2017 National Technology & Engineering Solutions
+// Copyright(C) 1999-2021 National Technology & Engineering Solutions
 // of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
 // NTESS, the U.S. Government retains certain rights in this software.
 //
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-//     * Redistributions of source code must retain the above copyright
-//       notice, this list of conditions and the following disclaimer.
-//
-//     * Redistributions in binary form must reproduce the above
-//       copyright notice, this list of conditions and the following
-//       disclaimer in the documentation and/or other materials provided
-//       with the distribution.
-//
-//     * Neither the name of NTESS nor the names of its
-//       contributors may be used to endorse or promote products derived
-//       from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// See packages/seacas/LICENSE for details
 
 #include <Ioss_BoundingBox.h>  // for AxisAlignedBoundingBox
 #include <Ioss_DatabaseIO.h>   // for DatabaseIO
@@ -79,6 +53,16 @@ namespace {
     }
     return node_count;
   }
+
+  int64_t get_cell_count(const Ioss::IJK_t &ijk, int index_dim)
+  {
+    return get_cell_count(ijk[0], ijk[1], ijk[2], index_dim);
+  }
+
+  int64_t get_node_count(const Ioss::IJK_t &ijk, int index_dim)
+  {
+    return get_node_count(ijk[0], ijk[1], ijk[2], index_dim);
+  }
 } // namespace
 
 namespace Ioss {
@@ -103,8 +87,8 @@ namespace Ioss {
 
   // Parallel
   StructuredBlock::StructuredBlock(DatabaseIO *io_database, const std::string &my_name,
-                                   int index_dim, Ioss::IJK_t &ordinal, Ioss::IJK_t &offset,
-                                   Ioss::IJK_t &global_ordinal)
+                                   int index_dim, const Ioss::IJK_t &ordinal,
+                                   const Ioss::IJK_t &offset, const Ioss::IJK_t &global_ordinal)
       : StructuredBlock(io_database, my_name, index_dim, ordinal[0], ordinal[1], ordinal[2],
                         offset[0], offset[1], offset[2], global_ordinal[0], global_ordinal[1],
                         global_ordinal[2])
@@ -124,29 +108,31 @@ namespace Ioss {
                                    int index_dim, int ni, int nj, int nk, int off_i, int off_j,
                                    int off_k, int glo_ni, int glo_nj, int glo_nk)
       : EntityBlock(io_database, my_name, Ioss::Hex8::name, get_cell_count(ni, nj, nk, index_dim)),
-        m_ni(ni), m_nj(nj), m_nk(nk), m_offsetI(off_i), m_offsetJ(off_j), m_offsetK(off_k),
-        m_niGlobal(glo_ni == 0 ? m_ni : glo_ni), m_njGlobal(glo_nj == 0 ? m_nj : glo_nj),
-        m_nkGlobal(glo_nk == 0 ? m_nk : glo_nk),
-        m_nodeBlock(io_database, my_name + "_nodes", get_node_count(m_ni, m_nj, m_nk, index_dim),
-                    index_dim)
+        m_ijk{ni, nj, nk}, m_offset{off_i, off_j, off_k},
+        m_nodeBlock(io_database, my_name + "_nodes",
+                    get_node_count(m_ijk[0], m_ijk[1], m_ijk[2], index_dim), index_dim)
   {
     m_nodeBlock.property_add(Property("IOSS_INTERNAL_CONTAINED_IN", this));
 
     SMART_ASSERT(index_dim == 1 || index_dim == 2 || index_dim == 3)(index_dim);
 
-    int64_t cell_count        = get_cell_count(m_ni, m_nj, m_nk, index_dim);
-    int64_t node_count        = get_node_count(m_ni, m_nj, m_nk, index_dim);
-    int64_t global_cell_count = get_cell_count(m_niGlobal, m_njGlobal, m_nkGlobal, index_dim);
-    int64_t global_node_count = get_node_count(m_niGlobal, m_njGlobal, m_nkGlobal, index_dim);
+    m_ijkGlobal[0] = (glo_ni == 0 ? m_ijk[0] : glo_ni);
+    m_ijkGlobal[1] = (glo_nj == 0 ? m_ijk[1] : glo_nj);
+    m_ijkGlobal[2] = (glo_nk == 0 ? m_ijk[2] : glo_nk);
+
+    int64_t cell_count        = get_cell_count(m_ijk, index_dim);
+    int64_t node_count        = get_node_count(m_ijk, index_dim);
+    int64_t global_cell_count = get_cell_count(m_ijkGlobal, index_dim);
+    int64_t global_node_count = get_node_count(m_ijkGlobal, index_dim);
 
     SMART_ASSERT(global_cell_count >= cell_count)(global_cell_count)(cell_count);
     SMART_ASSERT(global_node_count >= node_count)(global_node_count)(node_count);
-    SMART_ASSERT(m_niGlobal >= m_ni)(m_niGlobal)(m_ni);
-    SMART_ASSERT(m_njGlobal >= m_nj)(m_njGlobal)(m_nj);
-    SMART_ASSERT(m_nkGlobal >= m_nk)(m_nkGlobal)(m_nk);
-    SMART_ASSERT(m_niGlobal >= m_ni + m_offsetI)(m_niGlobal)(m_ni)(m_offsetI);
-    SMART_ASSERT(m_njGlobal >= m_nj + m_offsetJ)(m_njGlobal)(m_nj)(m_offsetJ);
-    SMART_ASSERT(m_nkGlobal >= m_nk + m_offsetK)(m_nkGlobal)(m_nk)(m_offsetK);
+    SMART_ASSERT(m_ijkGlobal[0] >= m_ijk[0])(m_ijkGlobal[0])(m_ijk[0]);
+    SMART_ASSERT(m_ijkGlobal[1] >= m_ijk[1])(m_ijkGlobal[1])(m_ijk[1]);
+    SMART_ASSERT(m_ijkGlobal[2] >= m_ijk[2])(m_ijkGlobal[2])(m_ijk[2]);
+    SMART_ASSERT(m_ijkGlobal[0] >= m_ijk[0] + m_offset[0])(m_ijkGlobal[0])(m_ijk[0])(m_offset[0]);
+    SMART_ASSERT(m_ijkGlobal[1] >= m_ijk[1] + m_offset[1])(m_ijkGlobal[1])(m_ijk[1])(m_offset[1]);
+    SMART_ASSERT(m_ijkGlobal[2] >= m_ijk[2] + m_offset[2])(m_ijkGlobal[2])(m_ijk[2])(m_offset[2]);
 
     properties.add(Property("component_degree", index_dim));
     properties.add(Property("node_count", node_count));
@@ -154,17 +140,17 @@ namespace Ioss {
     properties.add(Property("global_node_count", global_node_count));
     properties.add(Property("global_cell_count", global_cell_count));
 
-    properties.add(Property("ni", m_ni));
-    properties.add(Property("nj", m_nj));
-    properties.add(Property("nk", m_nk));
+    properties.add(Property("ni", m_ijk[0]));
+    properties.add(Property("nj", m_ijk[1]));
+    properties.add(Property("nk", m_ijk[2]));
 
-    properties.add(Property("ni_global", m_niGlobal));
-    properties.add(Property("nj_global", m_njGlobal));
-    properties.add(Property("nk_global", m_nkGlobal));
+    properties.add(Property(this, "ni_global", Ioss::Property::INTEGER));
+    properties.add(Property(this, "nj_global", Ioss::Property::INTEGER));
+    properties.add(Property(this, "nk_global", Ioss::Property::INTEGER));
 
-    properties.add(Property("offset_i", m_offsetI));
-    properties.add(Property("offset_j", m_offsetJ));
-    properties.add(Property("offset_k", m_offsetK));
+    properties.add(Property(this, "offset_i", Ioss::Property::INTEGER));
+    properties.add(Property(this, "offset_j", Ioss::Property::INTEGER));
+    properties.add(Property(this, "offset_k", Ioss::Property::INTEGER));
 
     std::string vector_name;
     if (index_dim == 1) {
@@ -202,22 +188,79 @@ namespace Ioss {
 
   StructuredBlock *StructuredBlock::clone(DatabaseIO *database) const
   {
-    int index_dim = properties.get("component_degree").get_int();
+    int  index_dim = properties.get("component_degree").get_int();
+    auto block     = new StructuredBlock(database, name(), index_dim, m_ijk, m_offset, m_ijkGlobal);
 
-    IJK_t ijk{{m_ni, m_nj, m_nk}};
-    IJK_t offset{{m_offsetI, m_offsetJ, m_offsetK}};
-    IJK_t ijk_glob{{m_niGlobal, m_njGlobal, m_nkGlobal}};
-
-    auto block = new StructuredBlock(database, name(), index_dim, ijk, offset, ijk_glob);
-
-    block->m_zoneConnectivity   = m_zoneConnectivity;
-    block->m_boundaryConditions = m_boundaryConditions;
+    block->m_zoneConnectivity    = m_zoneConnectivity;
+    block->m_boundaryConditions  = m_boundaryConditions;
+    block->m_blockLocalNodeIndex = m_blockLocalNodeIndex;
+    block->m_globalIdMap         = m_globalIdMap;
 
     return block;
   }
 
+  void StructuredBlock::set_ijk_offset(int axis, size_t offset)
+  {
+    SMART_ASSERT(axis == 0 || axis == 1 || axis == 2)(axis);
+    if (axis == 0) {
+      m_offset[0] = offset;
+    }
+    else if (axis == 1) {
+      m_offset[1] = offset;
+    }
+    else if (axis == 2) {
+      m_offset[2] = offset;
+    }
+  }
+
+  void StructuredBlock::set_ijk_global(int axis, size_t global)
+  {
+    SMART_ASSERT(axis == 0 || axis == 1 || axis == 2)(axis);
+    if (axis == 0) {
+      m_ijkGlobal[0] = global;
+      SMART_ASSERT(m_ijkGlobal[0] >= m_ijk[0] + m_offset[0])(m_ijkGlobal[0])(m_ijk[0])(m_offset[0]);
+    }
+    else if (axis == 1) {
+      m_ijkGlobal[1] = global;
+      SMART_ASSERT(m_ijkGlobal[1] >= m_ijk[1] + m_offset[1])(m_ijkGlobal[1])(m_ijk[1])(m_offset[1]);
+    }
+    else if (axis == 2) {
+      m_ijkGlobal[2] = global;
+      SMART_ASSERT(m_ijkGlobal[2] >= m_ijk[2] + m_offset[2])(m_ijkGlobal[2])(m_ijk[2])(m_offset[2]);
+    }
+  }
+
+  void StructuredBlock::set_ijk_offset(const IJK_t &offset) { m_offset = offset; }
+
+  void StructuredBlock::set_ijk_global(const IJK_t &global)
+  {
+    m_ijkGlobal = global;
+
+    SMART_ASSERT(m_ijkGlobal[0] >= m_ijk[0] + m_offset[0])(m_ijkGlobal[0])(m_ijk[0])(m_offset[0]);
+    SMART_ASSERT(m_ijkGlobal[1] >= m_ijk[1] + m_offset[1])(m_ijkGlobal[1])(m_ijk[1])(m_offset[1]);
+    SMART_ASSERT(m_ijkGlobal[2] >= m_ijk[2] + m_offset[2])(m_ijkGlobal[2])(m_ijk[2])(m_offset[2]);
+  }
+
   Property StructuredBlock::get_implicit_property(const std::string &my_name) const
   {
+    if (my_name == "ni_global") {
+      return Ioss::Property(my_name, m_ijkGlobal[0]);
+    }
+    if (my_name == "nj_global") {
+      return Ioss::Property(my_name, m_ijkGlobal[1]);
+    }
+    if (my_name == "nk_global") {
+      return Ioss::Property(my_name, m_ijkGlobal[2]);
+    }
+    if (my_name == "offset_i") {
+      return Ioss::Property(my_name, m_offset[0]);
+    }
+    if (my_name == "offset_j") {
+      return Ioss::Property(my_name, m_offset[1]);
+    }
+    if (my_name == "offset_k") {
+      return Ioss::Property(my_name, m_offset[2]);
+    }
     return EntityBlock::get_implicit_property(my_name);
   }
 
@@ -295,10 +338,177 @@ namespace Ioss {
 
   std::ostream &operator<<(std::ostream &os, const BoundaryCondition &bc)
   {
-    fmt::print(os, "\t\tBC Name '{}' owns {:10n} faces.\tRange: [{}..{}, {}..{}, {}..{}]",
+    fmt::print(os, "\t\tBC Name '{}' owns {:10L} faces.\tRange: [{}..{}, {}..{}, {}..{}]",
                bc.m_bcName, bc.get_face_count(), bc.m_rangeBeg[0], bc.m_rangeEnd[0],
                bc.m_rangeBeg[1], bc.m_rangeEnd[1], bc.m_rangeBeg[2], bc.m_rangeEnd[2]);
     return os;
   }
 
+  bool BoundaryCondition::equal_(const Ioss::BoundaryCondition &rhs, bool quiet) const
+  {
+    if (this->m_bcName != rhs.m_bcName) {
+      if (!quiet) {
+        fmt::print(Ioss::OUTPUT(), "BoundaryCondition: m_bcName MISMATCH ({} vs. {})\n",
+                   this->m_bcName, rhs.m_bcName);
+      }
+      return false;
+    }
+
+    if (this->m_famName != rhs.m_famName) {
+      if (!quiet) {
+        fmt::print(Ioss::OUTPUT(), "BoundaryCondition: m_famName MISMATCH ({} vs. {})\n",
+                   this->m_famName, rhs.m_famName);
+      }
+      return false;
+    }
+
+    if (this->m_rangeBeg != rhs.m_rangeBeg) {
+      if (!quiet) {
+        fmt::print(Ioss::OUTPUT(), "BoundaryCondition: m_rangeBeg MISMATCH ({} vs. {})\n",
+                   fmt::join(this->m_rangeBeg, ":"), fmt::join(rhs.m_rangeBeg, ":"));
+      }
+      return false;
+    }
+
+    if (this->m_rangeEnd != rhs.m_rangeEnd) {
+      if (!quiet) {
+        fmt::print(Ioss::OUTPUT(), "BoundaryCondition: m_rangeEnd MISMATCH ({} vs. {})\n",
+                   fmt::join(this->m_rangeEnd, ":"), fmt::join(rhs.m_rangeEnd, ":"));
+      }
+      return false;
+    }
+
+    return true;
+  }
+  bool BoundaryCondition::operator==(const Ioss::BoundaryCondition &rhs) const
+  {
+    return equal_(rhs, true);
+  }
+
+  bool BoundaryCondition::equal(const Ioss::BoundaryCondition &rhs) const
+  {
+    return equal_(rhs, false);
+  }
+
+  bool StructuredBlock::equal_(const Ioss::StructuredBlock &rhs, bool quiet) const
+  {
+    if (this->m_ijk != rhs.m_ijk) {
+      if (!quiet) {
+        fmt::print(Ioss::OUTPUT(), "StructuredBlock: N mismatch ({} vs. {})\n",
+                   fmt::join(this->m_ijk, ":"), fmt::join(rhs.m_ijk, ":"));
+      }
+      return false;
+    }
+
+    if (this->m_offset != rhs.m_offset) {
+      if (!quiet) {
+        fmt::print(Ioss::OUTPUT(), "StructuredBlock: OFFSET mismatch ({} vs. {})\n",
+                   fmt::join(this->m_offset, ":"), fmt::join(rhs.m_offset, ":"));
+      }
+      return false;
+    }
+
+    if (this->m_ijkGlobal != rhs.m_ijkGlobal) {
+      if (!quiet) {
+        fmt::print(Ioss::OUTPUT(), "StructuredBlock: Global N mismatch ({} vs. {})\n",
+                   fmt::join(this->m_ijkGlobal, ":"), fmt::join(rhs.m_ijkGlobal, ":"));
+      }
+      return false;
+    }
+
+    if (this->m_nodeOffset != rhs.m_nodeOffset) {
+      if (!quiet) {
+        fmt::print(Ioss::OUTPUT(), "StructuredBlock: Node Offset mismatch ({} vs. {})\n",
+                   this->m_nodeOffset, rhs.m_nodeOffset);
+      }
+      return false;
+    }
+
+    if (this->m_cellOffset != rhs.m_cellOffset) {
+      if (!quiet) {
+        fmt::print(Ioss::OUTPUT(), "StructuredBlock: Cell Offset mismatch ({} vs. {})\n",
+                   this->m_cellOffset, rhs.m_cellOffset);
+      }
+      return false;
+    }
+
+    if (this->m_nodeGlobalOffset != rhs.m_nodeGlobalOffset) {
+      if (!quiet) {
+        fmt::print(Ioss::OUTPUT(), "StructuredBlock: Node Global Offset mismatch ({} vs. {})\n",
+                   this->m_nodeGlobalOffset, rhs.m_nodeGlobalOffset);
+      }
+      return false;
+    }
+
+    if (this->m_cellGlobalOffset != rhs.m_cellGlobalOffset) {
+      if (!quiet) {
+        fmt::print(Ioss::OUTPUT(), "StructuredBlock: Cell Global Offset mismatch ({} vs. {})\n",
+                   this->m_cellGlobalOffset, rhs.m_cellGlobalOffset);
+      }
+      return false;
+    }
+
+    if (this->m_blockLocalNodeIndex != rhs.m_blockLocalNodeIndex) {
+      if (!quiet) {
+        fmt::print(Ioss::OUTPUT(),
+                   "StructuredBlock: Block Local Node Index mismatch ({} entries vs. {} entries)\n",
+                   this->m_blockLocalNodeIndex.size(), rhs.m_blockLocalNodeIndex.size());
+      }
+      return false;
+    }
+
+    // NOTE: this comparison assumes that the elements of this vector will
+    // appear in the same order in two databases that are equivalent.
+    if (this->m_globalIdMap != rhs.m_globalIdMap) {
+      if (!quiet) {
+        fmt::print(Ioss::OUTPUT(), "StructuredBlock: Global ID Map mismatch\n");
+      }
+      return false;
+    }
+
+    // NOTE: this comparison assumes that the elements of this vector will
+    // appear in the same order in two databases that are equivalent.
+    if (this->m_zoneConnectivity != rhs.m_zoneConnectivity) {
+      if (!quiet) {
+        fmt::print(Ioss::OUTPUT(), "StructuredBlock: Zone Connectivity mismatch (size {} vs {})\n",
+                   this->m_zoneConnectivity.size(), rhs.m_zoneConnectivity.size());
+      }
+      return false;
+    }
+
+    // NOTE: this comparison assumes that the elements of this vector will
+    // appear in the same order in two databases that are equivalent.
+    if (this->m_boundaryConditions != rhs.m_boundaryConditions) {
+      if (!quiet) {
+        fmt::print(Ioss::OUTPUT(), "StructuredBlock: Boundary Conditions mismatch\n");
+      }
+      return false;
+    }
+
+    if (!quiet) {
+      if (!Ioss::EntityBlock::equal(rhs)) {
+        fmt::print(Ioss::OUTPUT(), "StructuredBlock: EntityBlock mismatch\n");
+        return false;
+      }
+    }
+    else {
+      if (Ioss::EntityBlock::operator!=(rhs)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  bool StructuredBlock::operator==(const Ioss::StructuredBlock &rhs) const
+  {
+    return equal_(rhs, true);
+  }
+
+  bool StructuredBlock::operator!=(const Ioss::StructuredBlock &rhs) const
+  {
+    return !(*this == rhs);
+  }
+
+  bool StructuredBlock::equal(const Ioss::StructuredBlock &rhs) const { return equal_(rhs, false); }
 } // namespace Ioss

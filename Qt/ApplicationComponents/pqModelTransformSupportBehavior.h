@@ -40,10 +40,10 @@ class pqView;
 class vtkSMSourceProxy;
 
 /**
-* @ingroup Behaviors
-* pqModelTransformSupportBehavior is designed for supporting ChangeOfBasis
-* matrix for MantId.
-*/
+ * @ingroup Behaviors
+ * pqModelTransformSupportBehavior is designed for supporting ChangeOfBasis
+ * matrix for MantId.
+ */
 class PQAPPLICATIONCOMPONENTS_EXPORT pqModelTransformSupportBehavior : public QObject
 {
   Q_OBJECT
@@ -54,11 +54,11 @@ public:
   ~pqModelTransformSupportBehavior() override;
 
   static vtkTuple<double, 16> getChangeOfBasisMatrix(
-    vtkSMSourceProxy*, int outputPort = 0, bool* isvalid = NULL);
+    vtkSMSourceProxy*, int outputPort = 0, bool* isvalid = nullptr);
   static vtkTuple<double, 6> getBoundingBoxInModelCoordinates(
-    vtkSMSourceProxy*, int outputPort = 0, bool* isvalid = NULL);
+    vtkSMSourceProxy*, int outputPort = 0, bool* isvalid = nullptr);
   static vtkTuple<std::string, 3> getAxisTitles(
-    vtkSMSourceProxy*, int outputPort = 0, bool* isvalid = NULL);
+    vtkSMSourceProxy*, int outputPort = 0, bool* isvalid = nullptr);
 
 protected Q_SLOTS:
   virtual void viewAdded(pqView*);

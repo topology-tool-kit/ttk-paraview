@@ -37,7 +37,7 @@ public:
   vtkTypeMacro(vtkAggregateDataSetFilter, vtkPassInputTypeAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Number of target processes. Valid values are between 1 and the total
    * number of processes. The default is 1. If a value is passed in that
@@ -50,7 +50,19 @@ public:
    */
   void SetNumberOfTargetProcesses(int);
   vtkGetMacro(NumberOfTargetProcesses, int);
-  //@}
+  ///@}
+
+  ///@{
+  /**
+   * Get/Set if the filter should merge coincidental points
+   * Note 1: The filter will only merge points if the ghost cell array doesn't exist
+   * Note 2: This option is only taken into account with vtkUnstructuredGrid objects
+   * Defaults to On
+   */
+  vtkSetMacro(MergePoints, bool);
+  vtkGetMacro(MergePoints, bool);
+  vtkBooleanMacro(MergePoints, bool);
+  ///@}
 
 protected:
   vtkAggregateDataSetFilter();
@@ -61,6 +73,8 @@ protected:
   int FillInputPortInformation(int port, vtkInformation* info) override;
 
   int NumberOfTargetProcesses;
+
+  bool MergePoints = true;
 
 private:
   vtkAggregateDataSetFilter(const vtkAggregateDataSetFilter&) = delete;

@@ -12,12 +12,21 @@
      PURPOSE.  See the above copyright notice for more information.
 
 =========================================================================*/
+
+// Hide VTK_DEPRECATED_IN_9_1_0() warnings for this class.
+#define VTK_DEPRECATION_LEVEL 0
+
 #include "vtkSimpleImageFilterExample.h"
 
 #include "vtkImageData.h"
 #include "vtkObjectFactory.h"
 
 vtkStandardNewMacro(vtkSimpleImageFilterExample);
+
+void vtkSimpleImageFilterExample::PrintSelf(ostream& os, vtkIndent indent)
+{
+  this->Superclass::PrintSelf(os, indent);
+}
 
 // The switch statement in Execute will call this method with
 // the appropriate input type (IT). Note that this example assumes

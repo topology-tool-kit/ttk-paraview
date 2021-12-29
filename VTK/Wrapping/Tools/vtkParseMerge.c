@@ -303,7 +303,7 @@ static void merge_function(FileInfo* finfo, FunctionInfo* merge, const FunctionI
         arg->Count = arg2->Count;
       }
       /* attribute flags */
-      arg->Type |= (arg2->Type & VTK_PARSE_ATTRIBUTES);
+      arg->Attributes |= arg2->Attributes;
     }
   }
 
@@ -621,7 +621,6 @@ void vtkParseMerge_MergeHelper(FileInfo* finfo, const NamespaceInfo* data,
   ClassInfo* cinfo = NULL;
   ClassInfo* new_cinfo = NULL;
   HierarchyEntry* entry = NULL;
-  char* new_classname = NULL;
   const char** template_args = NULL;
   int template_arg_count = 0;
   const char* nspacename;
@@ -675,10 +674,6 @@ void vtkParseMerge_MergeHelper(FileInfo* finfo, const NamespaceInfo* data,
   {
     if (!entry)
     {
-      if (new_classname)
-      {
-        free(new_classname);
-      }
       return;
     }
     header = entry->HeaderFile;

@@ -53,7 +53,7 @@ public:
    */
   void DisplayText(const char*) override;
 
-  //@{
+  ///@{
   /**
    * Set or get whether the vtkWin32OutputWindow should also send its output
    * to stderr / cerr.
@@ -68,15 +68,20 @@ public:
   void SendToStdErrOn();
   VTK_DEPRECATED_IN_9_0_0("Use vtkWin32OutputWindow::SetDisplayMode")
   void SendToStdErrOff();
-  //@}
+  ///@}
+
+  /**
+   * Returns the window title.
+   */
+  virtual const char* GetWindowTitle() { return "vtkOutputWindow"; }
 
 protected:
   vtkWin32OutputWindow();
   ~vtkWin32OutputWindow() override;
 
-  void PromptText(const char* text);
-  static void AddText(const char*);
-  static int Initialize();
+  virtual void PromptText(const char* text);
+  virtual void AddText(const char*);
+  virtual int Initialize();
 
 private:
   vtkWin32OutputWindow(const vtkWin32OutputWindow&) = delete;

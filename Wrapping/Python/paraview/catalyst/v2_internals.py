@@ -22,7 +22,6 @@ def register_module(path):
     # seamlessly.
     importers.install_pathfinder()
 
-    modulename = None
     if vtkPSystemTools.FileIsDirectory(path):
         return RegisterPackageFromDir(path)
     elif path.lower().endswith(".zip"):
@@ -80,12 +79,6 @@ class CatalystV2Information:
 def import_and_validate(modulename):
     import importlib
 
-    # to support multiple pipelines, we create a container
-    # that keeps all proxies (extractors, and producers) needed by this pipeline
-    # in this helper container.
-    class Container:
-        pass
-
     m = importlib.import_module(modulename)
     _validate_and_initialize(m)
     return m
@@ -136,6 +129,22 @@ def do_catalyst_execute(module):
 def _get_active_data_description():
     helper = vtkCPPythonScriptV2Helper.GetActiveInstance()
     return helper.GetDataDescription()
+
+def _get_active_arguments():
+    helper = vtkCPPythonScriptV2Helper.GetActiveInstance()
+    slist = helper.GetArgumentsAsStringList()
+    args = []
+    for cc in range(slist.GetLength()):
+        args.append(slist.GetString(cc))
+    return args
+
+def _get_execute_parameters():
+    helper = vtkCPPythonScriptV2Helper.GetActiveInstance()
+    slist = helper.GetParametersAsStringList()
+    params = []
+    for cc in range(slist.GetLength()):
+        params.append(slist.GetString(cc))
+    return params
 
 def has_customized_execution(module):
     return hasattr(module, "catalyst_execute") or \

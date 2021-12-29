@@ -69,9 +69,7 @@ pqMultiSliceView::pqMultiSliceView(const QString& viewType, const QString& group
 }
 
 //-----------------------------------------------------------------------------
-pqMultiSliceView::~pqMultiSliceView()
-{
-}
+pqMultiSliceView::~pqMultiSliceView() = default;
 //-----------------------------------------------------------------------------
 QWidget* pqMultiSliceView::createWidget()
 {
@@ -160,7 +158,7 @@ QWidget* pqMultiSliceView::createWidget()
   }
 
   // Make sure the UI reflect the proxy state
-  this->updateViewModelCallBack(NULL, 0, NULL);
+  this->updateViewModelCallBack(nullptr, 0, nullptr);
 
   return container;
 }
@@ -291,7 +289,7 @@ void pqMultiSliceView::updateViewModelCallBack(vtkObject*, unsigned long, void*)
   memset(visibility, true, 255);
 
   double emptyDouble = 0;
-  if (xSlices.size() > 0)
+  if (!xSlices.empty())
   {
     this->AxisX->updateSlices(&xSlices[0], visibility, static_cast<int>(xSlices.size()));
   }
@@ -300,7 +298,7 @@ void pqMultiSliceView::updateViewModelCallBack(vtkObject*, unsigned long, void*)
     this->AxisX->updateSlices(&emptyDouble, visibility, 0);
   }
 
-  if (ySlices.size() > 0)
+  if (!ySlices.empty())
   {
     this->AxisY->updateSlices(&ySlices[0], visibility, static_cast<int>(ySlices.size()));
   }
@@ -309,7 +307,7 @@ void pqMultiSliceView::updateViewModelCallBack(vtkObject*, unsigned long, void*)
     this->AxisY->updateSlices(&emptyDouble, visibility, 0);
   }
 
-  if (zSlices.size() > 0)
+  if (!zSlices.empty())
   {
     this->AxisZ->updateSlices(&zSlices[0], visibility, static_cast<int>(zSlices.size()));
   }
@@ -335,7 +333,7 @@ const double* pqMultiSliceView::GetVisibleSlices(int axisIndex, int& numberOfSli
 
   // Invalid axis
   numberOfSlices = 0;
-  return NULL;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -353,7 +351,7 @@ const double* pqMultiSliceView::GetAllSlices(int axisIndex, int& numberOfSlices)
 
   // Invalid axis
   numberOfSlices = 0;
-  return NULL;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -361,7 +359,7 @@ const double* pqMultiSliceView::GetSliceNormal(int axisIndex)
 {
   if (axisIndex < 0 || axisIndex > 2)
   {
-    return NULL;
+    return nullptr;
   }
 
   const char* propertyNames[3] = { "XSlicesNormal", "YSlicesNormal", "ZSlicesNormal" };
@@ -379,7 +377,7 @@ const double* pqMultiSliceView::GetSliceOrigin(int axisIndex)
 {
   if (axisIndex < 0 || axisIndex > 2)
   {
-    return NULL;
+    return nullptr;
   }
 
   const char* propertyNames[3] = { "XSlicesOrigin", "YSlicesOrigin", "ZSlicesOrigin" };

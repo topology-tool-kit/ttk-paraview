@@ -16,26 +16,22 @@
  * @class vtkSelection
  * @brief data object that represents a "selection" in VTK.
  *
- * vtkSelection is a data object that represents a selection definition. It is
- * used to define the elements that are selected. The criteria of the selection
- * is defined using one or more vtkSelectionNode instances. Parameters of the
- * vtkSelectionNode define what kind of elements are being selected
- * (vtkSelectionNode::GetFieldType), how the selection criteria is defined
- * (vtkSelectionNode::GetContentType), etc.
+ * vtkSelection defines a selection. A selection is a data-object that defines
+ * which entities from another data-object are to treated as "selected". Filters like
+ * `vtkExtractSelection` or `vtkExtractDataArraysOverTime` can then be used to
+ * extract these selected entities from the *other* data-object.
  *
- * Filters like vtkExtractSelection, vtkExtractDataArraysOverTime can be used to
- * extract the selected elements from a dataset.
+ * vtkSelection comprises of `vtkSelectionNode`s and optionally, an expression
+ * specified using `vtkSelection::SetExpression`. If non-empty, the expression
+ * is a boolean expression that defines now the selection nodes present in the
+ * selection are to be combined together to form the selection. If no expression
+ * is specified and there are multiple selection nodes, then the default
+ * expression simply combines all the selection nodes using an `or` operator.
  *
- * @section CombiningSelection Combining Selections
- *
- * When a vtkSelection contains multiple vtkSelectionNode instances, the
- * selection defined is a union of all the elements identified by each of the
- * nodes.
- *
- * Optionally, one can use `vtkSelection::SetExpression` to define a boolean
- * expression to build arbitrarily complex combinations. The expression can be
- * defined using names assigned to the selection nodes when the nodes are added
- * to vtkSelection (either explicitly or automatically).
+ * Each vtkSelectionNode is used to define the selection criteria.
+ * vtkSelectionNode API lets one select what kind of entities are being selected
+ * (vtkSelectionNode::FieldType) and how they are being selected
+ * (vtkSelectionNode::ContentType).
  *
  * @sa
  * vtkSelectionNode
@@ -107,21 +103,21 @@ public:
    */
   virtual std::string GetNodeNameAtIndex(unsigned int idx) const;
 
-  //@{
+  ///@{
   /**
    * Removes a selection node.
    */
   virtual void RemoveNode(unsigned int idx);
   virtual void RemoveNode(const std::string& name);
   virtual void RemoveNode(vtkSelectionNode*);
-  //@}
+  ///@}
 
   /**
    * Removes all selection nodes.
    */
   virtual void RemoveAllNodes();
 
-  //@{
+  ///@{
   /**
    * Get/Set the expression that defines the boolean expression to combine the
    * selection nodes. Expression consists of node name identifiers, `|` for
@@ -135,7 +131,7 @@ public:
    */
   vtkSetMacro(Expression, std::string);
   vtkGetMacro(Expression, std::string);
-  //@}
+  ///@}
 
   /**
    * Copy selection nodes of the input.
@@ -180,21 +176,21 @@ public:
    */
   vtkMTimeType GetMTime() override;
 
-  //@{
+  ///@{
   /**
    * Dumps the contents of the selection, giving basic information only.
    */
   virtual void Dump();
   virtual void Dump(ostream& os);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Retrieve a vtkSelection stored inside an invormation object.
    */
   static vtkSelection* GetData(vtkInformation* info);
   static vtkSelection* GetData(vtkInformationVector* v, int i = 0);
-  //@}
+  ///@}
 
   /**
    * Evaluates the expression for each element in the values. The order

@@ -66,8 +66,6 @@ vtkChacoReader::vtkChacoReader()
   this->DataCache = vtkUnstructuredGrid::New();
   this->RemakeDataCacheFlag = 1;
 
-  this->Line_length = 200;
-  this->Line = new char[200];
   this->Offset = 0;
   this->Break_pnt = 200;
   this->Save_pnt = 0;
@@ -85,8 +83,6 @@ vtkChacoReader::~vtkChacoReader()
 
   this->DataCache->Delete();
   this->DataCache = nullptr;
-
-  delete[] this->Line;
 }
 
 //------------------------------------------------------------------------------
@@ -330,7 +326,7 @@ int vtkChacoReader::BuildOutputGrid(vtkUnstructuredGrid* output)
     }
 
     vtkIntArray* ia = vtkArrayDownCast<vtkIntArray>(
-      this->DataCache->GetCellData()->GetArray(this->GetGlobalElementIdArrayName()));
+      this->DataCache->GetCellData()->GetArray(vtkChacoReader::GetGlobalElementIdArrayName()));
 
     if (!ia && this->GenerateGlobalElementIdArray)
     {
@@ -338,11 +334,11 @@ int vtkChacoReader::BuildOutputGrid(vtkUnstructuredGrid* output)
     }
     else if (ia && !this->GenerateGlobalElementIdArray)
     {
-      this->DataCache->GetCellData()->RemoveArray(this->GetGlobalElementIdArrayName());
+      this->DataCache->GetCellData()->RemoveArray(vtkChacoReader::GetGlobalElementIdArrayName());
     }
 
     ia = vtkArrayDownCast<vtkIntArray>(
-      this->DataCache->GetPointData()->GetArray(this->GetGlobalNodeIdArrayName()));
+      this->DataCache->GetPointData()->GetArray(vtkChacoReader::GetGlobalNodeIdArrayName()));
 
     if (!ia && this->GenerateGlobalNodeIdArray)
     {
@@ -350,7 +346,7 @@ int vtkChacoReader::BuildOutputGrid(vtkUnstructuredGrid* output)
     }
     else if (ia && !this->GenerateGlobalNodeIdArray)
     {
-      this->DataCache->GetPointData()->RemoveArray(this->GetGlobalNodeIdArrayName());
+      this->DataCache->GetPointData()->RemoveArray(vtkChacoReader::GetGlobalNodeIdArrayName());
     }
 
     output->ShallowCopy(this->DataCache);
@@ -709,7 +705,7 @@ void vtkChacoReader::AddElementIds(vtkUnstructuredGrid* output)
   vtkIdType len = output->GetNumberOfCells();
 
   vtkIntArray* ia = vtkIntArray::New();
-  ia->SetName(this->GetGlobalElementIdArrayName());
+  ia->SetName(vtkChacoReader::GetGlobalElementIdArrayName());
   ia->SetNumberOfValues(len);
 
   for (vtkIdType i = 0; i < len; i++)
@@ -730,7 +726,7 @@ void vtkChacoReader::AddNodeIds(vtkUnstructuredGrid* output)
   vtkIdType len = output->GetNumberOfPoints();
 
   vtkIntArray* ia = vtkIntArray::New();
-  ia->SetName(this->GetGlobalNodeIdArrayName());
+  ia->SetName(vtkChacoReader::GetGlobalNodeIdArrayName());
   ia->SetNumberOfValues(len);
 
   for (vtkIdType i = 0; i < len; i++)
@@ -867,7 +863,6 @@ int vtkChacoReader::OpenCurrentFile()
 
 void vtkChacoReader::ResetInputBuffers()
 {
-  this->Line_length = 200;
   this->Offset = 0;
   this->Break_pnt = 200;
   this->Save_pnt = 0;

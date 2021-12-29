@@ -17,6 +17,7 @@
 #include "vtkBitArray.h"
 #include "vtkByteSwap.h"
 #include "vtkCellArray.h"
+#include "vtkCellArrayIterator.h"
 #include "vtkCellData.h"
 #include "vtkCharArray.h"
 #include "vtkDataSet.h"
@@ -71,14 +72,8 @@
 
 vtkStandardNewMacro(vtkDataWriter);
 
-// this undef is required on the hp. vtkMutexLock ends up including
-// /usr/include/dce/cma_ux.h which has the gall to #define write as cma_write
-
-#ifdef write
-#undef write
-#endif
-
-// Created object with default header, ASCII format, and default names for
+//------------------------------------------------------------------------------
+// Created object with a default header, ASCII format, and default names for
 // scalars, vectors, tensors, normals, and texture coordinates.
 vtkDataWriter::vtkDataWriter()
 {
@@ -87,6 +82,7 @@ vtkDataWriter::vtkDataWriter()
   this->Header = new char[257];
   strcpy(this->Header, "vtk output");
   this->FileType = VTK_ASCII;
+  this->FileVersion = VTK_LEGACY_READER_VERSION_5_1;
 
   this->ScalarsName = nullptr;
   this->VectorsName = nullptr;
@@ -109,6 +105,7 @@ vtkDataWriter::vtkDataWriter()
   this->WriteArrayMetaData = true;
 }
 
+//------------------------------------------------------------------------------
 vtkDataWriter::~vtkDataWriter()
 {
   delete[] this->FileName;
@@ -129,6 +126,7 @@ vtkDataWriter::~vtkDataWriter()
   this->OutputStringLength = 0;
 }
 
+//------------------------------------------------------------------------------
 // Open a vtk data file. Returns nullptr if error.
 ostream* vtkDataWriter::OpenVTKFile()
 {
@@ -195,13 +193,46 @@ ostream* vtkDataWriter::OpenVTKFile()
   return fptr;
 }
 
+//------------------------------------------------------------------------------
+void vtkDataWriter::SetFileVersion(int version)
+{
+  if (version == this->FileVersion)
+  {
+    return;
+  }
+
+  this->Modified();
+  this->FileVersion = version;
+  this->FileMajorVersion = version / 10;
+  this->FileMinorVersion = version - (10 * this->FileMajorVersion);
+}
+
+//------------------------------------------------------------------------------
 // Write the header of a vtk data file. Returns 0 if error.
 int vtkDataWriter::WriteHeader(ostream* fp)
 {
   vtkDebugMacro(<< "Writing header...");
 
-  *fp << "# vtk DataFile Version " << vtkLegacyReaderMajorVersion << "."
-      << vtkLegacyReaderMinorVersion << "\n";
+  // This code will update as the compile time
+  // major and minor versions are updated.
+  int majVersion, minVersion;
+  if (this->FileVersion == VTK_LEGACY_READER_VERSION_4_2)
+  {
+    majVersion = 4;
+    minVersion = 2;
+  }
+  else if (this->FileVersion == VTK_LEGACY_READER_VERSION_5_1)
+  {
+    majVersion = 5;
+    minVersion = 1;
+  }
+  else // future?
+  {
+    majVersion = vtkLegacyReaderMajorVersion;
+    minVersion = vtkLegacyReaderMinorVersion;
+  }
+
+  *fp << "# vtk DataFile Version " << majVersion << "." << minVersion << "\n";
   *fp << this->Header << "\n";
 
   if (this->FileType == VTK_ASCII)
@@ -223,6 +254,7 @@ int vtkDataWriter::WriteHeader(ostream* fp)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Write the cell data (e.g., scalars, vectors, ...) of a vtk dataset.
 // Returns 0 if error.
 int vtkDataWriter::WriteCellData(ostream* fp, vtkDataSet* ds)
@@ -370,6 +402,7 @@ int vtkDataWriter::WriteCellData(ostream* fp, vtkDataSet* ds)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Write the point data (e.g., scalars, vectors, ...) of a vtk dataset.
 // Returns 0 if error.
 int vtkDataWriter::WritePointData(ostream* fp, vtkDataSet* ds)
@@ -533,6 +566,7 @@ int vtkDataWriter::WritePointData(ostream* fp, vtkDataSet* ds)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Write the vertex data (e.g., scalars, vectors, ...) of a vtk graph.
 // Returns 0 if error.
 int vtkDataWriter::WriteVertexData(ostream* fp, vtkGraph* ds)
@@ -680,6 +714,7 @@ int vtkDataWriter::WriteVertexData(ostream* fp, vtkGraph* ds)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Write the edge data (e.g., scalars, vectors, ...) of a vtk graph.
 // Returns 0 if error.
 int vtkDataWriter::WriteEdgeData(ostream* fp, vtkGraph* g)
@@ -827,6 +862,7 @@ int vtkDataWriter::WriteEdgeData(ostream* fp, vtkGraph* g)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Write the row data (e.g., scalars, vectors, ...) of a vtk table.
 // Returns 0 if error.
 int vtkDataWriter::WriteRowData(ostream* fp, vtkTable* t)
@@ -1026,12 +1062,14 @@ void vtkWriteDataArray(
   *fp << "\n";
 }
 
+//------------------------------------------------------------------------------
 template <class Value, class Array>
 Value* GetPointer(vtkAbstractArray* array)
 {
   return static_cast<Array*>(array)->GetPointer(0);
 }
 
+//------------------------------------------------------------------------------
 // Returns a pointer to the data ordered in original VTK style ordering
 // of the data. If this is an SOA array it has to allocate the memory
 // for that in which case the calling function must delete it.
@@ -1053,6 +1091,7 @@ T* GetArrayRawPointer(vtkAbstractArray* array, int isAOSArray)
 
 } // end anonymous namespace
 
+//------------------------------------------------------------------------------
 // Write out data to file specified.
 int vtkDataWriter::WriteArray(ostream* fp, int dataType, vtkAbstractArray* data, const char* format,
   vtkIdType num, vtkIdType numComp)
@@ -1488,6 +1527,7 @@ int vtkDataWriter::WriteArray(ostream* fp, int dataType, vtkAbstractArray* data,
   return 1;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataWriter::WritePoints(ostream* fp, vtkPoints* points)
 {
   vtkIdType numPts;
@@ -1503,6 +1543,7 @@ int vtkDataWriter::WritePoints(ostream* fp, vtkPoints* points)
   return this->WriteArray(fp, points->GetDataType(), points->GetData(), "%s\n", numPts, 3);
 }
 
+//------------------------------------------------------------------------------
 // Write out coordinates for rectilinear grids.
 int vtkDataWriter::WriteCoordinates(ostream* fp, vtkDataArray* coords, int axes)
 {
@@ -1529,6 +1570,7 @@ int vtkDataWriter::WriteCoordinates(ostream* fp, vtkDataArray* coords, int axes)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 // Write out scalar data.
 int vtkDataWriter::WriteScalarData(ostream* fp, vtkDataArray* scalars, vtkIdType num)
 {
@@ -1650,6 +1692,7 @@ int vtkDataWriter::WriteScalarData(ostream* fp, vtkDataArray* scalars, vtkIdType
   return 1;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataWriter::WriteVectorData(ostream* fp, vtkDataArray* vectors, vtkIdType num)
 {
   *fp << "VECTORS ";
@@ -1717,6 +1760,7 @@ int vtkDataWriter::WriteNormalData(ostream* fp, vtkDataArray* normals, vtkIdType
   return this->WriteArray(fp, normals->GetDataType(), normals, format, num, 3);
 }
 
+//------------------------------------------------------------------------------
 int vtkDataWriter::WriteTCoordData(ostream* fp, vtkDataArray* tcoords, vtkIdType num)
 {
   int dim = tcoords->GetNumberOfComponents();
@@ -1752,6 +1796,7 @@ int vtkDataWriter::WriteTCoordData(ostream* fp, vtkDataArray* tcoords, vtkIdType
   return this->WriteArray(fp, tcoords->GetDataType(), tcoords, format, num, dim);
 }
 
+//------------------------------------------------------------------------------
 int vtkDataWriter::WriteTensorData(ostream* fp, vtkDataArray* tensors, vtkIdType num)
 {
   char* tensorsName;
@@ -1792,6 +1837,7 @@ int vtkDataWriter::WriteTensorData(ostream* fp, vtkDataArray* tensors, vtkIdType
   return this->WriteArray(fp, tensors->GetDataType(), tensors, format, num, numComp);
 }
 
+//------------------------------------------------------------------------------
 int vtkDataWriter::WriteGlobalIdData(ostream* fp, vtkDataArray* globalIds, vtkIdType num)
 {
   *fp << "GLOBAL_IDS ";
@@ -1826,6 +1872,7 @@ int vtkDataWriter::WriteGlobalIdData(ostream* fp, vtkDataArray* globalIds, vtkId
   return this->WriteArray(fp, globalIds->GetDataType(), globalIds, format, num, 1);
 }
 
+//------------------------------------------------------------------------------
 int vtkDataWriter::WritePedigreeIdData(ostream* fp, vtkAbstractArray* pedigreeIds, vtkIdType num)
 {
   *fp << "PEDIGREE_IDS ";
@@ -1860,6 +1907,7 @@ int vtkDataWriter::WritePedigreeIdData(ostream* fp, vtkAbstractArray* pedigreeId
   return this->WriteArray(fp, pedigreeIds->GetDataType(), pedigreeIds, format, num, 1);
 }
 
+//------------------------------------------------------------------------------
 int vtkDataWriter::WriteEdgeFlagsData(ostream* fp, vtkDataArray* edgeFlags, vtkIdType num)
 {
   *fp << "EDGE_FLAGS ";
@@ -1894,6 +1942,7 @@ int vtkDataWriter::WriteEdgeFlagsData(ostream* fp, vtkDataArray* edgeFlags, vtkI
   return this->WriteArray(fp, edgeFlags->GetDataType(), edgeFlags, format, num, 1);
 }
 
+//------------------------------------------------------------------------------
 bool vtkDataWriter::CanWriteInformationKey(vtkInformation* info, vtkInformationKey* key)
 {
   vtkInformationDoubleKey* dKey = nullptr;
@@ -1945,6 +1994,7 @@ bool vtkDataWriter::CanWriteInformationKey(vtkInformation* info, vtkInformationK
   return false;
 }
 
+//------------------------------------------------------------------------------
 namespace
 {
 void writeInfoHeader(std::ostream* fp, vtkInformationKey* key)
@@ -2079,6 +2129,7 @@ int vtkDataWriter::WriteInformation(std::ostream* fp, vtkInformation* info)
   return 1;
 }
 
+//------------------------------------------------------------------------------
 static int vtkIsInTheList(int index, int* list, vtkIdType numElem)
 {
   for (vtkIdType i = 0; i < numElem; i++)
@@ -2091,6 +2142,7 @@ static int vtkIsInTheList(int index, int* list, vtkIdType numElem)
   return 0;
 }
 
+//------------------------------------------------------------------------------
 int vtkDataWriter::WriteFieldData(ostream* fp, vtkFieldData* f)
 {
   char format[1024];
@@ -2165,8 +2217,88 @@ int vtkDataWriter::WriteFieldData(ostream* fp, vtkFieldData* f)
   return 1;
 }
 
+//------------------------------------------------------------------------------
+int vtkDataWriter::WriteCellsLegacy(ostream* fp, vtkCellArray* cells, const char* label)
+{
+  if (!cells || cells->GetNumberOfCells() < 1)
+  {
+    return 1;
+  }
+
+  int ncells = cells->GetNumberOfCells();
+  int size = cells->GetNumberOfConnectivityEntries();
+
+  if (ncells < 1)
+  {
+    return 1;
+  }
+
+  *fp << label << " " << ncells << " " << size << "\n";
+
+  // Use cell array iterator to convert new VTK cell data array
+  // into form that can be readily output in legacy format.
+  auto iter = vtk::TakeSmartPointer(cells->NewIterator());
+  const vtkIdType* pts = nullptr;
+  vtkIdType npts = 0;
+
+  if (this->FileType == VTK_ASCII)
+  {
+    for (iter->GoToFirstCell(); !iter->IsDoneWithTraversal(); iter->GoToNextCell())
+    {
+      iter->GetCurrentCell(npts, pts);
+      *fp << static_cast<int>(npts) << " ";
+      for (auto i = 0; i < npts; i++)
+      {
+        // currently writing vtkIdType as int
+        *fp << static_cast<int>(pts[i]) << " ";
+      }
+      *fp << "\n";
+    }
+  } // ASCII Type
+  else
+  {
+    // swap the bytes if necessary
+    // currently writing vtkIdType as int
+    int arraySize = cells->GetNumberOfConnectivityEntries();
+    int* intArray = new int[arraySize];
+
+    int* intArrayPtr = intArray;
+    for (iter->GoToFirstCell(); !iter->IsDoneWithTraversal(); iter->GoToNextCell())
+    {
+      iter->GetCurrentCell(npts, pts);
+      *intArrayPtr++ = npts;
+      for (auto i = 0; i < npts; ++i)
+      {
+        *intArrayPtr++ = pts[i];
+      }
+    }
+
+    vtkByteSwap::SwapWrite4BERange(intArray, size, fp);
+    delete[] intArray;
+  } // BINARY Type
+
+  *fp << "\n";
+
+  fp->flush();
+  if (fp->fail())
+  {
+    this->SetErrorCode(vtkErrorCode::OutOfDiskSpaceError);
+    return 0;
+  }
+
+  return 1;
+}
+
+//------------------------------------------------------------------------------
 int vtkDataWriter::WriteCells(ostream* fp, vtkCellArray* cells, const char* label)
 {
+  // Shunt to legacy if needed
+  if (this->FileVersion == VTK_LEGACY_READER_VERSION_4_2)
+  {
+    return this->WriteCellsLegacy(fp, cells, label);
+  }
+
+  // Okay, the latest and greatest format
   if (!cells || cells->GetNumberOfCells() < 1)
   {
     return 1;
@@ -2193,11 +2325,13 @@ int vtkDataWriter::WriteCells(ostream* fp, vtkCellArray* cells, const char* labe
   return 1;
 }
 
+//------------------------------------------------------------------------------
 void vtkDataWriter::WriteData()
 {
   vtkErrorMacro(<< "WriteData() should be implemented in concrete subclass");
 }
 
+//------------------------------------------------------------------------------
 // Close a vtk file.
 void vtkDataWriter::CloseVTKFile(ostream* fp)
 {
@@ -2234,6 +2368,7 @@ void vtkDataWriter::CloseVTKFile(ostream* fp)
   }
 }
 
+//------------------------------------------------------------------------------
 char* vtkDataWriter::RegisterAndGetOutputString()
 {
   char* tmp = this->OutputString;
@@ -2244,16 +2379,20 @@ char* vtkDataWriter::RegisterAndGetOutputString()
   return tmp;
 }
 
+//------------------------------------------------------------------------------
 vtkStdString vtkDataWriter::GetOutputStdString()
 {
   return vtkStdString(this->OutputString, this->OutputStringLength);
 }
 
+//------------------------------------------------------------------------------
 void vtkDataWriter::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
 
   os << indent << "File Name: " << (this->FileName ? this->FileName : "(none)") << "\n";
+
+  os << indent << "File Version: " << this->FileVersion << "\n";
 
   if (this->FileType == VTK_BINARY)
   {
@@ -2368,6 +2507,7 @@ void vtkDataWriter::PrintSelf(ostream& os, vtkIndent indent)
   }
 }
 
+//------------------------------------------------------------------------------
 int vtkDataWriter::WriteDataSetData(ostream* fp, vtkDataSet* ds)
 {
   vtkFieldData* field = ds->GetFieldData();

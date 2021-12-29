@@ -35,7 +35,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqApplicationCore.h"
 #include "pqCoreUtilities.h"
 #include "pqFileDialog.h"
-#include "pqOptions.h"
 #include "pqOutputPort.h"
 #include "pqPipelineSource.h"
 #include "pqProxyWidgetDialog.h"
@@ -69,7 +68,7 @@ void pqSaveDataReaction::updateEnableState()
   pqActiveObjects& activeObjects = pqActiveObjects::instance();
   // TODO: also is there's a pending accept.
   pqOutputPort* port = activeObjects.activePort();
-  bool enable_state = (port != NULL);
+  bool enable_state = (port != nullptr);
   if (enable_state)
   {
     vtkSMWriterFactory* writerFactory = vtkSMProxyManager::GetProxyManager()->GetWriterFactory();
@@ -191,7 +190,7 @@ bool pqSaveDataReaction::saveActiveData(const QString& filename)
 
   SM_SCOPED_TRACE(SaveData)
     .arg("writer", writer)
-    .arg("filename", filename.toLocal8Bit().data())
+    .arg("filename", filename.toUtf8().data())
     .arg("source", port->getSource()->getProxy())
     .arg("port", port->getPortNumber());
   return true;

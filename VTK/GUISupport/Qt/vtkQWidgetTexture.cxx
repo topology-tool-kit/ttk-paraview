@@ -19,15 +19,21 @@
 #include "vtkOpenGLState.h"
 
 #include <QGraphicsProxyWidget>
+#include <QGraphicsScene>
+#include <QOffscreenSurface>
+#include <QOpenGLFramebufferObject>
 #include <QOpenGLPaintDevice>
 #include <QPainter>
-#include <QtGui/QOffscreenSurface>
-#include <QtGui/QOpenGLFramebufferObject>
-#include <QtWidgets/QGraphicsScene>
-#include <QtWidgets/QWidget>
+#include <QWidget>
 
 //------------------------------------------------------------------------------
 vtkStandardNewMacro(vtkQWidgetTexture);
+
+//------------------------------------------------------------------------------
+void vtkQWidgetTexture::PrintSelf(ostream& os, vtkIndent indent)
+{
+  this->Superclass::PrintSelf(os, indent);
+}
 
 //------------------------------------------------------------------------------
 vtkQWidgetTexture::vtkQWidgetTexture()

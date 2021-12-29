@@ -27,11 +27,11 @@ PURPOSE.  See the above copyright notice for more information.
 #define myassert(condition, message)                                                               \
   if ((condition))                                                                                 \
   {                                                                                                \
-    cout << message << " -- SUCCESS" << endl;                                                      \
+    cout << (message) << " -- SUCCESS" << endl;                                                    \
   }                                                                                                \
   else                                                                                             \
   {                                                                                                \
-    cout << message << " -- FAILED" << endl;                                                       \
+    cout << (message) << " -- FAILED" << endl;                                                     \
     return EXIT_FAILURE;                                                                           \
   }
 
@@ -82,11 +82,11 @@ int TestTransferFunctionPresets(int argc, char* argv[])
 
   // create new instance and verify that our overridden preset survived.
   presets = vtkSmartPointer<vtkSMTransferFunctionPresets>::New();
-  myassert(presets->GetPresetAsString(testPreset) != NULL, "Has test preset");
+  myassert(presets->GetPresetAsString(testPreset) != nullptr, "Has test preset");
   myassert(presets->RemovePreset(testPreset) == false, "Cannot remove builtin preset");
   */
 
-  presets = NULL;
+  presets = nullptr;
 
   vtkInitializationHelper::Finalize();
   return EXIT_SUCCESS;

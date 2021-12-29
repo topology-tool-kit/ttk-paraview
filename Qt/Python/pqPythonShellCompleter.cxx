@@ -52,7 +52,7 @@ pqPythonShellCompleter::pqPythonShellCompleter(
 void pqPythonShellCompleter::updateCompletionModel(const QString& rootText)
 {
   // Start by clearing the model
-  this->setModel(0);
+  this->setModel(nullptr);
 
   // Don't try to complete the empty string
   if (rootText.isEmpty())
@@ -110,7 +110,8 @@ void pqPythonShellCompleter::updateCompletionModel(const QString& rootText)
 QStringList pqPythonShellCompleter::getPythonAttributes(const QString& pythonObjectName)
 {
   vtkPythonScopeGilEnsurer gilEnsurer;
-  if (this->Interpreter == NULL || this->Interpreter->GetInteractiveConsoleLocalsPyObject() == NULL)
+  if (this->Interpreter == nullptr ||
+    this->Interpreter->GetInteractiveConsoleLocalsPyObject() == nullptr)
   {
     return QStringList();
   }
@@ -124,7 +125,7 @@ QStringList pqPythonShellCompleter::getPythonAttributes(const QString& pythonObj
     QStringList tmpNames = pythonObjectName.split('.');
     for (int i = 0; i < tmpNames.size() && object; ++i)
     {
-      QByteArray tmpName = tmpNames.at(i).toLocal8Bit();
+      QByteArray tmpName = tmpNames.at(i).toUtf8();
       PyObject* prevObj = object;
       if (PyDict_Check(object))
       {
@@ -143,7 +144,7 @@ QStringList pqPythonShellCompleter::getPythonAttributes(const QString& pythonObj
   QStringList results;
   if (object)
   {
-    PyObject* keys = NULL;
+    PyObject* keys = nullptr;
     bool is_dict = PyDict_Check(object);
     if (is_dict)
     {

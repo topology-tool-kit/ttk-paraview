@@ -72,7 +72,7 @@ class pqTableModel : public QAbstractTableModel
   }
 
 public:
-  pqTableModel(int num_columns, bool integers_only = false, QObject* parentObject = NULL)
+  pqTableModel(int num_columns, bool integers_only = false, QObject* parentObject = nullptr)
     : Superclass(parentObject)
     , NumberOfColumns(num_columns)
     , AllowIntegralValuesOnly(integers_only)
@@ -80,7 +80,7 @@ public:
     assert(num_columns > 0);
   }
 
-  ~pqTableModel() override {}
+  ~pqTableModel() override = default;
 
   void setLabels(std::vector<const char*>& labels)
   {
@@ -217,7 +217,7 @@ public:
       }
     }
   }
-  const QVector<QVariant> value() const { return this->Values; }
+  QVector<QVariant> value() const { return this->Values; }
 
   QModelIndex addRow(const QModelIndex& after = QModelIndex())
   {
@@ -248,7 +248,7 @@ public:
   // Given a list of modelindexes, return a vector containing multiple sorted
   // vectors of rows, split by their discontinuity
   void splitSelectedIndexesToRowRanges(
-    const QModelIndexList& indexList, QVector<QVector<QVariant> >& result)
+    const QModelIndexList& indexList, QVector<QVector<QVariant>>& result)
   {
     if (indexList.empty())
     {
@@ -286,7 +286,7 @@ public:
   // item, if any.
   QModelIndex removeListedRows(const QModelIndexList& toRemove = QModelIndexList())
   {
-    QVector<QVector<QVariant> > rowRanges;
+    QVector<QVector<QVariant>> rowRanges;
     this->splitSelectedIndexesToRowRanges(toRemove, rowRanges);
     int numGroups = static_cast<int>(rowRanges.size());
     for (int g = numGroups - 1; g > -1; --g)
@@ -386,7 +386,7 @@ pqScalarValueListPropertyWidget::pqScalarValueListPropertyWidget(
   this->setShowLabel(false);
 
   vtkSMVectorProperty* vp = vtkSMVectorProperty::SafeDownCast(smProperty);
-  assert(vp != NULL);
+  assert(vp != nullptr);
 
   this->Internals = new pqInternals(this, vp->GetNumberOfElementsPerCommand());
   QObject::connect(&this->Internals->Model,
@@ -408,7 +408,7 @@ pqScalarValueListPropertyWidget::pqScalarValueListPropertyWidget(
   ui.Remove->setEnabled(false);
   QObject::connect(ui.Table->selectionModel(), &QItemSelectionModel::selectionChanged,
     [&ui](const QItemSelection&, const QItemSelection&) {
-      ui.Remove->setEnabled(ui.Table->selectionModel()->selectedIndexes().size() > 0);
+      ui.Remove->setEnabled(ui.Table->selectionModel()->selectedIndexes().empty() == false);
     });
 
   if (smProperty->GetInformationOnly())
@@ -424,7 +424,7 @@ pqScalarValueListPropertyWidget::pqScalarValueListPropertyWidget(
 pqScalarValueListPropertyWidget::~pqScalarValueListPropertyWidget()
 {
   delete this->Internals;
-  this->Internals = NULL;
+  this->Internals = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -471,7 +471,7 @@ void pqScalarValueListPropertyWidget::editPastLastRow()
 void pqScalarValueListPropertyWidget::remove()
 {
   QModelIndexList indexes = this->Internals->Ui.Table->selectionModel()->selectedIndexes();
-  if (indexes.size() == 0)
+  if (indexes.empty())
   {
     // Nothing selected. Nothing to remove
     return;
@@ -636,7 +636,7 @@ bool pqScalarValueListPropertyWidget::getRange(double& range_min, double& range_
     int min_exists = 0, max_exists = 0;
     vtkSMDoubleRangeDomain* doubleRange =
       vtkSMDoubleRangeDomain::SafeDownCast(this->Internals->RangeDomain);
-    assert(doubleRange != NULL);
+    assert(doubleRange != nullptr);
     range_min = doubleRange->GetMinimum(0, min_exists);
     range_max = doubleRange->GetMaximum(0, max_exists);
     return (min_exists && max_exists);
@@ -654,7 +654,7 @@ bool pqScalarValueListPropertyWidget::getRange(int& range_min, int& range_max)
     int min_exists = 0, max_exists = 0;
     vtkSMIntRangeDomain* doubleRange =
       vtkSMIntRangeDomain::SafeDownCast(this->Internals->RangeDomain);
-    assert(doubleRange != NULL);
+    assert(doubleRange != nullptr);
     range_min = doubleRange->GetMinimum(0, min_exists);
     range_max = doubleRange->GetMaximum(0, max_exists);
     return (min_exists && max_exists);

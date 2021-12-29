@@ -18,10 +18,6 @@
   the U.S. Government retains certain rights in this software.
 -------------------------------------------------------------------------*/
 
-// Check for Qt SQL module before defining this class.
-#include <qglobal.h>
-#if (QT_EDITION & QT_MODULE_SQL)
-
 #include "vtkQtSQLQuery.h"
 
 #include "vtkCharArray.h"
@@ -75,7 +71,7 @@ bool vtkQtSQLQuery::HasError()
 
 const char* vtkQtSQLQuery::GetLastErrorText()
 {
-  this->SetLastErrorText(this->Internals->QtQuery.lastError().text().toLatin1());
+  this->SetLastErrorText(this->Internals->QtQuery.lastError().text().toUtf8().data());
   return this->LastErrorText;
 }
 
@@ -92,10 +88,10 @@ bool vtkQtSQLQuery::Execute()
   QSqlError error = this->Internals->QtQuery.lastError();
   if (error.isValid())
   {
-    QString errorString;
-    errorString.sprintf(
-      "Query execute error: %s (type:%d)\n", error.text().toLatin1().data(), error.type());
-    vtkErrorMacro(<< errorString.toLatin1().data());
+    QString errorString = QString("Query execute error: %1 (type:%2)\n")
+                            .arg(error.text().toUtf8().data())
+                            .arg(error.type());
+    vtkErrorMacro(<< errorString.toUtf8().data());
     return false;
   }
 
@@ -103,8 +99,8 @@ bool vtkQtSQLQuery::Execute()
   this->Internals->FieldNames.clear();
   for (int i = 0; i < this->Internals->QtQuery.record().count(); i++)
   {
-    this->Internals->FieldNames.push_back(
-      this->Internals->QtQuery.record().fieldName(i).toLatin1().data());
+    this->Internals->FieldNames.emplace_back(
+      this->Internals->QtQuery.record().fieldName(i).toUtf8().data());
   }
   return true;
 }
@@ -208,7 +204,7 @@ vtkVariant vtkQtSQLQuery::DataValue(vtkIdType c)
     case QVariant::LongLong:
       return vtkVariant(v.toLongLong());
     case QVariant::String:
-      return vtkVariant(v.toString().toLatin1().data());
+      return vtkVariant(v.toString().toUtf8().data());
     case QVariant::UInt:
       return vtkVariant(v.toUInt());
     case QVariant::ULongLong:
@@ -225,8 +221,6 @@ vtkVariant vtkQtSQLQuery::DataValue(vtkIdType c)
     default:
       vtkErrorMacro(<< "Unhandled Qt variant type " << v.type()
                     << " found; returning string variant.");
-      return vtkVariant(v.toString().toLatin1().data());
+      return vtkVariant(v.toString().toUtf8().data());
   }
 }
-
-#endif // (QT_EDITION & QT_MODULE_SQL)

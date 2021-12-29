@@ -107,6 +107,8 @@ vtkGPUVolumeRayCastMapper::vtkGPUVolumeRayCastMapper()
   this->ReportProgress = true;
 
   this->SetNumberOfInputPorts(10);
+
+  this->Transfer2DYAxisArray = nullptr;
 }
 
 //------------------------------------------------------------------------------
@@ -126,6 +128,7 @@ vtkGPUVolumeRayCastMapper::~vtkGPUVolumeRayCastMapper()
   {
     this->DepthPassContourValues->Delete();
   }
+  this->SetTransfer2DYAxisArray(nullptr);
 }
 
 //------------------------------------------------------------------------------
@@ -350,7 +353,7 @@ int vtkGPUVolumeRayCastMapper::ValidateInput(vtkVolumeProperty* property, const 
   if (goodSoFar)
   {
     // Now make sure we can find scalars
-    scalars = this->GetScalars(this->TransformedInputs[port], this->ScalarMode,
+    scalars = vtkGPUVolumeRayCastMapper::GetScalars(this->TransformedInputs[port], this->ScalarMode,
       this->ArrayAccessMode, this->ArrayId, this->ArrayName, this->CellFlag);
 
     // We couldn't find scalars

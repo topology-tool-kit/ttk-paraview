@@ -200,10 +200,10 @@ set(VTK_JAVA_TARGET_VERSION "<DEFAULT>" CACHE STRING "javac target version")
 mark_as_advanced(VTK_JAVA_TARGET_VERSION)
 
 if (VTK_JAVA_SOURCE_VERSION STREQUAL "<DEFAULT>")
-  set(VTK_JAVA_SOURCE_VERSION "1.6")
+  set(VTK_JAVA_SOURCE_VERSION "1.7")
 endif ()
 if (VTK_JAVA_TARGET_VERSION STREQUAL "<DEFAULT>")
-  set(VTK_JAVA_TARGET_VERSION "1.6")
+  set(VTK_JAVA_TARGET_VERSION "1.7")
 endif ()
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_JARDIR}")
@@ -266,6 +266,6 @@ install(
   DESTINATION "${vtk_cmake_destination}"
   COMPONENT "development")
 
-if (BUILD_TESTING AND TARGET VTK::TestingRendering)
+if (VTK_BUILD_TESTING AND TARGET VTK::TestingRendering)
   add_subdirectory(Testing)
 endif ()

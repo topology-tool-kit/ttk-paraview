@@ -29,7 +29,7 @@ PURPOSE.  See the above copyright notice for more information.
  * cell data
  *-----------------------------------------------------------------------------
  *=============================================================================
-*/
+ */
 
 #ifndef vtkSpyPlotUniReader_h
 #define vtkSpyPlotUniReader_h
@@ -79,9 +79,12 @@ public:
   /**
    * Set and get the current time step to process
    */
+  // FIXME: This collides with `windows.h` symbols. It should be renamed.
+  // https://gitlab.kitware.com/paraview/paraview/-/issues/20916
   int SetCurrentTime(double time);
-  int SetCurrentTimeStep(int timeStep);
   vtkGetMacro(CurrentTime, double);
+
+  int SetCurrentTimeStep(int timeStep);
   vtkGetMacro(CurrentTimeStep, int);
   //@}
 
@@ -330,5 +333,3 @@ inline int vtkSpyPlotUniReader::IsAMR()
 }
 
 #endif
-
-// VTK-HeaderTest-Exclude: vtkSpyPlotUniReader.h

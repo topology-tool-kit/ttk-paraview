@@ -163,6 +163,7 @@ public:
   /**
    * Create a Unicode string variant
    */
+  VTK_DEPRECATED_IN_9_1_0("Use vtkVariant(vtkStdString value)")
   vtkVariant(const vtkUnicodeString& value);
 
   /**
@@ -193,6 +194,7 @@ public:
   /**
    * Get whether the variant is a Unicode string.
    */
+  VTK_DEPRECATED_IN_9_1_0("Use bool IsString() const")
   bool IsUnicodeString() const;
 
   /**
@@ -320,9 +322,11 @@ public:
    * variant is not a floating-point value or an array of floating-point values.
    * See the std doc for more information.
    */
+  VTK_DEPRECATED_IN_9_1_0(
+    "Use vtkStdString ToString(int formatting = DEFAULT_FORMATTING, int precision = 6)")
   vtkUnicodeString ToUnicodeString(int formatting = DEFAULT_FORMATTING, int precision = 6) const;
 
-  //@{
+  ///@{
   /**
    * Convert the variant to a numeric type:
    * If it holds a numeric, cast to the appropriate type.
@@ -362,7 +366,7 @@ public:
   vtkTypeInt64 ToTypeInt64() const { return this->ToTypeInt64(nullptr); }
   vtkTypeUInt64 ToTypeUInt64(bool* valid) const;
   vtkTypeUInt64 ToTypeUInt64() const { return this->ToTypeUInt64(nullptr); }
-  //@}
+  ///@}
 
   /**
    * Return the VTK object, or nullptr if not of that type.
@@ -386,7 +390,7 @@ public:
    */
   bool IsEqual(const vtkVariant& other) const;
 
-  //@{
+  ///@{
   /**
    * Compare two variants for equality, greater than, and less than.
    * These operators use the value represented by the variant instead
@@ -423,7 +427,7 @@ public:
   bool operator>(const vtkVariant& other) const;
   bool operator<=(const vtkVariant& other) const;
   bool operator>=(const vtkVariant& other) const;
-  //@}
+  ///@}
 
   friend VTKCOMMONCORE_EXPORT ostream& operator<<(ostream& os, const vtkVariant& val);
 

@@ -142,13 +142,13 @@ public:
    */
   vtkMTimeType GetMTime() override;
 
-  //@{
+  ///@{
   /**
    * Set/Get input string to evaluate.
    */
   void SetFunction(const char* function);
   vtkGetStringMacro(Function);
-  //@}
+  ///@}
 
   /**
    * Check whether the result is a scalar result.  If it isn't, then
@@ -167,7 +167,7 @@ public:
    */
   double GetScalarResult();
 
-  //@{
+  ///@{
   /**
    * Get a vector result from evaluating the input function.
    */
@@ -179,9 +179,9 @@ public:
     result[1] = r[1];
     result[2] = r[2];
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set the value of a scalar variable.  If a variable with this name
    * exists, then its value will be set to the new value.  If there is not
@@ -189,18 +189,26 @@ public:
    * list of variables, and its value will be set to the new value.
    */
   void SetScalarVariableValue(const char* variableName, double value);
+  void SetScalarVariableValue(const std::string& variableName, double value)
+  {
+    this->SetScalarVariableValue(variableName.c_str(), value);
+  }
   void SetScalarVariableValue(int i, double value);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the value of a scalar variable.
    */
   double GetScalarVariableValue(const char* variableName);
+  double GetScalarVariableValue(const std::string& variableName)
+  {
+    return this->GetScalarVariableValue(variableName.c_str());
+  }
   double GetScalarVariableValue(int i);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set the value of a vector variable.  If a variable with this name
    * exists, then its value will be set to the new value.  If there is not
@@ -209,28 +217,45 @@ public:
    */
   void SetVectorVariableValue(
     const char* variableName, double xValue, double yValue, double zValue);
+  void SetVectorVariableValue(
+    const std::string& variableName, double xValue, double yValue, double zValue)
+  {
+    this->SetVectorVariableValue(variableName.c_str(), xValue, yValue, zValue);
+  }
   void SetVectorVariableValue(const char* variableName, const double values[3])
   {
     this->SetVectorVariableValue(variableName, values[0], values[1], values[2]);
+  }
+  void SetVectorVariableValue(const std::string& variableName, const double values[3])
+  {
+    this->SetVectorVariableValue(variableName.c_str(), values[0], values[1], values[2]);
   }
   void SetVectorVariableValue(int i, double xValue, double yValue, double zValue);
   void SetVectorVariableValue(int i, const double values[3])
   {
     this->SetVectorVariableValue(i, values[0], values[1], values[2]);
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the value of a vector variable.
    */
   double* GetVectorVariableValue(const char* variableName) VTK_SIZEHINT(3);
+  double* GetVectorVariableValue(const std::string& variableName) VTK_SIZEHINT(3)
+  {
+    return this->GetVectorVariableValue(variableName.c_str());
+  }
   void GetVectorVariableValue(const char* variableName, double value[3])
   {
     double* r = this->GetVectorVariableValue(variableName);
     value[0] = r[0];
     value[1] = r[1];
     value[2] = r[2];
+  }
+  void GetVectorVariableValue(const std::string& variableName, double value[3])
+  {
+    this->GetVectorVariableValue(variableName.c_str(), value);
   }
   double* GetVectorVariableValue(int i) VTK_SIZEHINT(3);
   void GetVectorVariableValue(int i, double value[3])
@@ -240,7 +265,7 @@ public:
     value[1] = r[1];
     value[2] = r[2];
   }
-  //@}
+  ///@}
 
   /**
    * Get the number of scalar variables.
@@ -251,6 +276,10 @@ public:
    * Get scalar variable index or -1 if not found
    */
   int GetScalarVariableIndex(const char* name);
+  int GetScalarVariableIndex(const std::string& name)
+  {
+    return this->GetScalarVariableIndex(name.c_str());
+  }
 
   /**
    * Get the number of vector variables.
@@ -261,6 +290,10 @@ public:
    * Get scalar variable index or -1 if not found
    */
   int GetVectorVariableIndex(const char* name);
+  int GetVectorVariableIndex(const std::string& name)
+  {
+    return this->GetVectorVariableIndex(name.c_str());
+  }
 
   /**
    * Get the ith scalar variable name.
@@ -272,7 +305,7 @@ public:
    */
   const char* GetVectorVariableName(int i);
 
-  //@{
+  ///@{
   /**
    * Returns whether a scalar variable is needed for the function evaluation.
    * This is only valid after a successful Parse(). Thus, call GetScalarResult()
@@ -280,9 +313,13 @@ public:
    */
   bool GetScalarVariableNeeded(int i);
   bool GetScalarVariableNeeded(const char* variableName);
-  //@}
+  bool GetScalarVariableNeeded(const std::string& variableName)
+  {
+    return GetScalarVariableNeeded(variableName.c_str());
+  }
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Returns whether a vector variable is needed for the function evaluation.
    * This is only valid after a successful Parse(). Thus, call GetVectorResult()
@@ -290,7 +327,11 @@ public:
    */
   bool GetVectorVariableNeeded(int i);
   bool GetVectorVariableNeeded(const char* variableName);
-  //@}
+  bool GetVectorVariableNeeded(const std::string& variableName)
+  {
+    return this->GetVectorVariableNeeded(variableName.c_str());
+  }
+  ///@}
 
   /**
    * Remove all the current variables.
@@ -307,7 +348,7 @@ public:
    */
   void RemoveVectorVariables();
 
-  //@{
+  ///@{
   /**
    * When ReplaceInvalidValues is on, all invalid values (such as
    * sqrt(-2), note that function parser does not handle complex
@@ -319,7 +360,7 @@ public:
   vtkBooleanMacro(ReplaceInvalidValues, vtkTypeBool);
   vtkSetMacro(ReplacementValue, double);
   vtkGetMacro(ReplacementValue, double);
-  //@}
+  ///@}
 
   /**
    * Check the validity of the function expression.

@@ -92,10 +92,10 @@ public:
 
 protected:
   vtkScalarBarItem()
-    : Actor(NULL)
+    : Actor(nullptr)
   {
   }
-  ~vtkScalarBarItem() override {}
+  ~vtkScalarBarItem() override = default;
 };
 
 //----------------------------------------------------------------------------
@@ -123,7 +123,7 @@ vtkContext2DScalarBarActor::vtkContext2DScalarBarActor()
   this->AddRangeLabels = 1;
   this->AutomaticAnnotations = 0;
   this->AddRangeAnnotations = 0;
-  this->RangeLabelFormat = NULL;
+  this->RangeLabelFormat = nullptr;
   this->SetRangeLabelFormat("%g");
 
   this->OutlineScalarBar = 0;
@@ -132,8 +132,8 @@ vtkContext2DScalarBarActor::vtkContext2DScalarBarActor()
 
   this->DrawTickMarks = true;
 
-  this->UseCustomLabels = false;
-  this->CustomLabels = vtkSmartPointer<vtkDoubleArray>::New();
+  // Create an array for the custom labels
+  this->CustomLabels = vtkDoubleArray::New();
 
   this->ReverseLegend = false;
 
@@ -145,7 +145,7 @@ vtkContext2DScalarBarActor::vtkContext2DScalarBarActor()
   localScene->AddItem(this->ScalarBarItem);
   localScene->Delete();
 
-  this->CurrentViewport = NULL;
+  this->CurrentViewport = nullptr;
 
   this->Axis = vtkAxis::New();
   this->Axis->SetScene(localScene);
@@ -154,25 +154,15 @@ vtkContext2DScalarBarActor::vtkContext2DScalarBarActor()
 //----------------------------------------------------------------------------
 vtkContext2DScalarBarActor::~vtkContext2DScalarBarActor()
 {
-  this->SetLookupTable(NULL);
+  this->SetLookupTable(nullptr);
   this->ActorDelegate->Delete();
-  this->SetTitle(NULL);
-  this->SetComponentTitle(NULL);
+  this->SetTitle(nullptr);
+  this->SetComponentTitle(nullptr);
   this->ScalarBarItem->Delete();
-  this->SetTitleTextProperty(NULL);
-  this->SetLabelTextProperty(NULL);
+  this->SetTitleTextProperty(nullptr);
+  this->SetLabelTextProperty(nullptr);
   this->Axis->Delete();
   this->SetRangeLabelFormat(nullptr);
-}
-
-//----------------------------------------------------------------------------
-void vtkContext2DScalarBarActor::SetUseCustomLabels(bool useLabels)
-{
-  if (useLabels != this->UseCustomLabels)
-  {
-    this->UseCustomLabels = useLabels;
-    this->Modified();
-  }
 }
 
 //----------------------------------------------------------------------------
@@ -948,7 +938,7 @@ void vtkContext2DScalarBarActor::PaintAxis(vtkContext2D* painter, double size[2]
   }
   else
   {
-    this->Axis->SetCustomTickPositions(NULL);
+    this->Axis->SetCustomTickPositions(nullptr);
   }
 
   this->Axis->SetUnscaledRange(range);

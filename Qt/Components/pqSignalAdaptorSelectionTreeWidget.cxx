@@ -63,7 +63,7 @@ pqSignalAdaptorSelectionTreeWidget::pqSignalAdaptorSelectionTreeWidget(
   this->Internal->Property = prop;
   this->Internal->TreeWidget = treeWidget;
   this->Internal->VTKConnect = vtkSmartPointer<vtkEventQtSlotConnect>::New();
-  this->ItemCreatorFunctionPtr = NULL;
+  this->ItemCreatorFunctionPtr = nullptr;
 
   // get domain
   vtkSMDomainIterator* iter = prop->NewDomainIterator();
@@ -81,8 +81,8 @@ pqSignalAdaptorSelectionTreeWidget::pqSignalAdaptorSelectionTreeWidget(
 
   if (this->Internal->Domain)
   {
-    this->Internal->VTKConnect->Connect(
-      this->Internal->Domain, vtkCommand::DomainModifiedEvent, this, SLOT(domainChanged()), 0, 0);
+    this->Internal->VTKConnect->Connect(this->Internal->Domain, vtkCommand::DomainModifiedEvent,
+      this, SLOT(domainChanged()), nullptr, 0);
 
     this->domainChanged();
   }
@@ -104,9 +104,9 @@ pqSignalAdaptorSelectionTreeWidget::~pqSignalAdaptorSelectionTreeWidget()
 }
 
 //-----------------------------------------------------------------------------
-QList<QList<QVariant> > pqSignalAdaptorSelectionTreeWidget::values() const
+QList<QList<QVariant>> pqSignalAdaptorSelectionTreeWidget::values() const
 {
-  QList<QList<QVariant> > reply;
+  QList<QList<QVariant>> reply;
 
   int max = this->Internal->TreeWidget->topLevelItemCount();
   for (int cc = 0; cc < max; cc++)
@@ -122,7 +122,7 @@ QList<QList<QVariant> > pqSignalAdaptorSelectionTreeWidget::values() const
 }
 
 //-----------------------------------------------------------------------------
-void pqSignalAdaptorSelectionTreeWidget::setValues(const QList<QList<QVariant> >& new_values)
+void pqSignalAdaptorSelectionTreeWidget::setValues(const QList<QList<QVariant>>& new_values)
 {
   if (new_values.size() != this->Internal->TreeWidget->topLevelItemCount())
   {
@@ -167,7 +167,7 @@ void pqSignalAdaptorSelectionTreeWidget::domainChanged()
   // when domain changes, we need to update the property with
   // new default values
   QList<QVariant> newDomain = pqSMAdaptor::getSelectionPropertyDomain(this->Internal->Property);
-  QList<QList<QVariant> > oldValues = this->values();
+  QList<QList<QVariant>> oldValues = this->values();
 
   bool equal = true;
   if (oldValues.size() == newDomain.size())
@@ -194,14 +194,14 @@ void pqSignalAdaptorSelectionTreeWidget::domainChanged()
   // the value loaded from state files etc.
   // this->Internal->Property->ResetToDefault();
 
-  QList<QList<QVariant> > newValues = pqSMAdaptor::getSelectionProperty(this->Internal->Property);
+  QList<QList<QVariant>> newValues = pqSMAdaptor::getSelectionProperty(this->Internal->Property);
 
   // Now update the tree widget. We hide any elements no longer in the domain.
   this->Internal->TreeWidget->clear();
 
   foreach (QList<QVariant> newValue, newValues)
   {
-    QTreeWidgetItem* item = NULL;
+    QTreeWidgetItem* item = nullptr;
     if (this->ItemCreatorFunctionPtr)
     {
       item = (*this->ItemCreatorFunctionPtr)(

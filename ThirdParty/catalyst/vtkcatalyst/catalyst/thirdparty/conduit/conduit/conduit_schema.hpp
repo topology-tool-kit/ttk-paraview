@@ -1,46 +1,6 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
-// Copyright (c) 2014-2019, Lawrence Livermore National Security, LLC.
-// 
-// Produced at the Lawrence Livermore National Laboratory
-// 
-// LLNL-CODE-666778
-// 
-// All rights reserved.
-// 
-// This file is part of Conduit. 
-// 
-// For details, see: http://software.llnl.gov/conduit/.
-// 
-// Please also read conduit/LICENSE
-// 
-// Redistribution and use in source and binary forms, with or without 
-// modification, are permitted provided that the following conditions are met:
-// 
-// * Redistributions of source code must retain the above copyright notice, 
-//   this list of conditions and the disclaimer below.
-// 
-// * Redistributions in binary form must reproduce the above copyright notice,
-//   this list of conditions and the disclaimer (as noted below) in the
-//   documentation and/or other materials provided with the distribution.
-// 
-// * Neither the name of the LLNS/LLNL nor the names of its contributors may
-//   be used to endorse or promote products derived from this software without
-//   specific prior written permission.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY,
-// LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
-// DAMAGES  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-// OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, 
-// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
-// IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
-// POSSIBILITY OF SUCH DAMAGE.
-// 
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
+// Copyright (c) Lawrence Livermore National Security, LLC and other Conduit
+// Project developers. See top-level LICENSE AND COPYRIGHT files for dates and
+// other details. No copyright assignment is required to contribute to Conduit.
 
 //-----------------------------------------------------------------------------
 ///
@@ -195,22 +155,67 @@ public:
 //-----------------------------------------------------------------------------
     void            compact_to(Schema &s_dest) const;
 
-    std::string     to_json(bool detailed=true, 
-                            index_t indent=2, 
+    //-----------------------------------------------------------------------------
+    // -- String construction methods ---
+    //-----------------------------------------------------------------------------
+    /// Creates a string representation of a schema.
+    /// accepted protocols:
+    ///   "json"
+    ///   "yaml"
+    ///
+    /// formatting details:
+    ///   this method prefixes entries with indent strings created using
+    ///      utils::indent(...,indent, depth, pad)
+    ///   adds the `eoe` (end-of-entry) suffix where necessary.
+    ///
+    std::string     to_string(const std::string &protocol="json",
+                              index_t indent=2, 
+                              index_t depth=0,
+                              const std::string &pad=" ",
+                              const std::string &eoe="\n") const;
+
+    void            to_string_stream(std::ostream &os,
+                                     const std::string &protocol="json", 
+                                     index_t indent=2, 
+                                     index_t depth=0,
+                                     const std::string &pad=" ",
+                                     const std::string &eoe="\n") const;
+
+    void            to_string_stream(const std::string &stream_path,
+                                     const std::string &protocol="json",
+                                     index_t indent=2, 
+                                     index_t depth=0,
+                                     const std::string &pad=" ",
+                                     const std::string &eoe="\n") const;
+
+    // NOTE(cyrush): The primary reason this function exists is to enable easier
+    // compatibility with debugging tools (e.g. totalview, gdb) that have
+    // difficulty allocating default string parameters.
+    std::string     to_string_default() const;
+
+    //-----------------------------------------------------------------------------
+    // -- JSON construction methods ---
+    //-----------------------------------------------------------------------------
+    /// Creates a JSON string representation of a schema.
+    ///
+    /// formatting details:
+    ///   this method prefixes entries with indent strings created using
+    ///      utils::indent(...,indent, depth, pad)
+    ///   adds the `eoe` (end-of-entry) suffix where necessary.
+    ///
+    std::string     to_json(index_t indent=2,
                             index_t depth=0,
                             const std::string &pad=" ",
                             const std::string &eoe="\n") const;
 
     void            to_json_stream(std::ostream &os,
-                                   bool detailed=true, 
-                                   index_t indent=2, 
+                                   index_t indent=2,
                                    index_t depth=0,
                                    const std::string &pad=" ",
                                    const std::string &eoe="\n") const;
 
-    void            to_json_stream(const std::string &stream_path,
-                                   bool detailed=true, 
-                                   index_t indent=2, 
+    void            to_json_stream(const std::string &stream_path, 
+                                   index_t indent=2,
                                    index_t depth=0,
                                    const std::string &pad=" ",
                                    const std::string &eoe="\n") const;
@@ -220,14 +225,46 @@ public:
     // difficulty allocating default string parameters.
     std::string         to_json_default() const;
 
+    //-----------------------------------------------------------------------------
+    // -- YAML construction methods ---
+    //-----------------------------------------------------------------------------
+    /// Creates a YAML string representation of a schema.
+    ///
+    /// formatting details:
+    ///   this method prefixes entries with indent strings created using
+    ///      utils::indent(...,indent, depth, pad)
+    ///   adds the `eoe` (end-of-entry) suffix where necessary.
+    ///
+    std::string         to_yaml(index_t indent=2, 
+                                index_t depth=0,
+                                const std::string &pad=" ",
+                                const std::string &eoe="\n") const;
+
+    void                to_yaml_stream(std::ostream &os,
+                                       index_t indent=2, 
+                                       index_t depth=0,
+                                       const std::string &pad=" ",
+                                       const std::string &eoe="\n") const;
+
+    void                to_yaml_stream(const std::string &stream_path,
+                                       index_t indent=2, 
+                                       index_t depth=0,
+                                       const std::string &pad=" ",
+                                       const std::string &eoe="\n") const;
+
+    // NOTE(JRC): The primary reason this function exists is to enable easier
+    // compatibility with debugging tools (e.g. totalview, gdb) that have
+    // difficulty allocating default string parameters.
+    std::string         to_yaml_default() const;
+
 //-----------------------------------------------------------------------------
 //
 /// Basic I/O methods
 //
 //-----------------------------------------------------------------------------
+
     void            save(const std::string &ofname,
-                         bool detailed=true, 
-                         index_t indent=2, 
+                         index_t indent=2,
                          index_t depth=0,
                          const std::string &pad=" ",
                          const std::string &eoe="\n") const;
@@ -262,10 +299,22 @@ public:
 /// Object interface methods
 //
 //-----------------------------------------------------------------------------
-    /// the `fetch_child' methods don't modify map structure, if a path
+
+    /// the `fetch_existing' methods don't modify map structure, if a path
     /// doesn't exist they will throw an exception
-    Schema           &fetch_child(const std::string &path);
-    const Schema     &fetch_child(const std::string &path) const;
+    Schema           &fetch_existing(const std::string &path);
+    const Schema     &fetch_existing(const std::string &path) const;
+
+    // the 'child' methods also don't modify map structure. Additionally,
+    // they do not search parent/child schemas, and thus allow getting children
+    // whose names contain slashes.
+    Schema           &child(const std::string &name);
+    const Schema     &child(const std::string &name) const;
+
+    // the 'add_child' method will not parse the name arg as a path, allowing
+    // for addition of literally-named children. Returns either the existing
+    // Schema with the name or a new Schema
+    Schema           &add_child(const std::string &name);
 
     /// non-const fetch with a path arg methods do modify map 
     // structure if a path doesn't exist
@@ -275,10 +324,10 @@ public:
     Schema           *fetch_ptr(const std::string &path);
     const Schema     *fetch_ptr(const std::string &path) const;
 
-    /// path to index map
-    index_t          child_index(const std::string &path) const;
+    /// child name to index map
+    index_t          child_index(const std::string &name) const;
 
-    /// index to path map
+    /// index to name map
     /// returns an empty string when passed index is invalid, or 
     /// this schema does not describe an object.
     std::string      child_name(index_t idx) const;
@@ -302,6 +351,8 @@ public:
     bool              has_path(const std::string &path) const;
     const std::vector<std::string> &child_names() const;
     void              remove(const std::string &path);
+    /// remove_child removes a direct child only (allows pathlike names)
+    void              remove_child(const std::string &name); 
     
 //-----------------------------------------------------------------------------
 //

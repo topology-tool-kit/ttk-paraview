@@ -6,10 +6,25 @@
 #include <cstring>
 #include <iostream>
 
-#include <catalyst.h>
+#include <catalyst.hpp>
 
 int main(int argc, char* argv[])
 {
+  if (argc < 2)
+  {
+    return EXIT_FAILURE;
+  }
+
+  auto init = conduit_node_create();
+  conduit_node_set_path_char8_str(init, "catalyst_load/implementation", "example_adaptor0");
+  conduit_node_set_path_char8_str(init, "catalyst_load/search_paths/example", argv[1]);
+  enum catalyst_status err = catalyst_initialize(init);
+  conduit_node_destroy(init);
+  if (err != catalyst_status_ok)
+  {
+    return EXIT_FAILURE;
+  }
+
   auto node = conduit_node_create();
   catalyst_about(node);
   auto implementation = conduit_node_fetch_path_as_char8_str(node, "catalyst/implementation");

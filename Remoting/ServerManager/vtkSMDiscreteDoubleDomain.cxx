@@ -31,7 +31,7 @@ std::vector<double> vtkSMDiscreteDoubleDomain::GetValues()
 //---------------------------------------------------------------------------
 bool vtkSMDiscreteDoubleDomain::GetValuesExists()
 {
-  return this->Values.size() > 0;
+  return !this->Values.empty();
 }
 
 //---------------------------------------------------------------------------
@@ -82,14 +82,10 @@ int vtkSMDiscreteDoubleDomain::IsInDomain(vtkSMProperty* property)
 }
 
 //---------------------------------------------------------------------------
-vtkSMDiscreteDoubleDomain::vtkSMDiscreteDoubleDomain()
-{
-}
+vtkSMDiscreteDoubleDomain::vtkSMDiscreteDoubleDomain() = default;
 
 //---------------------------------------------------------------------------
-vtkSMDiscreteDoubleDomain::~vtkSMDiscreteDoubleDomain()
-{
-}
+vtkSMDiscreteDoubleDomain::~vtkSMDiscreteDoubleDomain() = default;
 
 //---------------------------------------------------------------------------
 int vtkSMDiscreteDoubleDomain::ReadXMLAttributes(vtkSMProperty* prop, vtkPVXMLElement* element)

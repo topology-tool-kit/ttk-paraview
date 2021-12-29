@@ -38,19 +38,19 @@ public:
   vtkTypeMacro(vtkBiomTableReader, vtkTableReader);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Get the output of this reader.
    */
   vtkTable* GetOutput();
   vtkTable* GetOutput(int idx);
   void SetOutput(vtkTable* output);
-  //@}
+  ///@}
 
   /**
    * Actual reading happens here
    */
-  int ReadMeshSimple(const std::string& fname, vtkDataObject* output) override;
+  int ReadMeshSimple(VTK_FILEPATH const std::string& fname, vtkDataObject* output) override;
 
 protected:
   vtkBiomTableReader();

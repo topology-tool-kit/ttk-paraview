@@ -36,9 +36,7 @@ vtkSMDataDeliveryManagerProxy::vtkSMDataDeliveryManagerProxy()
 }
 
 //----------------------------------------------------------------------------
-vtkSMDataDeliveryManagerProxy::~vtkSMDataDeliveryManagerProxy()
-{
-}
+vtkSMDataDeliveryManagerProxy::~vtkSMDataDeliveryManagerProxy() = default;
 
 //----------------------------------------------------------------------------
 void vtkSMDataDeliveryManagerProxy::SetViewProxy(vtkSMViewProxy* viewproxy)
@@ -55,7 +53,7 @@ void vtkSMDataDeliveryManagerProxy::Deliver(bool interactive)
 {
   this->CreateVTKObjects();
 
-  assert(this->ViewProxy != NULL);
+  assert(this->ViewProxy != nullptr);
 
   auto view = vtkPVView::SafeDownCast(this->ViewProxy->GetClientSideObject());
   auto renderview = vtkPVRenderView::SafeDownCast(view);
@@ -120,7 +118,7 @@ bool vtkSMDataDeliveryManagerProxy::DeliverStreamedPieces()
 
   std::vector<unsigned int> keys_to_deliver;
   info->GetKeys(keys_to_deliver);
-  if (keys_to_deliver.size() != 0)
+  if (!keys_to_deliver.empty())
   {
     vtkSMSession* session = this->ViewProxy->GetSession();
     vtkClientServerStream stream;
@@ -132,7 +130,7 @@ bool vtkSMDataDeliveryManagerProxy::DeliverStreamedPieces()
     session->ExecuteStream(this->ViewProxy->GetLocation(), stream, false);
   }
 
-  return keys_to_deliver.size() > 0;
+  return !keys_to_deliver.empty();
 }
 
 //----------------------------------------------------------------------------

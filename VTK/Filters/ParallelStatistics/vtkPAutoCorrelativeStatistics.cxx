@@ -12,8 +12,6 @@
      PURPOSE.  See the above copyright notice for more information.
 
 =========================================================================*/
-#include "vtkToolkits.h"
-
 #include "vtkPAutoCorrelativeStatistics.h"
 
 #include "vtkCommunicator.h"
@@ -30,14 +28,14 @@ vtkCxxSetObjectMacro(vtkPAutoCorrelativeStatistics, Controller, vtkMultiProcessC
 //------------------------------------------------------------------------------
 vtkPAutoCorrelativeStatistics::vtkPAutoCorrelativeStatistics()
 {
-  this->Controller = 0;
+  this->Controller = nullptr;
   this->SetController(vtkMultiProcessController::GetGlobalController());
 }
 
 //------------------------------------------------------------------------------
 vtkPAutoCorrelativeStatistics::~vtkPAutoCorrelativeStatistics()
 {
-  this->SetController(0);
+  this->SetController(nullptr);
 }
 
 //------------------------------------------------------------------------------

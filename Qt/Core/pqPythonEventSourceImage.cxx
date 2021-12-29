@@ -53,8 +53,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkProcessModule.h"
 
 // pqCore includes
+#include "pqCoreConfiguration.h"
 #include "pqCoreTestUtility.h"
-#include "pqOptions.h"
 
 // since we have only one instance at a time
 static pqPythonEventSourceImage* Instance = 0;
@@ -90,7 +90,7 @@ static PyObject* QtTestingImage_compareImage(PyObject* /*self*/, PyObject* args)
     else
     {
       PyErr_SetString(PyExc_TypeError, "bad arguments to compareImage()");
-      return NULL;
+      return nullptr;
     }
   }
 
@@ -111,13 +111,13 @@ static PyObject* QtTestingImage_compareImage(PyObject* /*self*/, PyObject* args)
   if (!image_image_compare && SnapshotWidget.isNull())
   {
     PyErr_SetString(PyExc_ValueError, "object not found");
-    return NULL;
+    return nullptr;
   }
 
   if (!SnapshotResult)
   {
     PyErr_SetString(PyExc_ValueError, "image comparison failed");
-    return NULL;
+    return nullptr;
   }
 
   return Py_BuildValue(const_cast<char*>(""));
@@ -128,7 +128,7 @@ static PyMethodDef QtTestingImageMethods[] = {
   { const_cast<char*>("compareImage"), QtTestingImage_compareImage, METH_VARARGS,
     const_cast<char*>("compare the snapshot of a widget/image with a baseline") },
 
-  { NULL, NULL, 0, NULL } // Sentinal
+  { nullptr, nullptr, 0, nullptr } // Sentinel
 };
 
 //-----------------------------------------------------------------------------
@@ -147,9 +147,7 @@ pqPythonEventSourceImage::pqPythonEventSourceImage(QObject* p)
 }
 
 //-----------------------------------------------------------------------------
-pqPythonEventSourceImage::~pqPythonEventSourceImage()
-{
-}
+pqPythonEventSourceImage::~pqPythonEventSourceImage() = default;
 
 //-----------------------------------------------------------------------------
 void pqPythonEventSourceImage::run()
@@ -169,10 +167,7 @@ void pqPythonEventSourceImage::doComparison()
   baseline_image += "/Baseline/";
   baseline_image += SnapshotBaseline;
 
-  pqOptions* const options =
-    pqOptions::SafeDownCast(vtkProcessModule::GetProcessModule()->GetOptions());
-  int threshold = options->GetCurrentImageThreshold();
-
+  const int threshold = pqCoreConfiguration::instance()->testThreshold();
   QString test_directory = pqCoreTestUtility::TestDirectory();
   if (test_directory.isNull())
   {

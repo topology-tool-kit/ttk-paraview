@@ -8,6 +8,16 @@ endif ()
 
 _vtk_module_write_import_prefix("${paraview_cmake_build_dir}/paraview-prefix.cmake" "${paraview_cmake_destination}")
 
+set(paraview_has_catalyst 0)
+set(paraview_catalyst_directory "")
+if (TARGET ParaView::catalyst-paraview)
+  set(paraview_has_catalyst 1)
+  get_property(paraview_catalyst_directory GLOBAL
+    PROPERTY paraview_catalyst_directory)
+endif ()
+
+string(REPLACE "ParaView::" "" _paraview_all_components "${paraview_modules};${paraview_client_modules}")
+
 configure_file(
   "${paraview_cmake_dir}/paraview-config.cmake.in"
   "${paraview_cmake_build_dir}/paraview-config.cmake"
@@ -28,8 +38,6 @@ configure_file(
   COPYONLY)
 
 set(paraview_cmake_module_files
-  FindCGNS.cmake
-
   # Compatibility
   paraview-use-file-compat.cmake
   paraview-use-file-deprecated.cmake
@@ -57,6 +65,8 @@ set(paraview_cmake_module_files
   pqDockWindowImplementation.h.in
   pqGraphLayoutStrategyImplementation.cxx.in
   pqGraphLayoutStrategyImplementation.h.in
+  pqPluginLocationImplementation.cxx.in
+  pqPluginLocationImplementation.h.in
   pqPropertyWidgetInterface.cxx.in
   pqPropertyWidgetInterface.h.in
   pqServerManagerModelImplementation.cxx.in
@@ -65,8 +75,6 @@ set(paraview_cmake_module_files
   pqToolBarImplementation.h.in
   pqTreeLayoutStrategyImplementation.cxx.in
   pqTreeLayoutStrategyImplementation.h.in
-  pqViewFrameActionGroupImplementation.cxx.in
-  pqViewFrameActionGroupImplementation.h.in
 
   # ServerManager API
   ParaViewServerManager.cmake

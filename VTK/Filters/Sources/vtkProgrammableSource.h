@@ -55,6 +55,7 @@ class VTKFILTERSSOURCES_EXPORT vtkProgrammableSource : public vtkDataObjectAlgor
 public:
   static vtkProgrammableSource* New();
   vtkTypeMacro(vtkProgrammableSource, vtkDataObjectAlgorithm);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /**
    * Signature definition for programmable method callbacks. Methods passed
@@ -83,7 +84,7 @@ public:
    */
   void SetRequestInformationMethod(void (*f)(void*));
 
-  //@{
+  ///@{
   /**
    * Get the output as a concrete type. This method is typically used by the
    * writer of the source function to get the output as a particular type
@@ -98,7 +99,7 @@ public:
   vtkGraph* GetGraphOutput();
   vtkMolecule* GetMoleculeOutput();
   vtkTable* GetTableOutput();
-  //@}
+  ///@}
 
 protected:
   vtkProgrammableSource();
@@ -122,5 +123,3 @@ private:
 };
 
 #endif
-
-// VTK-HeaderTest-Exclude: vtkProgrammableSource.h

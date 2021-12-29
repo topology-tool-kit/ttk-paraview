@@ -1,46 +1,6 @@
-!*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*!
-!* Copyright (c) 2014-2019, Lawrence Livermore National Security, LLC.
-!* 
-!* Produced at the Lawrence Livermore National Laboratory
-!* 
-!* LLNL-CODE-666778
-!* 
-!* All rights reserved.
-!* 
-!* This file is part of Conduit. 
-!* 
-!* For details, see: http://software.llnl.gov/conduit/.
-!* 
-!* Please also read conduit/LICENSE
-!* 
-!* Redistribution and use in source and binary forms, with or without 
-!* modification, are permitted provided that the following conditions are met:
-!* 
-!* * Redistributions of source code must retain the above copyright notice, 
-!*   this list of conditions and the disclaimer below.
-!* 
-!* * Redistributions in binary form must reproduce the above copyright notice,
-!*   this list of conditions and the disclaimer (as noted below) in the
-!*   documentation and/or other materials provided with the distribution.
-!* 
-!* * Neither the name of the LLNS/LLNL nor the names of its contributors may
-!*   be used to endorse or promote products derived from this software without
-!*   specific prior written permission.
-!* 
-!* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-!* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-!* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-!* ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY,
-!* LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY
-!* DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
-!* DAMAGES  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-!* OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-!* HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, 
-!* STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
-!* IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
-!* POSSIBILITY OF SUCH DAMAGE.
-!* 
-!*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*!
+!* Copyright (c) Lawrence Livermore National Security, LLC and other Conduit
+!* Project developers. See top-level LICENSE AND COPYRIGHT files for dates and
+!* other details. No copyright assignment is required to contribute to Conduit.
 
 !------------------------------------------------------------------------------
 ! conduit_fortran.f
@@ -171,6 +131,16 @@ module conduit
      end function c_conduit_node_fetch
 
      !--------------------------------------------------------------------------
+     function c_conduit_node_fetch_existing(cnode, path) result(res) &
+              bind(C, name="conduit_node_fetch_existing")
+          use iso_c_binding
+          implicit none
+          type(C_PTR), value, intent(IN) :: cnode
+          character(kind=C_CHAR), intent(IN) :: path(*)
+          type(C_PTR) :: res
+      end function c_conduit_node_fetch_existing
+
+     !--------------------------------------------------------------------------
      function conduit_node_append(cnode) result(res) &
               bind(C, name="conduit_node_append")
           use iso_c_binding
@@ -190,6 +160,16 @@ module conduit
        end function conduit_node_child
 
     !--------------------------------------------------------------------------
+    function c_conduit_node_child_by_name(cnode,name) result(res) &
+            bind(C, name="conduit_node_child_by_name")
+        use iso_c_binding
+        implicit none
+        type(C_PTR), value, intent(IN) :: cnode
+        character(kind=C_CHAR), intent(IN) :: name(*)
+        type(C_PTR) :: res
+    end function c_conduit_node_child_by_name
+
+    !--------------------------------------------------------------------------
     ! node info methods
     !--------------------------------------------------------------------------
 
@@ -203,23 +183,23 @@ module conduit
      end function conduit_node_is_root
 
 
-     !--------------------------------------------------------------------------
-     function conduit_node_is_data_external(cnode) result(res) &
-              bind(C, name="conduit_node_is_data_external")
-          use iso_c_binding
-          implicit none
-          type(C_PTR), value, intent(IN) :: cnode
-          logical(C_BOOL) :: res
-      end function conduit_node_is_data_external
+    !--------------------------------------------------------------------------
+    function conduit_node_is_data_external(cnode) result(res) &
+          bind(C, name="conduit_node_is_data_external")
+        use iso_c_binding
+        implicit none
+        type(C_PTR), value, intent(IN) :: cnode
+        logical(C_BOOL) :: res
+    end function conduit_node_is_data_external
 
-      !--------------------------------------------------------------------------
-      function conduit_node_parent(cnode) result(res) &
-               bind(C, name="conduit_node_parent")
-           use iso_c_binding
-           implicit none
-           type(C_PTR), value, intent(IN) :: cnode
-           type(C_PTR) :: res
-       end function conduit_node_parent
+    !--------------------------------------------------------------------------
+    function conduit_node_parent(cnode) result(res) &
+           bind(C, name="conduit_node_parent")
+        use iso_c_binding
+        implicit none
+        type(C_PTR), value, intent(IN) :: cnode
+        type(C_PTR) :: res
+    end function conduit_node_parent
 
     !--------------------------------------------------------------------------
     function conduit_node_number_of_elements(cnode) result(res) &
@@ -266,7 +246,26 @@ module conduit
            type(C_PTR), value, intent(IN) :: cnode
            integer(C_SIZE_T), value, intent(in) :: idx
       end subroutine conduit_node_remove_child
-       
+
+      !--------------------------------------------------------------------------
+      function c_conduit_node_add_child(cnode,name) result(res) &
+               bind(C, name="conduit_node_add_child")
+           use iso_c_binding
+           implicit none
+           type(C_PTR), value, intent(IN) :: cnode
+           character(kind=C_CHAR), intent(IN) :: name(*)
+           type(C_PTR) :: res
+      end function c_conduit_node_add_child
+
+      !--------------------------------------------------------------------------
+      subroutine c_conduit_node_remove_child_by_name(cnode,name) &
+               bind(C, name="conduit_node_remove_child_by_name")
+           use iso_c_binding
+           implicit none
+           type(C_PTR), value, intent(IN) :: cnode
+           character(kind=C_CHAR), intent(IN) :: name(*)
+      end subroutine c_conduit_node_remove_child_by_name
+
       !--------------------------------------------------------------------------
       subroutine c_conduit_node_rename_child(cnode,old_name, new_name) &
                 bind(C, name="conduit_node_rename_child")
@@ -1176,6 +1175,16 @@ contains
         res = c_conduit_node_fetch(cnode, trim(path) // C_NULL_CHAR)
     end function conduit_node_fetch
 
+    !--------------------------------------------------------------------------
+    function conduit_node_fetch_existing(cnode, path) result(res)
+        use iso_c_binding
+        implicit none
+        type(C_PTR), value, intent(IN) :: cnode
+        character(*), intent(IN) :: path
+        type(C_PTR) :: res
+        !---
+        res = c_conduit_node_fetch_existing(cnode, trim(path) // C_NULL_CHAR)
+    end function conduit_node_fetch_existing
 
     !--------------------------------------------------------------------------
     function conduit_node_has_child(cnode, name) result(res)
@@ -1189,6 +1198,28 @@ contains
     end function conduit_node_has_child
 
     !--------------------------------------------------------------------------
+    function conduit_node_add_child(cnode, name) result(res)
+        use iso_c_binding
+        implicit none
+        type(C_PTR), value, intent(IN) :: cnode
+        character(*), intent(IN) :: name
+        type(C_PTR) :: res
+        !---
+        res = c_conduit_node_add_child(cnode, trim(name) // C_NULL_CHAR)
+    end function conduit_node_add_child
+
+    !--------------------------------------------------------------------------
+    function conduit_node_child_by_name(cnode, name) result(res)
+        use iso_c_binding
+        implicit none
+        type(C_PTR), value, intent(IN) :: cnode
+        character(*), intent(IN) :: name
+        type(C_PTR) :: res
+        !---
+        res = c_conduit_node_child_by_name(cnode, trim(name) // C_NULL_CHAR)
+    end function conduit_node_child_by_name
+
+    !--------------------------------------------------------------------------
     subroutine conduit_node_remove_path(cnode, path)
         use iso_c_binding
         implicit none
@@ -1197,6 +1228,16 @@ contains
         !---
         call c_conduit_node_remove_path(cnode, trim(path) // C_NULL_CHAR)
     end subroutine conduit_node_remove_path
+
+    !--------------------------------------------------------------------------
+    subroutine conduit_node_remove_child_by_name(cnode, name)
+        use iso_c_binding
+        implicit none
+        type(C_PTR), value, intent(IN) :: cnode
+        character(*), intent(IN) :: name
+        !---
+        call c_conduit_node_remove_child_by_name(cnode, trim(name) // C_NULL_CHAR)
+    end subroutine conduit_node_remove_child_by_name
 
     !--------------------------------------------------------------------------
     subroutine conduit_node_rename_child(cnode, old_name, new_name)

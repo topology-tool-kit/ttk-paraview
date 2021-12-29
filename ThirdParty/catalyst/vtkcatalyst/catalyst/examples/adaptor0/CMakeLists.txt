@@ -9,19 +9,18 @@ find_package(catalyst
   REQUIRED
   COMPONENTS SDK)
 
-add_library(catalyst_example_adaptor0
- catalyst_example_adaptor0.cxx)
-
 # use this function call to mark any library as the
 # Catalyst API implementation.
-catalyst_library(TARGET catalyst_example_adaptor0)
+catalyst_implementation(
+  TARGET  catalyst_example_adaptor0
+  NAME    example_adaptor0
+  SOURCES catalyst_example_adaptor0.cxx)
 
 include(CTest)
 if (BUILD_TESTING)
   # Add a test that links against the standard Catalyst library
   # However at runtime ensures the implementation built here
   # is being used.
-  set(CMAKE_SKIP_BUILD_RPATH ON)
   add_executable(adaptor0_test
     adaptor0_test.cxx)
   target_link_libraries(adaptor0_test
@@ -29,22 +28,5 @@ if (BUILD_TESTING)
       catalyst::catalyst)
   add_test(
     NAME adaptor0_test
-    COMMAND adaptor0_test)
-
-  # set test PATH to ensure our implementation of the Catalyst
-  # library is loaded.
-  set (pathvar_name)
-  if (APPLE)
-    set(pathvar_name "DYLD_LIBRARY_PATH")
-    set(sep ":")
-  elseif(WIN32)
-    set(pathvar_name "PATH")
-    set(sep "\;")
-  elseif (UNIX)
-    set(pathvar_name "LD_LIBRARY_PATH")
-    set(sep ":")
-  endif()
-  set_tests_properties(adaptor0_test
-    PROPERTIES
-      ENVIRONMENT "${pathvar_name}=$<TARGET_FILE_DIR:catalyst_example_adaptor0>${sep}$ENV{${pathvar_name}}")
+    COMMAND adaptor0_test "$<TARGET_FILE_DIR:catalyst_example_adaptor0>")
 endif()

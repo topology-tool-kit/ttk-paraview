@@ -110,6 +110,7 @@ static void pop_scope(const char* id)
 }
 
 //=============================================================================
+bool vtkLogger::EnableUnsafeSignalHandler = true;
 vtkLogger::Verbosity vtkLogger::InternalVerbosityLevel = vtkLogger::VERBOSITY_1;
 std::string vtkLogger::ThreadName;
 
@@ -136,12 +137,13 @@ void vtkLogger::Init(int& argc, char* argv[], const char* verbosity_flag /*= "-v
   const auto current_stderr_verbosity = loguru::g_stderr_verbosity;
   if (loguru::g_internal_verbosity > loguru::g_stderr_verbosity)
   {
-    // this avoid printing the preamble-header on stderr except for cases
+    // this avoids printing the preamble-header on stderr except for cases
     // where the stderr log is guaranteed to have some log text generated.
     loguru::g_stderr_verbosity = loguru::Verbosity_WARNING;
   }
   loguru::Options options;
   options.verbosity_flag = verbosity_flag;
+  options.unsafe_signal_handler = vtkLogger::EnableUnsafeSignalHandler;
   if (!vtkLogger::ThreadName.empty())
   {
     options.main_thread_name = vtkLogger::ThreadName.c_str();
@@ -416,27 +418,27 @@ vtkLogger::Verbosity vtkLogger::ConvertToVerbosity(const char* text)
     {
       return vtkLogger::ConvertToVerbosity(ivalue);
     }
-    if (std::string("OFF").compare(text) == 0)
+    if (!strcmp(text, "OFF"))
     {
       return vtkLogger::VERBOSITY_OFF;
     }
-    else if (std::string("ERROR").compare(text) == 0)
+    else if (!strcmp(text, "ERROR"))
     {
       return vtkLogger::VERBOSITY_ERROR;
     }
-    else if (std::string("WARNING").compare(text) == 0)
+    else if (!strcmp(text, "WARNING"))
     {
       return vtkLogger::VERBOSITY_WARNING;
     }
-    else if (std::string("INFO").compare(text) == 0)
+    else if (!strcmp(text, "INFO"))
     {
       return vtkLogger::VERBOSITY_INFO;
     }
-    else if (std::string("TRACE").compare(text) == 0)
+    else if (!strcmp(text, "TRACE"))
     {
       return vtkLogger::VERBOSITY_TRACE;
     }
-    else if (std::string("MAX").compare(text) == 0)
+    else if (!strcmp(text, "MAX"))
     {
       return vtkLogger::VERBOSITY_MAX;
     }

@@ -140,7 +140,7 @@ pqSettingsDialog::pqSettingsDialog(
     pqProxyWidget* widget = new pqProxyWidget(proxy, container);
     widget->setObjectName("ProxyWidget");
     widget->setApplyChangesImmediately(false);
-    widget->setView(NULL);
+    widget->setView(nullptr);
 
     widget->connect(this, SIGNAL(accepted()), SLOT(apply()));
     widget->connect(this, SIGNAL(rejected()), SLOT(reset()));
@@ -189,7 +189,7 @@ pqSettingsDialog::pqSettingsDialog(
 pqSettingsDialog::~pqSettingsDialog()
 {
   delete this->Internals;
-  this->Internals = NULL;
+  this->Internals = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -248,7 +248,7 @@ void pqSettingsDialog::onAccepted()
         smproperty->GetHints()->FindNestedElementByName("SaveInQSettings"))
       {
         QString key = QString("%1.%2").arg(iter->GetKey()).arg(iter2->GetKey());
-        qSettings->saveInQSettings(key.toLocal8Bit().data(), smproperty);
+        qSettings->saveInQSettings(key.toUtf8().data(), smproperty);
       }
     }
   }

@@ -226,8 +226,8 @@ vtkUnstructuredPOPReader::vtkUnstructuredPOPReader()
 {
   this->SetNumberOfInputPorts(0);
   this->SetNumberOfOutputPorts(1);
-  this->FileName = NULL;
-  this->OpenedFileName = NULL;
+  this->FileName = nullptr;
+  this->OpenedFileName = nullptr;
   this->Stride[0] = this->Stride[1] = this->Stride[2] = 1;
   this->NCDFFD = 0;
   this->SelectionObserver = vtkCallbackCommand::New();
@@ -255,21 +255,21 @@ vtkUnstructuredPOPReader::vtkUnstructuredPOPReader()
 // delete filename and netcdf file descriptor
 vtkUnstructuredPOPReader::~vtkUnstructuredPOPReader()
 {
-  this->SetFileName(0);
+  this->SetFileName(nullptr);
   if (this->OpenedFileName)
   {
     nc_close(this->NCDFFD);
-    this->SetOpenedFileName(NULL);
+    this->SetOpenedFileName(nullptr);
   }
   if (this->SelectionObserver)
   {
     this->SelectionObserver->Delete();
-    this->SelectionObserver = NULL;
+    this->SelectionObserver = nullptr;
   }
   if (this->Internals)
   {
     delete this->Internals;
-    this->Internals = NULL;
+    this->Internals = nullptr;
   }
 }
 
@@ -292,18 +292,18 @@ void vtkUnstructuredPOPReader::PrintSelf(ostream& os, vtkIndent indent)
 //----------------------------------------------------------------------------
 bool vtkUnstructuredPOPReader::ReadMetaData(int wholeExtent[6])
 {
-  if (this->FileName == NULL)
+  if (this->FileName == nullptr)
   {
     vtkErrorMacro("FileName not set.");
     return false;
   }
 
-  if (this->OpenedFileName == NULL || strcmp(this->OpenedFileName, this->FileName) != 0)
+  if (this->OpenedFileName == nullptr || strcmp(this->OpenedFileName, this->FileName) != 0)
   {
     if (this->OpenedFileName)
     {
       nc_close(this->NCDFFD);
-      this->SetOpenedFileName(NULL);
+      this->SetOpenedFileName(nullptr);
     }
     int retval = nc_open(this->FileName, NC_NOWRITE, &this->NCDFFD); // read file
     if (retval != NC_NOERR)                                          // checks if read file error
@@ -498,8 +498,8 @@ int vtkUnstructuredPOPReader::ProcessGrid(
     static_cast<size_t>(subExtent[3] - subExtent[2] + 1),
     static_cast<size_t>(subExtent[1] - subExtent[0] + 1) };
 
-  ptrdiff_t rStride[3] = { (ptrdiff_t) this->Stride[2], (ptrdiff_t) this->Stride[1],
-    (ptrdiff_t) this->Stride[0] };
+  ptrdiff_t rStride[3] = { (ptrdiff_t)this->Stride[2], (ptrdiff_t)this->Stride[1],
+    (ptrdiff_t)this->Stride[0] };
 
   // initialize memory (raw data space, x y z axis space) and rectilinear grid
   bool firstPass = true;
@@ -668,7 +668,7 @@ const char* vtkUnstructuredPOPReader::GetVariableArrayName(int index)
 {
   if (index < 0 || index >= this->GetNumberOfVariableArrays())
   {
-    return NULL;
+    return nullptr;
   }
   return this->Internals->VariableArraySelection->GetArrayName(index);
 }
@@ -775,7 +775,7 @@ bool vtkUnstructuredPOPReader::Transform(vtkUnstructuredGrid* grid, size_t* star
     }
   }
 
-  size_t rStride[2] = { (size_t) this->Stride[1], (size_t) this->Stride[0] };
+  size_t rStride[2] = { (size_t)this->Stride[1], (size_t)this->Stride[0] };
 
   vtkPoints* points = grid->GetPoints();
 
@@ -1214,7 +1214,7 @@ void vtkUnstructuredPOPReader::ComputeVerticalVelocity(vtkUnstructuredGrid* grid
     double lastdwdr = dwdr[pointId];
     if (pointIterator.ColumnPieceHasBottomPoint(true) == true)
     {
-      if (w_dep.size() == 0)
+      if (w_dep.empty())
       { // this process needs this array so we read it in now
         int varidp;
         nc_inq_varid(latlonFileId, "w_dep", &varidp);
@@ -1341,8 +1341,8 @@ void vtkUnstructuredPOPReader::CommunicateParallelVerticalVelocity(int* wholeExt
   { // other processes are depending on information from this process
     // a map from piece number/processId to information to be sent.
     // this needs to be done after this process has fully updated it's information
-    std::map<vtkIdType, std::vector<int> > sendIndexInfo;
-    std::map<vtkIdType, std::vector<float> > sendValueInfo;
+    std::map<vtkIdType, std::vector<int>> sendIndexInfo;
+    std::map<vtkIdType, std::vector<float>> sendValueInfo;
     vtkNew<vtkIdList> pieceIds;
     int numberOfPieces = controller->GetNumberOfProcesses();
     for (vtkIdType column = pointIterator.BeginColumn(); column != pointIterator.EndColumn();
@@ -1372,7 +1372,7 @@ void vtkUnstructuredPOPReader::CommunicateParallelVerticalVelocity(int* wholeExt
       }
     }
     std::vector<vtkMPICommunicator::Request> requests;
-    for (std::map<vtkIdType, std::vector<int> >::iterator it = sendIndexInfo.begin();
+    for (std::map<vtkIdType, std::vector<int>>::iterator it = sendIndexInfo.begin();
          it != sendIndexInfo.end(); it++)
     {
       requests.push_back(vtkMPICommunicator::Request());
@@ -1487,7 +1487,6 @@ void vtkUnstructuredPOPReader::GetPiecesNeedingPoint(int iIndex, int jIndex, int
       << iIndex << " " << jIndex << " " << kIndex << " "
       << vtkMultiProcessController::GetGlobalController()->GetLocalProcessId());
   }
-  return;
 }
 
 //-----------------------------------------------------------------------------

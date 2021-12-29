@@ -14,14 +14,18 @@ set(classes
   vtkFrustumSource
   vtkGlyphSource2D
   vtkGraphToPolyData
+  vtkHandleSource
   vtkHyperTreeGridSource
   vtkLineSource
   vtkOutlineCornerFilter
   vtkOutlineCornerSource
   vtkOutlineSource
   vtkParametricFunctionSource
+  vtkPartitionedDataSetSource
+  vtkPartitionedDataSetCollectionSource
   vtkPlaneSource
   vtkPlatonicSolidSource
+  vtkPointHandleSource
   vtkPointSource
   vtkPolyLineSource
   vtkPolyPointSource

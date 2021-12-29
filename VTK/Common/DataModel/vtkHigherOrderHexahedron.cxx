@@ -13,7 +13,8 @@
 
 =========================================================================*/
 
-// Hide VTK_DEPRECATED_IN_9_0_0() warnings for this class.
+// Hide VTK_DEPRECATED_IN_9_0_0() and VTK_DEPRECATED_IN_9_1_0() warnings for
+// this class.
 #define VTK_DEPRECATION_LEVEL 0
 
 #include "vtkHigherOrderHexahedron.h"
@@ -33,6 +34,27 @@
 #include "vtkTriangle.h"
 #include "vtkVector.h"
 #include "vtkVectorOperators.h"
+
+vtkHigherOrderCurve* vtkHigherOrderHexahedron::getEdgeCell()
+{
+  VTK_LEGACY_REPLACED_BODY(
+    vtkHigherOrderHexahedron::getEdgeCell, "VTK 9.1", vtkHigherOrderHexahedron::GetEdgeCell);
+  return this->GetEdgeCell();
+}
+
+vtkHigherOrderQuadrilateral* vtkHigherOrderHexahedron::getFaceCell()
+{
+  VTK_LEGACY_REPLACED_BODY(
+    vtkHigherOrderHexahedron::getFaceCell, "VTK 9.1", vtkHigherOrderHexahedron::GetFaceCell);
+  return this->GetFaceCell();
+}
+
+vtkHigherOrderInterpolation* vtkHigherOrderHexahedron::getInterp()
+{
+  VTK_LEGACY_REPLACED_BODY(
+    vtkHigherOrderHexahedron::getInterp, "VTK 9.1", vtkHigherOrderHexahedron::GetInterpolation);
+  return this->GetInterpolation();
+}
 
 vtkHigherOrderHexahedron::vtkHigherOrderHexahedron()
 {
@@ -470,7 +492,7 @@ int vtkHigherOrderHexahedron::Triangulate(int vtkNotUsed(index), vtkIdList* ptId
 void vtkHigherOrderHexahedron::Derivatives(
   int vtkNotUsed(subId), const double pcoords[3], const double* values, int dim, double* derivs)
 {
-  this->getInterp()->Tensor3EvaluateDerivative(
+  this->GetInterpolation()->Tensor3EvaluateDerivative(
     this->Order, pcoords, this->GetPoints(), values, dim, derivs);
 }
 
@@ -736,11 +758,10 @@ bool vtkHigherOrderHexahedron::TransformFaceToCellParams(int bdyFace, double* pc
 void vtkHigherOrderHexahedron::SetOrderFromCellData(
   vtkCellData* cell_data, const vtkIdType numPts, const vtkIdType cell_id)
 {
-  if (cell_data->SetActiveAttribute(
-        "HigherOrderDegrees", vtkDataSetAttributes::AttributeTypes::HIGHERORDERDEGREES) != -1)
+  vtkDataArray* v = cell_data->GetHigherOrderDegrees();
+  if (v)
   {
     double degs[3];
-    vtkDataArray* v = cell_data->GetHigherOrderDegrees();
     v->GetTuple(cell_id, degs);
     this->SetOrder(degs[0], degs[1], degs[2]);
     if (this->Order[3] != numPts)

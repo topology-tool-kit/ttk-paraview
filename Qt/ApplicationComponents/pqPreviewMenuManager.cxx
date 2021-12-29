@@ -52,7 +52,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cassert>
 
 #define SETUP_ACTION(actn)                                                                         \
-  if (QAction* tmp = actn)                                                                         \
+  if (QAction* tmp = (actn))                                                                       \
   {                                                                                                \
     tmp->setCheckable(true);                                                                       \
     this->connect(tmp, SIGNAL(triggered(bool)), SLOT(lockResolution(bool)));                       \
@@ -118,7 +118,7 @@ void pqPreviewMenuManager::init(const QStringList& defaultItems, QMenu* menu)
   {
     SETUP_ACTION(menu->addAction(txt));
   }
-  if (defaultItems.size() > 0)
+  if (!defaultItems.empty())
   {
     menu->addSeparator();
   }
@@ -132,9 +132,7 @@ void pqPreviewMenuManager::init(const QStringList& defaultItems, QMenu* menu)
 }
 
 //-----------------------------------------------------------------------------
-pqPreviewMenuManager::~pqPreviewMenuManager()
-{
-}
+pqPreviewMenuManager::~pqPreviewMenuManager() = default;
 
 //-----------------------------------------------------------------------------
 void pqPreviewMenuManager::updateEnabledState()

@@ -42,6 +42,11 @@ public:
   void PrintSelf(ostream& os, vtkIndent indent);
 
   /**
+   * Returns `VTK_OPEN_QUBE_ELECTRONIC_DATA`.
+   */
+  int GetDataObjectType() override { return VTK_OPEN_QUBE_ELECTRONIC_DATA; }
+
+  /**
    * Returns the number of molecular orbitals in the OpenQube::BasisSet.
    */
   vtkIdType GetNumberOfMOs();
@@ -63,37 +68,37 @@ public:
    */
   vtkImageData* GetElectronDensity();
 
-  //@{
+  ///@{
   /**
    * Set/Get the OpenQube::BasisSet object used to generate the image data
    */
   vtkSetMacro(BasisSet, OpenQube::BasisSet*);
   vtkGetMacro(BasisSet, OpenQube::BasisSet*);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/Get the padding around the molecule used in determining the image
    * limits. Default: 2.0
    */
   vtkSetMacro(Padding, double);
   vtkGetMacro(Padding, double);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/Get the interval distance between grid points. Default: 0.1
    */
   vtkSetMacro(Spacing, double);
   vtkGetMacro(Spacing, double);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the collection of cached images
    */
   vtkGetNewMacro(Images, vtkDataSetCollection);
-  //@}
+  ///@}
 
   /**
    * Deep copies the data object into this.
@@ -104,14 +109,14 @@ protected:
   vtkOpenQubeElectronicData();
   ~vtkOpenQubeElectronicData() override;
 
-  //@{
+  ///@{
   /**
    * Calculates and returns the requested vtkImageData. The data is added to
    * the cache, but the cache is not searched in this function.
    */
   vtkImageData* CalculateMO(vtkIdType orbitalNumber);
   vtkImageData* CalculateElectronDensity();
-  //@}
+  ///@}
 
   /**
    * Converts an OpenQube::Cube object into vtkImageData.

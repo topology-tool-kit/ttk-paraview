@@ -16,24 +16,24 @@
 
 #include "vtkPythonCalculator.h"
 
-#include "vtkCellData.h"
 #include "vtkDataArray.h"
 #include "vtkDataObject.h"
-#include "vtkDataObjectTypes.h"
 #include "vtkDataSet.h"
+#include "vtkGraph.h"
 #include "vtkInformation.h"
 #include "vtkInformationVector.h"
+#include "vtkMolecule.h"
 #include "vtkObjectFactory.h"
-#include "vtkPVOptions.h"
+#include "vtkPVStringFormatter.h"
 #include "vtkPointData.h"
-#include "vtkProcessModule.h"
 #include "vtkPythonInterpreter.h"
 #include "vtkPythonUtil.h"
 #include "vtkSmartPyObject.h"
+#include "vtkStreamingDemandDrivenPipeline.h"
+#include "vtkTable.h"
 
 #include <algorithm>
 #include <map>
-#include <sstream>
 #include <string>
 #include <vtksys/SystemTools.hxx>
 
@@ -56,8 +56,8 @@ vtkStandardNewMacro(vtkPythonCalculator);
 //----------------------------------------------------------------------------
 vtkPythonCalculator::vtkPythonCalculator()
 {
-  this->Expression = NULL;
-  this->ArrayName = NULL;
+  this->Expression = nullptr;
+  this->ArrayName = nullptr;
   this->SetArrayName("result");
   this->SetExecuteMethod(vtkPythonCalculator::ExecuteScript, this);
   this->ArrayAssociation = vtkDataObject::FIELD_ASSOCIATION_POINTS;
@@ -66,8 +66,72 @@ vtkPythonCalculator::vtkPythonCalculator()
 //----------------------------------------------------------------------------
 vtkPythonCalculator::~vtkPythonCalculator()
 {
-  this->SetExpression(NULL);
-  this->SetArrayName(NULL);
+  this->SetExpression(nullptr);
+  this->SetArrayName(nullptr);
+}
+
+//----------------------------------------------------------------------------
+int vtkPythonCalculator::RequestData(
+  vtkInformation* request, vtkInformationVector** inputVector, vtkInformationVector* outputVector)
+{
+  vtkDataObject* input = vtkDataObject::GetData(inputVector[0], 0);
+  assert(input != nullptr);
+
+  double dataTime = 0;
+  bool dataTimeValid = false;
+  std::vector<double> timeSteps;
+  int timeIndex;
+
+  // Extract time information
+  if (vtkInformation* dataInformation = input->GetInformation())
+  {
+    if (dataInformation->Has(vtkDataObject::DATA_TIME_STEP()))
+    {
+      dataTimeValid = true;
+      dataTime = dataInformation->Get(vtkDataObject::DATA_TIME_STEP());
+    }
+  }
+
+  vtkInformation* inputInfo = inputVector[0]->GetInformationObject(0);
+  if (inputInfo->Has(vtkStreamingDemandDrivenPipeline::TIME_STEPS()))
+  {
+    int numberOfTimeSteps = inputInfo->Length(vtkStreamingDemandDrivenPipeline::TIME_STEPS());
+    double* tempTimeSteps = inputInfo->Get(vtkStreamingDemandDrivenPipeline::TIME_STEPS());
+
+    timeSteps.insert(timeSteps.begin(), tempTimeSteps, tempTimeSteps + numberOfTimeSteps);
+  }
+
+  timeIndex = 0;
+  if (dataTimeValid && !timeSteps.empty())
+  {
+    for (int i = 0; i < timeSteps.size(); ++i)
+    {
+      if (timeSteps[i] == dataTime)
+      {
+        timeIndex = i;
+      }
+    }
+  }
+
+  // define calculator scope
+  PV_STRING_FORMATTER_NAMED_SCOPE(
+    "CALCULATOR", fmt::arg("timevalue", dataTime), fmt::arg("timeindex", timeIndex));
+
+  char* cachedExpression = vtksys::SystemTools::DuplicateString(this->Expression);
+
+  std::string formattableExpression = this->Expression ? this->Expression : std::string();
+  delete[] this->Expression;
+  this->Expression = vtksys::SystemTools::DuplicateString(
+    vtkPVStringFormatter::Format(formattableExpression).c_str());
+
+  // call superclass
+  this->Superclass::RequestData(request, inputVector, outputVector);
+
+  // restore cached expression
+  delete[] this->Expression;
+  this->Expression = vtksys::SystemTools::DuplicateString(cachedExpression);
+
+  return 1;
 }
 
 //----------------------------------------------------------------------------
@@ -116,7 +180,7 @@ void vtkPythonCalculator::ExecuteScript(void* arg)
 //----------------------------------------------------------------------------
 void vtkPythonCalculator::Exec(const char* expression)
 {
-  // Do not execute if expression is null or empty.
+  // Do not execute if expression is nullptr or empty.
   if (!expression || expression[0] == '\0')
   {
     return;

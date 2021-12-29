@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkPPainterCommunicator.h
+  Module:    vtkPPainterCommunicator.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -157,7 +157,7 @@ void* vtkPPainterCommunicator::GetCommunicator()
 //------------------------------------------------------------------------------
 int vtkPPainterCommunicator::GetRank()
 {
-  if (!this->MPIInitialized() || this->MPIFinalized())
+  if (!vtkPPainterCommunicator::MPIInitialized() || vtkPPainterCommunicator::MPIFinalized())
   {
     return 0;
   }
@@ -169,7 +169,7 @@ int vtkPPainterCommunicator::GetRank()
 //------------------------------------------------------------------------------
 int vtkPPainterCommunicator::GetSize()
 {
-  if (!this->MPIInitialized() || this->MPIFinalized())
+  if (!vtkPPainterCommunicator::MPIInitialized() || vtkPPainterCommunicator::MPIFinalized())
   {
     return 1;
   }
@@ -181,7 +181,7 @@ int vtkPPainterCommunicator::GetSize()
 //------------------------------------------------------------------------------
 int vtkPPainterCommunicator::GetWorldRank()
 {
-  if (!this->MPIInitialized() || this->MPIFinalized())
+  if (!vtkPPainterCommunicator::MPIInitialized() || vtkPPainterCommunicator::MPIFinalized())
   {
     return 0;
   }
@@ -193,7 +193,7 @@ int vtkPPainterCommunicator::GetWorldRank()
 //------------------------------------------------------------------------------
 int vtkPPainterCommunicator::GetWorldSize()
 {
-  if (!this->MPIInitialized() || this->MPIFinalized())
+  if (!vtkPPainterCommunicator::MPIInitialized() || vtkPPainterCommunicator::MPIFinalized())
   {
     return 1;
   }

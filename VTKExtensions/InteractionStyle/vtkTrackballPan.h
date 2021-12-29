@@ -21,14 +21,14 @@
  * Moving the mouse down zooms in. Up zooms out.
  * This manipulator has not been extended to parallel projection yet.
  * It works in perspective by rotating the camera.
-*/
+ */
 
 #ifndef vtkTrackballPan_h
 #define vtkTrackballPan_h
 
 #include "vtkCameraManipulator.h"
 #include "vtkPVVTKExtensionsInteractionStyleModule.h" // needed for export macro
-#include <memory>
+#include <memory>                                     // for std::unique_ptr
 
 class VTKPVVTKEXTENSIONSINTERACTIONSTYLE_EXPORT vtkTrackballPan : public vtkCameraManipulator
 {

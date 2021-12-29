@@ -16,8 +16,11 @@
 
 #include "vtkActor.h"
 #include "vtkActor2D.h"
+#include "vtkBoundingBox.h"
 #include "vtkCamera.h"
 #include "vtkCoordinate.h"
+#include "vtkCubeSource.h"
+#include "vtkCutter.h"
 #include "vtkHandleRepresentation.h"
 #include "vtkImageActor.h"
 #include "vtkImageData.h"
@@ -101,7 +104,7 @@ vtkResliceCursorRepresentation::vtkResliceCursorRepresentation()
 
   vtkPolyDataMapper* texturePlaneMapper = vtkPolyDataMapper::New();
   texturePlaneMapper->SetInputConnection(this->PlaneSource->GetOutputPort());
-  texturePlaneMapper->SetResolveCoincidentTopologyToPolygonOffset();
+  vtkPolyDataMapper::SetResolveCoincidentTopologyToPolygonOffset();
 
   this->Texture->SetQualityTo32Bit();
   this->Texture->SetColorMode(VTK_COLOR_MODE_DEFAULT);
@@ -266,18 +269,21 @@ void vtkResliceCursorRepresentation::ResetCamera()
 
   if (this->Renderer)
   {
-    double center[3], camPos[3], n[3];
+    const int planeOrientation = this->GetCursorAlgorithm()->GetReslicePlaneNormal();
+    double* normal = this->GetResliceCursor()->GetPlane(planeOrientation)->GetNormal();
+    double* viewUp = this->GetResliceCursor()->GetViewUp(planeOrientation);
+
+    double center[3], focalPoint[3], cameraPosition[3];
     this->GetResliceCursor()->GetCenter(center);
-    this->Renderer->GetActiveCamera()->SetFocalPoint(center);
+    this->Renderer->GetActiveCamera()->GetFocalPoint(focalPoint);
+    this->Renderer->GetActiveCamera()->GetPosition(cameraPosition);
 
-    const int normalAxis = this->GetCursorAlgorithm()->GetReslicePlaneNormal();
-    this->GetResliceCursor()->GetPlane(normalAxis)->GetNormal(n);
-    vtkMath::Add(center, n, camPos);
-    this->Renderer->GetActiveCamera()->SetPosition(camPos);
+    double distance = sqrt(vtkMath::Distance2BetweenPoints(cameraPosition, focalPoint));
 
-    // Reset the camera in response to changes.
-    this->Renderer->ResetCamera();
-    this->Renderer->ResetCameraClippingRange();
+    double newCameraPosition[3] = { focalPoint[0] + normal[0] * distance,
+      focalPoint[1] + normal[1] * distance, focalPoint[2] + normal[2] * distance };
+    this->Renderer->GetActiveCamera()->SetPosition(newCameraPosition);
+    this->Renderer->GetActiveCamera()->SetViewUp(viewUp);
   }
 }
 
@@ -421,17 +427,35 @@ void vtkResliceCursorRepresentation::UpdateReslicePlane()
 
   this->ComputeReslicePlaneOrigin();
 
-  this->PlaneSource->SetNormal(planeNormal);
-  this->PlaneSource->SetCenter(plane->GetOrigin());
+  double* viewUp = this->GetResliceCursor()->GetViewUp(planeOrientation);
+  double center[3];
+  this->GetResliceCursor()->GetCenter(center);
+
+  vtkResliceCursorRepresentation::TransformPlane(this->PlaneSource, center, planeNormal, viewUp);
+
+  // Clip to bounds
+  double* imageBounds = this->GetResliceCursor()->GetImage()->GetBounds();
+  double boundedOrigin[3];
+  double boundedP1[3];
+  double boundedP2[3];
+  this->PlaneSource->GetOrigin(boundedOrigin);
+  this->PlaneSource->GetPoint1(boundedP1);
+  this->PlaneSource->GetPoint2(boundedP2);
+  int boundPlane =
+    vtkResliceCursorRepresentation::BoundPlane(imageBounds, boundedOrigin, boundedP1, boundedP2);
+
+  if (boundPlane == 1)
+  {
+    this->PlaneSource->SetOrigin(boundedOrigin);
+    this->PlaneSource->SetPoint1(boundedP1);
+    this->PlaneSource->SetPoint2(boundedP2);
+  }
 
   double planeAxis1[3];
   double planeAxis2[3];
 
-  double* p1 = this->PlaneSource->GetPoint1();
-  double* o = this->PlaneSource->GetOrigin();
-  vtkMath::Subtract(p1, o, planeAxis1);
-  double* p2 = this->PlaneSource->GetPoint2();
-  vtkMath::Subtract(p2, o, planeAxis2);
+  vtkMath::Subtract(boundedP1, boundedOrigin, planeAxis1);
+  vtkMath::Subtract(boundedP2, boundedOrigin, planeAxis2);
 
   // The x,y dimensions of the plane
   //
@@ -535,6 +559,7 @@ void vtkResliceCursorRepresentation::UpdateReslicePlane()
   }
 
   this->SetResliceParameters(outputSpacingX, outputSpacingY, extentX, extentY);
+  this->ResetCamera();
 }
 
 //------------------------------------------------------------------------------
@@ -719,6 +744,64 @@ void vtkResliceCursorRepresentation::InvertTable()
 }
 
 //------------------------------------------------------------------------------
+int vtkResliceCursorRepresentation::BoundPlane(
+  double bounds[6], double origin[3], double p1[3], double p2[3])
+{
+  double v1[3];
+  vtkMath::Subtract(p1, origin, v1);
+  vtkMath::Normalize(v1);
+
+  double v2[3];
+  vtkMath::Subtract(p2, origin, v2);
+  vtkMath::Normalize(v2);
+
+  double n[3] = { 0, 0, 1 };
+  vtkMath::Cross(v1, v2, n);
+  vtkMath::Normalize(n);
+
+  vtkNew<vtkPlane> plane;
+  plane->SetOrigin(origin);
+  plane->SetNormal(n);
+
+  vtkNew<vtkCubeSource> cubeSource;
+  cubeSource->SetBounds(bounds);
+
+  vtkNew<vtkCutter> cutter;
+  cutter->SetCutFunction(plane.Get());
+  cutter->SetInputConnection(cubeSource->GetOutputPort());
+  cutter->Update();
+
+  vtkPolyData* cutBounds = cutter->GetOutput();
+  if (cutBounds->GetNumberOfPoints() == 0)
+  {
+    return 0;
+  }
+
+  double localBounds[6];
+  vtkBoundingBox::ComputeLocalBounds(cutBounds->GetPoints(), v1, v2, n, localBounds);
+
+  for (int i = 0; i < 3; i++)
+  {
+    origin[i] = localBounds[0] * v1[i] + localBounds[2] * v2[i] + localBounds[4] * n[i];
+    p1[i] = localBounds[1] * v1[i] + localBounds[2] * v2[i] + localBounds[4] * n[i];
+    p2[i] = localBounds[0] * v1[i] + localBounds[3] * v2[i] + localBounds[4] * n[i];
+  }
+  return 1;
+}
+
+//------------------------------------------------------------------------------
+void vtkResliceCursorRepresentation::TransformPlane(vtkPlaneSource* planeToTransform,
+  double targetCenter[3], double targetNormal[3], double targetViewUp[3])
+{
+  planeToTransform->SetNormal(targetNormal);
+  double currentViewUp[3];
+  vtkMath::Subtract(planeToTransform->GetPoint2(), planeToTransform->GetOrigin(), currentViewUp);
+  double angle = vtkMath::SignedAngleBetweenVectors(currentViewUp, targetViewUp, targetNormal);
+  planeToTransform->Rotate(vtkMath::DegreesFromRadians(angle), targetNormal);
+  planeToTransform->SetCenter(targetCenter);
+}
+
+//----------------------------------------------------------------------------
 void vtkResliceCursorRepresentation::CreateDefaultResliceAlgorithm()
 {
   // Allows users to optionally use their own reslice filters or other

@@ -230,7 +230,7 @@ class TestVTKFiles:
             self.Error("Guard does not match the filename")
 
     def CheckParent(self):
-        classre = "^class(\s+VTK_DEPRECATED)?(\s+[^\s]*_EXPORT)?\s+(vtk[A-Z0-9_][^ :\n]*)\s*:\s*public\s+(vtk[^ \n\{]*)"
+        classre = "^class(\s+VTK_DEPRECATED)?(\s+[^\s]*_EXPORT)?\s+(vtkm?[A-Z0-9_][^ :\n]*)\s*:\s*public\s+(vtk[^ \n\{]*)"
         cname = ""
         pname = ""
         classlines = []
@@ -341,7 +341,7 @@ class TestVTKFiles:
         lines = []
         oldlines = []
         copyoperator = "^\s*%s\s*\(\s*const\s*%s\s*&\s*\) = delete;" % ( self.ClassName, self.ClassName)
-        asgnoperator = "^\s*void\s*operator\s*=\s*\(\s*const\s*%s\s*&\s*\) = delete;" % self.ClassName
+        asgnoperator = "^\s*(void|%s\s*&)\s*operator\s*=\s*\(\s*const\s*%s\s*&\s*\) = delete;" % (self.ClassName, self.ClassName)
         #self.Print( copyoperator
         regx1 = re.compile(copyoperator)
         regx2 = re.compile(asgnoperator)

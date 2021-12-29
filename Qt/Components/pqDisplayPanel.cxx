@@ -49,22 +49,16 @@ pqDisplayPanel::pqDisplayPanel(pqRepresentation* display, QWidget* p)
   }
 }
 
-pqDisplayPanel::~pqDisplayPanel()
-{
-}
+pqDisplayPanel::~pqDisplayPanel() = default;
 
 pqRepresentation* pqDisplayPanel::getRepresentation()
 {
   return this->Representation;
 }
 
-void pqDisplayPanel::reloadGUI()
-{
-}
+void pqDisplayPanel::reloadGUI() {}
 
-void pqDisplayPanel::dataUpdated()
-{
-}
+void pqDisplayPanel::dataUpdated() {}
 
 void pqDisplayPanel::updateAllViews()
 {

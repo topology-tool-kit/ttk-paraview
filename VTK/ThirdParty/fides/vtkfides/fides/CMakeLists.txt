@@ -1,11 +1,12 @@
 set(srcs
-  FidesTypes.cxx
   Array.cxx
   CellSet.cxx
   CoordinateSystem.cxx
   DataModel.cxx
   DataSetReader.cxx
+  DataSetWriter.cxx
   DataSource.cxx
+  FidesTypes.cxx
   Field.cxx
   FieldData.cxx
   FieldDataManager.cxx
@@ -15,13 +16,16 @@ set(srcs
 )
 
 set(headers
-  FidesTypes.h
   Array.h
   CellSet.h
+  Configure.h
   CoordinateSystem.h
   DataModel.h
   DataSetReader.h
+  DataSetWriter.h
   DataSource.h
+  Deprecated.h
+  FidesTypes.h
   Field.h
   FieldData.h
   FieldDataManager.h

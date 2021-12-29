@@ -127,7 +127,7 @@ protected:
    * When StereoMode is set to VTK_STEREO_EMULATE, both eyes are captures. In
    * that case, this method may be used to return images for each of the eyes.
    */
-  std::pair<vtkSmartPointer<vtkImageData>, vtkSmartPointer<vtkImageData> > CapturePreppedImages();
+  std::pair<vtkSmartPointer<vtkImageData>, vtkSmartPointer<vtkImageData>> CapturePreppedImages();
 
   /**
    * Prepares for saving an image. This will do any changes to view properties
@@ -155,9 +155,13 @@ protected:
    */
   std::string GetStereoFileName(const std::string& filename, bool left);
 
-  friend class pqCatalystExportReaction;  // access to GetView,FormatProxy
-  friend class pqImmediateExportReaction; // access to GetView,FormatProxy
-  friend class pqTemporalExportReaction;  // access to GetView,FormatProxy
+  //@{
+  // vtkSMRecolorableImageExtractWriterProxy uses experimental API
+  // SetUseFloatingPointBuffers.
+  friend class vtkSMRecolorableImageExtractWriterProxy;
+  vtkSetMacro(UseFloatingPointBuffers, bool);
+  //@}
+
 private:
   vtkSMSaveScreenshotProxy(const vtkSMSaveScreenshotProxy&) = delete;
   void operator=(const vtkSMSaveScreenshotProxy&) = delete;
@@ -169,6 +173,7 @@ private:
   class vtkStateView;
   class vtkStateLayout;
   vtkState* State;
+  bool UseFloatingPointBuffers;
 };
 
 #endif

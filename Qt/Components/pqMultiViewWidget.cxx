@@ -83,14 +83,14 @@ static const int PARAVIEW_DEFAULT_LAYOUT_SPACING = 4;
 class pqMultiViewWidget::pqInternals
 {
 public:
-  QVector<QPointer<pqViewFrame> > Frames;
+  QVector<QPointer<pqViewFrame>> Frames;
 
   // This map is used to avoid reassigning frames. Once a view is assigned a
   // frame, we preserve that frame as long as possible.
-  QMap<vtkSMViewProxy*, QPointer<pqViewFrame> > ViewFrames;
+  QMap<vtkSMViewProxy*, QPointer<pqViewFrame>> ViewFrames;
 
   // This is a collection for empty frames.
-  QVector<QPointer<pqViewFrame> > EmptyFrames;
+  QVector<QPointer<pqViewFrame>> EmptyFrames;
 
   std::vector<unsigned long> ObserverIds;
   vtkWeakPointer<vtkSMViewLayoutProxy> LayoutManager;
@@ -305,18 +305,18 @@ pqView* getPQView(vtkSMProxy* view)
     pqServerManagerModel* smmodel = pqApplicationCore::instance()->getServerManagerModel();
     return smmodel->findItem<pqView*>(view);
   }
-  return NULL;
+  return nullptr;
 }
 
 void ConnectFrameToView(pqViewFrame* frame, pqView* pqview)
 {
   assert(frame);
-  // if pqview == NULL, then the frame is either being assigned to a empty
+  // if pqview == nullptr, then the frame is either being assigned to a empty
   // view, or pqview for a view-proxy just isn't present yet.
-  // it's possible that pqview is NULL, if the view proxy hasn't been registered
+  // it's possible that pqview is nullptr, if the view proxy hasn't been registered
   // yet. This happens often when initialization state is being loaded in
   // collaborative sessions.
-  if (pqview != NULL)
+  if (pqview != nullptr)
   {
     QWidget* viewWidget = pqview->widget();
     frame->setCentralWidget(viewWidget, pqview);
@@ -344,7 +344,7 @@ pqMultiViewWidget::pqMultiViewWidget(QWidget* parentObject, Qt::WindowFlags f)
 pqMultiViewWidget::~pqMultiViewWidget()
 {
   delete this->Internals;
-  this->Internals = NULL;
+  this->Internals = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -458,8 +458,9 @@ bool pqMultiViewWidget::eventFilter(QObject* caller, QEvent* evt)
   if (evt->type() == QEvent::MouseButtonPress)
   {
     QWidget* wdg = qobject_cast<QWidget*>(caller);
-    if (wdg && ((!this->Internals->Popout && this->isAncestorOf(wdg)) ||
-                 (this->Internals->Popout && this->Internals->PopoutWindow->isAncestorOf(wdg))))
+    if (wdg &&
+      ((!this->Internals->Popout && this->isAncestorOf(wdg)) ||
+        (this->Internals->Popout && this->Internals->PopoutWindow->isAncestorOf(wdg))))
     {
       // If the new widget that is getting the focus is a child widget of any of the
       // frames, then the frame should be made active.
@@ -512,7 +513,7 @@ void pqMultiViewWidget::makeFrameActive()
   /// do anything silly here that could cause infinite recursion.
   if (!this->Internals->ActiveFrame)
   {
-    for (auto frame : this->Internals->Frames)
+    for (const auto& frame : this->Internals->Frames)
     {
       if (frame)
       {
@@ -537,7 +538,7 @@ void pqMultiViewWidget::markActive(pqView* view)
   }
   else
   {
-    this->markActive(static_cast<pqViewFrame*>(NULL));
+    this->markActive(static_cast<pqViewFrame*>(nullptr));
   }
 }
 
@@ -564,14 +565,14 @@ void pqMultiViewWidget::makeActive(pqViewFrame* frame)
 {
   if (this->Internals->ActiveFrame != frame)
   {
-    pqView* view = NULL;
+    pqView* view = nullptr;
     if (frame)
     {
       int index = frame->property("FRAME_INDEX").toInt();
       view = getPQView(this->layoutManager()->GetView(index));
     }
     pqActiveObjects::instance().setActiveView(view);
-    // this needs to called only when view == null since in that case when
+    // this needs to called only when view == nullptr since in that case when
     // markActive(pqView*) slot is called, we have no idea what frame is really
     // to be made active.
     this->markActive(frame);
@@ -595,7 +596,7 @@ pqViewFrame* pqMultiViewWidget::newFrame(vtkSMProxy* view)
 
   pqServerManagerModel* smmodel = pqApplicationCore::instance()->getServerManagerModel();
   pqView* pqview = smmodel->findItem<pqView*>(view);
-  // it's possible that pqview is NULL, if the view proxy hasn't been registered
+  // it's possible that pqview is nullptr, if the view proxy hasn't been registered
   // yet. This happens often when initialization state is being loaded in
   // collaborative sessions.
   ConnectFrameToView(frame, pqview);
@@ -625,7 +626,7 @@ void pqMultiViewWidget::reload()
 
   internals.Frames.clear();
 
-  // for all non-null views known to vlayout, let's make sure we have created pqViewFrame
+  // for all non-nullptr views known to vlayout, let's make sure we have created pqViewFrame
   // for each of them. No need to delete any obsolete view frames just yet, they'll get cleaned
   // up following `pqHierarchicalGridLayout::rearrange()`
   internals.createViewFrames(vlayout->GetViews(), this);
@@ -633,7 +634,7 @@ void pqMultiViewWidget::reload()
   // Make sure the `hlayout` matches `vlayout`.
   QVector<pqHierarchicalGridLayout::Item> hitems;
 
-  QVector<QPointer<pqViewFrame> > empty_frames;
+  QVector<QPointer<pqViewFrame>> empty_frames;
   empty_frames = std::move(internals.EmptyFrames);
 
   auto& all_frames = internals.Frames;
@@ -664,7 +665,7 @@ void pqMultiViewWidget::reload()
       assert(viewProxy == nullptr || frame != nullptr);
       if (viewProxy == nullptr && frame == nullptr)
       {
-        if (empty_frames.size() > 0)
+        if (!empty_frames.empty())
         {
           frame = empty_frames.takeLast();
         }
@@ -692,7 +693,7 @@ void pqMultiViewWidget::reload()
   }
 
   // delete empty frames no longer needed.
-  for (auto eframe : empty_frames)
+  for (const auto& eframe : empty_frames)
   {
     delete eframe;
   }
@@ -745,7 +746,7 @@ void pqMultiViewWidget::standardButtonPressed(int button)
 {
   pqViewFrame* frame = qobject_cast<pqViewFrame*>(this->sender());
   QVariant index = frame ? frame->property("FRAME_INDEX") : QVariant();
-  if (!index.isValid() || this->layoutManager() == NULL)
+  if (!index.isValid() || this->layoutManager() == nullptr)
   {
     return;
   }
@@ -869,7 +870,7 @@ void pqMultiViewWidget::swapPositions(const QString& uid_str)
     return;
   }
 
-  pqViewFrame* swapWith = NULL;
+  pqViewFrame* swapWith = nullptr;
   for (pqViewFrame* frame : this->Internals->Frames)
   {
     if (frame && frame->uniqueID() == other)
@@ -889,7 +890,7 @@ void pqMultiViewWidget::swapPositions(const QString& uid_str)
   vtkSMViewProxy* view1 = vlayout->GetView(id1);
   vtkSMViewProxy* view2 = vlayout->GetView(id2);
 
-  if (view1 == NULL && view2 == NULL)
+  if (view1 == nullptr && view2 == nullptr)
   {
     return;
   }
@@ -921,8 +922,9 @@ bool pqMultiViewWidget::togglePopout()
   {
     if (internals.PopoutWindow == nullptr)
     {
-      internals.PopoutWindow.reset(new QWidget(this, Qt::Window | Qt::CustomizeWindowHint |
-          Qt::WindowTitleHint | Qt::WindowMaximizeButtonHint | Qt::WindowCloseButtonHint));
+      internals.PopoutWindow.reset(new QWidget(this,
+        Qt::Window | Qt::CustomizeWindowHint | Qt::WindowTitleHint | Qt::WindowMaximizeButtonHint |
+          Qt::WindowCloseButtonHint));
       internals.PopoutWindow->setObjectName("PopoutWindow");
       auto l = new QVBoxLayout(internals.PopoutWindow.data());
       l->setMargin(0);

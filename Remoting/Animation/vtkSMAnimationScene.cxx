@@ -54,22 +54,22 @@ class vtkSMAnimationScene::vtkInternals
   vtkNew<vtkSMTransferFunctionManager> TransferFunctionManager;
 
 public:
-  typedef std::vector<vtkSmartPointer<vtkAnimationCue> > VectorOfAnimationCues;
+  typedef std::vector<vtkSmartPointer<vtkAnimationCue>> VectorOfAnimationCues;
   VectorOfAnimationCues AnimationCues;
 
-  typedef std::vector<vtkSmartPointer<vtkSMViewProxy> > VectorOfViews;
+  typedef std::vector<vtkSmartPointer<vtkSMViewProxy>> VectorOfViews;
   VectorOfViews ViewModules;
 
   void UpdateAllViews()
   {
-    if (this->ViewModules.size() == 0)
+    if (this->ViewModules.empty())
     {
       return;
     }
 
     vtkVLogScopeF(PARAVIEW_LOG_APPLICATION_VERBOSITY(), "update-all-views for animation");
 
-    vtkSMSessionProxyManager* pxm = NULL;
+    vtkSMSessionProxyManager* pxm = nullptr;
     for (VectorOfViews::iterator iter = this->ViewModules.begin(); iter != this->ViewModules.end();
          ++iter)
     {
@@ -139,9 +139,9 @@ protected:
   {
     return (cue &&
 #if VTK_MODULE_ENABLE_VTK_PythonInterpreter
-      (vtkPythonAnimationCue::SafeDownCast(cue) == NULL) &&
+      (vtkPythonAnimationCue::SafeDownCast(cue) == nullptr) &&
 #endif
-      (vtkPVCameraAnimationCue::SafeDownCast(cue) == NULL));
+      (vtkPVCameraAnimationCue::SafeDownCast(cue) == nullptr));
   }
 
 public:
@@ -154,7 +154,7 @@ public:
     , ClockTime(clocktime)
   {
   }
-  virtual ~vtkTickOnGenericCue() {}
+  virtual ~vtkTickOnGenericCue() = default;
   virtual void operator()(vtkAnimationCue* cue) const
   {
     if (!this->IsAcceptable(cue))
@@ -182,7 +182,7 @@ class vtkTickOnCameraCue : public vtkTickOnGenericCue
 protected:
   bool IsAcceptable(vtkAnimationCue* cue) const override
   {
-    return (vtkPVCameraAnimationCue::SafeDownCast(cue) != NULL);
+    return (vtkPVCameraAnimationCue::SafeDownCast(cue) != nullptr);
   }
 
   vtkSMProxy* TimeKeeper;
@@ -218,9 +218,9 @@ protected:
     (void)cue;
     return (false
 #if VTK_MODULE_ENABLE_VTK_PythonInterpreter
-      || (vtkPythonAnimationCue::SafeDownCast(cue) != NULL)
+      || (vtkPythonAnimationCue::SafeDownCast(cue) != nullptr)
 #endif
-        );
+    );
   }
 
 public:
@@ -244,7 +244,7 @@ vtkSMAnimationScene::vtkSMAnimationScene()
   this->LockEndTime = false;
   this->LockStartTime = false;
   this->OverrideStillRender = false;
-  this->TimeKeeper = NULL;
+  this->TimeKeeper = nullptr;
   this->TimeRangeObserverID = 0;
   this->TimestepValuesObserverID = 0;
   this->AnimationPlayer = vtkCompositeAnimationPlayer::New();
@@ -261,17 +261,17 @@ vtkSMAnimationScene::vtkSMAnimationScene()
 //----------------------------------------------------------------------------
 vtkSMAnimationScene::~vtkSMAnimationScene()
 {
-  this->SetTimeKeeper(NULL);
+  this->SetTimeKeeper(nullptr);
 
   this->AnimationPlayer->RemoveObserver(this->Forwarder);
   this->AnimationPlayer->Delete();
-  this->AnimationPlayer = NULL;
+  this->AnimationPlayer = nullptr;
 
-  this->Forwarder->SetTarget(NULL);
+  this->Forwarder->SetTarget(nullptr);
   this->Forwarder->Delete();
 
   delete this->Internals;
-  this->Internals = NULL;
+  this->Internals = nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -302,7 +302,7 @@ void vtkSMAnimationScene::RemoveCue(vtkAnimationCue* cue)
 //----------------------------------------------------------------------------
 void vtkSMAnimationScene::RemoveAllCues()
 {
-  if (this->Internals->AnimationCues.size() > 0)
+  if (!this->Internals->AnimationCues.empty())
   {
     this->Internals->AnimationCues.clear();
     this->Modified();
@@ -420,7 +420,7 @@ vtkSMViewProxy* vtkSMAnimationScene::GetViewProxy(unsigned int cc)
     return this->Internals->ViewModules[cc];
   }
 
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -491,8 +491,9 @@ void vtkSMAnimationScene::TickInternal(double currenttime, double deltatime, dou
 
   this->Internals->UpdateAllViews();
 
-  std::for_each(cues.begin(), cues.end(), vtkTickOnCameraCue(this->StartTime, this->EndTime,
-                                            currenttime, deltatime, clocktime, this->TimeKeeper));
+  std::for_each(cues.begin(), cues.end(),
+    vtkTickOnCameraCue(
+      this->StartTime, this->EndTime, currenttime, deltatime, clocktime, this->TimeKeeper));
 
   this->Superclass::TickInternal(currenttime, deltatime, clocktime);
 
@@ -590,4 +591,10 @@ void vtkSMAnimationScene::SetDuration(int val)
 void vtkSMAnimationScene::SetFramesPerTimestep(int val)
 {
   this->AnimationPlayer->SetFramesPerTimestep(val);
+}
+
+//----------------------------------------------------------------------------
+void vtkSMAnimationScene::SetStride(int val)
+{
+  this->AnimationPlayer->SetStride(val);
 }

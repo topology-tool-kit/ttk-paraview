@@ -18,7 +18,10 @@ mark_as_advanced(PARAVIEW_BUILD_LEGACY_SILENT)
 # Kits bundle multiple modules together into a single library, this
 # is used to dramatically reduce the number of generated libraries.
 vtk_deprecated_setting(kits_default PARAVIEW_BUILD_WITH_KITS PARAVIEW_ENABLE_KITS "OFF")
-option(PARAVIEW_BUILD_WITH_KITS "Build ParaView using kits instead of modules." OFF)
+cmake_dependent_option(PARAVIEW_BUILD_WITH_KITS "Build ParaView using kits instead of modules." OFF
+  # Static builds don't make sense with kits. Ignore the flag if shared
+  # libraries aren't being built.
+  "PARAVIEW_BUILD_SHARED_LIBS" OFF)
 mark_as_advanced(PARAVIEW_BUILD_WITH_KITS)
 
 vtk_deprecated_setting(external_default PARAVIEW_BUILD_WITH_EXTERNAL PARAVIEW_USE_EXTERNAL "OFF")
@@ -27,6 +30,8 @@ mark_as_advanced(PARAVIEW_BUILD_WITH_EXTERNAL)
 
 option(PARAVIEW_BUILD_ALL_MODULES "Build all modules by default" OFF)
 mark_as_advanced(PARAVIEW_BUILD_ALL_MODULES)
+set(_vtk_module_reason_WANT_BY_DEFAULT
+  "via `PARAVIEW_BUILD_ALL_MODULES`")
 
 option(PARAVIEW_BUILD_EXAMPLES "Enable ParaView examples" OFF)
 set(PARAVIEW_BUILD_TESTING "OFF"
@@ -105,6 +110,8 @@ if (UNIX AND NOT APPLE)
   option(PARAVIEW_USE_MEMKIND  "Build support for extended memory" OFF)
 endif ()
 
+option(PARAVIEW_ENABLE_OPENVDB  "Enable the OpenVDB Writer" OFF)
+
 # Add option to disable Fortran
 if (NOT WIN32)
   include(CheckFortran)
@@ -120,7 +127,7 @@ if (NOT WIN32)
   unset(_has_fortran)
 endif()
 
-vtk_deprecated_setting(python_default PARAVIEW_USE_PYTHON PARAVIEW_ENABLE_PYTHON ON)
+vtk_deprecated_setting(python_default PARAVIEW_USE_PYTHON PARAVIEW_ENABLE_PYTHON OFF)
 option(PARAVIEW_USE_PYTHON "Enable/Disable Python scripting support" "${python_default}")
 
 # Currently, we're making `PARAVIEW_USE_QT` available only when doing CANONICAL
@@ -132,11 +139,10 @@ cmake_dependent_option(PARAVIEW_USE_QT
   "Enable Qt-support needed for graphical UI" "${qt_gui_default}"
   "PARAVIEW_BUILD_CANONICAL;PARAVIEW_ENABLE_RENDERING;PARAVIEW_ENABLE_NONESSENTIAL" OFF)
 
-# Add an option to enable using Qt Webkit for widgets, as needed.
-# Default is OFF. We don't want to depend on WebKit unless absolutely needed.
-# FIXME: Move this to the module which cares.
+# Add an option to enable using Qt WebEngine for widgets, as needed.
+# Default is OFF. We don't want to depend on WebEngine unless absolutely needed.
 cmake_dependent_option(PARAVIEW_USE_QTWEBENGINE
-  "Use Qt WebKit components as needed." OFF
+  "Use Qt WebEngine components as needed." OFF
   "PARAVIEW_USE_QT" OFF)
 mark_as_advanced(PARAVIEW_USE_QTWEBENGINE)
 
@@ -146,6 +152,16 @@ cmake_dependent_option(PARAVIEW_USE_QTHELP
   "Use Qt Help infrastructure as needed." ON
   "PARAVIEW_USE_QT" OFF)
 mark_as_advanced(PARAVIEW_USE_QTHELP)
+
+if (PARAVIEW_USE_QTHELP AND NOT PARAVIEW_USE_QTWEBENGINE)
+  message(STATUS "Using 'QtHelp' without 'QtWebEngine' will ignore embedded javascript and *.js files for documentation")
+endif()
+
+if (PARAVIEW_ENABLE_RAYTRACING AND VTK_ENABLE_OSPRAY)
+  set(paraview_use_materialeditor ON)
+else ()
+  set(paraview_use_materialeditor OFF)
+endif ()
 
 #========================================================================
 # FEATURE OPTIONS:
@@ -284,20 +300,31 @@ macro (paraview_require_module)
   if (${pem_CONDITION})
     # message("${pem_CONDITION} == TRUE")
     list(APPEND paraview_requested_modules ${pem_MODULES})
+    foreach (_pem_module IN LISTS _pem_MODULES)
+      set("_vtk_module_reason_${_pem_module}"
+        "via `${pem_CONDITION}`")
+    endforeach ()
   elseif (pem_EXCLUSIVE)
     # message("${pem_CONDITION} == FALSE")
     list(APPEND paraview_rejected_modules ${pem_MODULES})
+    foreach (_pem_module IN LISTS _pem_MODULES)
+      set("_vtk_module_reason_${_pem_module}"
+        "via `${pem_CONDITION}`")
+    endforeach ()
   endif()
+
   unset(pem_EXCLUSIVE)
   unset(pem_CONDITION)
   unset(pem_MODULES)
   unset(pem_UNPARSED_ARGUMENTS)
+  unset(_pem_module)
 endmacro()
 
 # ensures that VTK::mpi module is rejected when MPI is not enabled.
 paraview_require_module(
   CONDITION PARAVIEW_USE_MPI
-  MODULES   VTK::mpi
+  MODULES   VTK::ParallelMPI
+            VTK::mpi
   EXCLUSIVE)
 
 # ensures VTK::Python module is rejected when Python is not enabled.
@@ -393,6 +420,11 @@ paraview_require_module(
   EXCLUSIVE)
 
 paraview_require_module(
+  CONDITION PARAVIEW_ENABLE_OPENVDB
+  MODULES   VTK::IOOpenVDB
+  EXCLUSIVE)
+
+paraview_require_module(
   CONDITION PARAVIEW_ENABLE_FFMPEG
   MODULES   VTK::IOFFMPEG
   EXCLUSIVE)
@@ -431,6 +463,7 @@ paraview_require_module(
           VTK::ImagingHybrid
           VTK::ImagingSources
           VTK::IOAsynchronous # needed for cinema
+          VTK::IOChemistry
           VTK::IOGeometry
           VTK::IOImage
           VTK::IOInfovis
@@ -444,16 +477,19 @@ paraview_require_module(
 paraview_require_module(
   CONDITION PARAVIEW_BUILD_CANONICAL AND PARAVIEW_ENABLE_NONESSENTIAL
   MODULES   VTK::IOAMR
+            VTK::IOCGNSReader
             VTK::IOCityGML
             VTK::IOCONVERGECFD
-            VTK::IOIoss
+            VTK::IOIOSS
             VTK::IOH5part
             VTK::IOH5Rage
             VTK::IONetCDF
             VTK::IOOggTheora
+            VTK::IOOMF
             VTK::IOParallelExodus
             VTK::IOParallelLSDyna
             VTK::IOPIO
+            VTK::IOHDF
             VTK::IOSegY
             VTK::IOTRUCHAS
             VTK::IOVeraOut
@@ -494,22 +530,67 @@ paraview_require_module(
 if (NOT PARAVIEW_ENABLE_NONESSENTIAL)
   # This ensures that we don't ever enable certain problematic
   # modules when PARAVIEW_ENABLE_NONESSENTIAL is OFF.
-  list(APPEND paraview_rejected_modules
-    ParaView::cgns
+  set(nonessential_modules
+    VTK::cgns
     VTK::hdf5
     VTK::netcdf
     VTK::ogg
     VTK::theora
     VTK::xdmf2
     VTK::xdmf3)
+  list(APPEND paraview_rejected_modules
+    ${nonessential_modules})
+  foreach (nonessential_module IN LISTS nonessential_modules)
+    set("_vtk_module_reason_${nonessential_module}"
+      "via `PARAVIEW_ENABLE_NONESSENTIAL` (via `PARAVIEW_BUILD_EDITION=${PARAVIEW_BUILD_EDITION}`)")
+  endforeach ()
+
+  function (_paraview_io_option_conflict option name)
+    if (${option})
+      message(FATAL_ERROR
+        "ParaView is configured without I/O support (via the "
+        "${PARAVIEW_BUILD_EDITION} edition) which is incompatible with the "
+        "request for ${name} support (via the `${option}` configure option)")
+    endif ()
+  endfunction ()
+
+  _paraview_io_option_conflict(PARAVIEW_ENABLE_ADIOS2 "ADIOS 2.x")
+  _paraview_io_option_conflict(PARAVIEW_ENABLE_FFMPEG FFmpeg)
+  _paraview_io_option_conflict(PARAVIEW_ENABLE_FIDES Fides)
+  _paraview_io_option_conflict(PARAVIEW_ENABLE_GDAL GDAL)
+  _paraview_io_option_conflict(PARAVIEW_ENABLE_LAS LAS)
+  _paraview_io_option_conflict(PARAVIEW_ENABLE_MOTIONFX MotionFX)
+  _paraview_io_option_conflict(PARAVIEW_ENABLE_OPENTURNS OpenTURNS)
+  _paraview_io_option_conflict(PARAVIEW_ENABLE_PDAL PDAL)
+  _paraview_io_option_conflict(PARAVIEW_ENABLE_VISITBRIDGE VisItBridge)
+  _paraview_io_option_conflict(PARAVIEW_ENABLE_XDMF2 xdmf2)
+  _paraview_io_option_conflict(PARAVIEW_ENABLE_XDMF3 xdmf3)
 endif()
 
 if (NOT PARAVIEW_ENABLE_RENDERING)
   # This ensures that we don't ever enable OpenGL
   # modules when PARAVIEW_ENABLE_RENDERING is OFF.
-  list(APPEND paraview_rejected_modules
+  set(rendering_modules
     VTK::glew
     VTK::opengl)
+  list(APPEND paraview_rejected_modules
+    ${rendering_modules})
+  foreach (rendering_module IN LISTS rendering_modules)
+    set("_vtk_module_reason_${rendering_module}"
+      "via `PARAVIEW_ENABLE_RENDERING` (via `PARAVIEW_BUILD_EDITION=${PARAVIEW_BUILD_EDITION}`)")
+  endforeach ()
+
+  function (_paraview_rendering_option_conflict option name)
+    if (${option})
+      message(FATAL_ERROR
+        "ParaView is configured without Rendering support (via the "
+        "${PARAVIEW_BUILD_EDITION} edition) which is incompatible with the "
+        "request for ${name} support (via the `${option}` configure option)")
+    endif ()
+  endfunction ()
+
+  _paraview_rendering_option_conflict(PARAVIEW_ENABLE_RAYTRACING raytracing)
+  _paraview_rendering_option_conflict(PARAVIEW_USE_QT Qt)
 endif()
 
 if (paraview_requested_modules)

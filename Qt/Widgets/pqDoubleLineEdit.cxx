@@ -77,7 +77,7 @@ void unregister_dle_instance(pqDoubleLineEdit* dle)
 {
   assert(InstanceTracker != nullptr);
   InstanceTracker->removeOne(dle);
-  if (InstanceTracker->size() == 0)
+  if (InstanceTracker->empty())
   {
     delete InstanceTracker;
     InstanceTracker = nullptr;
@@ -103,8 +103,10 @@ public:
     const auto real_notation =
       this->UseGlobalPrecisionAndNotation ? pqDoubleLineEdit::globalNotation() : this->Notation;
 
-    QString limited = pqDoubleLineEdit::formatDouble(
-      self->text().toDouble(), toTextStreamNotation(real_notation), real_precision);
+    const QString limited = self->text().isEmpty()
+      ? QString()
+      : pqDoubleLineEdit::formatDouble(
+          self->text().toDouble(), toTextStreamNotation(real_notation), real_precision);
 
     const bool changed = (limited != this->InactiveLineEdit->text());
     this->InactiveLineEdit->setText(limited);
@@ -121,7 +123,9 @@ public:
   {
     if (this->InactiveLineEdit)
     {
+      // sync some state with inactive-line edit.
       this->InactiveLineEdit->setEnabled(self->isEnabled());
+      this->InactiveLineEdit->setPlaceholderText(self->placeholderText());
       this->InactiveLineEdit->render(self, self->mapTo(self->window(), QPoint(0, 0)));
     }
   }

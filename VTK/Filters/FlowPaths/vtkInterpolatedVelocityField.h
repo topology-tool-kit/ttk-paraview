@@ -71,13 +71,13 @@ public:
    */
   static vtkInterpolatedVelocityField* New();
 
-  //@{
+  ///@{
   /**
    * Standard methods for type information and printing.
    */
   vtkTypeMacro(vtkInterpolatedVelocityField, vtkCompositeInterpolatedVelocityField);
   void PrintSelf(ostream& os, vtkIndent indent) override;
-  //@}
+  ///@}
 
   /**
    * Add a dataset used for the implicit function evaluation. If more than
@@ -116,8 +116,8 @@ protected:
    * Evaluate the velocity field f at point (x, y, z) in a specified dataset
    * by either involving vtkPointLocator, via vtkPointSet::FindCell(), in
    * locating the next cell (for datasets of type vtkPointSet) or simply
-   * invoking vtkImageData/vtkRectilinearGrid::FindCell() to fulfill the same
-   * task if the point is outside the current cell.
+   * invoking vtkImageData::FindCell() or vtkRectilinearGrid::FindCell() to
+   * fulfill the same task if the point is outside the current cell.
    */
   int FunctionValues(vtkDataSet* ds, double* x, double* f) override
   {

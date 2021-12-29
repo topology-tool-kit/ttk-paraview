@@ -91,7 +91,7 @@ public:
   }
 
   QPointer<pqServer> ActiveServer;
-  typedef QMap<pqServer*, QPointer<pqAnimationScene> > SceneMap;
+  typedef QMap<pqServer*, QPointer<pqAnimationScene>> SceneMap;
   SceneMap Scenes;
 
   QSize OldMaxSize;
@@ -192,14 +192,14 @@ pqAnimationScene* pqAnimationManager::getScene(pqServer* server) const
   {
     return this->Internals->Scenes.value(server);
   }
-  return 0;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
 pqAnimationCue* pqAnimationManager::getCue(
   pqAnimationScene* scene, vtkSMProxy* proxy, const char* propertyname, int index) const
 {
-  return (scene ? scene->getCue(proxy, propertyname, index) : 0);
+  return (scene ? scene->getCue(proxy, propertyname, index) : nullptr);
 }
 
 //-----------------------------------------------------------------------------
@@ -218,13 +218,13 @@ bool pqAnimationManager::saveGeometry(const QString& filename, pqView* view)
 
   SM_SCOPED_TRACE(CallFunction)
     .arg("WriteAnimationGeometry")
-    .arg(filename.toLocal8Bit().data())
+    .arg(filename.toUtf8().data())
     .arg("view", view->getProxy())
     .arg("comment", "save animation geometry from a view");
 
   vtkSMProxy* sceneProxy = scene->getProxy();
   vtkSMAnimationSceneGeometryWriter* writer = vtkSMAnimationSceneGeometryWriter::New();
-  writer->SetFileName(filename.toLocal8Bit().data());
+  writer->SetFileName(filename.toUtf8().data());
   writer->SetAnimationScene(sceneProxy);
   writer->SetViewModule(view->getProxy());
   bool status = writer->Save();

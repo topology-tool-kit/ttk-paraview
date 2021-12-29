@@ -13,7 +13,7 @@
 
 #include <algorithm>
 #include <cassert>
-#include <ctype.h>
+#include <cctype>
 #include <functional>
 #include <vector>
 #include <vtksys/SystemTools.hxx>
@@ -22,7 +22,7 @@
 class vtkEnsembleDataReader::vtkInternal
 {
 public:
-  typedef std::vector<vtkSmartPointer<vtkAlgorithm> > VectorOfReaders;
+  typedef std::vector<vtkSmartPointer<vtkAlgorithm>> VectorOfReaders;
   VectorOfReaders Readers;
 
   std::vector<std::string> FilePaths;
@@ -35,7 +35,7 @@ public:
 vtkStandardNewMacro(vtkEnsembleDataReader);
 //-----------------------------------------------------------------------------
 vtkEnsembleDataReader::vtkEnsembleDataReader()
-  : FileName(0)
+  : FileName(nullptr)
   , CurrentMember(0)
   , Internal(new vtkEnsembleDataReader::vtkInternal())
 {
@@ -48,13 +48,13 @@ vtkEnsembleDataReader::vtkEnsembleDataReader()
 vtkEnsembleDataReader::~vtkEnsembleDataReader()
 {
   delete this->Internal;
-  this->Internal = NULL;
+  this->Internal = nullptr;
 }
 
 //-----------------------------------------------------------------------------
 unsigned int vtkEnsembleDataReader::GetNumberOfMembers() const
 {
-  return this->Internal->MetaData != NULL
+  return this->Internal->MetaData != nullptr
     ? static_cast<unsigned int>(this->Internal->FilePaths.size())
     : 0;
 }
@@ -88,7 +88,7 @@ void vtkEnsembleDataReader::SetReader(unsigned int rowIndex, vtkAlgorithm* reade
 //-----------------------------------------------------------------------------
 void vtkEnsembleDataReader::ResetReaders()
 {
-  if (this->Internal->Readers.size() > 0)
+  if (!this->Internal->Readers.empty())
   {
     this->Internal->Readers.clear();
     this->Modified();
@@ -105,7 +105,7 @@ int vtkEnsembleDataReader::ProcessRequest(
     return false;
   }
 
-  if (this->Internal->Readers.size() == 0)
+  if (this->Internal->Readers.empty())
   {
     vtkErrorMacro("No reader have been specified! Things may not work as expected.");
   }
@@ -156,12 +156,14 @@ int vtkEnsembleDataReader::ProcessRequest(
 // string trimmin'
 static void ltrim(std::string& s)
 {
-  s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(isspace))));
+  s.erase(s.begin(),
+    std::find_if(s.begin(), s.end(), [](std::string::value_type c) { return !isspace(c); }));
 }
 static void rtrim(std::string& s)
 {
-  s.erase(
-    std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(isspace))).base(), s.end());
+  s.erase(std::find_if(s.rbegin(), s.rend(), [](std::string::value_type c) { return !isspace(c); })
+            .base(),
+    s.end());
 }
 static void trim(std::string& s)
 {
@@ -174,7 +176,7 @@ vtkAlgorithm* vtkEnsembleDataReader::GetCurrentReader()
 {
   if (this->CurrentMember >= static_cast<unsigned int>(this->Internal->Readers.size()))
   {
-    return NULL;
+    return nullptr;
   }
   return this->Internal->Readers[this->CurrentMember];
 }
@@ -187,7 +189,7 @@ bool vtkEnsembleDataReader::UpdateMetaData()
     return false;
   }
 
-  if (this->Internal->MetaData != NULL && this->Internal->PreviousFileName == this->FileName)
+  if (this->Internal->MetaData != nullptr && this->Internal->PreviousFileName == this->FileName)
   {
     return true;
   }
@@ -200,7 +202,7 @@ bool vtkEnsembleDataReader::UpdateMetaData()
   }
 
   this->Internal->FilePaths.clear();
-  this->Internal->MetaData = NULL;
+  this->Internal->MetaData = nullptr;
   this->Internal->PreviousFileName = this->FileName;
   this->Internal->ReadMetaDataMTime.Modified();
   this->CurrentMemberRange[0] = this->CurrentMemberRange[1] = 0;
@@ -248,7 +250,7 @@ bool vtkEnsembleDataReader::UpdateMetaData()
     components.push_back(filePath);
 
     // Internal file paths should be relative to the .pve file
-    std::string curFileName = fdir + "/" + filePath;
+    const std::string curFileName = std::string(fdir).append("/").append(filePath);
     this->Internal->FilePaths[row] = curFileName;
   }
 

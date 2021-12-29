@@ -20,7 +20,7 @@
  * This filter is used quickly get a sorted subset of a given vtkTable.
  * By sorted we mean a subset build from a global sort even if some optimisation
  * allow us to skip a global table sorting.
-*/
+ */
 
 #ifndef vtkSortedTableStreamer_h
 #define vtkSortedTableStreamer_h
@@ -30,13 +30,13 @@
 #include "vtkTableAlgorithm.h"
 #include <utility> // for std::pair
 
-class vtkCompositeDataSet;
 class vtkDataArray;
+class vtkIdTypeArray;
 class vtkMultiProcessController;
+class vtkPartitionedDataSet;
 class vtkStringArray;
 class vtkTable;
 class vtkUnsignedIntArray;
-class vtkIdTypeArray;
 
 class VTKPVVTKEXTENSIONSFILTERSRENDERING_EXPORT vtkSortedTableStreamer : public vtkTableAlgorithm
 {
@@ -137,11 +137,11 @@ private:
   vtkSortedTableStreamer(const vtkSortedTableStreamer&) = delete;
   void operator=(const vtkSortedTableStreamer&) = delete;
 
-  vtkSmartPointer<vtkTable> MergeBlocks(vtkCompositeDataSet* cd);
+  vtkSmartPointer<vtkTable> MergeBlocks(vtkPartitionedDataSet* cd);
   vtkSmartPointer<vtkUnsignedIntArray> GenerateCompositeIndexArray(
-    vtkCompositeDataSet* cd, vtkIdType maxSize);
-  std::pair<vtkSmartPointer<vtkStringArray>, vtkSmartPointer<vtkIdTypeArray> >
-  GenerateBlockNameArray(vtkCompositeDataSet* cd, vtkIdType maxSize);
+    vtkPartitionedDataSet* cd, vtkIdType maxSize);
+  std::pair<vtkSmartPointer<vtkStringArray>, vtkSmartPointer<vtkIdTypeArray>>
+  GenerateBlockNameArray(vtkPartitionedDataSet* cd, vtkIdType maxSize);
 };
 
 #endif

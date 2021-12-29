@@ -121,6 +121,22 @@ void RecursiveMerge(
     }
   }
 }
+
+void HandleFieldData(vtkDataObject* inputDO, vtkDataObject* outputDO)
+{
+  // Handle root-node filed data. All array in root's field data not already
+  // present in the output are passed.
+  auto inFD = inputDO->GetFieldData();
+  auto outFD = outputDO->GetFieldData();
+  for (int cc = 0, max = inFD->GetNumberOfArrays(); cc < max; ++cc)
+  {
+    auto aname = inFD->GetArrayName(cc);
+    if (aname && !outFD->HasArray(aname))
+    {
+      outFD->AddArray(inFD->GetAbstractArray(cc));
+    }
+  }
+}
 }
 
 vtkStandardNewMacro(vtkMergeBlocks);
@@ -135,9 +151,7 @@ vtkMergeBlocks::vtkMergeBlocks()
 }
 
 //----------------------------------------------------------------------------
-vtkMergeBlocks::~vtkMergeBlocks()
-{
-}
+vtkMergeBlocks::~vtkMergeBlocks() = default;
 
 //----------------------------------------------------------------------------
 int vtkMergeBlocks::RequestData(vtkInformation* vtkNotUsed(request),
@@ -151,6 +165,7 @@ int vtkMergeBlocks::RequestData(vtkInformation* vtkNotUsed(request),
     auto outputDS = vtkDataSet::SafeDownCast(outputDO);
     assert(outputDS != nullptr);
     ::Merge(inputDO, outputDS, this);
+    ::HandleFieldData(inputDO, outputDO);
     return 1;
   }
 
@@ -180,11 +195,13 @@ int vtkMergeBlocks::RequestData(vtkInformation* vtkNotUsed(request),
         outputPDC->SetPartitionedDataSet(cc, outputPD);
       }
     }
+    ::HandleFieldData(inputDO, outputDO);
     return 1;
   }
   else if (auto mb = vtkMultiBlockDataSet::SafeDownCast(inputDO))
   {
     ::RecursiveMerge(mb, vtkMultiBlockDataSet::SafeDownCast(outputDO), this);
+    ::HandleFieldData(inputDO, outputDO);
     return 1;
   }
 
@@ -207,8 +224,9 @@ int vtkMergeBlocks::RequestDataObject(
 {
   auto input = vtkDataObject::GetData(inputVector[0], 0);
   auto output = vtkDataObject::GetData(outputVector, 0);
-  if (this->MergePartitionsOnly && (vtkMultiBlockDataSet::SafeDownCast(input) ||
-                                     vtkPartitionedDataSetCollection::SafeDownCast(input)))
+  if (this->MergePartitionsOnly &&
+    (vtkMultiBlockDataSet::SafeDownCast(input) ||
+      vtkPartitionedDataSetCollection::SafeDownCast(input)))
   {
     if (output == nullptr || !output->IsA(input->GetClassName()))
     {

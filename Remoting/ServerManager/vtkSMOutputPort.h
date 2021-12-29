@@ -24,18 +24,20 @@
  * sits as a datastructure to manage ports specific things like
  * data-information. However for backwards compatibility, to keep the impact
  * minimal, we leave this as a sub-class of a Proxy with GlobalID=0 and
- * Session=NULL.
-*/
+ * Session=nullptr.
+ */
 
 #ifndef vtkSMOutputPort_h
 #define vtkSMOutputPort_h
 
 #include "vtkRemotingServerManagerModule.h" //needed for exports
 #include "vtkSMProxy.h"
-#include "vtkWeakPointer.h" // needed by SourceProxy pointer
+#include "vtkSmartPointer.h" // needed for vtkSmartPointer
+#include "vtkWeakPointer.h"  // needed for vtkWeakPointer
+
+#include <map> // needed for std::map
 
 class vtkCollection;
-class vtkDataAssembly;
 class vtkPVClassNameInformation;
 class vtkPVDataAssemblyInformation;
 class vtkPVDataInformation;
@@ -59,18 +61,38 @@ public:
   virtual vtkPVDataInformation* GetDataInformation();
 
   /**
+   * Get rank-specific data information.
+   */
+  vtkPVDataInformation* GetRankDataInformation(int rank);
+
+  //@{
+  /**
+   * For composite datasets, `GetDataInformation` returns summary data information for
+   * all blocks combined. However, applications may require information about
+   * specific subset of blocks. In that case, one can use this API. Internally,
+   * the data information is cached per selector / assembly-name pair. That way,
+   * if the data information is not re-gathered unless changed.
+   *
+   * @arg \c selector the selector expression
+   * @arg \c assemblyName name of the assembly to use to apply the selector
+   *         to to determine the subset. If none specified, hierarchy is assumed.
+   */
+  vtkPVDataInformation* GetSubsetDataInformation(
+    const char* selector, const char* assemblyName = nullptr);
+  //@}
+
+  /**
+   * A `GetSubsetDataInformation` overload that uses composite index. It is only
+   * supported for multiblock datasets.
+   */
+  vtkPVDataInformation* GetSubsetDataInformation(unsigned int compositeIndex);
+
+  /**
    * Returns data information collected over all timesteps provided by the
    * pipeline. If the data information is not valid, this results iterating over
    * the pipeline and hence can be slow. Use with caution.
    */
   virtual vtkPVTemporalDataInformation* GetTemporalDataInformation();
-
-  /**
-   * If available, returns the data assembly associated with the data produced
-   * on this port. This is collected alongside DataInformation and hence all
-   * rules about validity and update are the same as DataInformation.
-   */
-  virtual vtkDataAssembly* GetDataAssembly();
 
   /**
    * Returns the classname of the data object on this output port.
@@ -127,7 +149,7 @@ protected:
 
   void SetSourceProxy(vtkSMSourceProxy* src);
 
-  // When set to non-null, GetSourceProxy() returns this rather than the real
+  // When set to non-nullptr, GetSourceProxy() returns this rather than the real
   // source-proxy set using SetSourceProxy(). This provides a mechanism for
   // vtkSMCompoundSourceProxy to take ownership of ports that don't really
   // belong to it.
@@ -149,11 +171,14 @@ protected:
   int ClassNameInformationValid;
 
   vtkPVDataInformation* DataInformation;
-  vtkPVDataAssemblyInformation* DataAssemblyInformation;
   bool DataInformationValid;
 
   vtkPVTemporalDataInformation* TemporalDataInformation;
   bool TemporalDataInformationValid;
+
+  std::map<std::string, std::map<int, vtkSmartPointer<vtkPVDataInformation>>>
+    SubsetDataInformations;
+  std::map<int, vtkSmartPointer<vtkPVDataInformation>> RankDataInformations;
 
 private:
   vtkSMOutputPort(const vtkSMOutputPort&) = delete;

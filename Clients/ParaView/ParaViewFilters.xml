@@ -12,7 +12,7 @@
     <Proxy group="filters" name="StreamTracer" />
     <Proxy group="filters" name="WarpVector" />
     <Proxy group="filters" name="GroupDataSets" />
-    <Proxy group="filters" name="ExtractHierarchicalLevel" />
+    <Proxy group="filters" name="ExtractBlock" />
   </Category>
   <Category name="CosmoTools" menu_label="&amp;CosmoTools" show_in_toolbar="0">
     <Proxy group="filters" name="ANLHaloFinder" />
@@ -62,9 +62,11 @@
   </Category>
 
   <Category name="Temporal" menu_label="&amp;Temporal">
+    <Proxy group="filters" name="AnimateModes" />
     <Proxy group="filters" name="ExtractTimeSteps" />
     <Proxy group="filters" name="ForceTime" />
     <Proxy group="filters" name="GroupTimeSteps" />
+    <Proxy group="filters" name="MergeTime" />
     <Proxy group="filters" name="ParticlePath" />
     <Proxy group="filters" name="ParticleTracer" />
     <Proxy group="filters" name="StreakLine" />
@@ -91,7 +93,7 @@
     <Proxy group="filters" name="AMRConnectivity" />
     <Proxy group="filters" name="AMRFragmentIntegration" />
     <Proxy group="filters" name="AMRFragmentsFilter" />
-    <Proxy group="filters" name="ExtractHierarchicalLevel" />
+    <Proxy group="filters" name="ExtractBlock" />
     <Proxy group="filters" name="ExtractHierarchicalDataSets" />
   </Category>
   <Category name="AMR" menu_label="&amp;AMR">
@@ -106,7 +108,7 @@
     <Proxy group="filters" name="AMRToMultiBlock" />
     <Proxy group="filters" name="AMRCutPlane" />
     <Proxy group="filters" name="OverlappingLevelIdScalars" />
-    <Proxy group="filters" name="ExtractHierarchicalLevel" />
+    <Proxy group="filters" name="ExtractBlock" />
     <Proxy group="filters" name="ExtractHierarchicalDataSets" />
   </Category>
   <Category name="Quadrature Points" menu_label="&amp;Quadrature Points">
@@ -190,6 +192,9 @@
   <Proxy group="filters" name="ContingencyStatistics" />
   <Proxy group="filters" name="Contour" icon=":/pqWidgets/Icons/pqIsosurface.svg" />
   <Proxy group="filters" name="ConvertPolyhedra" />
+  <Proxy group="filters" name="ConvertToMultiBlock" />
+  <Proxy group="filters" name="ConvertToPartitionedDataSetCollection" />
+  <Proxy group="filters" name="ConvertToPointCloud" />
   <Proxy group="filters" name="CountCellFaces" />
   <Proxy group="filters" name="CountCellVertices" />
   <Proxy group="filters" name="Curvatures" />
@@ -210,15 +215,15 @@
   <Proxy group="filters" name="ElevationFilter" />
   <Proxy group="filters" name="EnvironmentAnnotation" />
   <Proxy group="filters" name="EvenlySpacedStreamlines2D" />
-  <Proxy group="filters" name="ExtractBlock" />
+  <Proxy group="filters" name="ExtractBlock" icon=":/pqWidgets/Icons/pqGroupExtract.svg" />
   <Proxy group="filters" name="ExtractComponent" />
   <Proxy group="filters" name="ExtractEdges" />
   <Proxy group="filters" name="ExtractEnclosedPoints" />
   <Proxy group="filters" name="ExtractFieldDataOverTime" icon=":/pqWidgets/Icons/pqPlotGlobalOverTime.svg" />
   <Proxy group="filters" name="ExtractGeometry" />
+  <Proxy group="filters" name="ExtractGhostCells" />
   <Proxy group="filters" name="ExtractGrid" icon=":/pqWidgets/Icons/pqExtractGrid.svg" />
   <Proxy group="filters" name="ExtractHierarchicalDataSets" />
-  <Proxy group="filters" name="ExtractHierarchicalLevel" icon=":/pqWidgets/Icons/pqGroupExtract.svg" />
   <Proxy group="filters" name="ExtractHistogram" icon=":/pqWidgets/Icons/pqHistogram24.png" />
   <Proxy group="filters" name="ExtractLocation" />
   <Proxy group="filters" name="ExtractSelection" icon=":/pqWidgets/Icons/pqExtractSelection.svg" />
@@ -240,7 +245,6 @@
   <Proxy group="filters" name="Glyph" icon=":/pqWidgets/Icons/pqGlyph.svg" />
   <Proxy group="filters" name="GlyphWithCustomSource" icon=":/pqWidgets/Icons/pqGlyph.svg" />
   <Proxy group="filters" name="Gradient" />
-  <Proxy group="filters" name="GridConnectivity" />
   <Proxy group="filters" name="GroupDataSets" icon=":/pqWidgets/Icons/pqGroup.svg" />
   <Proxy group="filters" name="GroupTimeSteps" />
   <Proxy group="filters" name="HyperTreeGridAxisReflection" />
@@ -259,6 +263,7 @@
   <Proxy group="filters" name="IsoVolume" />
   <Proxy group="filters" name="KMeans" />
   <Proxy group="filters" name="LANLHaloFinder" />
+  <Proxy group="filters" name="LegacyGhostCellsGenerator" />
   <Proxy group="filters" name="LinearCellExtrusionFilter" />
   <Proxy group="filters" name="LinearExtrusionFilter" />
   <Proxy group="filters" name="LoopSubdivisionFilter" />
@@ -266,6 +271,8 @@
   <Proxy group="filters" name="MaterialInterfaceFilter" />
   <Proxy group="filters" name="Median" />
   <Proxy group="filters" name="MergeBlocks" />
+  <Proxy group="filters" name="MergeTime" />
+  <Proxy group="filters" name="MergeVectorComponents" />
   <Proxy group="filters" name="MeshQuality" />
   <Proxy group="filters" name="MinkowskiFilter" />
   <Proxy group="filters" name="MoleculeToLines" />
@@ -281,12 +288,14 @@
   <Proxy group="filters" name="OverlappingCellsDetector" />
   <Proxy group="filters" name="OverlappingLevelIdScalars" />
   <Proxy group="filters" name="PCAStatistics" />
+  <Proxy group="filters" name="PerlinNoise" />
   <Proxy group="filters" name="PMergeConnected" />
   <Proxy group="filters" name="PVConnectivityFilter" />
   <Proxy group="filters" name="ParallelComputeMoments" />
   <Proxy group="filters" name="ParticlePath" />
   <Proxy group="filters" name="ParticlePathLines" />
   <Proxy group="filters" name="ParticleTracer" />
+  <Proxy group="filters" name="PartitionBalancer" />
   <Proxy group="filters" name="PassArrays" />
   <Proxy group="filters" name="PlotAttributes" />
   <Proxy group="filters" name="PlotDataOverTime" />
@@ -319,6 +328,7 @@
   <Proxy group="filters" name="RemoveGhostInformation" />
   <Proxy group="filters" name="ResampleToImage" />
   <Proxy group="filters" name="ResampleWithDataset" />
+  <Proxy group="filters" name="ReverseSense" />
   <Proxy group="filters" name="RibbonFilter" />
   <Proxy group="filters" name="RotationalExtrusionFilter" />
   <Proxy group="filters" name="RulerFilter" icon=":/pqWidgets/Icons/pqRuler.svg" />
@@ -338,6 +348,7 @@
   <Proxy group="filters" name="Subdivide" />
   <Proxy group="filters" name="SurfaceVectors" />
   <Proxy group="filters" name="SynchronizeTime" />
+  <Proxy group="filters" name="TableFFT" />
   <Proxy group="filters" name="TableToPolyData" />
   <Proxy group="filters" name="TableToStructuredGrid" />
   <Proxy group="filters" name="TemporalArrayOperator" />
@@ -358,7 +369,6 @@
   <Proxy group="filters" name="TransposeTable" />
   <Proxy group="filters" name="TriangleFilter" />
   <Proxy group="filters" name="TubeFilter" />
-  <Proxy group="filters" name="UnstructuredGradient" />
   <Proxy group="filters" name="ValidateCells" />
   <Proxy group="filters" name="VortexCores" />
   <Proxy group="filters" name="WarpScalar" />

@@ -26,7 +26,7 @@
  *  the input.
  * @sa
  *  vtkArrayCalculator vtkFunctionParser
-*/
+ */
 
 #ifndef vtkPVArrayCalculator_h
 #define vtkPVArrayCalculator_h
@@ -44,6 +44,18 @@ public:
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
   static vtkPVArrayCalculator* New();
+
+  ///@{
+  /**
+   * Convenience function to set parser type via int equivalent to FunctionParserTypes
+   * enum. Needed because ParaView's client/server wrapper doesn't understand
+   * vtkSetEnumMacro() in the parent class.
+   */
+  void SetFunctionParserTypeFromInt(int type)
+  {
+    this->SetFunctionParserType(static_cast<FunctionParserTypes>(type));
+  }
+  ///@}
 
 protected:
   vtkPVArrayCalculator();

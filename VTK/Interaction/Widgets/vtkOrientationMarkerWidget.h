@@ -85,13 +85,13 @@ public:
   vtkTypeMacro(vtkOrientationMarkerWidget, vtkInteractorObserver);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Set/get the orientation marker to be displayed in this widget.
    */
   virtual void SetOrientationMarker(vtkProp* prop);
   vtkGetObjectMacro(OrientationMarker, vtkProp);
-  //@}
+  ///@}
 
   /**
    * Enable/disable the widget. Default is 0 (disabled).
@@ -104,7 +104,7 @@ public:
    */
   void ExecuteCameraUpdateEvent(vtkObject* o, unsigned long event, void* calldata);
 
-  //@{
+  ///@{
   /**
    * Set/get whether to allow this widget to be interactively moved/scaled.
    * Default is On.
@@ -112,9 +112,9 @@ public:
   void SetInteractive(vtkTypeBool interact);
   vtkGetMacro(Interactive, vtkTypeBool);
   vtkBooleanMacro(Interactive, vtkTypeBool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/get the color of the outline of this widget.  The outline is visible
    * when (in interactive mode) the cursor is over this widget.
@@ -122,9 +122,9 @@ public:
    */
   void SetOutlineColor(double r, double g, double b);
   double* GetOutlineColor() VTK_SIZEHINT(3);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/get the viewport to position/size this widget.
    * Coordinates are expressed as (xmin,ymin,xmax,ymax), where each
@@ -139,9 +139,9 @@ public:
    */
   vtkSetVector4Macro(Viewport, double);
   vtkGetVector4Macro(Viewport, double);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * The tolerance representing the distance to the widget (in pixels)
    * in which the cursor is considered to be on the widget, or on a
@@ -149,6 +149,15 @@ public:
    */
   vtkSetClampMacro(Tolerance, int, 1, 10);
   vtkGetMacro(Tolerance, int);
+  ///@}
+
+  ///@{
+  /**
+   * The zoom factor to modify the size of the marker within the widget.
+   * Default is 1.0.
+   */
+  vtkSetClampMacro(Zoom, double, 0.1, 10.0);
+  vtkGetMacro(Zoom, double);
   //@}
 
   //@{
@@ -157,6 +166,46 @@ public:
    * vtkSetVector4Macro/vtkGetVector4Macro use
    */
   void Modified() override;
+  ///@}
+
+  //@{
+  /**
+   * Ends any in progress interaction and resets border visibility
+   */
+  void EndInteraction() override;
+  //@}
+
+  //@{
+  /**
+   * Set/get whether the widget should constrain the size to be within the min and max limits.
+   * Default is off (unconstrained).
+   */
+  void SetShouldConstrainSize(const vtkTypeBool shouldConstrainSize);
+  vtkGetMacro(ShouldConstrainSize, vtkTypeBool);
+  //@}
+
+  //@{
+  /**
+   * Sets the minimum and maximum dimension (width and height) size limits for the widget.
+   * Validates the sizes are within tolerances before setting; ignoring otherwise.
+   * Default is 20, 500.
+   * Returns whether the sizes are valid and correctly set (true), or invalid (false).
+   */
+  bool SetSizeConstraintDimensionSizes(const int minDimensionSize, const int maxDimensionSize);
+  //@}
+
+  //@{
+  /**
+   * Returns the minimum dimension (width and height) size limit in pixels for the widget.
+   */
+  vtkGetMacro(MinDimensionSize, int);
+  //@}
+
+  //@{
+  /**
+   * Returns the maximum dimension (width and height) size limit in pixels for the widget.
+   */
+  vtkGetMacro(MaxDimensionSize, int);
   //@}
 
 protected:
@@ -184,6 +233,7 @@ protected:
   vtkTypeBool Interactive;
   int Tolerance;
   int Moving;
+  double Zoom = 1.0;
 
   // viewport to position/size this widget
   double Viewport[4];
@@ -203,6 +253,13 @@ protected:
     AdjustingP3,
     AdjustingP4
   };
+
+  // Whether the min/max size constraints should be applied.
+  vtkTypeBool ShouldConstrainSize = 0;
+  // The minimum dimension size to be allowed for width and height.
+  int MinDimensionSize = 20;
+  // The maximum dimension size to be allowed for width and height.
+  int MaxDimensionSize = 500;
 
   // use to determine what state the mouse is over, edge1 p1, etc.
   // returns a state from the WidgetState enum above
@@ -228,6 +285,10 @@ protected:
   // Viewport ivar. The computed viewport will be with respect to the whole
   // render window
   void UpdateInternalViewport();
+
+  // Resize the widget if it is outside of the current size constraints,
+  // or if the widget is not square.
+  void ResizeToFitSizeConstraints();
 
 private:
   vtkOrientationMarkerWidget(const vtkOrientationMarkerWidget&) = delete;

@@ -20,7 +20,6 @@
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
 #include "vtkPVArrayInformation.h"
-#include "vtkPVCompositeDataInformation.h"
 #include "vtkPVDataInformation.h"
 #include "vtkPVDataSetAttributesInformation.h"
 #include "vtkPVXMLElement.h"
@@ -36,7 +35,7 @@
 #include <vtk_jsoncpp.h>
 
 #include <algorithm>
-#include <assert.h>
+#include <cassert>
 #include <map>
 #include <set>
 #include <sstream>
@@ -54,12 +53,12 @@ static std::vector<SeriesVisibilityPair> SeriesVisibilityDefaults;
 static void InitSeriesVisibilityDefaults()
 {
   // initialize SeriesVisibilityDefaults the first time.
-  if (SeriesVisibilityDefaults.size() == 0)
+  if (SeriesVisibilityDefaults.empty())
   {
     const char* defaults[] = { "^arc_length", "^bin_extents", "^FileId", "^GlobalElementId",
-      "^GlobalNodeId", "^ObjectId", "^Pedigree.*", "^Points_.*", "^Time", "^vtkOriginal.*",
-      "^vtkValidPointMask", "^N .*", "^X$", "^X .*", "^Y$", "^Y .*", "^Z$", "^Z .*",
-      "^vtkGhostType$", nullptr };
+      "^GlobalNodeId", "^ObjectId", "^object_id", "^Pedigree.*", "^Points_.*", "^Time",
+      "^vtkOriginal.*", "^ids$", "^ids .*", "^vtkValidPointMask", "^N .*", "^X$", "^X .*", "^Y$",
+      "^Y .*", "^Z$", "^Z .*", "^vtkGhostType$", nullptr };
     for (int cc = 0; defaults[cc] != nullptr; cc++)
     {
       SeriesVisibilityDefaults.push_back(
@@ -133,7 +132,7 @@ vtkSMChartSeriesSelectionDomain::vtkSMChartSeriesSelectionDomain()
   : Internals(new vtkSMChartSeriesSelectionDomain::vtkInternals())
 {
   this->DefaultMode = vtkSMChartSeriesSelectionDomain::UNDEFINED;
-  this->DefaultValue = 0;
+  this->DefaultValue = nullptr;
   this->SetDefaultValue("");
   this->FlattenTable = true;
   this->HidePartialArrays = true;
@@ -239,8 +238,7 @@ void vtkSMChartSeriesSelectionDomain::Update(vtkSMProperty*)
   // clear old component names.
   this->Internals->VisibilityOverrides.clear();
 
-  if (compositeIndex == nullptr ||
-    dataInfo->GetCompositeDataInformation()->GetDataIsComposite() == 0)
+  if (compositeIndex == nullptr || !dataInfo->IsCompositeDataSet())
   {
     // since there's no way to choose which dataset from a composite one to use,
     // just look at the top-level array information (skipping partial arrays).
@@ -259,34 +257,22 @@ void vtkSMChartSeriesSelectionDomain::Update(vtkSMProperty*)
   unsigned int numElems = compositeIndexHelper.GetNumberOfElements();
   for (unsigned int cc = 0; cc < numElems; cc++)
   {
-    vtkPVDataInformation* childInfo =
-      dataInfo->GetDataInformationForCompositeIndex(compositeIndexHelper.GetAsInt(cc));
-    if (!childInfo)
-    {
-      continue;
-    }
-    vtkPVCompositeDataInformation* childCompositeInfo = childInfo->GetCompositeDataInformation();
-    if (childCompositeInfo->GetNumberOfChildren() != 0)
-    {
-      // Ignore non leaf block
-      continue;
-    }
-    std::ostringstream blockNameStream;
+    std::string blockName;
     if (compositeIndex->GetRepeatCommand())
     {
       // we don't need to add blockName is the proxy doesn't support selecting
       // multiple blocks in the dataset.
-      if (childInfo->GetCompositeDataSetName())
+      blockName = dataInfo->GetBlockName(compositeIndexHelper.GetAsInt(cc));
+      if (blockName.empty())
       {
-        blockNameStream << childInfo->GetCompositeDataSetName();
-      }
-      else
-      {
-        blockNameStream << compositeIndexHelper.GetAsInt(cc);
+        blockName = std::to_string(compositeIndexHelper.GetAsInt(cc));
       }
     }
+
+    auto childInfo = this->GetInputSubsetDataInformation(
+      static_cast<unsigned int>(compositeIndexHelper.GetAsInt(cc)), "Input");
     this->PopulateAvailableArrays(
-      blockNameStream.str(), column_names, childInfo, fieldAssociation, this->FlattenTable);
+      blockName, column_names, childInfo, fieldAssociation, this->FlattenTable);
   }
   this->SetStrings(column_names);
 }
@@ -303,7 +289,7 @@ void vtkSMChartSeriesSelectionDomain::PopulateAvailableArrays(const std::string&
   //   (dataInfo->GetCompositeDataInformation()->GetDataIsMultiPiece() == 0));
   vtkChartRepresentation* chartRepr =
     vtkChartRepresentation::SafeDownCast(this->GetProperty()->GetParent()->GetClientSideObject());
-  if (!chartRepr)
+  if (!chartRepr || !dataInfo)
   {
     return;
   }
@@ -361,7 +347,7 @@ void vtkSMChartSeriesSelectionDomain::PopulateArrayComponents(vtkChartRepresenta
       }
       else
       {
-        char* arrayName = arrayInfo->GetName();
+        const char* arrayName = arrayInfo->GetName();
         if (arrayName != nullptr)
         {
           std::string seriesName = chartRepr->GetDefaultSeriesLabel(blockName, arrayName);
@@ -476,7 +462,7 @@ void vtkSMChartSeriesSelectionDomain::UpdateDefaultValues(
       continue;
     }
     std::vector<std::string> cur_values = this->GetDefaultValue(domain_strings[cc].c_str());
-    if (cur_values.size() > 0)
+    if (!cur_values.empty())
     {
       values->AddString(domain_strings[cc].c_str());
       for (size_t kk = 0; kk < cur_values.size(); kk++)

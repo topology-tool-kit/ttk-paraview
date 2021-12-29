@@ -33,9 +33,7 @@ vtkSMNumberOfComponentsDomain::vtkSMNumberOfComponentsDomain()
 }
 
 //----------------------------------------------------------------------------
-vtkSMNumberOfComponentsDomain::~vtkSMNumberOfComponentsDomain()
-{
-}
+vtkSMNumberOfComponentsDomain::~vtkSMNumberOfComponentsDomain() = default;
 
 //---------------------------------------------------------------------------
 int vtkSMNumberOfComponentsDomain::ReadXMLAttributes(vtkSMProperty* prop, vtkPVXMLElement* element)
@@ -87,7 +85,7 @@ void vtkSMNumberOfComponentsDomain::Update(vtkSMProperty*)
     return;
   }
 
-  vtkSMInputArrayDomain* iad = 0;
+  vtkSMInputArrayDomain* iad = nullptr;
   vtkSMDomainIterator* di = ip->NewDomainIterator();
   di->Begin();
   while (!di->IsAtEnd())
@@ -140,7 +138,7 @@ void vtkSMNumberOfComponentsDomain::Update(
   }
 
   int iadAttributeType = iad->GetAttributeType();
-  vtkPVArrayInformation* ai = 0;
+  vtkPVArrayInformation* ai = nullptr;
 
   if (iadAttributeType == vtkSMInputArrayDomain::POINT ||
     iadAttributeType == vtkSMInputArrayDomain::ANY ||
@@ -151,28 +149,28 @@ void vtkSMNumberOfComponentsDomain::Update(
   if (iadAttributeType == vtkSMInputArrayDomain::CELL ||
     ((iadAttributeType == vtkSMInputArrayDomain::ANY ||
        iadAttributeType == vtkSMInputArrayDomain::ANY_EXCEPT_FIELD) &&
-        !ai))
+      !ai))
   {
     ai = info->GetCellDataInformation()->GetArrayInformation(arrayName);
   }
   if (iadAttributeType == vtkSMInputArrayDomain::VERTEX ||
     ((iadAttributeType == vtkSMInputArrayDomain::ANY ||
        iadAttributeType == vtkSMInputArrayDomain::ANY_EXCEPT_FIELD) &&
-        !ai))
+      !ai))
   {
     ai = info->GetVertexDataInformation()->GetArrayInformation(arrayName);
   }
   if (iadAttributeType == vtkSMInputArrayDomain::EDGE ||
     ((iadAttributeType == vtkSMInputArrayDomain::ANY ||
        iadAttributeType == vtkSMInputArrayDomain::ANY_EXCEPT_FIELD) &&
-        !ai))
+      !ai))
   {
     ai = info->GetEdgeDataInformation()->GetArrayInformation(arrayName);
   }
   if (iadAttributeType == vtkSMInputArrayDomain::ROW ||
     ((iadAttributeType == vtkSMInputArrayDomain::ANY ||
        iadAttributeType == vtkSMInputArrayDomain::ANY_EXCEPT_FIELD) &&
-        !ai))
+      !ai))
   {
     ai = info->GetRowDataInformation()->GetArrayInformation(arrayName);
   }

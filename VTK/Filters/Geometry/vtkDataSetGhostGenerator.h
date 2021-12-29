@@ -39,19 +39,20 @@ class vtkInformation;
 class vtkInformationVector;
 class vtkMultiBlockDataSet;
 
+VTK_DEPRECATED_IN_9_1_0("Use vtkGhostCellsGenerator instead")
 class VTKFILTERSGEOMETRY_EXPORT vtkDataSetGhostGenerator : public vtkMultiBlockDataSetAlgorithm
 {
 public:
   vtkTypeMacro(vtkDataSetGhostGenerator, vtkMultiBlockDataSetAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Set/Get for number of ghost layers to generate.
    */
   vtkSetMacro(NumberOfGhostLayers, int);
   vtkGetMacro(NumberOfGhostLayers, int);
-  //@}
+  ///@}
 
   // Standard VTK pipeline routines
   int FillInputPortInformation(int port, vtkInformation* info) override;

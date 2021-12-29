@@ -61,7 +61,7 @@ public:
     }
   }
 
-  static const std::string CreateSubProxyName(vtkSMProxy* proxy)
+  static std::string CreateSubProxyName(vtkSMProxy* proxy)
   {
     std::ostringstream str;
     str << proxy->GetXMLGroup() << "." << proxy->GetXMLName();
@@ -169,9 +169,7 @@ vtkSMMultiplexerSourceProxy::vtkSMMultiplexerSourceProxy()
 }
 
 //----------------------------------------------------------------------------
-vtkSMMultiplexerSourceProxy::~vtkSMMultiplexerSourceProxy()
-{
-}
+vtkSMMultiplexerSourceProxy::~vtkSMMultiplexerSourceProxy() = default;
 
 //----------------------------------------------------------------------------
 int vtkSMMultiplexerSourceProxy::CreateSubProxiesAndProperties(
@@ -275,7 +273,7 @@ void vtkSMMultiplexerSourceProxy::SetupSubProxies()
   {
     this->SetupSubProxy(item.Proxy);
   }
-  if ((internals.Items.size() > 0) && (internals.SelectedProxy == nullptr))
+  if (!internals.Items.empty() && (internals.SelectedProxy == nullptr))
   {
     internals.SelectedProxy = internals.Items[0].Proxy;
   }
@@ -380,7 +378,7 @@ int vtkSMMultiplexerSourceProxy::LoadXMLState(vtkPVXMLElement* element, vtkSMPro
     // curate subproxies based on the state and add them.
     internals.SubproxiesInitialized = true;
 
-    std::set<std::pair<std::string, std::string> > available;
+    std::set<std::pair<std::string, std::string>> available;
     for (unsigned int cc = 0, max = muxElem->GetNumberOfNestedElements(); cc < max; ++cc)
     {
       auto child = muxElem->GetNestedElement(cc);

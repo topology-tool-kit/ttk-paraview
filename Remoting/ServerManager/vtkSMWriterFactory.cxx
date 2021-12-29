@@ -31,7 +31,7 @@
 #include "vtkSmartPointer.h"
 #include "vtkStringList.h"
 
-#include <assert.h>
+#include <cassert>
 #include <list>
 #include <set>
 #include <sstream>
@@ -42,7 +42,7 @@
 class vtkSMWriterFactory::vtkInternals
 {
 public:
-  static std::set<std::pair<std::string, std::string> > WriterWhitelist;
+  static std::set<std::pair<std::string, std::string>> WriterWhitelist;
   struct vtkValue
   {
     std::string Group;
@@ -81,7 +81,7 @@ public:
     bool CanCreatePrototype(vtkSMSourceProxy* source)
     {
       vtkSMSessionProxyManager* pxm = source->GetSession()->GetSessionProxyManager();
-      return (pxm->GetPrototypeProxy(this->Group.c_str(), this->Name.c_str()) != NULL);
+      return (pxm->GetPrototypeProxy(this->Group.c_str(), this->Name.c_str()) != nullptr);
     }
 
     // Returns true if the data from the given output port can be written.
@@ -165,7 +165,7 @@ public:
   std::set<std::string> Groups;
 };
 
-std::set<std::pair<std::string, std::string> > vtkSMWriterFactory::vtkInternals::WriterWhitelist;
+std::set<std::pair<std::string, std::string>> vtkSMWriterFactory::vtkInternals::WriterWhitelist;
 
 vtkStandardNewMacro(vtkSMWriterFactory);
 //----------------------------------------------------------------------------
@@ -282,16 +282,16 @@ vtkSMProxy* vtkSMWriterFactory::CreateWriter(
   if (!filename || filename[0] == 0)
   {
     vtkErrorMacro("No filename. Cannot create any writer.");
-    return NULL;
+    return nullptr;
   }
 
   std::string extension = vtksys::SystemTools::GetFilenameExtension(filename);
   if (!proxybyname)
   {
-    if (extension.size() > 0)
+    if (!extension.empty())
     {
       // Find characters after last "."
-      std::string::size_type found = extension.find_last_of(".");
+      std::string::size_type found = extension.find_last_of('.');
       if (found != std::string::npos)
       {
         extension = extension.substr(found + 1);
@@ -299,13 +299,13 @@ vtkSMProxy* vtkSMWriterFactory::CreateWriter(
       else
       {
         vtkErrorMacro("No extension. Cannot determine writer to create.");
-        return NULL;
+        return nullptr;
       }
     }
     else
     {
       vtkErrorMacro("No extension. Cannot determine writer to create.");
-      return NULL;
+      return nullptr;
     }
   }
 
@@ -342,7 +342,7 @@ vtkSMProxy* vtkSMWriterFactory::CreateWriter(
   }
 
   vtkErrorMacro("No matching writer found for extension: " << extension);
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -373,7 +373,7 @@ const char* vtkSMWriterFactory::GetSupportedFileTypes(
     if (iter->second.CanCreatePrototype(source) && iter->second.CanWrite(source, outputport))
     {
       iter->second.FillInformation(source->GetSession());
-      if (iter->second.Extensions.size() > 0)
+      if (!iter->second.Extensions.empty())
       {
         std::string ext_join = ::vtkJoin(iter->second.Extensions, "*.", " ");
         std::ostringstream stream;
@@ -410,7 +410,7 @@ const char* vtkSMWriterFactory::GetSupportedWriterProxies(
     if (iter->second.CanCreatePrototype(source) && iter->second.CanWrite(source, outputport))
     {
       iter->second.FillInformation(source->GetSession());
-      if (iter->second.Extensions.size() > 0)
+      if (!iter->second.Extensions.empty())
       {
         std::ostringstream stream;
         stream << iter->second.Name;
@@ -462,7 +462,7 @@ void vtkSMWriterFactory::PrintSelf(ostream& os, vtkIndent indent)
 //----------------------------------------------------------------------------
 void vtkSMWriterFactory::AddWriterToWhitelist(const char* readerxmlgroup, const char* readerxmlname)
 {
-  if (readerxmlgroup != NULL && readerxmlname != NULL)
+  if (readerxmlgroup != nullptr && readerxmlname != nullptr)
   {
     vtkSMWriterFactory::vtkInternals::WriterWhitelist.insert(
       std::pair<std::string, std::string>(readerxmlgroup, readerxmlname));

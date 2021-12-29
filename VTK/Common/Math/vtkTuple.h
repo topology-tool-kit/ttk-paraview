@@ -27,9 +27,11 @@
 #include "vtkIOStream.h" // For streaming operators
 #include "vtkSystemIncludes.h"
 
-#include <cassert> // For inline assert for bounds checked methods.
-#include <cmath>   // for std::abs() with float overloads
-#include <cstdlib> // for std::abs() with int overloads
+#include <algorithm> // for std::copy
+#include <array>     // for std::array
+#include <cassert>   // For inline assert for bounds checked methods.
+#include <cmath>     // for std::abs() with float overloads
+#include <cstdlib>   // for std::abs() with int overloads
 
 template <typename T, int Size>
 class vtkTuple
@@ -67,6 +69,15 @@ public:
   }
 
   /**
+   * Initialize the tuple's elements using a `std::array` for matching type and
+   * size. Example usage: `vtkTuple<double, 2 >({0.1, 0.2})`.
+   */
+  explicit vtkTuple(const std::array<T, Size>& values)
+  {
+    std::copy(values.begin(), values.end(), this->Data);
+  }
+
+  /**
    * Get the size of the tuple.
    */
   int GetSize() const { return Size; }
@@ -85,7 +96,7 @@ public:
   T& operator[](int i) { return this->Data[i]; }
   const T& operator[](int i) const { return this->Data[i]; }
 
-  //@{
+  ///@{
   /**
    * Get the value of the tuple at the index specified. Does bounds
    * checking, similar to the at(i) method of C++ STL containers, but
@@ -96,9 +107,9 @@ public:
     assert("pre: index_in_bounds" && i >= 0 && i < Size);
     return this->Data[i];
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Equality operator with a tolerance to allow fuzzy comparisons.
    */
@@ -117,9 +128,9 @@ public:
     }
     return true;
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Cast the tuple to the specified type, returning the result.
    */
@@ -133,18 +144,18 @@ public:
     }
     return result;
   }
-  //@}
+  ///@}
 
 protected:
-  //@{
+  ///@{
   /**
    * The only thing stored in memory!
    */
   T Data[Size];
-  //@}
+  ///@}
 };
 
-//@{
+///@{
 /**
  * Output the contents of a tuple, mainly useful for debugging.
  */
@@ -189,9 +200,9 @@ ostream& operator<<(ostream& out, const vtkTuple<unsigned char, Size>& t)
   out << ")";
   return out;
 }
-//@}
+///@}
 
-//@{
+///@{
 /**
  * Equality operator performs an equality check on each component.
  */
@@ -207,7 +218,7 @@ bool operator==(const vtkTuple<A, Size>& t1, const vtkTuple<A, Size>& t2)
   }
   return true;
 }
-//@}
+///@}
 
 /**
  * Inequality for vector type.

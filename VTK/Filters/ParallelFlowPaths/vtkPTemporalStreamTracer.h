@@ -53,7 +53,6 @@ class vtkCellArray;
 class vtkDoubleArray;
 class vtkFloatArray;
 class vtkIntArray;
-class vtkCharArray;
 class vtkAbstractParticleWriter;
 
 VTK_DEPRECATED_IN_9_0_0("Use one of vtkParticleTracerBase, vtkParticleTracer, "
@@ -69,14 +68,14 @@ public:
    */
   static vtkPTemporalStreamTracer* New();
 
-  //@{
+  ///@{
   /**
    * Set/Get the controller used when sending particles between processes
    * The controller must be an instance of vtkMPIController.
    */
   virtual void SetController(vtkMultiProcessController* controller);
   vtkGetObjectMacro(Controller, vtkMultiProcessController);
-  //@}
+  ///@}
 
 protected:
   vtkPTemporalStreamTracer();
@@ -118,10 +117,6 @@ protected:
     vtkTemporalStreamTracerNamespace::ParticleVector& received, bool removeself) override;
 
   void AddParticleToMPISendList(vtkTemporalStreamTracerNamespace::ParticleInformation& info);
-
-  //
-
-  //
 
   // MPI controller needed when running in parallel
   vtkMultiProcessController* Controller;

@@ -54,16 +54,14 @@ pqStandardRecentlyUsedResourceLoaderImplementation::
 
 //-----------------------------------------------------------------------------
 pqStandardRecentlyUsedResourceLoaderImplementation::
-  ~pqStandardRecentlyUsedResourceLoaderImplementation()
-{
-}
+  ~pqStandardRecentlyUsedResourceLoaderImplementation() = default;
 
 //-----------------------------------------------------------------------------
 bool pqStandardRecentlyUsedResourceLoaderImplementation::canLoad(const pqServerResource& resource)
 {
   return (resource.hasData("PARAVIEW_STATE") ||
     (resource.hasData("PARAVIEW_DATA") && resource.hasData("smgroup") &&
-            resource.hasData("smname")));
+      resource.hasData("smname")));
 }
 
 //-----------------------------------------------------------------------------

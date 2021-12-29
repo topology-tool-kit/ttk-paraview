@@ -52,12 +52,13 @@
 #include "vtkCommonCoreModule.h" // For export macro
 #include "vtkObject.h"
 
+#include "vtkDebug.h"             // Needed for VTK_DEBUG_LEAKS macro setting.
 #include "vtkDebugLeaksManager.h" // Needed for proper singleton initialization
-#include "vtkToolkits.h"          // Needed for VTK_DEBUG_LEAKS macro setting.
+
+#include <mutex> // for std::mutex
 
 class vtkDebugLeaksHashTable;
 class vtkDebugLeaksTraceManager;
-class vtkSimpleCriticalSection;
 class vtkDebugLeaksObserver;
 
 class VTKCOMMONCORE_EXPORT vtkDebugLeaks : public vtkObject
@@ -65,6 +66,7 @@ class VTKCOMMONCORE_EXPORT vtkDebugLeaks : public vtkObject
 public:
   static vtkDebugLeaks* New();
   vtkTypeMacro(vtkDebugLeaks, vtkObject);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /**
    * Call this when creating a class.
@@ -92,14 +94,14 @@ public:
    */
   static int PrintCurrentLeaks();
 
-  //@{
+  ///@{
   /**
    * Get/Set flag for exiting with an error when leaks are present.
    * Default is on when VTK_DEBUG_LEAKS is on and off otherwise.
    */
   static int GetExitError();
   static void SetExitError(int);
-  //@}
+  ///@}
 
   static void SetDebugLeaksObserver(vtkDebugLeaksObserver* observer);
   static vtkDebugLeaksObserver* GetDebugLeaksObserver();
@@ -122,7 +124,7 @@ protected:
 private:
   static vtkDebugLeaksHashTable* MemoryTable;
   static vtkDebugLeaksTraceManager* TraceManager;
-  static vtkSimpleCriticalSection* CriticalSection;
+  static std::mutex* CriticalSection;
   static vtkDebugLeaksObserver* Observer;
   static int ExitError;
 
@@ -142,4 +144,3 @@ public:
 };
 
 #endif // vtkDebugLeaks_h
-// VTK-HeaderTest-Exclude: vtkDebugLeaks.h

@@ -15,13 +15,18 @@ if (PARAVIEW_USE_PYTHON)
     Data/blow_data.myvtk
     Data/bot2.wrl
     Data/can.ex2
+    Data/can.e.4/can.e.4.0
+    Data/can.e.4/can.e.4.1
+    Data/can.e.4/can.e.4.2
+    Data/can.e.4/can.e.4.3
     Data/disk_out_ref.ex2
     Data/dualSphereAnimation/,REGEX:.*
     Data/dualSphereAnimation4.pvd
     Data/elements.vtu
     Data/multicomb_0.vts
     Data/poisson_3dall_2.xmf
-    Data/quadraticTetra01.vtu)
+    Data/quadraticTetra01.vtu
+    Data/test.savg)
 
   ExternalData_Expand_Arguments(ParaViewData _
     # Baselines

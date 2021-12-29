@@ -53,25 +53,25 @@ typedef vtkSmartPointer<ParticleTrail> TrailPointer;
 class VTKFILTERSGENERAL_EXPORT vtkTemporalPathLineFilter : public vtkPolyDataAlgorithm
 {
 public:
-  //@{
+  ///@{
   /**
    * Standard Type-Macro
    */
   static vtkTemporalPathLineFilter* New();
   vtkTypeMacro(vtkTemporalPathLineFilter, vtkPolyDataAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set the number of particles to track as a ratio of the input
    * example: setting MaskPoints to 10 will track every 10th point
    */
   vtkSetMacro(MaskPoints, int);
   vtkGetMacro(MaskPoints, int);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * If the Particles being traced animate for a long time, the
    * trails or traces will become long and stringy. Setting
@@ -82,9 +82,9 @@ public:
    */
   vtkSetMacro(MaxTrackLength, unsigned int);
   vtkGetMacro(MaxTrackLength, unsigned int);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Specify the name of a scalar array which will be used to fetch
    * the index of each point. This is necessary only if the particles
@@ -95,9 +95,9 @@ public:
    */
   vtkSetStringMacro(IdChannelArray);
   vtkGetStringMacro(IdChannelArray);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * If a particle disappears from one end of a simulation and reappears
    * on the other side, the track left will be unrepresentative.
@@ -108,18 +108,32 @@ public:
    */
   vtkSetVector3Macro(MaxStepDistance, double);
   vtkGetVector3Macro(MaxStepDistance, double);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * When a particle 'disappears', the trail belonging to it is removed from
    * the list. When this flag is enabled, dead trails will persist
    * until the next time the list is cleared. Use carefully as it may cause
    * excessive memory consumption if left on by mistake.
    */
-  vtkSetMacro(KeepDeadTrails, int);
-  vtkGetMacro(KeepDeadTrails, int);
-  //@}
+  vtkSetMacro(KeepDeadTrails, bool);
+  vtkGetMacro(KeepDeadTrails, bool);
+  ///@}
+
+  ///@{
+  /**
+   * Set / Get if the filter is configured to work in backward time going mode.
+   * Default is false (time should go forward).
+   *
+   * Time going forward means that for each call to RequestData, then the time
+   * step from vtkDataObject::DATA_TIME_STEP() is greater than the time step
+   * from the previous call. Time going backward means that the current time
+   * step is smaller than the previous one.
+   */
+  virtual void SetBackwardTime(bool backward);
+  vtkGetMacro(BackwardTime, bool);
+  ///@}
 
   /**
    * Flush will wipe any existing data so that traces can be restarted from
@@ -151,7 +165,7 @@ protected:
   int FillInputPortInformation(int port, vtkInformation* info) override;
   int FillOutputPortInformation(int port, vtkInformation* info) override;
 
-  //@{
+  ///@{
   /**
    * The necessary parts of the standard pipeline update mechanism
    */
@@ -159,22 +173,23 @@ protected:
   //
   int RequestData(vtkInformation* request, vtkInformationVector** inputVector,
     vtkInformationVector* outputVector) override;
-  //@}
+  ///@}
 
   TrailPointer GetTrail(vtkIdType i);
   void IncrementTrail(TrailPointer trail, vtkDataSet* input, vtkIdType i);
 
   // internal data variables
-  int NumberOfTimeSteps;
-  int MaskPoints;
-  unsigned int MaxTrackLength;
-  unsigned int LastTrackLength;
-  int FirstTime;
-  char* IdChannelArray;
-  double MaxStepDistance[3];
+  int NumberOfTimeSteps = 0;
+  int MaskPoints = 200;
+  unsigned int MaxTrackLength = 10;
+  unsigned int LastTrackLength = 10;
+  int FirstTime = 1;
+  char* IdChannelArray = nullptr;
+  double MaxStepDistance[3] = { 1, 1, 1 };
   double LatestTime;
-  int KeepDeadTrails;
-  int UsingSelection;
+  bool KeepDeadTrails = false;
+  bool UsingSelection = false;
+  bool BackwardTime = false;
   //
 
   vtkSmartPointer<vtkCellArray> PolyLines;

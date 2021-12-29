@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkPolyDataAlgorithm.h
+  Module:    TestFiberSurface.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -62,6 +62,7 @@ int TestFiberSurface(int argc, char* argv[])
   /**********************************************/
 
   /********************* Desired output arrays *********************/
+  // NOLINTNEXTLINE(bugprone-suspicious-missing-comma)
   std::string dataToCompare[15] = { "0.779,0.000,0.000,0.659,0.000,0.341,1.000,0.000,0.624,1.000,0."
                                     "797,0.000,0.659,0.659,1.000,1.000,1.000,0.203,1.000,0.376,1."
                                     "000,0.779,1.000,1.000",

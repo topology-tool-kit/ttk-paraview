@@ -13,7 +13,9 @@
 
 =========================================================================*/
 #include <vtkDataAssembly.h>
+#include <vtkDoubleArray.h>
 #include <vtkExtractBlockUsingDataAssembly.h>
+#include <vtkFieldData.h>
 #include <vtkLogger.h>
 #include <vtkNew.h>
 #include <vtkPartitionedDataSet.h>
@@ -30,6 +32,10 @@ int TestExtractBlockUsingDataAssembly(int, char*[])
     pdc->SetPartitionedDataSet(cc, pd);
   }
 
+  vtkNew<vtkDoubleArray> da;
+  da->SetName("SomeArray");
+  pdc->GetFieldData()->AddArray(da);
+
   vtkNew<vtkDataAssembly> assembly;
   const auto base = assembly->AddNodes({ "blocks", "faces" });
   const auto blocks = assembly->AddNodes({ "b0", "b1" }, base[0]);
@@ -42,8 +48,9 @@ int TestExtractBlockUsingDataAssembly(int, char*[])
 
   vtkNew<vtkExtractBlockUsingDataAssembly> extractor;
   extractor->SetInputDataObject(pdc);
-  extractor->AddNodePath("//b0");
-  extractor->AddNodePath("//faces");
+  extractor->SetAssemblyName("Assembly");
+  extractor->AddSelector("//b0");
+  extractor->AddSelector("//faces");
   extractor->Update();
 
   auto output = vtkPartitionedDataSetCollection::SafeDownCast(extractor->GetOutputDataObject(0));
@@ -60,6 +67,12 @@ int TestExtractBlockUsingDataAssembly(int, char*[])
     output->GetPartitionedDataSet(3) != pdc->GetPartitionedDataSet(5))
   {
     vtkLogF(ERROR, "Incorrect blocks extracted!");
+    return EXIT_FAILURE;
+  }
+
+  if (!output->GetFieldData()->GetArray("SomeArray"))
+  {
+    vtkLogF(ERROR, "Missing field data arrays!");
     return EXIT_FAILURE;
   }
 

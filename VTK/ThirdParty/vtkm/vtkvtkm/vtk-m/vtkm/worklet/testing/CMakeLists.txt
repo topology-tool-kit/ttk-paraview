@@ -8,6 +8,10 @@
 ##  PURPOSE.  See the above copyright notice for more information.
 ##============================================================================
 
+set(headers
+  GenerateTestDataSets.h
+  )
+
 set(unit_tests
   UnitTestAverageByKey.cxx
   UnitTestBoundingIntervalHierarchy.cxx
@@ -21,6 +25,7 @@ set(unit_tests
   UnitTestContour.cxx
   UnitTestContourTreeUniform.cxx
   UnitTestContourTreeUniformAugmented.cxx
+  UnitTestContourTreeUniformDistributed.cxx
   UnitTestCoordinateSystemTransform.cxx
   UnitTestCosmoTools.cxx
   UnitTestCrossProduct.cxx
@@ -49,6 +54,7 @@ set(unit_tests
   UnitTestOrientNormals.cxx
   UnitTestParticleAdvection.cxx
   UnitTestPointElevation.cxx
+  UnitTestPointerJumping.cxx
   UnitTestPointGradient.cxx
   UnitTestPointTransform.cxx
   UnitTestProbe.cxx

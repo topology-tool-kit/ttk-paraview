@@ -1,4 +1,5 @@
 vtk_add_test_cxx(vtkFiltersCoreCxxTests tests
+  Test3DLinearGridPlaneCutterCellData.cxx
   TestAppendArcLength.cxx,NO_VALID
   TestAppendDataSets.cxx,NO_VALID
   TestAppendFilter.cxx,NO_VALID
@@ -18,6 +19,7 @@ vtk_add_test_cxx(vtkFiltersCoreCxxTests tests
   TestClipPolyData.cxx,NO_VALID
   TestConnectivityFilter.cxx,NO_VALID
   TestCutter.cxx,NO_VALID
+  TestDataObjectToPartitionedDataSetCollection.cxx,NO_VALID
   TestDecimatePolylineFilter.cxx
   TestDecimatePro.cxx,NO_VALID
   TestDelaunay2D.cxx
@@ -39,6 +41,7 @@ vtk_add_test_cxx(vtkFiltersCoreCxxTests tests
   TestMaskPoints.cxx,NO_VALID
   TestMaskPointsModes.cxx
   TestNamedComponents.cxx,NO_VALID
+  TestPartitionedDataSetCollectionConvertors.cxx,NO_VALID
   TestPointDataToCellData.cxx,NO_VALID
   TestPolyDataConnectivityFilter.cxx,NO_VALID
   TestPolyDataTangents.cxx

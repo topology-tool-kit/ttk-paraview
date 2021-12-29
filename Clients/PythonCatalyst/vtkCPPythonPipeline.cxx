@@ -34,8 +34,9 @@
 #include <iostream>
 #include <string>
 
-extern "C" {
-void vtkPVInitializePythonModules();
+extern "C"
+{
+  void vtkPVInitializePythonModules();
 }
 
 namespace
@@ -92,8 +93,12 @@ vtkCPPythonPipeline::vtkCPPythonPipeline()
 }
 
 //----------------------------------------------------------------------------
-vtkCPPythonPipeline::~vtkCPPythonPipeline()
+vtkCPPythonPipeline::~vtkCPPythonPipeline() = default;
+
+//----------------------------------------------------------------------------
+void vtkCPPythonPipeline::PrintSelf(ostream& os, vtkIndent indent)
 {
+  this->Superclass::PrintSelf(os, indent);
 }
 
 //----------------------------------------------------------------------------
@@ -262,7 +267,6 @@ void vtkCPPythonPipeline::FixEOL(std::string& str)
     str.replace(start_pos, from2.length(), to2);
     start_pos += to.length();
   }
-  return;
 }
 
 //----------------------------------------------------------------------------

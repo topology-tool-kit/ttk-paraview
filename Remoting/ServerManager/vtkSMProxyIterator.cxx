@@ -15,6 +15,7 @@
 #include "vtkSMProxyIterator.h"
 
 #include "vtkObjectFactory.h"
+#include "vtkSMProxy.h"
 #include "vtkSMSession.h"
 #include "vtkSMSessionProxyManager.h"
 #include "vtkSMSessionProxyManagerInternals.h"
@@ -46,7 +47,7 @@ vtkSMProxyIterator::~vtkSMProxyIterator()
 //---------------------------------------------------------------------------
 void vtkSMProxyIterator::SetSession(vtkSMSession* session)
 {
-  this->SetSessionProxyManager(session ? session->GetSessionProxyManager() : NULL);
+  this->SetSessionProxyManager(session ? session->GetSessionProxyManager() : nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -121,7 +122,7 @@ int vtkSMProxyIterator::IsAtEnd()
 {
   vtkSMSessionProxyManager* pm = this->Internals->ProxyManager;
 
-  if (pm == NULL || this->Internals->GroupIterator == pm->Internals->RegisteredProxyMap.end())
+  if (pm == nullptr || this->Internals->GroupIterator == pm->Internals->RegisteredProxyMap.end())
   {
     return 1;
   }
@@ -151,7 +152,7 @@ void vtkSMProxyIterator::Next()
 void vtkSMProxyIterator::NextInternal()
 {
   vtkSMSessionProxyManager* pm = this->Internals->ProxyManager;
-  assert(pm != NULL);
+  assert(pm != nullptr);
 
   if (this->Internals->GroupIterator != pm->Internals->RegisteredProxyMap.end())
   {
@@ -234,20 +235,20 @@ void vtkSMProxyIterator::NextInternal()
 const char* vtkSMProxyIterator::GetGroup()
 {
   vtkSMSessionProxyManager* pm = this->Internals->ProxyManager;
-  assert(pm != NULL);
+  assert(pm != nullptr);
 
   if (this->Internals->GroupIterator != pm->Internals->RegisteredProxyMap.end())
   {
     return this->Internals->GroupIterator->first.c_str();
   }
-  return 0;
+  return nullptr;
 }
 
 //---------------------------------------------------------------------------
 const char* vtkSMProxyIterator::GetKey()
 {
   vtkSMSessionProxyManager* pm = this->Internals->ProxyManager;
-  assert(pm != NULL);
+  assert(pm != nullptr);
 
   if (this->Internals->GroupIterator != pm->Internals->RegisteredProxyMap.end())
   {
@@ -256,14 +257,14 @@ const char* vtkSMProxyIterator::GetKey()
       return this->Internals->ProxyListIterator->first.c_str();
     }
   }
-  return 0;
+  return nullptr;
 }
 
 //---------------------------------------------------------------------------
 vtkSMProxy* vtkSMProxyIterator::GetProxy()
 {
   vtkSMSessionProxyManager* pm = this->Internals->ProxyManager;
-  assert(pm != NULL);
+  assert(pm != nullptr);
 
   if (this->Internals->GroupIterator != pm->Internals->RegisteredProxyMap.end())
   {
@@ -275,7 +276,7 @@ vtkSMProxy* vtkSMProxyIterator::GetProxy()
       }
     }
   }
-  return 0;
+  return nullptr;
 }
 
 //---------------------------------------------------------------------------

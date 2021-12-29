@@ -54,7 +54,7 @@ class pqYoungsMaterialPropertyLinksConnection : public pqPropertyLinksConnection
 public:
   pqYoungsMaterialPropertyLinksConnection(QObject* qobject, const char* qproperty,
     const char* qsignal, vtkSMProxy* smproxy, vtkSMProperty* smproperty, int smindex,
-    bool use_unchecked_modified_event, QObject* parentObject = 0)
+    bool use_unchecked_modified_event, QObject* parentObject = nullptr)
     : Superclass(qobject, qproperty, qsignal, smproxy, smproperty, smindex,
         use_unchecked_modified_event, parentObject)
   {
@@ -70,7 +70,7 @@ protected:
   }
   void setServerManagerValue(bool use_unchecked, const QVariant& value) override
   {
-    pqSMAdaptor::setMultipleElementProperty(this->propertySM(), value.value<QList<QVariant> >(),
+    pqSMAdaptor::setMultipleElementProperty(this->propertySM(), value.value<QList<QVariant>>(),
       (use_unchecked ? pqSMAdaptor::UNCHECKED : pqSMAdaptor::CHECKED));
   }
   Q_DISABLE_COPY(pqYoungsMaterialPropertyLinksConnection)
@@ -263,10 +263,10 @@ void pqYoungsMaterialPropertyWidget::updateComboBoxes()
   // check if there's a normal and ordering array already defined for this
   // volume-fraction array. If so, show it.
   const char* orderingArray = vtkSMUncheckedPropertyHelper(this->proxy(), "OrderingArrays")
-                                .GetStatus(label.toLocal8Bit().data(), "");
+                                .GetStatus(label.toUtf8().data(), "");
 
   const char* normalArray = vtkSMUncheckedPropertyHelper(this->proxy(), "NormalArrays")
-                              .GetStatus(label.toLocal8Bit().data(), "");
+                              .GetStatus(label.toUtf8().data(), "");
 
   if (orderingArray == nullptr || strlen(orderingArray) == 0)
   {

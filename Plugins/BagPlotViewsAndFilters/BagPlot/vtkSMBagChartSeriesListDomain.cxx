@@ -18,7 +18,7 @@
 #include "vtkPVXMLElement.h"
 #include "vtkSMPropertyHelper.h"
 
-#include <assert.h>
+#include <cassert>
 #include <vtksys/RegularExpression.hxx>
 
 vtkStandardNewMacro(vtkSMBagChartSeriesListDomain);
@@ -29,9 +29,7 @@ vtkSMBagChartSeriesListDomain::vtkSMBagChartSeriesListDomain()
 }
 
 //----------------------------------------------------------------------------
-vtkSMBagChartSeriesListDomain::~vtkSMBagChartSeriesListDomain()
-{
-}
+vtkSMBagChartSeriesListDomain::~vtkSMBagChartSeriesListDomain() = default;
 
 //----------------------------------------------------------------------------
 int vtkSMBagChartSeriesListDomain::ReadXMLAttributes(vtkSMProperty* prop, vtkPVXMLElement* element)
@@ -70,7 +68,7 @@ int vtkSMBagChartSeriesListDomain::SetDefaultValues(vtkSMProperty* prop, bool us
   // Search for an array with a name like HDR (x,y)
   vtksys::RegularExpression re =
     vtksys::RegularExpression("([a-zA-Z0-9]+)[ ]*\\(([a-zA-Z0-9]+),([a-zA-Z0-9]+)\\)");
-  std::string hdr = "";
+  std::string hdr;
   while (iter != strings.end())
   {
     if (re.find(*iter))
@@ -80,7 +78,7 @@ int vtkSMBagChartSeriesListDomain::SetDefaultValues(vtkSMProperty* prop, bool us
     }
     iter++;
   }
-  if (hdr != "")
+  if (!hdr.empty())
   {
     std::string x = re.match(3);
     std::string y = re.match(2);

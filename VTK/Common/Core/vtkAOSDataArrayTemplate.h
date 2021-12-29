@@ -78,7 +78,7 @@ public:
     this->Buffer->GetBuffer()[valueIdx] = value;
   }
 
-  //@{
+  ///@{
   /**
    * Copy the tuple at @a tupleIdx into @a tuple.
    */
@@ -89,9 +89,9 @@ public:
     std::copy(this->Buffer->GetBuffer() + valueIdx,
       this->Buffer->GetBuffer() + valueIdx + this->NumberOfComponents, tuple);
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set this array's tuple at @a tupleIdx to the values in @a tuple.
    */
@@ -101,7 +101,7 @@ public:
     const vtkIdType valueIdx = tupleIdx * this->NumberOfComponents;
     std::copy(tuple, tuple + this->NumberOfComponents, this->Buffer->GetBuffer() + valueIdx);
   }
-  //@}
+  ///@}
 
   /**
    * Get component @a comp of the tuple at @a tupleIdx.
@@ -112,7 +112,7 @@ public:
     return this->Buffer->GetBuffer()[this->NumberOfComponents * tupleIdx + comp];
   }
 
-  //@{
+  ///@{
   /**
    * Set component @a comp of the tuple at @a tupleIdx to @a value.
    */
@@ -122,24 +122,24 @@ public:
     const vtkIdType valueIdx = tupleIdx * this->NumberOfComponents + comp;
     this->SetValue(valueIdx, value);
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set component @a comp of all tuples to @a value.
    */
   void FillTypedComponent(int compIdx, ValueType value) override;
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set all the values in array to @a value.
    */
   void FillValue(ValueType value) override;
   void Fill(double value) override;
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the address of a particular data index. Make sure data is allocated
    * for the number of items requested. Set MaxId according to the number of
@@ -147,9 +147,9 @@ public:
    */
   ValueType* WritePointer(vtkIdType valueIdx, vtkIdType numValues);
   void* WriteVoidPointer(vtkIdType valueIdx, vtkIdType numValues) override;
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the address of a particular data index. Performs no checks
    * to verify that the memory has been allocated etc.
@@ -159,9 +159,9 @@ public:
    */
   ValueType* GetPointer(vtkIdType valueIdx);
   void* GetVoidPointer(vtkIdType valueIdx) override;
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * This method lets the user specify data to be held by the array.  The
    * array argument is a pointer to the data.  size is the size of the
@@ -180,7 +180,7 @@ public:
   void SetArray(VTK_ZEROCOPY ValueType* array, vtkIdType size, int save);
   void SetVoidArray(void* array, vtkIdType size, int save) override;
   void SetVoidArray(void* array, vtkIdType size, int save, int deleteMethod) override;
-  //@}
+  ///@}
 
   /**
    * This method allows the user to specify a custom free function to be
@@ -239,7 +239,7 @@ public:
   Iterator Begin() { return Iterator(this->GetVoidPointer(0)); }
   Iterator End() { return Iterator(this->GetVoidPointer(this->MaxId + 1)); }
 
-  //@{
+  ///@{
   /**
    * Perform a fast, safe cast from a vtkAbstractArray to a
    * vtkAOSDataArrayTemplate.
@@ -247,23 +247,8 @@ public:
    * or a more derived type, checks the data types, and performs a static_cast
    * to return source as a vtkDataArray pointer. Otherwise, nullptr is returned.
    */
-  static vtkAOSDataArrayTemplate<ValueType>* FastDownCast(vtkAbstractArray* source)
-  {
-    if (source)
-    {
-      switch (source->GetArrayType())
-      {
-        case vtkAbstractArray::AoSDataArrayTemplate:
-          if (vtkDataTypesCompare(source->GetDataType(), vtkTypeTraits<ValueType>::VTK_TYPE_ID))
-          {
-            return static_cast<vtkAOSDataArrayTemplate<ValueType>*>(source);
-          }
-          break;
-      }
-    }
-    return nullptr;
-  }
-  //@}
+  static vtkAOSDataArrayTemplate<ValueType>* FastDownCast(vtkAbstractArray* source);
+  ///@}
 
   int GetArrayType() const override { return vtkAbstractArray::AoSDataArrayTemplate; }
   VTK_NEWINSTANCE vtkArrayIterator* NewIterator() override;
@@ -337,7 +322,12 @@ vtkArrayDownCast_TemplateFastCastMacro(vtkAOSDataArrayTemplate);
 // from instantiating these on their own.
 #ifdef VTK_AOS_DATA_ARRAY_TEMPLATE_INSTANTIATING
 #define VTK_AOS_DATA_ARRAY_TEMPLATE_INSTANTIATE(T)                                                 \
+  namespace vtkDataArrayPrivate                                                                    \
+  {                                                                                                \
+  VTK_INSTANTIATE_VALUERANGE_ARRAYTYPE(vtkAOSDataArrayTemplate<T>, double);                        \
+  }                                                                                                \
   template class VTKCOMMONCORE_EXPORT vtkAOSDataArrayTemplate<T>
+
 #elif defined(VTK_USE_EXTERN_TEMPLATE)
 #ifndef VTK_AOS_DATA_ARRAY_TEMPLATE_EXTERN
 #define VTK_AOS_DATA_ARRAY_TEMPLATE_EXTERN

@@ -37,8 +37,8 @@ public:
 
   // This sets the DataLocation and also
   // Reset the reader by calling ResetReader()
-  void SetLocation(const char* dataLocation);
-  vtkGetStringMacro(DataLocation);
+  void SetLocation(VTK_FILEPATH const char* dataLocation);
+  vtkGetFilePathMacro(DataLocation);
 
   /**
    * Reader will read in the next available data file
@@ -66,31 +66,31 @@ public:
    * Return the name of the next available data file
    * assume NewDataAvailable() return VTK_OK
    */
-  const char* GetNextFileName();
+  VTK_FILEPATH const char* GetNextFileName();
 
 protected:
   vtkRTXMLPolyDataReader();
   ~vtkRTXMLPolyDataReader() override;
 
-  //@{
+  ///@{
   /**
    * Get/Set the location of the input data files.
    */
   vtkSetStringMacro(DataLocation);
-  //@}
+  ///@}
 
   void InitializeToCurrentDir();
   int IsProcessed(const char*);
   char* GetDataFileFullPathName(const char*);
 
-  //@{
+  ///@{
   /**
    * the DataLocation should be set and ResetReader()
    * should be called after SetDataLocation
    */
   char* DataLocation;
   vtkRTXMLPolyDataReaderInternals* Internal;
-  //@}
+  ///@}
 
 private:
   vtkRTXMLPolyDataReader(const vtkRTXMLPolyDataReader&) = delete;

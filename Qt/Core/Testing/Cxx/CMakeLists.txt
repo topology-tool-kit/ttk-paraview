@@ -5,13 +5,14 @@ target_link_libraries(pqCoreBasicApp PRIVATE Qt5::Core Qt5::Widgets)
 ExternalData_add_test("${_vtk_build_TEST_DATA_TARGET}"
   NAME pqCoreBasicApp
   COMMAND pqCoreBasicApp
-          -dr "--test-directory=${_vtk_build_TEST_OUTPUT_DIRECTORY}"
+          --dr
+          "--test-directory=${_vtk_build_TEST_OUTPUT_DIRECTORY}"
           "--test-baseline=DATA{${_vtk_build_TEST_INPUT_DATA_DIRECTORY}/Data/Baseline/pqCoreBasicApp.png}"
           --exit
   )
 
 set(MyTests
-  LogViewerWidget
+  LogViewerWidget.cxx
 )
 
 set(MocSources
@@ -23,7 +24,8 @@ create_test_sourcelist(Tests pqCoreTest.cxx ${MyTests})
 vtk_module_test_executable(pqCoreTest ${Tests})
 target_link_libraries(pqCoreTest PRIVATE Qt5::Core Qt5::Widgets Qt5::Test)
 
-foreach(test ${MyTests})
+foreach(test_file ${MyTests})
+  get_filename_component(test "${test_file}" NAME_WE)
   add_test(
     NAME pqCore${test}
     COMMAND pqCoreTest ${test})

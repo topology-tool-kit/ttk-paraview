@@ -22,7 +22,7 @@
  * from a vtkPVFileInformationHelper object alone.
  * @sa
  * vtkPVFileInformationHelper
-*/
+ */
 
 #ifndef vtkPVFileInformation_h
 #define vtkPVFileInformation_h
@@ -73,12 +73,34 @@ public:
     DIRECTORY_GROUP
   };
 
+  //@{
   /**
    * Helper that returns whether a FileType is a
    * directory (DIRECTORY, DRIVE, NETWORK_ROOT, etc...)
    * Or in other words, a type that we can do a DirectoryListing on.
    */
   static bool IsDirectory(int t);
+  bool IsDirectory() const { return vtkPVFileInformation::IsDirectory(this->Type); }
+  //@}
+
+  //@{
+  /**
+   * Helper that returns true if file-type is a group i.e.
+   * either a FILE_GROUP or a DIRECTORY_GROUP.
+   */
+  static bool IsGroup(int type)
+  {
+    switch (type)
+    {
+      case FILE_GROUP:
+      case DIRECTORY_GROUP:
+        return true;
+      default:
+        return false;
+    }
+  }
+  bool IsGroup() const { return vtkPVFileInformation::IsGroup(this->Type); }
+  //@}
 
   /**
    * Initializes the information object.
@@ -130,19 +152,19 @@ public:
   //@}
 
   /**
-  * Returns the path to the base data directory path holding various files
-  * packaged with ParaView.
-  */
+   * Returns the path to the base data directory path holding various files
+   * packaged with ParaView.
+   */
   static std::string GetParaViewSharedResourcesDirectory();
 
   /**
-  * Return the path of the example data packaged with ParaView.
-  */
+   * Return the path of the example data packaged with ParaView.
+   */
   static std::string GetParaViewExampleFilesDirectory();
 
   /**
-  * Return the path of the documents packaged with ParaView.
-  */
+   * Return the path of the documents packaged with ParaView.
+   */
   static std::string GetParaViewDocDirectory();
 
 protected:

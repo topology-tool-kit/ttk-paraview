@@ -17,24 +17,18 @@
  *
  * vtkPVChangeOfBasisHelper is designed for ORNL-SNS use-cases where we needed
  * to add support for different basis.
-*/
+ */
 
 #ifndef vtkPVChangeOfBasisHelper_h
 #define vtkPVChangeOfBasisHelper_h
 
-#include "vtkObject.h"
 #include "vtkPVVTKExtensionsMiscModule.h" // needed for export macro
 
-#include "vtkDataObject.h"
-#include "vtkDoubleArray.h"
-#include "vtkFieldData.h"
-#include "vtkMatrix4x4.h"
-#include "vtkNew.h"
-#include "vtkSmartPointer.h"
-#include "vtkStringArray.h"
-#include "vtkVector.h"
+#include "vtkMatrix4x4.h"    // for vtkMatrix4x4
+#include "vtkSmartPointer.h" // for vtkSmartPointer
+#include "vtkVector.h"       // for vtkVector
 
-#include <algorithm>
+class vtkDataObject;
 
 class VTKPVVTKEXTENSIONSMISC_EXPORT vtkPVChangeOfBasisHelper
 {

@@ -63,17 +63,19 @@
 #include "vtkPVInteractorStyle.h"
 #include "vtkPVLogger.h"
 #include "vtkPVMaterialLibrary.h"
-#include "vtkPVOptions.h"
 #include "vtkPVRenderViewDataDeliveryManager.h"
+#include "vtkPVRenderViewSettings.h"
 #include "vtkPVServerInformation.h"
 #include "vtkPVSession.h"
 #include "vtkPVStreamingMacros.h"
 #include "vtkPVSynchronizedRenderer.h"
+#include "vtkPVTrackballEnvironmentRotate.h"
 #include "vtkPVTrackballMultiRotate.h"
 #include "vtkPVTrackballRoll.h"
 #include "vtkPVTrackballRotate.h"
 #include "vtkPVTrackballZoom.h"
 #include "vtkPVTrackballZoomToMouse.h"
+#include "vtkPVView.h"
 #include "vtkPointData.h"
 #include "vtkProcessModule.h"
 #include "vtkRenderViewBase.h"
@@ -96,7 +98,6 @@
 #include "vtkWeakPointer.h"
 #include "vtkWindowToImageFilter.h"
 
-#include "vtkLightingMapPass.h"
 #include "vtkToneMappingPass.h"
 #include "vtkValuePass.h"
 
@@ -116,32 +117,34 @@
 #include <set>
 #include <sstream>
 #include <vector>
+namespace
+{
+struct ValuePassStateT
+{
+  bool OrientationAxesVisibility;
+  bool AnnotationVisibility;
+  bool CenterAxesVisibility;
+};
+}
 
 class vtkPVRenderView::vtkInternals
 {
-  std::map<int, vtkWeakPointer<vtkPVDataRepresentation> > PropMap;
+  std::map<int, vtkWeakPointer<vtkPVDataRepresentation>> PropMap;
 
 public:
-  vtkNew<vtkValuePass> ValuePasses;
-  vtkNew<vtkLightingMapPass> LightingMapPass;
 #if VTK_MODULE_ENABLE_VTK_RenderingRayTracing
   vtkSmartPointer<vtkOSPRayPass> OSPRayPass = nullptr;
 #endif
 
   vtkSmartPointer<vtkImageProcessingPass> SavedImageProcessingPass;
-
   vtkNew<vtkToneMappingPass> ToneMappingPass;
   vtkSmartPointer<vtkRenderPass> SavedRenderPass;
-  int FieldAssociation;
-  int FieldAttributeType;
-  std::string FieldName;
-  bool FieldNameSet;
-  int Component;
-  double ScalarRange[2];
-  bool ScalarRangeSet;
-  bool SavedOrientationState;
-  bool SavedAnnotationState;
-  bool IsInCapture;
+
+  // State variables to maintain flags between BeginValuePassForRendering
+  // and EndValueCapture.
+  vtkNew<vtkValuePass> ValuePasses;
+  std::unique_ptr<ValuePassStateT> ValuePassState;
+
   bool IsInOSPRay;
   bool OSPRayShadows;
   bool OSPRayDenoise;
@@ -161,8 +164,8 @@ public:
 
   vtkPVDataRepresentation* GetRepresentationForPropId(int id)
   {
-    std::map<int, vtkWeakPointer<vtkPVDataRepresentation> >::iterator iter = this->PropMap.find(id);
-    return (iter != this->PropMap.end() ? iter->second : NULL);
+    std::map<int, vtkWeakPointer<vtkPVDataRepresentation>>::iterator iter = this->PropMap.find(id);
+    return (iter != this->PropMap.end() ? iter->second : nullptr);
   }
 
   void PreRender(vtkRenderViewBase* vtkNotUsed(renderView)) {}
@@ -229,12 +232,12 @@ public:
         {
           allocatedTimeList[index1] = allocatedTimeList[index2];
           propList[index1] = propList[index2];
-          propList[index2] = NULL;
+          propList[index2] = nullptr;
           allocatedTimeList[index2] = 0.0;
         }
         else
         {
-          propList[index1] = propList[index2] = NULL;
+          propList[index1] = propList[index2] = nullptr;
           allocatedTimeList[index1] = allocatedTimeList[index2] = 0.0;
         }
       }
@@ -262,7 +265,7 @@ private:
     : RenderOnLocalProcess(false)
   {
   }
-  ~vtkPVRendererCuller() override {}
+  ~vtkPVRendererCuller() override = default;
   bool RenderOnLocalProcess;
 };
 vtkStandardNewMacro(vtkPVRendererCuller);
@@ -294,7 +297,7 @@ void IceTPassEnableFloatPass(bool enable, vtkPVSynchronizedRenderer* sr)
 void vtkUpdateTrackballZoomManipulators(
   vtkPVInteractorStyle* style, bool useDollyForPerspectiveProjection)
 {
-  if (style == NULL)
+  if (style == nullptr)
   {
     return;
   }
@@ -328,19 +331,10 @@ vtkCxxSetObjectMacro(vtkPVRenderView, LastSelection, vtkSelection);
 
 //----------------------------------------------------------------------------
 vtkPVRenderView::vtkPVRenderView()
-  : Annotation()
-  , StereoType(VTK_STEREO_RED_BLUE)
+  : StereoType(VTK_STEREO_RED_BLUE)
   , ServerStereoType(VTK_STEREOTYPE_SAME_AS_CLIENT)
 {
   this->Internals = new vtkInternals();
-  this->Internals->FieldAssociation = VTK_SCALAR_MODE_USE_POINT_FIELD_DATA;
-  this->Internals->FieldNameSet = false;
-  this->Internals->FieldAttributeType = 0;
-  this->Internals->Component = 0;
-  this->Internals->ScalarRangeSet = false;
-  this->Internals->ScalarRange[0] = 0.0;
-  this->Internals->ScalarRange[1] = -1.0;
-  this->Internals->IsInCapture = false;
   this->Internals->IsInOSPRay = false;
   this->Internals->OSPRayShadows = false;
   this->Internals->OSPRayDenoise = true;
@@ -365,14 +359,14 @@ vtkPVRenderView::vtkPVRenderView()
   this->LODResolution = 0.5;
   this->UseOutlineForLODRendering = false;
   this->UseLightKit = false;
-  this->Interactor = 0;
-  this->InteractorStyle = 0;
-  this->TwoDInteractorStyle = 0;
-  this->ThreeDInteractorStyle = 0;
-  this->DiscreteCameras = 0;
-  this->PolygonStyle = 0;
-  this->RubberBandStyle = 0;
-  this->RubberBandZoom = 0;
+  this->Interactor = nullptr;
+  this->InteractorStyle = nullptr;
+  this->TwoDInteractorStyle = nullptr;
+  this->ThreeDInteractorStyle = nullptr;
+  this->DiscreteCameras = nullptr;
+  this->PolygonStyle = nullptr;
+  this->RubberBandStyle = nullptr;
+  this->RubberBandZoom = nullptr;
   this->CenterAxes = vtkPVCenterAxesActor::New();
   this->CenterAxes->SetComputeNormals(0);
   this->CenterAxes->SetPickable(0);
@@ -402,6 +396,12 @@ vtkPVRenderView::vtkPVRenderView()
   this->ForceDataDistributionMode = -1;
   this->PreviousDiscreteCameraIndex = -1;
   this->SuppressRendering = false;
+  this->BackgroundColorMode = vtkPVRenderView::DEFAULT;
+  this->UseEnvironmentLighting = false;
+  this->UseRenderViewSettingsForBackground = true;
+  this->Background[0] = this->Background[1] = this->Background[2] = 0.0;
+  this->Background2[0] = this->Background2[1] = this->Background2[2] = 0.0;
+  this->UseTexturedEnvironmentalBG = false;
 
   auto window = this->GetRenderWindow();
   assert(window);
@@ -511,6 +511,11 @@ vtkPVRenderView::vtkPVRenderView()
   this->SynchronizedRenderers = vtkPVSynchronizedRenderer::New();
   this->SynchronizedRenderers->Initialize(this->GetSession());
   this->SynchronizedRenderers->SetRenderer(this->RenderView->GetRenderer());
+
+  // Add skybox actor.
+  this->GetRenderer()->AddActor(this->Skybox);
+  this->Skybox->GammaCorrectOn();
+  this->Skybox->SetVisibility(0);
 }
 
 //----------------------------------------------------------------------------
@@ -527,8 +532,8 @@ vtkPVRenderView::~vtkPVRenderView()
   // is destroyed.
   this->GetRenderWindow()->RemoveRenderer(this->NonCompositedRenderer);
   this->GetRenderWindow()->RemoveRenderer(this->GetRenderer());
-  this->GetNonCompositedRenderer()->SetRenderWindow(0);
-  this->GetRenderer()->SetRenderWindow(0);
+  this->GetNonCompositedRenderer()->SetRenderWindow(nullptr);
+  this->GetRenderer()->SetRenderWindow(nullptr);
 
   this->SetLastSelection(nullptr);
   this->Selector->Delete();
@@ -538,44 +543,44 @@ vtkPVRenderView::~vtkPVRenderView()
   this->LightKit->Delete();
   this->CenterAxes->Delete();
   this->OrientationWidget->Delete();
-  this->Interactor = 0;
+  this->Interactor = nullptr;
 
   if (this->InteractorStyle)
   {
     // Don't want to delete it as it is only pointing to either
     // [TwoDInteractorStyle, ThreeDInteractorStyle]
-    this->InteractorStyle = 0;
+    this->InteractorStyle = nullptr;
   }
   if (this->TwoDInteractorStyle)
   {
     this->TwoDInteractorStyle->Delete();
-    this->TwoDInteractorStyle = 0;
+    this->TwoDInteractorStyle = nullptr;
   }
   if (this->ThreeDInteractorStyle)
   {
     this->ThreeDInteractorStyle->Delete();
-    this->ThreeDInteractorStyle = 0;
+    this->ThreeDInteractorStyle = nullptr;
   }
   if (this->RubberBandStyle)
   {
     this->RubberBandStyle->Delete();
-    this->RubberBandStyle = 0;
+    this->RubberBandStyle = nullptr;
   }
   if (this->RubberBandZoom)
   {
     this->RubberBandZoom->Delete();
-    this->RubberBandZoom = 0;
+    this->RubberBandZoom = nullptr;
   }
   if (this->PolygonStyle)
   {
     this->PolygonStyle->Delete();
-    this->PolygonStyle = 0;
+    this->PolygonStyle = nullptr;
   }
 
-  this->Internals->SavedRenderPass = NULL;
+  this->Internals->SavedRenderPass = nullptr;
 
   delete this->Internals;
-  this->Internals = NULL;
+  this->Internals = nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -627,7 +632,7 @@ vtkRenderer* vtkPVRenderView::GetRenderer(int rendererType)
     case DEFAULT_RENDERER:
       return this->RenderView->GetRenderer();
     default:
-      return NULL;
+      return nullptr;
   }
 }
 
@@ -1016,7 +1021,7 @@ void vtkPVRenderView::SetMaxClipBounds(double* bounds)
 //----------------------------------------------------------------------------
 void vtkPVRenderView::ResetCameraClippingRange()
 {
-  if (this->GeometryBounds.IsValid() && !this->LockBounds && this->DiscreteCameras == NULL)
+  if (this->GeometryBounds.IsValid() && !this->LockBounds && this->DiscreteCameras == nullptr)
   {
     double bounds[6];
     this->GeometryBounds.GetBounds(bounds);
@@ -1138,6 +1143,39 @@ void vtkPVRenderView::ResetCamera(double bounds[6])
   if (!this->LockBounds)
   {
     this->RenderView->GetRenderer()->ResetCamera(bounds);
+  }
+  this->InvokeEvent(vtkCommand::ResetCameraEvent);
+}
+
+//----------------------------------------------------------------------------
+// Note this is called on all processes.
+void vtkPVRenderView::ResetCameraScreenSpace()
+{
+  // Since ResetCameraScreenSpace() is accessible via a property on the view proxy, this
+  // method gets called directly (and on on the vtkSMRenderViewProxy). Hence
+  // we need to ensure things are updated explicitly and cannot rely on the View
+  // proxy to take care of updating the view.
+  this->Update();
+
+  // Remember, vtkRenderer::ResetCamera() calls
+  // vtkRenderer::ResetCameraClippingPlanes() with the given bounds.
+  double bounds[6];
+  this->GeometryBounds.GetBounds(bounds);
+  if (!this->LockBounds)
+  {
+    this->RenderView->GetRenderer()->ResetCameraScreenSpace(bounds);
+  }
+
+  this->InvokeEvent(vtkCommand::ResetCameraEvent);
+}
+
+//----------------------------------------------------------------------------
+// Note this is called on all processes.
+void vtkPVRenderView::ResetCameraScreenSpace(double bounds[6])
+{
+  if (!this->LockBounds)
+  {
+    this->RenderView->GetRenderer()->ResetCameraScreenSpace(bounds);
   }
   this->InvokeEvent(vtkCommand::ResetCameraEvent);
 }
@@ -1271,14 +1309,14 @@ void vtkPVRenderView::Update()
   this->ForceDataDistributionMode = -1;
 
   // clear discrete interaction style state.
-  this->DiscreteCameras = NULL;
+  this->DiscreteCameras = nullptr;
   this->PreviousDiscreteCameraIndex = -1;
 
   this->Superclass::Update();
 
   // Update camera zoom manipulators based on whether we have discrete position.
-  vtkUpdateTrackballZoomManipulators(this->TwoDInteractorStyle, this->DiscreteCameras == NULL);
-  vtkUpdateTrackballZoomManipulators(this->ThreeDInteractorStyle, this->DiscreteCameras == NULL);
+  vtkUpdateTrackballZoomManipulators(this->TwoDInteractorStyle, this->DiscreteCameras == nullptr);
+  vtkUpdateTrackballZoomManipulators(this->ThreeDInteractorStyle, this->DiscreteCameras == nullptr);
 
   // After every update we can expect the representation geometries to change.
   // Thus we need to determine whether we are doing to remote-rendering or not,
@@ -1308,7 +1346,7 @@ void vtkPVRenderView::Update()
   const vtkTypeUInt64 lsize = this->GetDeliveryManager()->GetVisibleDataSize(/*low_res*/ false);
   vtkTypeUInt64 gsize;
   this->AllReduce(lsize, gsize, vtkCommunicator::SUM_OP);
-  const double geometry_size = gsize / 1024;
+  const double geometry_size = gsize / 1024.0;
 
   // cout << "Full Geometry size: " << geometry_size << endl;
   // Update decisions about lod-rendering and remote-rendering.
@@ -1375,7 +1413,7 @@ void vtkPVRenderView::UpdateLOD()
   const vtkTypeUInt64 lsize = this->GetDeliveryManager()->GetVisibleDataSize(/*low_res*/ true);
   vtkTypeUInt64 gsize;
   this->AllReduce(lsize, gsize, vtkCommunicator::SUM_OP);
-  const double geometry_size = gsize / 1024;
+  const double geometry_size = gsize / 1024.0;
   // cout << "LOD Geometry size: " << geometry_size << endl;
 
   this->UseDistributedRenderingForLODRender =
@@ -1439,6 +1477,9 @@ void vtkPVRenderView::Render(bool interactive, bool skip_rendering)
 
   this->UpdateStereoProperties();
 
+  // Update background.
+  this->UpdateBackground();
+
   if ((!interactive && this->UseDistributedRenderingForRender) ||
     (interactive && this->UseDistributedRenderingForLODRender))
   {
@@ -1460,7 +1501,7 @@ void vtkPVRenderView::Render(bool interactive, bool skip_rendering)
   // involve any communication, doing this on every render is not a big deal.
   this->ResetCameraClippingRange();
 
-  if (this->DiscreteCameras != NULL)
+  if (this->DiscreteCameras != nullptr)
   {
     vtkCamera* camera = this->GetActiveCamera();
     int index = this->DiscreteCameras->FindClosestCamera(camera);
@@ -1586,6 +1627,8 @@ void vtkPVRenderView::Render(bool interactive, bool skip_rendering)
   bool use_fxaa = this->UseFXAA && !this->MakingSelection;
   this->RenderView->GetRenderer()->SetUseFXAA(use_fxaa);
   this->RenderView->GetRenderer()->SetFXAAOptions(this->FXAAOptions);
+  this->SynchronizedRenderers->SetUseFXAA(use_fxaa);
+  this->SynchronizedRenderers->SetFXAAOptions(this->FXAAOptions);
   if (this->SynchronizedRenderers->GetEnabled())
   {
     // Force opaque rendering for the GridAxes. Needed so that the grid axes
@@ -1706,7 +1749,7 @@ vtkAlgorithmOutput* vtkPVRenderView::GetPieceProducer(
   if (!view)
   {
     vtkGenericWarningMacro("Missing VIEW().");
-    return NULL;
+    return nullptr;
   }
 
   return view->GetDeliveryManager()->GetProducer(repr, false, port);
@@ -1720,7 +1763,7 @@ vtkAlgorithmOutput* vtkPVRenderView::GetPieceProducerLOD(
   if (!view)
   {
     vtkGenericWarningMacro("Missing VIEW().");
-    return NULL;
+    return nullptr;
   }
 
   return view->GetDeliveryManager()->GetProducer(repr, true, port);
@@ -1921,7 +1964,7 @@ vtkDataObject* vtkPVRenderView::GetCurrentStreamedPiece(
   if (!self)
   {
     vtkGenericWarningMacro("Missing VIEW().");
-    return NULL;
+    return nullptr;
   }
 
   return vtkPVRenderViewDataDeliveryManager::SafeDownCast(self->GetDeliveryManager())
@@ -2135,7 +2178,7 @@ bool vtkPVRenderView::GetRenderEmptyImages()
   int ptype = vtkProcessModule::GetProcessType();
   if (this->RenderEmptyImages &&
     ((ptype == vtkProcessModule::PROCESS_SERVER) || (ptype == vtkProcessModule::PROCESS_BATCH) ||
-        (ptype == vtkProcessModule::PROCESS_RENDER_SERVER)) &&
+      (ptype == vtkProcessModule::PROCESS_RENDER_SERVER)) &&
     (vtkProcessModule::GetProcessModule()->GetNumberOfLocalPartitions() > 1))
   {
     return true;
@@ -2544,67 +2587,95 @@ void vtkPVRenderView::SetMaximumNumberOfPeels(int val)
 }
 
 //----------------------------------------------------------------------------
-void vtkPVRenderView::SetBackground(double r, double g, double b)
+void vtkPVRenderView::UpdateBackground(vtkRenderer* renderer /*=nullptr*/)
 {
-  this->GetRenderer()->SetBackground(r, g, b);
-}
-//----------------------------------------------------------------------------
-void vtkPVRenderView::SetBackground2(double r, double g, double b)
-{
-  this->GetRenderer()->SetBackground2(r, g, b);
+  renderer = renderer ? renderer : this->GetRenderer();
+
+  double color[3], color2[3];
+  int mode = this->BackgroundColorMode;
+  this->GetBackground(color);
+  this->GetBackground2(color2);
+
+  if (this->UseRenderViewSettingsForBackground)
+  {
+    auto settings = vtkPVRenderViewSettings::GetInstance();
+    mode = settings->GetBackgroundColorMode();
+    settings->GetBackgroundColor(color);
+    settings->GetBackground2Color(color2);
+  }
+
+  switch (mode)
+  {
+    case DEFAULT:
+      renderer->SetTexturedBackground(false);
+      renderer->SetGradientBackground(false);
+      renderer->SetUseImageBasedLighting(this->UseTexturedEnvironmentalBG);
+      break;
+
+    case GRADIENT:
+      renderer->SetTexturedBackground(false);
+      renderer->SetGradientBackground(true);
+      renderer->SetUseImageBasedLighting(false);
+      break;
+
+    case IMAGE:
+      renderer->SetTexturedBackground(true);
+      renderer->SetGradientBackground(false);
+      renderer->SetUseImageBasedLighting(this->UseEnvironmentLighting);
+      break;
+
+    case SKYBOX:
+      renderer->SetTexturedBackground(false);
+      renderer->SetGradientBackground(false);
+      renderer->SetUseImageBasedLighting(this->UseEnvironmentLighting);
+      break;
+
+    case STEREO_SKYBOX:
+      renderer->SetTexturedBackground(false);
+      renderer->SetGradientBackground(false);
+      renderer->SetUseImageBasedLighting(this->UseEnvironmentLighting);
+      break;
+
+    default:
+      break;
+  }
+
+  renderer->SetBackground(color);
+  renderer->SetBackground2(color2);
+
+  // update skybox texture.
+  vtkTexture* texture = renderer->GetBackgroundTexture();
+  if ((this->BackgroundColorMode == vtkPVRenderView::STEREO_SKYBOX ||
+        this->BackgroundColorMode == vtkPVRenderView::SKYBOX) &&
+    texture != nullptr)
+  {
+    this->ConfigureTexture(texture);
+
+    this->Skybox->SetProjection(this->BackgroundColorMode == vtkPVRenderView::SKYBOX
+        ? vtkSkybox::Sphere
+        : vtkSkybox::StereoSphere);
+    // Update skybox orientation from renderer orientation
+    double* up = renderer->GetEnvironmentUp();
+    double* right = renderer->GetEnvironmentRight();
+    double front[3];
+    vtkMath::Cross(right, up, front);
+    this->Skybox->SetFloorRight(front[0], front[1], front[2]);
+
+    this->Skybox->SetTexture(texture);
+    this->Skybox->SetVisibility(1);
+    renderer->SetEnvironmentTexture(texture);
+  }
+  else
+  {
+    this->Skybox->SetVisibility(0);
+    renderer->SetEnvironmentTexture(this->EnvironmentalBGTexture);
+  }
 }
 
 //----------------------------------------------------------------------------
 void vtkPVRenderView::SetBackgroundTexture(vtkTexture* texture)
 {
   this->GetRenderer()->SetBackgroundTexture(texture);
-  this->UpdateSkybox();
-}
-
-//----------------------------------------------------------------------------
-void vtkPVRenderView::SetGradientBackground(int val)
-{
-  this->GetRenderer()->SetGradientBackground(val ? true : false);
-}
-
-//----------------------------------------------------------------------------
-void vtkPVRenderView::SetTexturedBackground(int val)
-{
-  this->GetRenderer()->SetTexturedBackground(val ? true : false);
-}
-
-//----------------------------------------------------------------------------
-void vtkPVRenderView::SetSkyboxBackground(int val)
-{
-  this->NeedSkybox = val != 0;
-  this->UpdateSkybox();
-}
-
-//----------------------------------------------------------------------------
-void vtkPVRenderView::UpdateSkybox()
-{
-  // remove existing skybox
-  this->GetRenderer()->RemoveActor(this->Skybox);
-
-  vtkTexture* texture = this->GetRenderer()->GetBackgroundTexture();
-
-  if (this->NeedSkybox && texture != nullptr)
-  {
-    this->ConfigureTexture(texture);
-
-    this->Skybox->GammaCorrectOn();
-    this->Skybox->SetProjection(vtkSkybox::Sphere);
-    this->Skybox->SetFloorRight(0.0, 0.0, 1.0);
-    this->Skybox->SetTexture(texture);
-
-    this->GetRenderer()->AddActor(this->Skybox);
-
-    this->GetRenderer()->SetEnvironmentTexture(texture);
-  }
-  else
-  {
-    this->GetRenderer()->SetEnvironmentTexture(nullptr);
-  }
 }
 
 //----------------------------------------------------------------------------
@@ -2627,17 +2698,12 @@ void vtkPVRenderView::ConfigureTexture(vtkTexture* texture)
 }
 
 //----------------------------------------------------------------------------
-void vtkPVRenderView::SetUseEnvironmentLighting(bool val)
-{
-  this->GetRenderer()->SetUseImageBasedLighting(val);
-}
-
-//----------------------------------------------------------------------------
 void vtkPVRenderView::SetBackgroundMode(int val)
 {
 #if VTK_MODULE_ENABLE_VTK_RenderingRayTracing
   vtkRenderer* ren = this->GetRenderer();
-  vtkOSPRayRendererNode::SetBackgroundMode(val, ren);
+  vtkOSPRayRendererNode::SetBackgroundMode(
+    static_cast<vtkOSPRayRendererNode::BackgroundMode>(val), ren);
 #else
   (void)val;
 #endif
@@ -2658,7 +2724,7 @@ void vtkPVRenderView::SetEnvironmentalBG2(double r, double g, double b)
 void vtkPVRenderView::SetEnvironmentalBGTexture(vtkTexture* texture)
 {
   this->ConfigureTexture(texture);
-  this->GetRenderer()->SetEnvironmentTexture(texture);
+  this->EnvironmentalBGTexture = texture;
 }
 
 //----------------------------------------------------------------------------
@@ -2670,7 +2736,7 @@ void vtkPVRenderView::SetGradientEnvironmentalBG(int val)
 //----------------------------------------------------------------------------
 void vtkPVRenderView::SetTexturedEnvironmentalBG(int val)
 {
-  this->GetRenderer()->SetUseImageBasedLighting(val ? true : false);
+  this->UseTexturedEnvironmentalBG = (val ? true : false);
 }
 
 //*****************************************************************
@@ -2882,7 +2948,8 @@ void vtkPVRenderView::SetCameraManipulators(vtkPVInteractorStyle* style, const i
     ROLL = 3,
     ROTATE = 4,
     MULTI_ROTATE = 5,
-    ZOOM_TO_MOUSE = 6
+    ZOOM_TO_MOUSE = 6,
+    SKYBOX_ROTATE = 7
   };
 
   for (int manip = NONE; manip <= CTRL; manip++)
@@ -2910,6 +2977,9 @@ void vtkPVRenderView::SetCameraManipulators(vtkPVInteractorStyle* style, const i
           break;
         case ZOOM_TO_MOUSE:
           cameraManipulator = vtkSmartPointer<vtkPVTrackballZoomToMouse>::New();
+          break;
+        case SKYBOX_ROTATE:
+          cameraManipulator = vtkSmartPointer<vtkPVTrackballEnvironmentRotate>::New();
           break;
       }
       if (cameraManipulator)
@@ -2995,199 +3065,121 @@ void vtkPVRenderView::BuildAnnotationText(ostream& str)
 }
 
 //----------------------------------------------------------------------------
-void vtkPVRenderView::SetDrawCells(bool choice)
+bool vtkPVRenderView::BeginValuePassForRendering(
+  int fieldAssociation, const char* arrayName, int component)
 {
-  bool mod = false;
-  if (choice)
+  // TODO: validate session configuration is supported.
+  auto& internals = (*this->Internals);
+  if (internals.ValuePassState)
   {
-    if (this->Internals->FieldAssociation != VTK_SCALAR_MODE_USE_CELL_FIELD_DATA)
-    {
-      this->Internals->FieldAssociation = VTK_SCALAR_MODE_USE_CELL_FIELD_DATA;
-      mod = true;
-    }
-  }
-  else
-  {
-    if (this->Internals->FieldAssociation != VTK_SCALAR_MODE_USE_POINT_FIELD_DATA)
-    {
-      this->Internals->FieldAssociation = VTK_SCALAR_MODE_USE_POINT_FIELD_DATA;
-      mod = true;
-    }
+    vtkErrorMacro("Nested call to 'BeginValuePassForRendering'!");
+    return false;
   }
 
-  if (mod)
+  if (!arrayName)
   {
-    if (this->Internals->FieldNameSet)
-    {
-      this->Internals->ValuePasses->SetInputArrayToProcess(
-        this->Internals->FieldAssociation, this->Internals->FieldName.c_str());
-    }
-    else
-    {
-      this->Internals->ValuePasses->SetInputArrayToProcess(
-        this->Internals->FieldAssociation, this->Internals->FieldAttributeType);
-    }
-    this->Modified();
-  }
-}
-
-// ----------------------------------------------------------------------------
-void vtkPVRenderView::SetArrayNameToDraw(const char* name)
-{
-  if (!this->Internals->FieldNameSet || (this->Internals->FieldName != name))
-  {
-    this->Internals->FieldName = name;
-    this->Internals->FieldNameSet = true;
-    this->Internals->ValuePasses->SetInputArrayToProcess(
-      this->Internals->FieldAssociation, this->Internals->FieldName.c_str());
-    this->Modified();
-  }
-}
-
-// ----------------------------------------------------------------------------
-void vtkPVRenderView::SetArrayNumberToDraw(int fieldAttributeType)
-{
-  if (this->Internals->FieldNameSet || (this->Internals->FieldAttributeType != fieldAttributeType))
-  {
-    this->Internals->FieldAttributeType = fieldAttributeType;
-    this->Internals->FieldNameSet = false;
-    this->Internals->ValuePasses->SetInputArrayToProcess(
-      this->Internals->FieldAssociation, this->Internals->FieldAttributeType);
-    this->Modified();
-  }
-}
-
-// ----------------------------------------------------------------------------
-void vtkPVRenderView::SetValueRenderingModeCommand(int vtkNotUsed(mode))
-{
-  // The VTK level INVERTIBLE_LUT mode is deprecated, this method will be
-  // removed shortly.
-
-  // Fixes issue with the background (black) when coming back from
-  // FLOATING_POINT mode. FLOATING_POINT mode is only supported in BATCH
-  // mode and single process CLIENT.
-  if (this->GetUseDistributedRenderingForRender() &&
-    vtkProcessModule::GetProcessType() == vtkProcessModule::PROCESS_CLIENT)
-  {
-    vtkWarningMacro("vtkValuePass::FLOATING_POINT mode is only supported in BATCH"
-                    " mode. The result is only available in the root node.");
-    return;
+    vtkErrorMacro("'arrayName' cannot be nullptr!");
+    return false;
   }
 
-  // Rendering mode can only be changed while capturing. TODO while in client
-  // mode?
-  if (!this->Internals->IsInCapture)
+  // in our infinite wisdom, we choose to use a different field association flag
+  // for vtkValuePass, so handle it.
+  int valuePassAssociation = 0;
+  switch (fieldAssociation)
   {
-    return;
+    case vtkDataObject::CELL:
+      valuePassAssociation = VTK_SCALAR_MODE_USE_CELL_FIELD_DATA;
+      break;
+
+    case vtkDataObject::POINT:
+      valuePassAssociation = VTK_SCALAR_MODE_USE_POINT_FIELD_DATA;
+      break;
+    default:
+      vtkErrorMacro("Field association currently not supported: "
+        << vtkDataObject::GetAssociationTypeAsString(fieldAssociation));
+      return false;
   }
+
+  internals.ValuePasses->SetInputArrayToProcess(valuePassAssociation, arrayName);
+  internals.ValuePasses->SetInputComponentToProcess(component);
+
+  // hide various annotations since they interfere with value pass;
+  // preserve state so we can store it.
+  internals.ValuePassState.reset(new ValuePassStateT());
+  internals.ValuePassState->OrientationAxesVisibility = this->OrientationWidget->GetVisibility();
+  internals.ValuePassState->CenterAxesVisibility = (this->CenterAxes->GetVisibility() != 0);
+  internals.ValuePassState->AnnotationVisibility = this->ShowAnnotation;
+  this->SetOrientationAxesVisibility(false);
+  this->SetCenterAxesVisibility(false);
+  this->SetShowAnnotation(false);
+
+  // now change the active pass.
+  internals.SavedRenderPass = this->SynchronizedRenderers->GetRenderPass();
+  this->SynchronizedRenderers->SetRenderPass(internals.ValuePasses);
 
 #if VTK_MODULE_ENABLE_ParaView_icet
+  // Let the IceTPass know FLOATING_POINT is already enabled.
   IceTPassEnableFloatPass(true, this->SynchronizedRenderers);
 #endif
-  // deprecated - this->Internals->ValuePasses->SetRenderingMode(mode);
 
-  this->Modified();
-}
-
-//-----------------------------------------------------------------------------
-int vtkPVRenderView::GetValueRenderingModeCommand()
-{
-  return vtkValuePass::FLOATING_POINT;
-}
-
-// ----------------------------------------------------------------------------
-void vtkPVRenderView::SetArrayComponentToDraw(int comp)
-{
-  if (this->Internals->Component != comp)
-  {
-    this->Internals->Component = comp;
-    this->Internals->ValuePasses->SetInputComponentToProcess(comp);
-    this->Modified();
-  }
-}
-
-// ----------------------------------------------------------------------------
-void vtkPVRenderView::SetScalarRange(double min, double max)
-{
-  if (this->Internals->ScalarRange[0] != min || this->Internals->ScalarRange[1] != max)
-  {
-    this->Internals->ScalarRange[0] = min;
-    this->Internals->ScalarRange[1] = max;
-    // deprecated - this->Internals->ValuePasses->SetScalarRange(min, max);
-    this->Modified();
-  }
+  return true;
 }
 
 //----------------------------------------------------------------------------
-void vtkPVRenderView::BeginValueCapture()
+void vtkPVRenderView::EndValuePassForRendering()
 {
-  if (!this->Internals->IsInCapture)
+  auto& internals = (*this->Internals);
+  if (!internals.ValuePassState)
   {
-#if VTK_MODULE_ENABLE_ParaView_icet
-    // Let the IceTPass know FLOATING_POINT is already enabled.
-    IceTPassEnableFloatPass(true, this->SynchronizedRenderers);
-#endif
-
-    this->Internals->SavedRenderPass = this->SynchronizedRenderers->GetRenderPass();
-    this->Internals->SavedOrientationState = (this->OrientationWidget->GetEnabled() != 0);
-    this->Internals->SavedAnnotationState = this->ShowAnnotation;
-    this->SetOrientationAxesVisibility(false);
-    this->SetShowAnnotation(false);
-    this->Internals->IsInCapture = true;
+    return;
   }
 
-  if (this->Internals->FieldNameSet)
-  {
-    this->Internals->ValuePasses->SetInputArrayToProcess(
-      this->Internals->FieldAssociation, this->Internals->FieldName.c_str());
-  }
-  else
-  {
-    this->Internals->ValuePasses->SetInputArrayToProcess(
-      this->Internals->FieldAssociation, this->Internals->FieldAttributeType);
-  }
-
-  this->SynchronizedRenderers->SetRenderPass(this->Internals->ValuePasses.GetPointer());
-}
-
-//----------------------------------------------------------------------------
-void vtkPVRenderView::EndValueCapture()
-{
 #if VTK_MODULE_ENABLE_ParaView_icet
   // Let the IceTPass know vtkValuePass will be removed.
   IceTPassEnableFloatPass(false, this->SynchronizedRenderers);
 #endif
 
-  this->Internals->IsInCapture = false;
-  this->SynchronizedRenderers->SetRenderPass(this->Internals->SavedRenderPass);
-  this->Internals->SavedRenderPass = NULL;
-  this->SetOrientationAxesVisibility(this->Internals->SavedOrientationState);
-  this->SetShowAnnotation(this->Internals->SavedAnnotationState);
+  // restore render pass
+  this->SynchronizedRenderers->SetRenderPass(internals.SavedRenderPass);
+  internals.SavedRenderPass = nullptr;
+
+  // restore annotation state
+  this->SetOrientationAxesVisibility(internals.ValuePassState->OrientationAxesVisibility);
+  this->SetCenterAxesVisibility(internals.ValuePassState->CenterAxesVisibility);
+  this->SetShowAnnotation(internals.ValuePassState->AnnotationVisibility);
+  internals.ValuePassState.reset();
 }
 
 //----------------------------------------------------------------------------
-void vtkPVRenderView::StartCaptureLuminance()
+vtkSmartPointer<vtkFloatArray> vtkPVRenderView::GrabValuePassResult()
 {
-  if (!this->Internals->IsInCapture)
+  auto& internals = (*this->Internals);
+  if (!internals.ValuePassState)
   {
-    this->Internals->SavedRenderPass = this->SynchronizedRenderers->GetRenderPass();
-    this->Internals->SavedOrientationState = (this->OrientationWidget->GetEnabled() != 0);
-    this->Internals->SavedAnnotationState = this->ShowAnnotation;
-    this->SetOrientationAxesVisibility(false);
-    this->SetShowAnnotation(false);
-    this->Internals->IsInCapture = true;
+    return nullptr;
   }
-  this->SynchronizedRenderers->SetRenderPass(this->Internals->LightingMapPass.GetPointer());
-}
 
-//----------------------------------------------------------------------------
-void vtkPVRenderView::StopCaptureLuminance()
-{
-  this->Internals->IsInCapture = false;
-  this->SynchronizedRenderers->SetRenderPass(this->Internals->SavedRenderPass);
-  this->Internals->SavedRenderPass = NULL;
-  this->SetOrientationAxesVisibility(this->Internals->SavedOrientationState);
-  this->SetShowAnnotation(this->Internals->SavedAnnotationState);
+  auto originalValues = internals.ValuePasses->GetFloatImageDataArray(this->GetRenderer());
+  if (!originalValues)
+  {
+    return nullptr;
+  }
+
+  // originalValues may be 1 component or 4 component. When using IceT, they are
+  // 4 component since IceT requires RGBF values. All components are identical,
+  // so we can only care about the 1st component.
+  if (originalValues->GetNumberOfComponents() == 1)
+  {
+    return originalValues;
+  }
+  else
+  {
+    vtkNew<vtkFloatArray> values;
+    values->SetNumberOfComponents(1);
+    values->SetNumberOfTuples(originalValues->GetNumberOfTuples());
+    values->CopyComponent(0, originalValues, 0);
+    return values;
+  }
 }
 
 //----------------------------------------------------------------------------
@@ -3223,55 +3215,6 @@ void vtkPVRenderView::CaptureZBuffer()
 
 //------------------------------------------------------------------------------
 vtkFloatArray* vtkPVRenderView::GetCapturedZBuffer()
-{
-  return this->Internals->ArrayHolder.GetPointer();
-}
-
-//----------------------------------------------------------------------------
-void vtkPVRenderView::CaptureValuesFloat()
-{
-  vtkFloatArray* values = NULL;
-#if VTK_MODULE_ENABLE_ParaView_icet
-  vtkIceTSynchronizedRenderers* IceTSynchronizedRenderers =
-    vtkIceTSynchronizedRenderers::SafeDownCast(
-      this->SynchronizedRenderers->GetParallelSynchronizer());
-
-  if (IceTSynchronizedRenderers)
-  {
-    vtkIceTCompositePass* iceTPass = IceTSynchronizedRenderers->GetIceTCompositePass();
-    if (iceTPass && iceTPass->GetLastRenderedRGBA32F())
-    {
-      values = iceTPass->GetLastRenderedRGBA32F();
-    }
-  }
-  else
-#endif
-  {
-    if (this->GetUseDistributedRenderingForRender() &&
-      vtkProcessModule::GetProcessType() == vtkProcessModule::PROCESS_CLIENT)
-    {
-      vtkWarningMacro("vtkValuePass::FLOATING_POINT result is only available in the root"
-                      " node.");
-      return;
-    }
-
-    // Non-distributed case
-    values = this->Internals->ValuePasses->GetFloatImageDataArray(this->RenderView->GetRenderer());
-  }
-
-  if (values)
-  {
-    // IceT requires the image format to be RGBA (R32F not supported).
-    // Component 0 is enough from here on so a single component is exposed
-    // (components 1-3 hold the same data).
-    this->Internals->ArrayHolder->SetNumberOfComponents(1);
-    this->Internals->ArrayHolder->SetNumberOfTuples(values->GetNumberOfTuples());
-    this->Internals->ArrayHolder->CopyComponent(0, values, 0);
-  }
-}
-
-//-----------------------------------------------------------------------------
-vtkFloatArray* vtkPVRenderView::GetCapturedValuesFloat()
 {
   return this->Internals->ArrayHolder.GetPointer();
 }
@@ -3482,17 +3425,11 @@ void vtkPVRenderView::SetMaxFrames(int v)
   vtkRenderer* ren = this->GetRenderer();
   vtkOSPRayRendererNode::SetMaxFrames(v, ren);
   static bool warned_once = false;
-  if (!warned_once && v > 1)
+  if (!warned_once && v > 1 && vtkPVView::GetEnableStreaming() == false)
   {
-    vtkPVOptions* options = vtkProcessModule::GetProcessModule()
-      ? vtkProcessModule::GetProcessModule()->GetOptions()
-      : nullptr;
-    if (options && !options->GetEnableStreaming())
-    {
-      vtkWarningMacro(
-        "You must enable streaming in Edit->Settings/Preferences for iterative refinement.");
-      warned_once = true;
-    }
+    vtkWarningMacro(
+      "You must enable streaming in Edit->Settings/Preferences for iterative refinement.");
+    warned_once = true;
   }
 #else
   (void)v;
@@ -3631,7 +3568,7 @@ vtkPVCameraCollection* vtkPVRenderView::GetDiscreteCameras(
   if (!self)
   {
     vtkGenericWarningMacro("Missing VIEW().");
-    return NULL;
+    return nullptr;
   }
 
   return self->DiscreteCameras;

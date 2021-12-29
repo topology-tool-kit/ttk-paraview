@@ -17,7 +17,7 @@
  *
  * Header class that setup every thing in order to use Protobuf messages in
  * a transparent manner
-*/
+ */
 #ifndef vtkSMMessage_h
 #define vtkSMMessage_h
 
@@ -34,6 +34,9 @@
 
 // include 2nd
 #include "vtk_protobuf.h"
+
+// include 3rd
+#include "vtkRemotingServerManagerModule.h" // needed for exports
 
 // include last
 #include "vtkPVMessage.pb.h"

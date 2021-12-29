@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 =========================================================================*/
 
 #include "pqFlatTreeViewEventPlayer.h"
+#include "pqQtDeprecated.h"
 
 #include <QApplication>
 #include <QHeaderView>
@@ -44,10 +45,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /// Converts a string representation of a model index into the real thing
 static QModelIndex OldGetIndex(pqFlatTreeView& View, const QString& Name)
 {
-  QStringList rows = Name.split('/', QString::SkipEmptyParts);
+  QStringList rows = Name.split('/', PV_QT_SKIP_EMPTY_PARTS);
   QString column;
 
-  if (rows.size())
+  if (!rows.empty())
   {
     column = rows.back().split('|').at(1);
     rows.back() = rows.back().split('|').at(0);
@@ -59,7 +60,7 @@ static QModelIndex OldGetIndex(pqFlatTreeView& View, const QString& Name)
     index = View.getModel()->index(rows[i].toInt(), 0, index);
   }
 
-  if (rows.size() > 0)
+  if (!rows.empty())
   {
     index = View.getModel()->index(rows[rows.size() - 1].toInt(), column.toInt(), index);
   }
@@ -69,7 +70,7 @@ static QModelIndex OldGetIndex(pqFlatTreeView& View, const QString& Name)
 
 static QModelIndex GetIndex(pqFlatTreeView* View, const QString& Name)
 {
-  QStringList idxs = Name.split('/', QString::SkipEmptyParts);
+  QStringList idxs = Name.split('/', PV_QT_SKIP_EMPTY_PARTS);
 
   QModelIndex index;
   for (int i = 0; i != idxs.size(); ++i)

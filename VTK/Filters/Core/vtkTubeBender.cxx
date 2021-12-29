@@ -22,7 +22,7 @@
 
 namespace
 {
-static void initRotateAboutLineWXYZQuaternion(
+void initRotateAboutLineWXYZQuaternion(
   const double normalizedLineVector[3], const double theta, double quaternion[4])
 {
   /* w */ quaternion[0] = theta;
@@ -44,7 +44,7 @@ vtkTubeBender::vtkTubeBender()
   this->Radius = 1.0;
 }
 
-vtkTubeBender::~vtkTubeBender() {}
+vtkTubeBender::~vtkTubeBender() = default;
 
 int vtkTubeBender::RequestData(vtkInformation* vtkNotUsed(request),
   vtkInformationVector** inputVector, vtkInformationVector* outputVector)

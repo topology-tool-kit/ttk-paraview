@@ -33,6 +33,7 @@
 #include "vtkObject.h"
 
 class vtkIdList;
+class vtkUnsignedCharArray;
 
 #define VTK_UNCHANGED 0
 #define VTK_SINGLE_POINT 1
@@ -49,8 +50,9 @@ class VTKCOMMONDATAMODEL_EXPORT vtkStructuredData : public vtkObject
 {
 public:
   vtkTypeMacro(vtkStructuredData, vtkObject);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Specify the dimensions of a regular, rectangular dataset. The input is
    * the new dimensions (inDim) and the current dimensions (dim). The function
@@ -60,24 +62,24 @@ public:
    */
   static int SetDimensions(int inDim[3], int dim[3]);
   static int SetExtent(int inExt[6], int ext[6]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Returns the data description given the dimensions (eg. VTK_SINGLE_POINT,
    * VTK_X_LINE, VTK_XY_PLANE etc.)
    */
   static int GetDataDescription(int dims[3]);
   static int GetDataDescriptionFromExtent(int ext[6]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Return the topological dimension of the data (e.g., 0, 1, 2, or 3D).
    */
   static int GetDataDimension(int dataDescription);
   static int GetDataDimension(int ext[6]);
-  //@}
+  ///@}
 
   /**
    * Given the grid extent, this method returns the total number of points
@@ -107,6 +109,17 @@ public:
    */
   static void GetDimensionsFromExtent(
     const int ext[6], int dims[3], int dataDescription = VTK_EMPTY);
+
+  /**
+   * Return non-zero value if specified point is visible.
+   */
+  static bool IsPointVisible(vtkIdType cellId, vtkUnsignedCharArray* ghosts);
+
+  /**
+   * Return non-zero value if specified cell is visible.
+   */
+  static bool IsCellVisible(vtkIdType cellId, int dimensions[3], int dataDescription,
+    vtkUnsignedCharArray* cellGhostArray, vtkUnsignedCharArray* pointGhostArray = nullptr);
 
   /**
    * Returns the cell dimensions, i.e., the number of cells along the i,j,k
@@ -242,7 +255,7 @@ protected:
     return ((static_cast<vtkIdType>(k) * N2 + j) * N1 + i);
   }
 
-  //@{
+  ///@{
   /**
    * Returns the structured coordinates (i,j,k) for the given linear index of
    * a grid with N1 and N2 dimensions along its principal directions.
@@ -257,7 +270,7 @@ protected:
     j = static_cast<int>((idx - k * N12) / N1);
     i = static_cast<int>(idx - k * N12 - j * N1);
   }
-  //@}
+  ///@}
 
   // Want to avoid importing <algorithm> in the header...
   template <typename T>
@@ -432,5 +445,3 @@ inline void vtkStructuredData::ComputePointStructuredCoordsForExtent(
 }
 
 #endif
-
-// VTK-HeaderTest-Exclude: vtkStructuredData.h

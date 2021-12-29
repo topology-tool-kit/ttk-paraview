@@ -50,7 +50,7 @@ void TestClipStructured()
   vtkm::FloatDefault radius(0.5);
 
   vtkm::filter::ClipWithImplicitFunction clip;
-  clip.SetImplicitFunction(vtkm::cont::make_ImplicitFunctionHandle(vtkm::Sphere(center, radius)));
+  clip.SetImplicitFunction(vtkm::Sphere(center, radius));
   clip.SetFieldsToPass("scalars");
 
   vtkm::cont::DataSet outputData = clip.Execute(ds);
@@ -62,9 +62,9 @@ void TestClipStructured()
   VTKM_TEST_ASSERT(outputData.GetNumberOfCells() == 8,
                    "Wrong number of cells in the output dataset");
 
-  vtkm::cont::VariantArrayHandle temp = outputData.GetField("scalars").GetData();
+  vtkm::cont::UnknownArrayHandle temp = outputData.GetField("scalars").GetData();
   vtkm::cont::ArrayHandle<vtkm::Float32> resultArrayHandle;
-  temp.CopyTo(resultArrayHandle);
+  temp.AsArrayHandle(resultArrayHandle);
 
   VTKM_TEST_ASSERT(resultArrayHandle.GetNumberOfValues() == 13,
                    "Wrong number of points in the output dataset");
@@ -87,7 +87,7 @@ void TestClipStructuredInverted()
   vtkm::FloatDefault radius(0.5);
 
   vtkm::filter::ClipWithImplicitFunction clip;
-  clip.SetImplicitFunction(vtkm::cont::make_ImplicitFunctionHandle(vtkm::Sphere(center, radius)));
+  clip.SetImplicitFunction(vtkm::Sphere(center, radius));
   bool invert = true;
   clip.SetInvertClip(invert);
   clip.SetFieldsToPass("scalars");
@@ -98,9 +98,9 @@ void TestClipStructuredInverted()
   VTKM_TEST_ASSERT(outputData.GetNumberOfCells() == 4,
                    "Wrong number of cells in the output dataset");
 
-  vtkm::cont::VariantArrayHandle temp = outputData.GetField("scalars").GetData();
+  vtkm::cont::UnknownArrayHandle temp = outputData.GetField("scalars").GetData();
   vtkm::cont::ArrayHandle<vtkm::Float32> resultArrayHandle;
-  temp.CopyTo(resultArrayHandle);
+  temp.AsArrayHandle(resultArrayHandle);
 
   VTKM_TEST_ASSERT(resultArrayHandle.GetNumberOfValues() == 13,
                    "Wrong number of points in the output dataset");

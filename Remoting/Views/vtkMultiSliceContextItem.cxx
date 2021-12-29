@@ -111,7 +111,7 @@ vtkMultiSliceContextItem::vtkMultiSliceContextItem()
 vtkMultiSliceContextItem::~vtkMultiSliceContextItem()
 {
   delete this->Internal;
-  this->Internal = NULL;
+  this->Internal = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -185,7 +185,7 @@ bool vtkMultiSliceContextItem::Paint(vtkContext2D* painter)
   axis->Update();
 
   // Draw the slices positions
-  if (this->Internal->Slices.size() > 0)
+  if (!this->Internal->Slices.empty())
   {
     // Fill the triangles
     vtkNew<vtkBrush> brush;
@@ -419,7 +419,7 @@ const double* vtkMultiSliceContextItem::GetVisibleSlices(int& nbSlices) const
 const double* vtkMultiSliceContextItem::GetSlices(int& nbSlices) const
 {
   nbSlices = static_cast<int>(this->Internal->Slices.size());
-  return nbSlices > 0 ? (&this->Internal->Slices[0]) : NULL;
+  return nbSlices > 0 ? (&this->Internal->Slices[0]) : nullptr;
 }
 
 //-----------------------------------------------------------------------------

@@ -4,17 +4,15 @@ include(CMakeBasics)
 include(BasicTypeChecks)
 include("cmake/BitwidthMapping.cmake")
 
-configure_file(conduit_config.h.in conduit_config.h)
-configure_file(conduit_bitwidth_style_types.h.in conduit_bitwidth_style_types.h)
-configure_file(conduit_exports.h.in conduit_exports.h)
+configure_file ("${CMAKE_CURRENT_SOURCE_DIR}/conduit_config.h.in"
+                "${CMAKE_CURRENT_BINARY_DIR}/conduit_config.h")
 
+configure_file ("${CMAKE_CURRENT_SOURCE_DIR}/conduit_bitwidth_style_types.h.in"
+                "${CMAKE_CURRENT_BINARY_DIR}/conduit_bitwidth_style_types.h")
 
-set(conduit_core_headers
-    conduit_endianness_types.h
-    ${CMAKE_CURRENT_BINARY_DIR}/conduit_exports.h
-    ${CMAKE_CURRENT_BINARY_DIR}/conduit_config.h
-    ${CMAKE_CURRENT_BINARY_DIR}/conduit_bitwidth_style_types.h
-  )
+configure_file ("${CMAKE_CURRENT_SOURCE_DIR}/conduit_exports.h.in"
+                "${CMAKE_CURRENT_BINARY_DIR}/conduit_exports.h")
+
 #
 # Specify conduit cpp headers
 #
@@ -31,6 +29,7 @@ set(conduit_headers
     conduit_schema.hpp
     conduit_log.hpp
     conduit_utils.hpp
+    conduit_config.hpp
     )
 
 #
@@ -38,11 +37,18 @@ set(conduit_headers
 #
 set(conduit_c_headers
     c/conduit.h
+    c/conduit_c_exports.h
     c/conduit_datatype.h
     c/conduit_node.h
     c/conduit_cpp_to_c.hpp
     c/conduit_utils.h
     c/catalyst_conduit_mangle.h
+
+    # Not in the `/c/` directory, but needed transitively.
+    ${CMAKE_CURRENT_BINARY_DIR}/conduit_bitwidth_style_types.h
+    ${CMAKE_CURRENT_BINARY_DIR}/conduit_config.h
+    ${CMAKE_CURRENT_BINARY_DIR}/conduit_exports.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/conduit_endianness_types.h
     )
 
 #
@@ -84,23 +90,29 @@ target_include_directories(conduit_headers
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/c>
     $<INSTALL_INTERFACE:${CATALYST_INSTALL_INCLUDE_DIR}>)
 c_install_headers(
-  HEADERS ${conduit_core_headers}
-          ${conduit_headers}
-          ${conduit_c_headers})
+  HEADERS ${conduit_c_headers})
 c_install_targets(conduit_headers)
 
 #-------------------------------------------------------------------------
 # build conduit library
-add_library(conduit STATIC
+add_library(conduit OBJECT
     ${conduit_sources}
     ${conduit_c_sources})
+target_include_directories(conduit
+  PRIVATE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
 target_link_libraries(conduit
   PUBLIC
-    catalyst::core
     catalyst::conduit_headers
   PRIVATE
-    libyaml
-    b64
-    rapidjson)
+    conduit_fmt
+    conduit_libyaml
+    conduit_b64
+    conduit_rapidjson)
+if (BUILD_SHARED_LIBS)
+  target_compile_definitions(conduit
+    PRIVATE
+      conduit_c_EXPORTS)
+endif ()
 add_library(catalyst::conduit ALIAS conduit)
 c_install_targets(conduit)

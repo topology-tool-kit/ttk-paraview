@@ -108,7 +108,8 @@ const char* vtkSMCameraLink::vtkInternals::LinkedPropertyNames[] = {
   "CameraFocalPointInfo", "CameraFocalPoint", "CameraViewUpInfo", "CameraViewUp",
   "CenterOfRotation", "CenterOfRotation", "CameraParallelScaleInfo", "CameraParallelScale",
   "RotationFactor", "RotationFactor", "CameraParallelProjection", "CameraParallelProjection",
-  "CameraFocalDisk", "CameraFocalDiskInfo", "CameraFocalDistance", "CameraFocalDistanceInfo", 0
+  "CameraFocalDisk", "CameraFocalDiskInfo", "CameraFocalDistance", "CameraFocalDistanceInfo",
+  nullptr
 };
 
 //---------------------------------------------------------------------------
@@ -176,7 +177,7 @@ void vtkSMCameraLink::PropertyModified(vtkSMProxy* fromProxy, const char* pname)
 //---------------------------------------------------------------------------
 void vtkSMCameraLink::UpdateVTKObjects(vtkSMProxy* vtkNotUsed(fromProxy))
 {
-  return; // do nothing
+  // do nothing
 }
 
 //---------------------------------------------------------------------------

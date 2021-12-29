@@ -20,7 +20,7 @@
  * Every proxy defined in the server manager XML can have documentation
  * associated with it. This class provides access to the various types
  * of documentation text for every proxy.
-*/
+ */
 
 #ifndef vtkSMDocumentation_h
 #define vtkSMDocumentation_h
@@ -38,12 +38,12 @@ public:
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /**
-   * Returns the text for long help, if any. NULL otherwise.
+   * Returns the text for long help, if any. nullptr otherwise.
    */
   const char* GetLongHelp();
 
   /**
-   * Returns the text for short help, if any. NULL otherwise.
+   * Returns the text for short help, if any. nullptr otherwise.
    */
   const char* GetShortHelp();
 

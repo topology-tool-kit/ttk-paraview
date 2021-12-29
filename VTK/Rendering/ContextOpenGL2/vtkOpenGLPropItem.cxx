@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkOpenGLPropItem.h
+  Module:    vtkOpenGLPropItem.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -26,6 +26,11 @@
 #include "vtkTransform.h"
 
 vtkStandardNewMacro(vtkOpenGLPropItem);
+
+void vtkOpenGLPropItem::PrintSelf(ostream& os, vtkIndent indent)
+{
+  this->Superclass::PrintSelf(os, indent);
+}
 
 vtkOpenGLPropItem::vtkOpenGLPropItem() = default;
 

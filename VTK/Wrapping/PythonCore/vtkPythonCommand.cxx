@@ -112,7 +112,7 @@ void vtkPythonCommand::Execute(vtkObject* ptr, unsigned long eventtype, void* ca
     obj2 = Py_None;
   }
 
-  const char* eventname = this->GetStringFromEventId(eventtype);
+  const char* eventname = vtkPythonCommand::GetStringFromEventId(eventtype);
 
   // extension by Charl P. Botha so that callData is available from Python:
   // * callData used to be ignored completely: this is not entirely desirable,
@@ -234,7 +234,7 @@ void vtkPythonCommand::Execute(vtkObject* ptr, unsigned long eventtype, void* ca
     arglist = Py_BuildValue("(Ns)", obj2, eventname);
   }
 
-  PyObject* result = PyEval_CallObject(this->obj, arglist);
+  PyObject* result = PyObject_Call(this->obj, arglist, nullptr);
   Py_DECREF(arglist);
 
   if (result)

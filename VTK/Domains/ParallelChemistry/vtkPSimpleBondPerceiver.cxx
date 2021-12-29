@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    $RCSfile: vtkYoungsMaterialInterfaceCEA.h,v $
+  Module:    vtkPSimpleBondPerceiver.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -29,6 +29,12 @@
 #include "vtkUnsignedCharArray.h"
 
 vtkStandardNewMacro(vtkPSimpleBondPerceiver);
+
+//------------------------------------------------------------------------------
+void vtkPSimpleBondPerceiver::PrintSelf(ostream& os, vtkIndent indent)
+{
+  this->Superclass::PrintSelf(os, indent);
+}
 
 //------------------------------------------------------------------------------
 static inline bool InBounds(const double* bounds, const double* p)

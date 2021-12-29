@@ -48,11 +48,11 @@ namespace vtkSMSaveAnimationProxyNS
 class Friendship
 {
 public:
-  static std::pair<vtkSmartPointer<vtkImageData>, vtkSmartPointer<vtkImageData> > Grab(
+  static std::pair<vtkSmartPointer<vtkImageData>, vtkSmartPointer<vtkImageData>> Grab(
     vtkSMSaveAnimationProxy* proxy)
   {
     return proxy ? proxy->CapturePreppedImages()
-                 : std::pair<vtkSmartPointer<vtkImageData>, vtkSmartPointer<vtkImageData> >();
+                 : std::pair<vtkSmartPointer<vtkImageData>, vtkSmartPointer<vtkImageData>>();
   }
 
   static std::string GetStereoFileName(
@@ -75,8 +75,8 @@ public:
   void SetHelper(vtkSMSaveAnimationProxy* helper) { this->Helper = helper; }
 
 protected:
-  SceneImageWriter() {}
-  ~SceneImageWriter() {}
+  SceneImageWriter() = default;
+  ~SceneImageWriter() override = default;
   bool SaveInitialize(int vtkNotUsed(startCount)) override
   {
     // Animation scene call render on each tick. We override that render call
@@ -140,7 +140,7 @@ protected:
     : Started(false)
   {
   }
-  ~SceneImageWriterMovie() {}
+  ~SceneImageWriterMovie() override = default;
 
   bool SaveInitialize(int startCount) override
   {
@@ -229,7 +229,7 @@ protected:
     , SuffixFormat(nullptr)
   {
   }
-  ~SceneImageWriterImageSeries() { this->SetSuffixFormat(nullptr); }
+  ~SceneImageWriterImageSeries() override { this->SetSuffixFormat(nullptr); }
 
   bool SaveInitialize(int startCount) override
   {
@@ -291,43 +291,58 @@ vtkStandardNewMacro(SceneImageWriterImageSeries);
 
 vtkStandardNewMacro(vtkSMSaveAnimationProxy);
 //----------------------------------------------------------------------------
-vtkSMSaveAnimationProxy::vtkSMSaveAnimationProxy()
-{
-}
+vtkSMSaveAnimationProxy::vtkSMSaveAnimationProxy() = default;
 
 //----------------------------------------------------------------------------
-vtkSMSaveAnimationProxy::~vtkSMSaveAnimationProxy()
-{
-}
+vtkSMSaveAnimationProxy::~vtkSMSaveAnimationProxy() = default;
 
 //----------------------------------------------------------------------------
 bool vtkSMSaveAnimationProxy::EnforceSizeRestrictions(const char* filename)
 {
   std::string ext = vtksys::SystemTools::GetFilenameLastExtension(filename ? filename : "");
-  if (vtksys::SystemTools::LowerCase(ext) == ".avi")
+  ext = vtksys::SystemTools::LowerCase(ext);
+  int widthMultiple = 1;
+  int heightMultiple = 1;
+  if (ext == ".avi")
   {
-    vtkVector2i newsize;
-    vtkSMPropertyHelper(this, "ImageResolution").Get(newsize.GetData(), 2);
+    widthMultiple = 4;
+    heightMultiple = 4;
+  }
+  else if (ext == ".mp4")
+  {
+    widthMultiple = 2;
+    heightMultiple = 2;
+  }
 
-    const vtkVector2i size(newsize);
-    if (newsize[0] % 4 != 0)
-    {
-      newsize[0] -= (newsize[0] % 4);
-    }
-    if (newsize[1] % 4 != 0)
-    {
-      newsize[1] -= (newsize[1] % 4);
-    }
+  vtkVector2i newsize;
+  vtkSMPropertyHelper(this, "ImageResolution").Get(newsize.GetData(), 2);
+  const vtkVector2i size(newsize);
 
-    if (newsize != size)
+  if (widthMultiple != 1)
+  {
+    if (newsize[0] % widthMultiple != 0)
     {
-      vtkWarningMacro("The requested resolution '("
-        << size[0] << ", " << size[1] << ")' has been changed to '(" << newsize[0] << ", "
-        << newsize[1] << ")' to match format specification.");
-      vtkSMPropertyHelper(this, "ImageResolution").Set(newsize.GetData(), 2);
-      return true; // size changed.
+      newsize[0] -= (newsize[0] % widthMultiple);
     }
   }
+
+  if (heightMultiple != 1)
+  {
+    if (newsize[1] % heightMultiple != 0)
+    {
+      newsize[1] -= (newsize[1] % heightMultiple);
+    }
+  }
+
+  if (newsize != size)
+  {
+    vtkWarningMacro("The requested resolution '("
+      << size[0] << ", " << size[1] << ")' has been changed to '(" << newsize[0] << ", "
+      << newsize[1] << ")' to match format specification.");
+    vtkSMPropertyHelper(this, "ImageResolution").Set(newsize.GetData(), 2);
+    return true; // size changed.
+  }
+
   // nothing  changed.
   return false;
 }
@@ -339,8 +354,8 @@ bool vtkSMSaveAnimationProxy::WriteAnimation(const char* filename)
   vtkSMViewProxy* view = this->GetView();
 
   // view and layout are mutually exclusive.
-  assert(layout == NULL || view == NULL);
-  if (layout == NULL && view == NULL)
+  assert(layout == nullptr || view == nullptr);
+  if (layout == nullptr && view == nullptr)
   {
     vtkErrorMacro("Cannot WriteImage without a view or layout.");
     return false;
@@ -350,10 +365,12 @@ bool vtkSMSaveAnimationProxy::WriteAnimation(const char* filename)
   this->EnforceSizeRestrictions(filename);
 
   SM_SCOPED_TRACE(SaveLayoutSizes)
-    .arg("proxy", view != NULL ? static_cast<vtkSMProxy*>(view) : static_cast<vtkSMProxy*>(layout));
+    .arg(
+      "proxy", view != nullptr ? static_cast<vtkSMProxy*>(view) : static_cast<vtkSMProxy*>(layout));
 
   SM_SCOPED_TRACE(SaveCameras)
-    .arg("proxy", view != NULL ? static_cast<vtkSMProxy*>(view) : static_cast<vtkSMProxy*>(layout));
+    .arg(
+      "proxy", view != nullptr ? static_cast<vtkSMProxy*>(view) : static_cast<vtkSMProxy*>(layout));
 
   SM_SCOPED_TRACE(SaveScreenshotOrAnimation)
     .arg("helper", this)
@@ -497,7 +514,7 @@ vtkSMViewLayoutProxy* vtkSMSaveAnimationProxy::GetLayout()
   {
     return vtkSMViewLayoutProxy::SafeDownCast(vtkSMPropertyHelper(this, "Layout").GetAsProxy());
   }
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -507,7 +524,7 @@ vtkSMViewProxy* vtkSMSaveAnimationProxy::GetView()
   {
     return vtkSMViewProxy::SafeDownCast(vtkSMPropertyHelper(this, "View").GetAsProxy());
   }
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------

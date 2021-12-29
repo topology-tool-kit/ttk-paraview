@@ -42,12 +42,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqServerResource.h"
 #include "pqSettings.h"
 #include "vtkCommand.h"
-#include "vtkMath.h"
+#include "vtkMinimalStandardRandomSequence.h"
 #include "vtkNetworkAccessManager.h"
 #include "vtkPVConfig.h"
-#include "vtkPVOptions.h"
 #include "vtkPVXMLElement.h"
 #include "vtkProcessModule.h"
+#include "vtkRemotingCoreConfiguration.h"
 #include "vtkTimerLog.h"
 
 #include <QCheckBox>
@@ -70,7 +70,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cassert>
 
 //----------------------------------------------------------------------------
-const QMetaObject* pqServerLauncher::DefaultServerLauncherType = NULL;
+const QMetaObject* pqServerLauncher::DefaultServerLauncherType = nullptr;
 const QMetaObject* pqServerLauncher::setServerDefaultLauncherType(const QMetaObject* other)
 {
   const QMetaObject* old = pqServerLauncher::DefaultServerLauncherType;
@@ -112,7 +112,7 @@ public:
   QWidget* Widget;
   bool ToSave;
   pqWidget()
-    : Widget(NULL)
+    : Widget(nullptr)
     , ToSave(false)
   {
   }
@@ -122,15 +122,15 @@ public:
     , ToSave(false)
   {
   }
-  ~pqWidget() override {}
+  ~pqWidget() override = default;
 
   virtual QVariant get() const
   {
-    return this->Widget->property(this->PropertyName.toLocal8Bit().data());
+    return this->Widget->property(this->PropertyName.toUtf8().data());
   }
   virtual void set(const QVariant& value)
   {
-    this->Widget->setProperty(this->PropertyName.toLocal8Bit().data(), value);
+    this->Widget->setProperty(this->PropertyName.toUtf8().data(), value);
   }
 
 private:
@@ -228,6 +228,8 @@ QProcessEnvironment getDefaultEnvironment(const pqServerConfiguration& configura
   options.insert("PV_CLIENT_PLATFORM", "Unknown");
 #endif
 
+  options.insert("PV_APPLICATION_DIR", QCoreApplication::applicationDirPath());
+  options.insert("PV_APPLICATION_NAME", QCoreApplication::applicationName());
   return options;
 }
 
@@ -239,7 +241,7 @@ bool createWidgets(QMap<QString, pqWidget*>& widgets, QDialog& dialog,
   const pqServerConfiguration& configuration, QProcessEnvironment& options)
 {
   vtkPVXMLElement* optionsXML = configuration.optionsXML();
-  assert(optionsXML != NULL);
+  assert(optionsXML != nullptr);
 
   QFormLayout* formLayout = new QFormLayout();
   dialog.setLayout(formLayout);
@@ -251,7 +253,7 @@ bool createWidgets(QMap<QString, pqWidget*>& widgets, QDialog& dialog,
   for (unsigned int cc = 0; cc < optionsXML->GetNumberOfNestedElements(); cc++)
   {
     vtkPVXMLElement* node = optionsXML->GetNestedElement(cc);
-    if (node->GetName() == NULL)
+    if (node->GetName() == nullptr)
     {
       continue;
     }
@@ -263,7 +265,7 @@ bool createWidgets(QMap<QString, pqWidget*>& widgets, QDialog& dialog,
     else if (strcmp(node->GetName(), "Option") == 0)
     {
       vtkPVXMLElement* typeNode = node->GetNestedElement(0);
-      if (typeNode == NULL || typeNode->GetName() == NULL)
+      if (typeNode == nullptr || typeNode->GetName() == nullptr)
       {
         continue;
       }
@@ -303,8 +305,9 @@ bool createWidgets(QMap<QString, pqWidget*>& widgets, QDialog& dialog,
         {
           rseed += tc[ic];
         }
-        vtkMath::RandomSeed(rseed);
-        noise = vtkMath::Random();
+        vtkNew<vtkMinimalStandardRandomSequence> rand;
+        rand->Initialize(rseed);
+        noise = rand->GetValue();
       }
 
       // obtain default value from settings if available.
@@ -318,7 +321,7 @@ bool createWidgets(QMap<QString, pqWidget*>& widgets, QDialog& dialog,
         QString min = typeNode->GetAttributeOrDefault("min", "0");
         QString max = typeNode->GetAttributeOrDefault("max", "99999999999");
         QString step = typeNode->GetAttributeOrDefault("step", "1");
-        QWidget* widget = NULL;
+        QWidget* widget = nullptr;
         if (strcmp(typeNode->GetAttributeOrDefault("type", "int"), "int") == 0)
         {
           widget = new QSpinBox(&dialog);
@@ -373,8 +376,7 @@ bool createWidgets(QMap<QString, pqWidget*>& widgets, QDialog& dialog,
           if (QString(child->GetName()) == "Entry")
           {
             QString xml_value = child->GetAttribute("value");
-            QString xml_label =
-              child->GetAttributeOrDefault("label", xml_value.toLocal8Bit().data());
+            QString xml_label = child->GetAttributeOrDefault("label", xml_value.toUtf8().data());
             widget->addItem(xml_label, xml_value);
           }
         }
@@ -511,9 +513,8 @@ void handleSwitchCases(const pqServerConfiguration& configuration, QProcessEnvir
     }
     if (!handled)
     {
-      qWarning() << "Case '" << value << "' not handled in 'Switch' for variable "
-                                         "'"
-                 << variable << "'";
+      qWarning() << "Case '" << value << "' not handled in 'Switch' for variable '" << variable
+                 << "'";
     }
   }
 }
@@ -543,7 +544,7 @@ pqServerLauncher::pqServerLauncher(
 pqServerLauncher::~pqServerLauncher()
 {
   delete this->Internals;
-  this->Internals = NULL;
+  this->Internals = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -591,12 +592,12 @@ bool pqServerLauncher::connectToServer()
 
   vtkProcessModule* pm = vtkProcessModule::GetProcessModule();
   vtkNetworkAccessManager* nam = pm->GetNetworkAccessManager();
-  vtkPVOptions* options = pm->GetOptions();
+  vtkRemotingCoreConfiguration* config = vtkRemotingCoreConfiguration::GetInstance();
   QDialog dialog(pqCoreUtilities::mainWidget(), Qt::WindowStaysOnTopHint);
   Ui::pqConnectIdDialog ui;
   ui.setupUi(&dialog);
   ui.connectId->setMaximum(VTK_INT_MAX);
-  ui.connectId->setValue(options->GetConnectID());
+  ui.connectId->setValue(config->GetConnectID());
 
   pqObjectBuilder* builder = pqApplicationCore::instance()->getObjectBuilder();
   bool force = builder->forceWaitingForConnection(true);
@@ -604,7 +605,7 @@ bool pqServerLauncher::connectToServer()
   while (!(launched = this->connectToPrelaunchedServer()) && nam->GetWrongConnectID() &&
     dialog.exec() == QDialog::Accepted)
   {
-    options->SetConnectID(ui.connectId->value());
+    config->SetConnectID(ui.connectId->value());
   }
   builder->forceWaitingForConnection(force);
   return launched;
@@ -635,7 +636,7 @@ bool pqServerLauncher::connectToPrelaunchedServer()
   const pqServerResource& resource = this->Internals->Configuration.actualResource();
   this->Internals->Server =
     builder->createServer(resource, this->Internals->Configuration.connectionTimeout());
-  return this->Internals->Server != NULL;
+  return this->Internals->Server != nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -653,7 +654,7 @@ bool pqServerLauncher::promptOptions()
   QProcessEnvironment& options = this->Internals->Options;
   // setup the options using the default environment, in any case.
   options = getDefaultEnvironment(this->Internals->Configuration);
-  if (optionsXML == NULL)
+  if (optionsXML == nullptr)
   {
     return true;
   }
@@ -676,15 +677,12 @@ bool pqServerLauncher::promptOptions()
 
   this->updateOptionsUsingUserSelections();
 
-  // if options contains PV_CONNECT_ID. We need to update the pqOptions to
-  // give it the correct connection-id.
+  // if options contains PV_CONNECT_ID. We need to update the
+  // vtkRemotingCoreConfiguration to give it the correct connection-id.
   if (options.contains("PV_CONNECT_ID"))
   {
-    vtkPVOptions* pvoptions = vtkProcessModule::GetProcessModule()->GetOptions();
-    if (pvoptions)
-    {
-      pvoptions->SetConnectID(options.value("PV_CONNECT_ID").toInt());
-    }
+    vtkRemotingCoreConfiguration* config = vtkRemotingCoreConfiguration::GetInstance();
+    config->SetConnectID(options.value("PV_CONNECT_ID").toInt());
   }
 
   widgets.clear();
@@ -695,7 +693,7 @@ bool pqServerLauncher::promptOptions()
 //-----------------------------------------------------------------------------
 void pqServerLauncher::updateOptionsUsingUserSelections()
 {
-  if (this->Internals->ActiveWidgets.size() > 0)
+  if (!this->Internals->ActiveWidgets.empty())
   {
     /// now based on user-chosen values, update the options.
     updateEnvironment(
@@ -766,7 +764,7 @@ bool pqServerLauncher::processCommand(
 {
   QProcess* process = new QProcess(pqApplicationCore::instance());
 
-  if (options != NULL)
+  if (options != nullptr)
   {
     process->setProcessEnvironment(*options);
   }

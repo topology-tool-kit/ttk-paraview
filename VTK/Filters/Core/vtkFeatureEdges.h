@@ -47,13 +47,13 @@ class vtkIncrementalPointLocator;
 class VTKFILTERSCORE_EXPORT vtkFeatureEdges : public vtkPolyDataAlgorithm
 {
 public:
-  //@{
+  ///@{
   /**
    * Standard methods for type information and printing.
    */
   vtkTypeMacro(vtkFeatureEdges, vtkPolyDataAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
-  //@}
+  ///@}
 
   /**
    * Construct an instance with feature angle = 30; all types of edges
@@ -61,51 +61,51 @@ public:
    */
   static vtkFeatureEdges* New();
 
-  //@{
+  ///@{
   /**
    * Methods for turning the extraction of all types of edges on;
    * and turning the extraction of all types of edges off.
    */
   void ExtractAllEdgeTypesOn();
   void ExtractAllEdgeTypesOff();
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Turn on/off the extraction of boundary edges.
    */
   vtkSetMacro(BoundaryEdges, bool);
   vtkGetMacro(BoundaryEdges, bool);
   vtkBooleanMacro(BoundaryEdges, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Turn on/off the extraction of feature edges.
    */
   vtkSetMacro(FeatureEdges, bool);
   vtkGetMacro(FeatureEdges, bool);
   vtkBooleanMacro(FeatureEdges, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Specify the feature angle for extracting feature edges.
    */
   vtkSetClampMacro(FeatureAngle, double, 0.0, 180.0);
   vtkGetMacro(FeatureAngle, double);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Turn on/off the extraction of non-manifold edges.
    */
   vtkSetMacro(NonManifoldEdges, bool);
   vtkGetMacro(NonManifoldEdges, bool);
   vtkBooleanMacro(NonManifoldEdges, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Turn on/off the extraction of manifold edges. This typically
    * correspond to interior edges.
@@ -113,25 +113,37 @@ public:
   vtkSetMacro(ManifoldEdges, bool);
   vtkGetMacro(ManifoldEdges, bool);
   vtkBooleanMacro(ManifoldEdges, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
+  /**
+   * Turn on/off passing input lines. If this flag is on, then all cells living inside the `Lines`
+   * cell array of the input are copied into the output.
+   *
+   * @note Input poly lines are split into separate lines in the output.
+   */
+  vtkSetMacro(PassLines, bool);
+  vtkGetMacro(PassLines, bool);
+  vtkBooleanMacro(PassLines, bool);
+  ///@}
+
+  ///@{
   /**
    * Turn on/off the coloring of edges by type.
    */
   vtkSetMacro(Coloring, bool);
   vtkGetMacro(Coloring, bool);
   vtkBooleanMacro(Coloring, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set / get a spatial locator for merging points. By
    * default an instance of vtkMergePoints is used.
    */
   void SetLocator(vtkIncrementalPointLocator* locator);
   vtkGetObjectMacro(Locator, vtkIncrementalPointLocator);
-  //@}
+  ///@}
 
   /**
    * Create default locator. Used to create one when none is specified.
@@ -143,7 +155,7 @@ public:
    */
   vtkMTimeType GetMTime() override;
 
-  //@{
+  ///@{
   /**
    * Set/get the desired precision for the output point type. See the documentation
    * for the vtkAlgorithm::DesiredOutputPrecision enum for an explanation of
@@ -151,7 +163,7 @@ public:
    */
   vtkSetMacro(OutputPointsPrecision, int);
   vtkGetMacro(OutputPointsPrecision, int);
-  //@}
+  ///@}
 
 protected:
   vtkFeatureEdges();
@@ -166,7 +178,9 @@ protected:
   bool FeatureEdges;
   bool NonManifoldEdges;
   bool ManifoldEdges;
+  bool PassLines;
   bool Coloring;
+  bool PassGlobalIds;
   int OutputPointsPrecision;
   vtkIncrementalPointLocator* Locator;
 

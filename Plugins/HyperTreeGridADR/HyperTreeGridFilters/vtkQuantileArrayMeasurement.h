@@ -43,6 +43,7 @@ public:
   static vtkQuantileArrayMeasurement* New();
 
   vtkTypeMacro(vtkQuantileArrayMeasurement, vtkAbstractArrayMeasurement);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   using Superclass::Add;
   using Superclass::CanMeasure;
@@ -106,12 +107,12 @@ public:
   /**
    * ShallowCopy implementation.
    */
-  void ShallowCopy(vtkDataObject* o) override;
+  void ShallowCopy(vtkObject* o) override;
 
   /**
    * DeepCopy implementation.
    */
-  void DeepCopy(vtkDataObject* o) override;
+  void DeepCopy(vtkObject* o) override;
 
   //@{
   /**
@@ -133,8 +134,8 @@ protected:
   //@}
 
 private:
-  vtkQuantileArrayMeasurement(vtkQuantileArrayMeasurement&) = delete;
-  void operator=(vtkQuantileArrayMeasurement&) = delete;
+  vtkQuantileArrayMeasurement(const vtkQuantileArrayMeasurement&) = delete;
+  void operator=(const vtkQuantileArrayMeasurement&) = delete;
 };
 
 #endif

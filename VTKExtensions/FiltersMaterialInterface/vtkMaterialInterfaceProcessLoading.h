@@ -17,17 +17,17 @@
  *
  * Data type to represent a node in a multiprocess job
  * and its current loading state.
-*/
+ */
 
 #ifndef vtkMaterialInterfaceProcessLoading_h
 #define vtkMaterialInterfaceProcessLoading_h
 
 #include "vtkPVVTKExtensionsFiltersMaterialInterfaceModule.h" //needed for exports
 
-#include "vtkType.h"
-#include <cassert>
-#include <iostream>
-#include <vector>
+#include "vtkType.h" // for vtkIdType
+#include <cassert>   // for assert
+#include <iostream>  // for std::ostream
+#include <vector>    // for std::vector
 
 class VTKPVVTKEXTENSIONSFILTERSMATERIALINTERFACE_EXPORT vtkMaterialInterfaceProcessLoading
 {
@@ -115,5 +115,3 @@ std::ostream& operator<<(
   std::ostream& sout, const std::vector<vtkMaterialInterfaceProcessLoading>& vfp);
 #endif
 //@}
-
-// VTK-HeaderTest-Exclude: vtkMaterialInterfaceProcessLoading.h

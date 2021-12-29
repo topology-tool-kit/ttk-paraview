@@ -13,31 +13,31 @@
 
 =========================================================================*/
 /*
-* Copyright (c) 2007, Sandia Corporation
-* All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*     * Redistributions of source code must retain the above copyright
-*       notice, this list of conditions and the following disclaimer.
-*     * Redistributions in binary form must reproduce the above copyright
-*       notice, this list of conditions and the following disclaimer in the
-*       documentation and/or other materials provided with the distribution.
-*     * Neither the name of the Sandia Corporation nor the
-*       names of its contributors may be used to endorse or promote products
-*       derived from this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY Sandia Corporation ``AS IS'' AND ANY
-* EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-* WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-* DISCLAIMED. IN NO EVENT SHALL Sandia Corporation BE LIABLE FOR ANY
-* DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-* LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-* ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-* SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ * Copyright (c) 2007, Sandia Corporation
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the Sandia Corporation nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY Sandia Corporation ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL Sandia Corporation BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 /**
  * @class   vtkSMPropertyHelper
  * @brief   helper class to get/set property values.
@@ -55,16 +55,15 @@
  * @par Caveat:
  * This class is not wrapped, hence not available in any of the wrapped
  * languagues such as python.
-*/
+ */
 
 #ifndef vtkSMPropertyHelper_h
 #define vtkSMPropertyHelper_h
 
 #include "vtkRemotingServerManagerModule.h" //needed for exports
-#include "vtkSMObject.h"
-#include "vtkVariant.h"
+#include "vtkVariant.h"                     // for vtkVariant
 
-#include <vector>
+#include <vector> // for std::vector
 
 #ifdef INT
 #undef INT
@@ -76,15 +75,16 @@
 #undef NONE
 #endif
 
-class vtkSMProperty;
-class vtkSMProxy;
-class vtkSMVectorProperty;
-class vtkSMIntVectorProperty;
 class vtkSMDoubleVectorProperty;
 class vtkSMIdTypeVectorProperty;
-class vtkSMStringVectorProperty;
-class vtkSMProxyProperty;
 class vtkSMInputProperty;
+class vtkSMIntVectorProperty;
+class vtkSMOutputPort;
+class vtkSMProperty;
+class vtkSMProxy;
+class vtkSMProxyProperty;
+class vtkSMStringVectorProperty;
+class vtkSMVectorProperty;
 
 class VTKREMOTINGSERVERMANAGER_EXPORT vtkSMPropertyHelper
 {
@@ -168,7 +168,7 @@ public:
   double GetAsDouble(unsigned int index = 0) const;
   unsigned int Get(double* values, unsigned int count = 1) const;
   std::vector<double> GetDoubleArray() const;
-//@}
+  //@}
 
 #if VTK_SIZEOF_ID_TYPE != VTK_SIZEOF_INT
   //@{
@@ -207,11 +207,12 @@ public:
    */
   void Set(vtkSMProxy* value, unsigned int outputport = 0) { this->Set(0, value, outputport); }
   void Set(unsigned int index, vtkSMProxy* value, unsigned int outputport = 0);
-  void Set(vtkSMProxy** value, unsigned int count, unsigned int* outputports = NULL);
+  void Set(vtkSMProxy** value, unsigned int count, unsigned int* outputports = nullptr);
   void Add(vtkSMProxy* value, unsigned int outputport = 0);
   void Remove(vtkSMProxy* value);
   vtkSMProxy* GetAsProxy(unsigned int index = 0) const;
   unsigned int GetOutputPort(unsigned int index = 0) const;
+  vtkSMOutputPort* GetAsOutputPort(unsigned int index = 0) const;
   //@}
 
   //@{
@@ -253,6 +254,13 @@ public:
   void SetStatus(const char* key, const char* value);
   const char* GetStatus(const char* key, const char* default_value) const;
   //@}
+
+  /**
+   * Removes the status value specified for the given key, if any. Applicable only to
+   * `vtkSMStringVectorProperty` objects, and this function assumes that the presence of a key in
+   * the property indicates that it is enabled.
+   */
+  void RemoveStatus(const char* key);
 
   //@{
   /**

@@ -5,7 +5,7 @@
 # This file is part of HDF5.  The full HDF5 copyright notice, including
 # terms governing use, modification, and redistribution, is contained in
 # the COPYING file, which can be found at the root of the source code
-# distribution tree, or in https://support.hdfgroup.org/ftp/HDF5/releases.
+# distribution tree, or in https://www.hdfgroup.org/licenses.
 # If you do not have access to either file, you may request a copy from
 # help@hdfgroup.org.
 #
@@ -28,7 +28,9 @@ macro (SET_HDF_BUILD_TYPE)
     endif()
   endif()
   if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-    message (STATUS "Setting build type to 'RelWithDebInfo' as none was specified.")
+    if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.15.0")
+      message (VERBOSE "Setting build type to 'RelWithDebInfo' as none was specified.")
+    endif()
     set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Choose the type of build." FORCE)
     # Set the possible values of build type for cmake-gui
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
@@ -82,10 +84,8 @@ macro (INSTALL_TARGET_PDB libtarget targetdestination targetcomponent)
       set (targetfilename $<TARGET_FILE_DIR:${libtarget}>/${target_name}.pdb)
     endif ()
     install (
-      FILES
-          ${targetfilename}
-      DESTINATION
-          ${targetdestination}
+      FILES ${targetfilename}
+      DESTINATION ${targetdestination}
       CONFIGURATIONS Debug RelWithDebInfo
       COMPONENT ${targetcomponent}
       OPTIONAL
@@ -97,10 +97,8 @@ endmacro ()
 macro (INSTALL_PROGRAM_PDB progtarget targetdestination targetcomponent)
   if (WIN32 AND MSVC)
     install (
-      FILES
-          $<TARGET_PDB_FILE:${progtarget}>
-      DESTINATION
-          ${targetdestination}
+      FILES $<TARGET_PDB_FILE:${progtarget}>
+      DESTINATION ${targetdestination}
       CONFIGURATIONS Debug RelWithDebInfo
       COMPONENT ${targetcomponent}
       OPTIONAL
@@ -124,28 +122,17 @@ macro (HDF_SET_LIB_OPTIONS libtarget libname libtype)
     endif ()
   endif ()
 
-  set_target_properties (${libtarget}
-      PROPERTIES
-         OUTPUT_NAME
-               ${LIB_RELEASE_NAME}
-#         OUTPUT_NAME_DEBUG
-#               ${LIB_DEBUG_NAME}
-         OUTPUT_NAME_RELEASE
-               ${LIB_RELEASE_NAME}
-         OUTPUT_NAME_MINSIZEREL
-               ${LIB_RELEASE_NAME}
-         OUTPUT_NAME_RELWITHDEBINFO
-               ${LIB_RELEASE_NAME}
+  set_target_properties (${libtarget} PROPERTIES
+      OUTPUT_NAME                ${LIB_RELEASE_NAME}
+#      OUTPUT_NAME_DEBUG          ${LIB_DEBUG_NAME}
+      OUTPUT_NAME_RELEASE        ${LIB_RELEASE_NAME}
+      OUTPUT_NAME_MINSIZEREL     ${LIB_RELEASE_NAME}
+      OUTPUT_NAME_RELWITHDEBINFO ${LIB_RELEASE_NAME}
   )
-  #get_property (target_name TARGET ${libtarget} PROPERTY OUTPUT_NAME)
-  #get_property (target_name_debug TARGET ${libtarget} PROPERTY OUTPUT_NAME_DEBUG)
-  #get_property (target_name_rwdi TARGET ${libtarget} PROPERTY OUTPUT_NAME_RELWITHDEBINFO)
-  #message (STATUS "${target_name} : ${target_name_debug} : ${target_name_rwdi}")
 
   if (${libtype} MATCHES "STATIC")
     if (WIN32)
-      set_target_properties (${libtarget}
-          PROPERTIES
+      set_target_properties (${libtarget} PROPERTIES
           COMPILE_PDB_NAME_DEBUG          ${LIB_DEBUG_NAME}
           COMPILE_PDB_NAME_RELEASE        ${LIB_RELEASE_NAME}
           COMPILE_PDB_NAME_MINSIZEREL     ${LIB_RELEASE_NAME}
@@ -155,10 +142,9 @@ macro (HDF_SET_LIB_OPTIONS libtarget libname libtype)
     endif ()
   endif ()
 
-  #----- Use MSVC Naming conventions for Shared Libraries
-  if (MINGW AND ${libtype} MATCHES "SHARED")
-    set_target_properties (${libtarget}
-        PROPERTIES
+  option (HDF5_MSVC_NAMING_CONVENTION "Use MSVC Naming conventions for Shared Libraries" OFF)
+  if (HDF5_MSVC_NAMING_CONVENTION AND MINGW AND ${libtype} MATCHES "SHARED")
+    set_target_properties (${libtarget} PROPERTIES
         IMPORT_SUFFIX ".lib"
         IMPORT_PREFIX ""
         PREFIX ""
@@ -357,7 +343,7 @@ macro (HDF_DIR_PATHS package_prefix)
     set (${package_prefix}_INSTALL_INCLUDE_DIR include)
   endif ()
   if (NOT ${package_prefix}_INSTALL_DATA_DIR)
-    if (NOT WIN32)
+    if (NOT MSVC)
       if (APPLE)
         if (${package_prefix}_BUILD_FRAMEWORKS)
           set (${package_prefix}_INSTALL_EXTRA_DIR ../SharedSupport)
@@ -367,11 +353,12 @@ macro (HDF_DIR_PATHS package_prefix)
         set (${package_prefix}_INSTALL_FWRK_DIR ${CMAKE_INSTALL_FRAMEWORK_PREFIX})
       endif ()
       set (${package_prefix}_INSTALL_DATA_DIR share)
-      set (${package_prefix}_INSTALL_CMAKE_DIR share/cmake)
     else ()
       set (${package_prefix}_INSTALL_DATA_DIR ".")
-      set (${package_prefix}_INSTALL_CMAKE_DIR cmake)
     endif ()
+  endif ()
+  if (NOT ${package_prefix}_INSTALL_CMAKE_DIR)
+    set (${package_prefix}_INSTALL_CMAKE_DIR share/cmake)
   endif ()
 
   if (FALSE) # XXX(kitware): VTK handles library naming.
@@ -446,5 +433,49 @@ macro (HDF_DIR_PATHS package_prefix)
       set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_OUTPUT_PATH})
     endif ()
   endif ()
+
+  if (FALSE AND CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT) # VTK doesn't need HDF5's help for the install prefix.
+    if (CMAKE_HOST_UNIX)
+      set (CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}/HDF_Group/${HDF5_PACKAGE_NAME}/${HDF5_PACKAGE_VERSION}"
+        CACHE PATH "Install path prefix, prepended onto install directories." FORCE)
+    else ()
+      GetDefaultWindowsPrefixBase(CMAKE_GENERIC_PROGRAM_FILES)
+      set (CMAKE_INSTALL_PREFIX
+        "${CMAKE_GENERIC_PROGRAM_FILES}/HDF_Group/${HDF5_PACKAGE_NAME}/${HDF5_PACKAGE_VERSION}"
+        CACHE PATH "Install path prefix, prepended onto install directories." FORCE)
+      set (CMAKE_GENERIC_PROGRAM_FILES)
+    endif ()
+  endif ()
+
+#-----------------------------------------------------------------------------
+# Setup pre-3.14 FetchContent
+#-----------------------------------------------------------------------------
+  if(${CMAKE_VERSION} VERSION_LESS 3.14)
+    macro(FetchContent_MakeAvailable NAME)
+        FetchContent_GetProperties(${NAME})
+        if(NOT ${NAME}_POPULATED)
+            FetchContent_Populate(${NAME})
+            add_subdirectory(${${NAME}_SOURCE_DIR} ${${NAME}_BINARY_DIR})
+        endif()
+    endmacro()
+  endif()
+endmacro ()
+
+macro (ADD_H5_FLAGS h5_flag_var infile)
+  file (STRINGS ${infile} TEST_FLAG_STREAM)
+  #message (TRACE "TEST_FLAG_STREAM=${TEST_FLAG_STREAM}")
+  list (LENGTH TEST_FLAG_STREAM len_flag)
+  if (len_flag GREATER 0)
+    math (EXPR _FP_LEN "${len_flag} - 1")
+    foreach (line RANGE 0 ${_FP_LEN})
+      list (GET TEST_FLAG_STREAM ${line} str_flag)
+      string (REGEX REPLACE "^#.*" "" str_flag "${str_flag}")
+      #message (TRACE "str_flag=${str_flag}")
+      if (str_flag)
+        list (APPEND ${h5_flag_var} "${str_flag}")
+      endif ()
+    endforeach ()
+  endif ()
+  #message (TRACE "h5_flag_var=${${h5_flag_var}}")
 endmacro ()
 

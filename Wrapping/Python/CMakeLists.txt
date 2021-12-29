@@ -4,6 +4,7 @@ set(python_files
   paraview/_colorMaps.py
   paraview/algorithms/__init__.py
   paraview/algorithms/openpmd.py
+  paraview/algorithms/savgreader.py
   paraview/apps/__init__.py
   paraview/apps/__main__.py
   paraview/apps/_internals.py
@@ -58,7 +59,10 @@ set(python_files
   paraview/smtesting.py
   paraview/smtrace.py
   paraview/spatiotemporalparallelism.py
+  paraview/tests/basic_rendering.py
   paraview/tests/__init__.py
+  paraview/tests/internals.py
+  paraview/tests/__main__.py
   paraview/tests/validate_extracts.py
   paraview/tests/verify_eyedomelighting.py
   paraview/tpl/__init__.py

@@ -101,7 +101,7 @@ QString getName(vtkSMProxy* proxy)
   pq_proxy = pqProxy::findProxyWithHelper(proxy, helper_key);
   if (pq_proxy)
   {
-    vtkSMProperty* prop = pq_proxy->getProxy()->GetProperty(helper_key.toLocal8Bit().data());
+    vtkSMProperty* prop = pq_proxy->getProxy()->GetProperty(helper_key.toUtf8().data());
     if (prop)
     {
       return QString("%1 - %2").arg(pq_proxy->getSMName()).arg(prop->GetXMLLabel());
@@ -177,7 +177,7 @@ vtkSMProxy* newCue(vtkSMProxy* proxy, const char* pname, int index)
     }
     double minValue = curValue;
     double maxValue = curValue;
-    if (domain.size() >= 1 && domain[0].isValid())
+    if (!domain.empty() && domain[0].isValid())
     {
       minValue = domain[0].toDouble();
     }
@@ -223,7 +223,7 @@ pqComparativeVisPanel::pqComparativeVisPanel(QWidget* p)
     this->Internal->propertyCombo, SLOT(setSource(vtkSMProxy*)));
   this->Internal->propertyCombo->setSource(this->Internal->proxyCombo->getCurrentProxy());
 
-  this->Internal->proxyCombo->addProxy(0, "Time", NULL);
+  this->Internal->proxyCombo->addProxy(0, "Time", nullptr);
 
   QObject::connect(this->Internal->activeParameters,
     SIGNAL(currentItemChanged(QTableWidgetItem*, QTableWidgetItem*)), this,
@@ -243,9 +243,9 @@ pqComparativeVisPanel::~pqComparativeVisPanel()
 {
   this->VTKConnect->Disconnect();
   this->VTKConnect->Delete();
-  this->VTKConnect = 0;
+  this->VTKConnect = nullptr;
   delete this->Internal;
-  this->Internal = 0;
+  this->Internal = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -268,12 +268,12 @@ void pqComparativeVisPanel::setView(pqView* _view)
   this->Internal->activeParameters->clearContents();
 
   vtkSMComparativeViewProxy* viewProxy =
-    _view ? vtkSMComparativeViewProxy::SafeDownCast(_view->getProxy()) : NULL;
+    _view ? vtkSMComparativeViewProxy::SafeDownCast(_view->getProxy()) : nullptr;
 
   // View must be a comparative render/plot view
-  if (viewProxy == NULL)
+  if (viewProxy == nullptr)
   {
-    this->Internal->View = 0;
+    this->Internal->View = nullptr;
     this->setEnabled(false);
     return;
   }
@@ -319,7 +319,7 @@ void pqComparativeVisPanel::updateParametersList()
   {
     vtkSMPropertyHelper animatedProxyHelper(cues.GetAsProxy(cc), "AnimatedProxy");
     vtkSMProxy* curProxy =
-      animatedProxyHelper.GetNumberOfElements() > 0 ? animatedProxyHelper.GetAsProxy() : NULL;
+      animatedProxyHelper.GetNumberOfElements() > 0 ? animatedProxyHelper.GetAsProxy() : nullptr;
     const char* pname =
       vtkSMPropertyHelper(cues.GetAsProxy(cc), "AnimatedPropertyName").GetAsString();
     int pindex = vtkSMPropertyHelper(cues.GetAsProxy(cc), "AnimatedElement").GetAsInt();
@@ -365,7 +365,7 @@ void pqComparativeVisPanel::addParameter()
     BEGIN_UNDO_SET(
       QString("Add parameter %1 : %2")
         .arg(pqComparativeVisPanelNS::getName(realProxy))
-        .arg(pqComparativeVisPanelNS::getName(realProxy, pname.toLocal8Bit().data(), pindex)));
+        .arg(pqComparativeVisPanelNS::getName(realProxy, pname.toUtf8().data(), pindex)));
   }
   else
   {
@@ -373,8 +373,7 @@ void pqComparativeVisPanel::addParameter()
   }
 
   // Add new cue.
-  vtkSMProxy* cueProxy =
-    pqComparativeVisPanelNS::newCue(realProxy, pname.toLocal8Bit().data(), pindex);
+  vtkSMProxy* cueProxy = pqComparativeVisPanelNS::newCue(realProxy, pname.toUtf8().data(), pindex);
   vtkSMPropertyHelper(this->view()->getProxy(), "Cues").Add(cueProxy);
   cueProxy->Delete();
   this->view()->getProxy()->UpdateVTKObjects();
@@ -416,7 +415,7 @@ void pqComparativeVisPanel::parameterSelectionChanged()
   else
   {
     this->Internal->cueGroup->setTitle("[Select Parameter]");
-    this->Internal->cueWidget->setCue(NULL);
+    this->Internal->cueWidget->setCue(nullptr);
     this->Internal->multivalueHint->hide();
   }
 }
@@ -447,7 +446,7 @@ void pqComparativeVisPanel::removeParameter(int index)
   vtkSMSessionProxyManager* pxm = this->view()->proxyManager();
   vtkSmartPointer<vtkSMProxy> cue =
     item->data(pqComparativeVisPanelNS::CUE_PROXY).value<pqSMProxy>().GetPointer();
-  item = NULL;
+  item = nullptr;
 
   vtkSMPropertyHelper(this->view()->getProxy(), "Cues").Remove(cue);
   this->view()->getProxy()->UpdateVTKObjects();

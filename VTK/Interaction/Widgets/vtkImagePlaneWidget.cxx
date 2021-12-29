@@ -55,7 +55,6 @@ vtkCxxSetObjectMacro(vtkImagePlaneWidget, ColorMap, vtkImageMapToColors);
 
 //------------------------------------------------------------------------------
 vtkImagePlaneWidget::vtkImagePlaneWidget()
-  : vtkPolyDataSourceWidget()
 {
   this->State = vtkImagePlaneWidget::Start;
   this->EventCallbackCommand->SetCallback(vtkImagePlaneWidget::ProcessEvents);
@@ -2729,7 +2728,7 @@ void vtkImagePlaneWidget::GeneratePlaneOutline()
 
   vtkPolyDataMapper* planeOutlineMapper = vtkPolyDataMapper::New();
   planeOutlineMapper->SetInputData(this->PlaneOutlinePolyData);
-  planeOutlineMapper->SetResolveCoincidentTopologyToPolygonOffset();
+  vtkPolyDataMapper::SetResolveCoincidentTopologyToPolygonOffset();
   this->PlaneOutlineActor->SetMapper(planeOutlineMapper);
   this->PlaneOutlineActor->PickableOff();
   planeOutlineMapper->Delete();
@@ -2796,7 +2795,7 @@ void vtkImagePlaneWidget::GenerateMargins()
 
   vtkPolyDataMapper* marginMapper = vtkPolyDataMapper::New();
   marginMapper->SetInputData(this->MarginPolyData);
-  marginMapper->SetResolveCoincidentTopologyToPolygonOffset();
+  vtkPolyDataMapper::SetResolveCoincidentTopologyToPolygonOffset();
   this->MarginActor->SetMapper(marginMapper);
   this->MarginActor->PickableOff();
   this->MarginActor->VisibilityOff();
@@ -2833,7 +2832,7 @@ void vtkImagePlaneWidget::GenerateCursor()
 
   vtkPolyDataMapper* cursorMapper = vtkPolyDataMapper::New();
   cursorMapper->SetInputData(this->CursorPolyData);
-  cursorMapper->SetResolveCoincidentTopologyToPolygonOffset();
+  vtkPolyDataMapper::SetResolveCoincidentTopologyToPolygonOffset();
   this->CursorActor->SetMapper(cursorMapper);
   this->CursorActor->PickableOff();
   this->CursorActor->VisibilityOff();

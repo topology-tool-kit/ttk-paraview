@@ -18,8 +18,6 @@
   the U.S. Government retains certain rights in this software.
   -------------------------------------------------------------------------*/
 
-#include "vtkToolkits.h"
-
 #include "vtkPContingencyStatistics.h"
 
 #include "vtkCommunicator.h"
@@ -49,14 +47,14 @@ vtkCxxSetObjectMacro(vtkPContingencyStatistics, Controller, vtkMultiProcessContr
 //------------------------------------------------------------------------------
 vtkPContingencyStatistics::vtkPContingencyStatistics()
 {
-  this->Controller = 0;
+  this->Controller = nullptr;
   this->SetController(vtkMultiProcessController::GetGlobalController());
 }
 
 //------------------------------------------------------------------------------
 vtkPContingencyStatistics::~vtkPContingencyStatistics()
 {
-  this->SetController(0);
+  this->SetController(nullptr);
 }
 
 //------------------------------------------------------------------------------
@@ -129,7 +127,7 @@ static void StringBufferToStringVector(
     {
       if (!*finish)
       {
-        strings.push_back(vtkStdString(start));
+        strings.emplace_back(start);
         start = finish;
         break;
       }
@@ -279,8 +277,8 @@ void vtkPContingencyStatistics::Learn(
   }
 
   // Allocate receive buffers on reducer process, based on the global sizes obtained above
-  char* xyPacked_g = 0;
-  vtkIdType* kcValues_g = 0;
+  char* xyPacked_g = nullptr;
+  vtkIdType* kcValues_g = nullptr;
   if (myRank == rProc)
   {
     xyPacked_g = new char[xySizeTotal];

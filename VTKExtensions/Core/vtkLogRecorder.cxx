@@ -88,7 +88,8 @@ void vtkLogRecorder::EnableLoggingCallback()
     vtkErrorMacro("Logging callback " << this->CallbackName << " already added.");
   }
   this->CallbackName = "log-grabber_" + std::to_string(RankEnabled) + "_" + std::to_string(rand());
-  vtkLogger::AddCallback(this->CallbackName.c_str(),
+  vtkLogger::AddCallback(
+    this->CallbackName.c_str(),
     [](void* user_data, const vtkLogger::Message& message) {
       auto lines = reinterpret_cast<std::string*>(user_data);
       (*lines) += "\n";
@@ -173,6 +174,9 @@ void vtkLogRecorder::SetCategoryVerbosity(int categoryIndex, int verbosity)
     case 4:
       vtkPVLogger::SetPluginVerbosity(v);
       break;
+    case 5:
+      vtkPVLogger::SetExecutionVerbosity(v);
+      break;
     default:
       break;
   }
@@ -187,6 +191,7 @@ void vtkLogRecorder::ResetCategoryVerbosities()
   vtkPVLogger::SetApplicationVerbosity(verbosity);
   vtkPVLogger::SetPipelineVerbosity(verbosity);
   vtkPVLogger::SetPluginVerbosity(verbosity);
+  vtkPVLogger::SetExecutionVerbosity(verbosity);
 }
 
 //----------------------------------------------------------------------------

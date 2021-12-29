@@ -51,7 +51,9 @@ public:
 
   // Initialize IndeX
   void init_index();
-  bool is_index_initialized() const;
+
+  // Returns if IndeX is initialized and logs and error if it is not
+  bool ensure_index_initialized() const;
 
   // Cameras
   mi::neuraylib::Tag get_perspective_camera() const;
@@ -119,8 +121,8 @@ private:
   bool m_is_index_viewer;
   bool m_is_index_initialized;
 
-  std::map<std::string, std::vector<mi::Sint32> > m_hostname_to_rankids; // Hostname to rank_id.
-  std::vector<std::string> m_host_list;                                  // List of host
+  std::map<std::string, std::vector<mi::Sint32>> m_hostname_to_rankids; // Hostname to rank_id.
+  std::vector<std::string> m_host_list;                                 // List of host
 
   std::string m_nvindexlib_fname;                          // libnvindex.so/dll string name.
   void* m_p_handle;                                        // Library handle.

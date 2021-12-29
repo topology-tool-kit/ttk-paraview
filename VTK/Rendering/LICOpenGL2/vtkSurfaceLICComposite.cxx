@@ -19,6 +19,7 @@
 #include "vtkPixelExtentIO.h"
 
 #include <algorithm>
+#include <cmath>
 
 using std::deque;
 using std::vector;
@@ -36,10 +37,6 @@ vtkObjectFactoryNewMacro(vtkSurfaceLICComposite);
 vtkSurfaceLICComposite::vtkSurfaceLICComposite()
   : Pass(0)
   , WindowExt()
-  , BlockExts()
-  , CompositeExt()
-  , GuardExt()
-  , DisjointGuardExt()
   , Strategy(COMPOSITE_AUTO)
   , StepSize(0)
   , NumberOfSteps(0)
@@ -168,7 +165,7 @@ int vtkSurfaceLICComposite::MakeDecompDisjoint(
   // leaving each rank with some data.
   deque<vtkPixelExtent> tmpOut0;
 
-  this->MakeDecompDisjoint(tmpIn, tmpOut0);
+  vtkSurfaceLICComposite::MakeDecompDisjoint(tmpIn, tmpOut0);
 
   // minimize and remove empty extents.
   int nx[2];

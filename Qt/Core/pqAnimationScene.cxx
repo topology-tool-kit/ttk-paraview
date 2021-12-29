@@ -69,14 +69,14 @@ static uint qHash(QPointer<T> p)
 class pqAnimationScene::pqInternals
 {
 public:
-  QSet<QPointer<pqAnimationCue> > Cues;
+  QSet<QPointer<pqAnimationCue>> Cues;
   QPointer<pqAnimationCue> GlobalTimeCue;
-  pqInternals() {}
+  pqInternals() = default;
 };
 
 //-----------------------------------------------------------------------------
 pqAnimationScene::pqAnimationScene(const QString& group, const QString& name, vtkSMProxy* proxy,
-  pqServer* server, QObject* _parent /*=NULL*/)
+  pqServer* server, QObject* _parent /*=nullptr*/)
   : pqProxy(group, name, proxy, server, _parent)
 {
   vtkObject* animationScene = vtkObject::SafeDownCast(proxy->GetClientSideObject());
@@ -141,7 +141,7 @@ void pqAnimationScene::onCuesChanged()
   pqServerManagerModel* model = pqApplicationCore::instance()->getServerManagerModel();
 
   vtkSMProxyProperty* pp = vtkSMProxyProperty::SafeDownCast(this->getProxy()->GetProperty("Cues"));
-  QSet<QPointer<pqAnimationCue> > currentCues;
+  QSet<QPointer<pqAnimationCue>> currentCues;
 
   for (unsigned int cc = 0; cc < pp->GetNumberOfProxies(); cc++)
   {
@@ -153,8 +153,8 @@ void pqAnimationScene::onCuesChanged()
     }
   }
 
-  QSet<QPointer<pqAnimationCue> > added = currentCues - this->Internals->Cues;
-  QSet<QPointer<pqAnimationCue> > removed = this->Internals->Cues - currentCues;
+  QSet<QPointer<pqAnimationCue>> added = currentCues - this->Internals->Cues;
+  QSet<QPointer<pqAnimationCue>> removed = this->Internals->Cues - currentCues;
 
   foreach (pqAnimationCue* cue, removed)
   {
@@ -170,7 +170,7 @@ void pqAnimationScene::onCuesChanged()
     Q_EMIT this->addedCue(cue);
   }
 
-  if (removed.size() > 0 || added.size() > 0)
+  if (!removed.empty() || !added.empty())
   {
     Q_EMIT this->cuesChanged();
   }
@@ -216,7 +216,7 @@ pqAnimationCue* pqAnimationScene::getCue(
       return pqCue;
     }
   }
-  return 0;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -235,16 +235,17 @@ pqAnimationCue* pqAnimationScene::createCue(
 //-----------------------------------------------------------------------------
 pqAnimationCue* pqAnimationScene::createCue(const QString& cuetype)
 {
-  return this->createCueInternal(cuetype, NULL, NULL, -1);
+  return this->createCueInternal(cuetype, nullptr, nullptr, -1);
 }
 
 //-----------------------------------------------------------------------------
 static void pqAnimationSceneResetCameraKeyFrameToCurrent(vtkSMProxy* ren, vtkSMProxy* dest)
 {
   ren->UpdatePropertyInformation();
-  const char* names[] = { "Position", "FocalPoint", "ViewUp", "ViewAngle", "ParallelScale", 0 };
+  const char* names[] = { "Position", "FocalPoint", "ViewUp", "ViewAngle", "ParallelScale",
+    nullptr };
   const char* snames[] = { "CameraPositionInfo", "CameraFocalPointInfo", "CameraViewUpInfo",
-    "CameraViewAngle", "CameraParallelScale", 0 };
+    "CameraViewAngle", "CameraParallelScale", nullptr };
   for (int cc = 0; names[cc] && snames[cc]; cc++)
   {
     QList<QVariant> p = pqSMAdaptor::getMultipleElementProperty(ren->GetProperty(snames[cc]));
@@ -276,11 +277,11 @@ void pqAnimationScene::initializeCue(
     QList<QVariant> maxs;
     if (index == -1 && prop)
     {
-      QList<QList<QVariant> > domains = pqSMAdaptor::getMultipleElementPropertyDomain(prop);
+      QList<QList<QVariant>> domains = pqSMAdaptor::getMultipleElementPropertyDomain(prop);
       QList<QVariant> currents = pqSMAdaptor::getMultipleElementProperty(prop);
       for (int i = 0; i < currents.size(); i++)
       {
-        if (domains.size() > i && domains[i].size())
+        if (domains.size() > i && !domains[i].empty())
         {
           mins.append(domains[i][0].isValid() ? domains[i][0] : currents[i]);
           maxs.append(domains[i][1].isValid() ? domains[i][1] : currents[i]);
@@ -296,7 +297,7 @@ void pqAnimationScene::initializeCue(
     {
       QList<QVariant> domain = pqSMAdaptor::getMultipleElementPropertyDomain(prop, index);
       QVariant current = pqSMAdaptor::getMultipleElementProperty(prop, index);
-      if (domain.size() && domain[0].isValid())
+      if (!domain.empty() && domain[0].isValid())
       {
         mins.append(domain[0]);
       }
@@ -304,7 +305,7 @@ void pqAnimationScene::initializeCue(
       {
         mins.append(current);
       }
-      if (domain.size() && domain[1].isValid())
+      if (!domain.empty() && domain[1].isValid())
       {
         maxs.append(domain[1]);
       }
@@ -360,12 +361,12 @@ pqAnimationCue* pqAnimationScene::createCueInternal(
 
   pqObjectBuilder* builder = core->getObjectBuilder();
   vtkSMProxy* cueProxy =
-    builder->createProxy("animation", cuetype.toLocal8Bit().data(), this->getServer(), "animation");
+    builder->createProxy("animation", cuetype.toUtf8().data(), this->getServer(), "animation");
   pqAnimationCue* cue = smmodel->findItem<pqAnimationCue*>(cueProxy);
   if (!cue)
   {
     qDebug() << "Failed to create AnimationCue.";
-    return 0;
+    return nullptr;
   }
 
   if (proxy)
@@ -410,7 +411,7 @@ void pqAnimationScene::removeCues(vtkSMProxy* animated_proxy)
 
   vtkSMProxyProperty* pp = vtkSMProxyProperty::SafeDownCast(this->getProxy()->GetProperty("Cues"));
 
-  QList<QPointer<pqAnimationCue> > toRemove;
+  QList<QPointer<pqAnimationCue>> toRemove;
   for (unsigned int cc = 0; cc < pp->GetNumberOfProxies(); cc++)
   {
     vtkSMProxy* cueProxy = pp->GetProxy(cc);

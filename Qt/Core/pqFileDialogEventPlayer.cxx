@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "pqFileDialogEventPlayer.h"
 #include "pqCoreTestUtility.h"
+#include "pqQtDeprecated.h"
 
 #include "pqEventDispatcher.h"
 #include "pqFileDialog.h"
@@ -53,7 +54,7 @@ bool pqFileDialogEventPlayer::playEvent(
   QObject* Object, const QString& Command, const QString& Arguments, bool& Error)
 {
   // Handle playback for pqFileDialog and all its children ...
-  pqFileDialog* object = 0;
+  pqFileDialog* object = nullptr;
   for (QObject* o = Object; o; o = o->parent())
   {
     if ((object = qobject_cast<pqFileDialog*>(o)))
@@ -110,12 +111,12 @@ bool pqFileDialogEventPlayer::playEvent(
   if (Command == "remove")
   {
     // Delete the file.
-    vtksys::SystemTools::RemoveFile(fileString.toLocal8Bit().data());
+    vtksys::SystemTools::RemoveFile(fileString.toUtf8().toStdString());
     return true;
   }
   if (Command == "copy")
   {
-    QStringList parts = fileString.split(';', QString::SkipEmptyParts);
+    QStringList parts = fileString.split(';', PV_QT_SKIP_EMPTY_PARTS);
     if (parts.size() != 2)
     {
       qCritical() << "Invalid argument to `copy`. Expecting paths separated by `;`.";
@@ -139,7 +140,7 @@ bool pqFileDialogEventPlayer::playEvent(
   }
   if (Command == "makeDir")
   {
-    return vtksys::SystemTools::MakeDirectory(fileString.toLocal8Bit().data());
+    return vtksys::SystemTools::MakeDirectory(fileString.toUtf8().toStdString()).IsSuccess();
   }
   if (!this->Superclass::playEvent(Object, Command, Arguments, Error))
   {

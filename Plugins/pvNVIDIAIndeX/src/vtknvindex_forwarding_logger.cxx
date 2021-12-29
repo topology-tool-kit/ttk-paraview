@@ -1,29 +1,29 @@
 /* Copyright 2021 NVIDIA Corporation. All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions
-* are met:
-*  * Redistributions of source code must retain the above copyright
-*    notice, this list of conditions and the following disclaimer.
-*  * Redistributions in binary form must reproduce the above copyright
-*    notice, this list of conditions and the following disclaimer in the
-*    documentation and/or other materials provided with the distribution.
-*  * Neither the name of NVIDIA CORPORATION nor the names of its
-*    contributors may be used to endorse or promote products derived
-*    from this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-* EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-* PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-* CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-* EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-* PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-* PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-* OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include "vtknvindex_forwarding_logger.h"
 
@@ -34,6 +34,8 @@
 #include "vtkOutputWindow.h"
 #include "vtkSetGet.h"
 
+#include "vtknvindex_global_settings.h"
+
 namespace vtknvindex
 {
 namespace logger
@@ -41,13 +43,11 @@ namespace logger
 
 // Singleton instance.
 vtknvindex_forwarding_logger_factory*
-  vtknvindex_forwarding_logger_factory::G_p_forwarding_logger_factory = 0;
+  vtknvindex_forwarding_logger_factory::G_p_forwarding_logger_factory = nullptr;
 
 //-------------------------------------------------------------------------------------------------
 vtknvindex_forwarding_logger::vtknvindex_forwarding_logger()
-  : m_os()
-  , m_level(mi::base::MESSAGE_SEVERITY_INFO)
-  , m_forwarding_logger()
+  : m_level(mi::base::MESSAGE_SEVERITY_INFO)
 {
   // The forwarding logger pointer must be captured by a handle,
   // otherwise it leaks some memory.
@@ -82,6 +82,15 @@ vtknvindex_forwarding_logger::~vtknvindex_forwarding_logger()
     }
     else
     {
+      mi::base::Message_severity level_output = mi::base::MESSAGE_SEVERITY_WARNING;
+      mi::base::Message_severity level_stdout = mi::base::MESSAGE_SEVERITY_VERBOSE;
+      vtknvindex_global_settings* settings = vtknvindex_global_settings::GetInstance();
+      if (settings)
+      {
+        level_output = mi::base::Message_severity(settings->GetLogLevel());
+        level_stdout = mi::base::Message_severity(settings->GetLogLevelStandardOutput());
+      }
+
       // No forwarding logger available (yet)
       if (vtknvindex_forwarding_logger_factory::instance()->get_fallback_log_severity() >= m_level)
       {
@@ -94,7 +103,7 @@ vtknvindex_forwarding_logger::~vtknvindex_forwarding_logger()
         const std::string prefix = "nvindex: ";
 
         // This is based on vtkErrorWithObjectMacro().
-        if (m_level <= mi::base::MESSAGE_SEVERITY_WARNING && vtkObject::GetGlobalWarningDisplay())
+        if (m_level <= level_output && vtkObject::GetGlobalWarningDisplay())
         {
           // This will pop up the Output Messages window, messages will also be printed to the
           // console.
@@ -105,13 +114,15 @@ vtknvindex_forwarding_logger::~vtknvindex_forwarding_logger()
 
           if (m_level <= mi::base::MESSAGE_SEVERITY_ERROR)
             vtkOutputWindowDisplayErrorText(vtkmsg.str());
-          else
+          else if (m_level <= mi::base::MESSAGE_SEVERITY_WARNING)
             vtkOutputWindowDisplayWarningText(vtkmsg.str());
+          else
+            vtkOutputWindowDisplayText(vtkmsg.str());
 
           vtkmsg.rdbuf()->freeze(0);
           vtkObject::BreakOnError();
         }
-        else
+        else if (m_level <= level_stdout)
         {
           // Log info level only to console.
           std::cout << prefix << "        PVPLN  init " << level << ": " << m_os.str();
@@ -143,8 +154,9 @@ vtknvindex_forwarding_logger::~vtknvindex_forwarding_logger()
     }
   }
 #endif
+
   // The m_forwarding_logger is destructed and ref-count is down here.
-  m_forwarding_logger = 0;
+  m_forwarding_logger = nullptr;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -158,7 +170,13 @@ std::ostringstream& vtknvindex_forwarding_logger::get_message(mi::base::Message_
 std::string vtknvindex_forwarding_logger::level_to_string(mi::base::Message_severity level)
 {
   static const char* const g_buffer[] = {
-    "fatal", "error", "warn", "info", "verbose", "debug", 0,
+    "fatal",
+    "error",
+    "warn",
+    "info",
+    "verbose",
+    "debug",
+    nullptr,
   };
 
   assert(0 <= level);
@@ -173,9 +191,7 @@ std::string vtknvindex_forwarding_logger::level_to_string(mi::base::Message_seve
 
 //-------------------------------------------------------------------------------------------------
 vtknvindex_forwarding_logger_factory::vtknvindex_forwarding_logger_factory()
-  : m_header_str("")
-  , m_iindex_if()
-  , m_fallback_severity_level(mi::base::MESSAGE_SEVERITY_INFO)
+  : m_fallback_severity_level(mi::base::MESSAGE_SEVERITY_INFO)
 {
   // empty
 }
@@ -214,7 +230,7 @@ bool vtknvindex_forwarding_logger_factory::shutdown()
   if (!this->is_enabled())
     return false;
 
-  m_iindex_if = 0;
+  m_iindex_if = nullptr;
   return true;
 }
 
@@ -229,9 +245,10 @@ mi::base::ILogger* vtknvindex_forwarding_logger_factory::get_forwarding_logger()
 {
   if (!m_iindex_if.is_valid_interface())
   {
-    fprintf(stdout, "Error: The forwarding logger factory has not been initialized. Please note "
-                    "that this may cause to a segmentation fault.\n");
-    return 0;
+    fprintf(stdout,
+      "Error: The forwarding logger factory has not been initialized. Please note "
+      "that this may cause to a segmentation fault.\n");
+    return nullptr;
   }
   return m_iindex_if->get_forwarding_logger();
 }

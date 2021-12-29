@@ -56,15 +56,15 @@ def apply_ufunc(func, array, args=()):
     elif type(array) == dsa.VTKCompositeDataArray:
         return dsa.VTKCompositeDataArray(_apply_func2(func, array, args), dataset = array.DataSet)
     else:
-        return func(array)
+        return func(array, *args)
 
 def _make_ufunc(ufunc):
     """ Given a ufunc, creates a closure that applies it to each member
     of a VTKCompositeDataArray.
 
     Note that this function is mainly for internal use by this module."""
-    def new_ufunc(array):
-        return apply_ufunc(ufunc, array, ())
+    def new_ufunc(array, *args):
+        return apply_ufunc(ufunc, array, args)
     return new_ufunc
 
 def apply_dfunc(dfunc, array1, val2):
@@ -206,7 +206,7 @@ def _global_func(impl, array, axis, controller):
                 return dsa.NoneArray;
 
             if res is dsa.NoneArray:
-                if max_dims == 1:
+                if numpy.isscalar(max_dims):
                     # Weird trick to make the array look like a scalar
                     max_dims = ()
                 res = numpy.empty(max_dims)
@@ -985,6 +985,9 @@ def unstructured_from_composite_arrays(points, arrays, controller=None):
                 da.SetName(name)
                 ugrid.GetPointData().AddArray(da)
     return ugrid
+
+in1d = _make_ufunc(numpy.in1d)
+in1d.__doc__ = "Test whether each element of a 1-D array is also present in a second array."
 
 isnan = _make_ufunc(numpy.isnan)
 isnan.__doc__ = "Returns a bool array, true if values is nan."

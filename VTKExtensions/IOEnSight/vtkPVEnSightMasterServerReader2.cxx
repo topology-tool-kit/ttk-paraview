@@ -39,7 +39,7 @@
 #include <string>
 #include <vector>
 
-#include <ctype.h>
+#include <cctype>
 
 //----------------------------------------------------------------------------
 vtkStandardNewMacro(vtkPVEnSightMasterServerReader2);
@@ -67,7 +67,7 @@ public:
 vtkPVEnSightMasterServerReader2::vtkPVEnSightMasterServerReader2()
 {
   this->Internal = new vtkPVEnSightMasterServerReader2Internal;
-  this->Controller = 0;
+  this->Controller = nullptr;
   this->SetController(vtkMultiProcessController::GetGlobalController());
   this->InformationError = 0;
   this->NumberOfPieces = 0;
@@ -77,7 +77,7 @@ vtkPVEnSightMasterServerReader2::vtkPVEnSightMasterServerReader2()
 vtkPVEnSightMasterServerReader2::~vtkPVEnSightMasterServerReader2()
 {
   int rIdx;
-  this->SetController(0);
+  this->SetController(nullptr);
   for (rIdx = static_cast<int>(this->Internal->RealReaders.size() - 1); rIdx >= 0; rIdx--)
   {
     this->Internal->RealReaders[rIdx]->Delete();
@@ -343,7 +343,7 @@ int vtkPVEnSightMasterServerReader2::RequestInformation(vtkInformation* vtkNotUs
     }
   }
 
-  if (this->Internal->TimeSetValues.size() >= 1)
+  if (!this->Internal->TimeSetValues.empty())
   {
     if (vtkPVEnSightMasterServerReader2SyncValues(&this->Internal->TimeSetValues.at(0),
           static_cast<int>(this->Internal->TimeSetValues.size()),
@@ -386,14 +386,14 @@ int vtkPVEnSightMasterServerReader2::RequestData(vtkInformation* vtkNotUsed(requ
     vtkMultiBlockDataSet::SafeDownCast(outInfo->Get(vtkDataObject::DATA_OBJECT()));
 
   int tsLength = 0;
-  double* steps = 0;
+  double* steps = nullptr;
   if (outInfo->Has(vtkStreamingDemandDrivenPipeline::TIME_STEPS()))
   {
     tsLength = outInfo->Length(vtkStreamingDemandDrivenPipeline::TIME_STEPS());
     steps = outInfo->Get(vtkStreamingDemandDrivenPipeline::TIME_STEPS());
   }
 
-  if (outInfo->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP()) && steps != 0 &&
+  if (outInfo->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP()) && steps != nullptr &&
     tsLength > 0)
   {
     double requestedTimeStep = outInfo->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
@@ -676,7 +676,7 @@ void vtkPVEnSightMasterServerReader2::SetCaseFileName(const char* fileName)
 //----------------------------------------------------------------------------
 int vtkPVEnSightMasterServerReader2::GetNumberOfPointArrays()
 {
-  return this->Internal->RealReaders.size() == 0
+  return this->Internal->RealReaders.empty()
     ? 0
     : this->Internal->RealReaders[0]->GetNumberOfPointArrays();
 }
@@ -684,7 +684,7 @@ int vtkPVEnSightMasterServerReader2::GetNumberOfPointArrays()
 //----------------------------------------------------------------------------
 int vtkPVEnSightMasterServerReader2::GetNumberOfCellArrays()
 {
-  return this->Internal->RealReaders.size() == 0
+  return this->Internal->RealReaders.empty()
     ? 0
     : this->Internal->RealReaders[0]->GetNumberOfCellArrays();
 }
@@ -692,23 +692,23 @@ int vtkPVEnSightMasterServerReader2::GetNumberOfCellArrays()
 //----------------------------------------------------------------------------
 const char* vtkPVEnSightMasterServerReader2::GetPointArrayName(int index)
 {
-  return this->Internal->RealReaders.size() == 0
-    ? NULL
+  return this->Internal->RealReaders.empty()
+    ? nullptr
     : this->Internal->RealReaders[0]->GetPointArrayName(index);
 }
 
 //----------------------------------------------------------------------------
 const char* vtkPVEnSightMasterServerReader2::GetCellArrayName(int index)
 {
-  return this->Internal->RealReaders.size() == 0
-    ? NULL
+  return this->Internal->RealReaders.empty()
+    ? nullptr
     : this->Internal->RealReaders[0]->GetCellArrayName(index);
 }
 
 //----------------------------------------------------------------------------
 int vtkPVEnSightMasterServerReader2::GetPointArrayStatus(const char* name)
 {
-  return this->Internal->RealReaders.size() == 0
+  return this->Internal->RealReaders.empty()
     ? 0
     : this->Internal->RealReaders[0]->GetPointArrayStatus(name);
 }
@@ -716,7 +716,7 @@ int vtkPVEnSightMasterServerReader2::GetPointArrayStatus(const char* name)
 //----------------------------------------------------------------------------
 int vtkPVEnSightMasterServerReader2::GetCellArrayStatus(const char* name)
 {
-  return this->Internal->RealReaders.size() == 0
+  return this->Internal->RealReaders.empty()
     ? 0
     : this->Internal->RealReaders[0]->GetCellArrayStatus(name);
 }
@@ -779,14 +779,14 @@ void vtkPVEnSightMasterServerReader2::SetByteOrder(int byteOrder)
 //----------------------------------------------------------------------------
 int vtkPVEnSightMasterServerReader2::GetByteOrder()
 {
-  return this->Internal->RealReaders.size() == 0 ? vtkPGenericEnSightReader::FILE_UNKNOWN_ENDIAN
-                                                 : this->Internal->RealReaders[0]->GetByteOrder();
+  return this->Internal->RealReaders.empty() ? vtkPGenericEnSightReader::FILE_UNKNOWN_ENDIAN
+                                             : this->Internal->RealReaders[0]->GetByteOrder();
 }
 
 //----------------------------------------------------------------------------
 const char* vtkPVEnSightMasterServerReader2::GetByteOrderAsString()
 {
-  return this->Internal->RealReaders.size() == 0
-    ? NULL
+  return this->Internal->RealReaders.empty()
+    ? nullptr
     : this->Internal->RealReaders[0]->GetByteOrderAsString();
 }

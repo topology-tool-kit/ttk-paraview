@@ -1,29 +1,29 @@
 /* Copyright 2021 NVIDIA Corporation. All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions
-* are met:
-*  * Redistributions of source code must retain the above copyright
-*    notice, this list of conditions and the following disclaimer.
-*  * Redistributions in binary form must reproduce the above copyright
-*    notice, this list of conditions and the following disclaimer in the
-*    documentation and/or other materials provided with the distribution.
-*  * Neither the name of NVIDIA CORPORATION nor the names of its
-*    contributors may be used to endorse or promote products derived
-*    from this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-* EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-* PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-* CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-* EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-* PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-* PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-* OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #ifndef vtknvindex_host_properties_h
 #define vtknvindex_host_properties_h
@@ -67,6 +67,9 @@ public:
     // matches data_bbox.
     const mi::Uint8* data_buffer;
 
+    // True when data_buffer is defined and points to local memory (not shared memory).
+    bool data_buffer_is_local;
+
     // Data buffer of just the neighbor border data, if fetched from a remote node. Its size matches
     // border_bbox.
     std::unique_ptr<mi::Uint8[]> border_data_buffer;
@@ -79,7 +82,7 @@ public:
 
     // Write the border data to the destination buffer
     void copy(mi::Uint8* dst_buffer, const mi::math::Bbox<mi::Sint32, 3>& dst_buffer_bbox_global,
-      mi::Size voxel_fmt_size) const;
+      mi::Size voxel_fmt_size, const std::string& source_scalar_type) const;
 
     // Data is available either completely in local or shared memory, or as fetched border data.
     bool is_data_available() const;
@@ -115,8 +118,9 @@ private:
 // assigned to the host,
 // the shared memory information and the gpus to ranks assignments.
 
-class vtknvindex_host_properties : public mi::neuraylib::Base<0xec688118, 0x13f0, 0x4e4f, 0x81,
-                                     0x35, 0xb0, 0xac, 0x94, 0xf6, 0x7a, 0x59>
+class vtknvindex_host_properties
+  : public mi::neuraylib::Base<0xec688118, 0x13f0, 0x4e4f, 0x81, 0x35, 0xb0, 0xac, 0x94, 0xf6, 0x7a,
+      0x59>
 {
 public:
   // Shared memory name and bounding box of the
@@ -166,7 +170,7 @@ public:
 
   // Set the shared memory data for the current bounding box and the time step.
   void set_shminfo(mi::Uint32 time_step, mi::Sint32 rank_id, std::string shmname,
-    mi::math::Bbox<mi::Float32, 3> shmbbox, mi::Uint64 shmsize, void* subset_ptr = NULL);
+    mi::math::Bbox<mi::Float32, 3> shmbbox, mi::Uint64 shmsize, void* subset_ptr = nullptr);
 
   void set_read_flag(mi::Uint32 time_step, std::string shmname);
 
@@ -222,7 +226,7 @@ private:
   std::vector<mi::Sint32> m_gpuids;  // The GPU on which this rank is running on.
   std::map<std::string, mi::Uint32>
     m_shmref; // The reference count on a particular shared memory piece.
-  std::map<mi::Uint32, std::vector<shm_info> >
+  std::map<mi::Uint32, std::vector<shm_info>>
     m_shmlist; // List of shared memory pieces on the present host.
 
   std::mutex m_mutex;

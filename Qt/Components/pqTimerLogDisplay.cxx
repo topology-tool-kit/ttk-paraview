@@ -130,7 +130,7 @@ void pqTimerLogDisplay::refresh()
 
   // Get information about the local process.
   timerInfo->SetLogThreshold(this->LogThreshold);
-  timerInfo->CopyFromObject(NULL);
+  timerInfo->CopyFromObject(nullptr);
   this->addToLog("Local Process", timerInfo);
 
   // Get information about servers.
@@ -288,7 +288,7 @@ void pqTimerLogDisplay::save()
   filters += ";;All files (*)";
 
   pqFileDialog* const fileDialog =
-    new pqFileDialog(NULL, this, tr("Save Timer Log"), QString(), filters);
+    new pqFileDialog(nullptr, this, tr("Save Timer Log"), QString(), filters);
   fileDialog->setAttribute(Qt::WA_DeleteOnClose);
   fileDialog->setObjectName("TimerLogSaveDialog");
   fileDialog->setFileMode(pqFileDialog::AnyFile);
@@ -314,13 +314,13 @@ void pqTimerLogDisplay::save(const QString& filename)
   file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text);
   if (file.error() != QFile::NoError)
   {
-    qWarning("Could not open %s for reading.", filename.toLocal8Bit().data());
+    qWarning("Could not open %s for reading.", filename.toUtf8().data());
     return;
   }
   QTextStream(&file) << this->ui->log->toPlainText();
   if (file.error() != QFile::NoError)
   {
-    qWarning("Error writing to %s.", filename.toLocal8Bit().data());
+    qWarning("Error writing to %s.", filename.toUtf8().data());
   }
   file.close();
 }

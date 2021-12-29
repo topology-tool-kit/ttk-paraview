@@ -1,28 +1,29 @@
 // A Test of a very simple app based on pqCore
 #include "FilteredPipelineBrowserApp.h"
 
+#include <QAction>
 #include <QApplication>
 #include <QDebug>
 #include <QStringList>
 #include <QTimer>
+#include <QToolBar>
 #include <QVBoxLayout>
 
-#include "vtkObjectFactory.h"
-#include "vtkSMPropertyHelper.h"
-#include "vtkSMSourceProxy.h"
-#include "vtkSmartPointer.h"
-
+#include "pqActiveObjects.h"
 #include "pqApplicationCore.h"
+#include "pqCoreConfiguration.h"
 #include "pqCoreTestUtility.h"
 #include "pqObjectBuilder.h"
-#include "pqOptions.h"
 #include "pqPipelineAnnotationFilterModel.h"
 #include "pqPipelineSource.h"
+#include "pqProxyWidgetDialog.h"
 #include "pqServer.h"
+#include "vtkObjectFactory.h"
 #include "vtkProcessModule.h"
-
-#include <QAction>
-#include <QToolBar>
+#include "vtkSMPropertyHelper.h"
+#include "vtkSMSessionProxyManager.h"
+#include "vtkSMSourceProxy.h"
+#include "vtkSmartPointer.h"
 
 MainPipelineWindow::MainPipelineWindow()
 {
@@ -50,7 +51,7 @@ MainPipelineWindow::MainPipelineWindow()
     SLOT(invertFilterMatching(int)), Qt::QueuedConnection);
 
   // Set Pipeline Widget
-  this->PipelineWidget = new pqPipelineBrowserWidget(NULL);
+  this->PipelineWidget = new pqPipelineBrowserWidget(nullptr);
 
   // Create server only after a pipeline browser get created...
   pqServer* server = ob->createServer(pqServerResource("builtin:"));
@@ -98,18 +99,16 @@ void MainPipelineWindow::updateSelectedFilter(int filterIndex)
 //-----------------------------------------------------------------------------
 void MainPipelineWindow::processTest()
 {
-  if (pqOptions* const options = pqApplicationCore::instance()->getOptions())
+  auto config = pqCoreConfiguration::instance();
+  bool test_succeeded = true;
+
+  // ---- Do the testing here ----
+
+  // ---- Do the testing here ----
+
+  if (config->exitApplicationWhenTestsDone())
   {
-    bool test_succeeded = true;
-
-    // ---- Do the testing here ----
-
-    // ---- Do the testing here ----
-
-    if (options->GetExitAppWhenTestsDone())
-    {
-      QApplication::instance()->exit(test_succeeded ? 0 : 1);
-    }
+    QApplication::instance()->exit(test_succeeded ? 0 : 1);
   }
 }
 //-----------------------------------------------------------------------------
@@ -147,20 +146,20 @@ void MainPipelineWindow::createPipelineWithAnnotation(pqServer* server)
   vtkSMSourceProxy::SafeDownCast(groupDS->getProxy())->UpdatePipeline();
 
   // Setup annotations:
-  wavelet->getProxy()->SetAnnotation(this->FilterNames.at(1).toLocal8Bit().data(), "-");
-  clip1->getProxy()->SetAnnotation(this->FilterNames.at(1).toLocal8Bit().data(), "-");
-  clip2->getProxy()->SetAnnotation(this->FilterNames.at(1).toLocal8Bit().data(), "-");
+  wavelet->getProxy()->SetAnnotation(this->FilterNames.at(1).toUtf8().data(), "-");
+  clip1->getProxy()->SetAnnotation(this->FilterNames.at(1).toUtf8().data(), "-");
+  clip2->getProxy()->SetAnnotation(this->FilterNames.at(1).toUtf8().data(), "-");
 
-  append->getProxy()->SetAnnotation(this->FilterNames.at(2).toLocal8Bit().data(), "-");
-  groupDS->getProxy()->SetAnnotation(this->FilterNames.at(2).toLocal8Bit().data(), "-");
+  append->getProxy()->SetAnnotation(this->FilterNames.at(2).toUtf8().data(), "-");
+  groupDS->getProxy()->SetAnnotation(this->FilterNames.at(2).toUtf8().data(), "-");
 
-  wavelet->getProxy()->SetAnnotation(this->FilterNames.at(3).toLocal8Bit().data(), "-");
-  clip1->getProxy()->SetAnnotation(this->FilterNames.at(3).toLocal8Bit().data(), "-");
-  clip2->getProxy()->SetAnnotation(this->FilterNames.at(3).toLocal8Bit().data(), "-");
-  append->getProxy()->SetAnnotation(this->FilterNames.at(3).toLocal8Bit().data(), "-");
+  wavelet->getProxy()->SetAnnotation(this->FilterNames.at(3).toUtf8().data(), "-");
+  clip1->getProxy()->SetAnnotation(this->FilterNames.at(3).toUtf8().data(), "-");
+  clip2->getProxy()->SetAnnotation(this->FilterNames.at(3).toUtf8().data(), "-");
+  append->getProxy()->SetAnnotation(this->FilterNames.at(3).toUtf8().data(), "-");
 
-  wavelet->getProxy()->SetAnnotation(this->FilterNames.at(4).toLocal8Bit().data(), "-");
-  cone->getProxy()->SetAnnotation(this->FilterNames.at(4).toLocal8Bit().data(), "-");
+  wavelet->getProxy()->SetAnnotation(this->FilterNames.at(4).toUtf8().data(), "-");
+  cone->getProxy()->SetAnnotation(this->FilterNames.at(4).toUtf8().data(), "-");
 
   // Tooltip
   wavelet->getProxy()->SetAnnotation("tooltip", "1+3+4");
@@ -170,10 +169,6 @@ void MainPipelineWindow::createPipelineWithAnnotation(pqServer* server)
   append->getProxy()->SetAnnotation("tooltip", "2+3");
   groupDS->getProxy()->SetAnnotation("tooltip", "2");
 }
-
-#include "pqActiveObjects.h"
-#include "pqProxyWidgetDialog.h"
-#include "vtkSMSessionProxyManager.h"
 
 //-----------------------------------------------------------------------------
 void MainPipelineWindow::showSettings()

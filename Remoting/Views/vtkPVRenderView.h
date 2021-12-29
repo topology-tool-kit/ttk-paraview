@@ -22,7 +22,7 @@
  * processes. vtkPVRenderView uses the information about what process it has
  * been created on to decide what part of the "rendering" happens on the
  * process.
-*/
+ */
 
 #ifndef vtkPVRenderView_h
 #define vtkPVRenderView_h
@@ -173,6 +173,8 @@ public:
    */
   void ResetCamera();
   void ResetCamera(double bounds[6]);
+  void ResetCameraScreenSpace();
+  void ResetCameraScreenSpace(double bounds[6]);
   //@}
 
   /**
@@ -655,16 +657,41 @@ public:
 
   //*****************************************************************
   // Forward to 3D renderer.
-  vtkSetMacro(UseHiddenLineRemoval, bool) virtual void SetUseDepthPeeling(int val);
+  vtkSetMacro(UseHiddenLineRemoval, bool);
+  virtual void SetUseDepthPeeling(int val);
   virtual void SetUseDepthPeelingForVolumes(bool val);
   virtual void SetMaximumNumberOfPeels(int val);
-  virtual void SetBackground(double r, double g, double b);
-  virtual void SetBackground2(double r, double g, double b);
   virtual void SetBackgroundTexture(vtkTexture* val);
-  virtual void SetGradientBackground(int val);
-  virtual void SetTexturedBackground(int val);
-  virtual void SetSkyboxBackground(int val);
-  virtual void SetUseEnvironmentLighting(bool val);
+
+  //@{
+  /**
+   * When set, background color and mode will be obtained from
+   * vtkPVRenderViewSettings.
+   */
+  vtkSetMacro(UseRenderViewSettingsForBackground, bool);
+  vtkGetMacro(UseRenderViewSettingsForBackground, bool);
+  ///@}
+
+  enum BackgroundMode
+  {
+    DEFAULT,
+    GRADIENT,
+    IMAGE,
+    SKYBOX,
+    STEREO_SKYBOX,
+  };
+
+  ///@{
+  /**
+   * API for background color selection.
+   */
+  vtkSetClampMacro(BackgroundColorMode, int, DEFAULT, STEREO_SKYBOX);
+  vtkSetVector3Macro(Background, double);
+  vtkGetVector3Macro(Background, double);
+  vtkSetVector3Macro(Background2, double);
+  vtkGetVector3Macro(Background2, double);
+  vtkSetMacro(UseEnvironmentLighting, bool);
+  ///@}
 
   //*****************************************************************
   // Entry point for environmental backgrounds
@@ -867,48 +894,22 @@ public:
 
   //@{
   /**
-   * Tells view that it should draw a particular array component
-   * to the screen such that the pixels can be read back and
-   * decoded to obtain the values.
+   * Experimental API to grab re-colorable images. Between
+   * BeginValuePassForRendering and EndValuePassForRendering calls, all renders
+   * will end up using vtkValuePass for rendering instead of the standard
+   * rendering passes that generate results on screen.
+   *
+   * GrabValuePassResult must be called between BeginValuePassForRendering and
+   * EndValuePassForRendering. Returns the vtkFloatArray grabbed by
+   * vtkValuePass.
+   *
+   * This API is not intended for remote-rendering use-cases. Thus only supported in client-only and
+   * pvbatch (or in situ) cases. That's the reason why we are exposing this directly on
+   * the vtkPVRenderView rather accessing it via a proxy.
    */
-  void SetDrawCells(bool choice);
-  void SetArrayNameToDraw(const char* name);
-  void SetArrayNumberToDraw(int fieldAttributeType);
-  void SetArrayComponentToDraw(int comp);
-  void SetScalarRange(double min, double max);
-  void BeginValueCapture();
-  void EndValueCapture();
-  //@}
-
-  //@{
-  /**
-   * Current rendering mode of vtkValuePass (float or invertible RGB).
-   * @deprecation Invertible is deprecated, so this currently does nothing and will be removed.
-   */
-  void SetValueRenderingModeCommand(int mode);
-  int GetValueRenderingModeCommand();
-  //@}
-
-  //@{
-  /**
-   * Access to vtkValuePass::FLOATING_POINT mode rendered image. vtkValuePass's
-   * internal FBO is accessed directly when rendering locally. When rendering in
-   * parallel, IceT composites the intermediate results from vtkValuePass and the
-   * final result is accessed through vtkIceTCompositePass. Float value rendering
-   * is only supported in BATCH mode and in CLIENT mode (local rendering). These methods
-   * do nothing if INVERTIBLE_LUT mode is active.
-   */
-  void CaptureValuesFloat();
-  vtkFloatArray* GetCapturedValuesFloat();
-  //@}
-
-  //@{
-  /**
-   * Tells views that it should draw the lighting contributions to the
-   * framebuffer.
-   */
-  void StartCaptureLuminance();
-  void StopCaptureLuminance();
+  bool BeginValuePassForRendering(int fieldAssociation, const char* arrayName, int component);
+  void EndValuePassForRendering();
+  vtkSmartPointer<vtkFloatArray> GrabValuePassResult();
   //@}
 
   //@{
@@ -1159,9 +1160,10 @@ protected:
   void PostSelect(vtkSelection* sel, const char* array = nullptr);
 
   /**
-   * Update skybox actor
+   * Updates background color. If no renderer is specified, then the default
+   * renderer returned by `GetRenderer` is used.
    */
-  void UpdateSkybox();
+  virtual void UpdateBackground(vtkRenderer* renderer = nullptr);
 
   /**
    * Configure texture based on scalar type
@@ -1182,7 +1184,6 @@ protected:
   vtkSelection* LastSelection;
   vtkSmartPointer<vtkPVGridAxes3DActor> GridAxes3DActor;
   vtkNew<vtkSkybox> Skybox;
-  bool NeedSkybox = false;
 
   int StillRenderImageReductionFactor;
   int InteractiveRenderImageReductionFactor;
@@ -1291,11 +1292,19 @@ private:
   int ServerStereoType;
   void UpdateStereoProperties();
 
+  int BackgroundColorMode;
+  bool UseEnvironmentLighting;
+  bool UseRenderViewSettingsForBackground;
+  double Background[3];
+  double Background2[3];
+
   vtkSmartPointer<vtkCuller> Culler;
   vtkNew<vtkTimerLog> Timer;
 
   int ForceDataDistributionMode;
   int PreviousDiscreteCameraIndex;
+  vtkSmartPointer<vtkTexture> EnvironmentalBGTexture;
+  bool UseTexturedEnvironmentalBG;
 };
 
 #endif

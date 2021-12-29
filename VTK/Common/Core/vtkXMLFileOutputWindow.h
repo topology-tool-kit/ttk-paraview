@@ -20,15 +20,15 @@
  * tags for each text display method. The text is processed to replace
  * XML markup characters.
  *
- *   DisplayText - <Text>
+ *   DisplayText - \<Text\>
  *
- *   DisplayErrorText - <Error>
+ *   DisplayErrorText - \<Error\>
  *
- *   DisplayWarningText - <Warning>
+ *   DisplayWarningText - \<Warning\>
  *
- *   DisplayGenericWarningText - <GenericWarning>
+ *   DisplayGenericWarningText - \<GenericWarning\>
  *
- *   DisplayDebugText - <Debug>
+ *   DisplayDebugText - \<Debug\>
  *
  * The method DisplayTag outputs the text unprocessed. To use this
  * class, instantiate it and then call SetInstance(this).
@@ -44,10 +44,11 @@ class VTKCOMMONCORE_EXPORT vtkXMLFileOutputWindow : public vtkFileOutputWindow
 {
 public:
   vtkTypeMacro(vtkXMLFileOutputWindow, vtkFileOutputWindow);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   static vtkXMLFileOutputWindow* New();
 
-  //@{
+  ///@{
   /**
    * Put the text into the log file. The text is processed to
    * replace &, <, > with &amp, &lt, and &gt.
@@ -58,7 +59,7 @@ public:
   void DisplayWarningText(const char*) override;
   void DisplayGenericWarningText(const char*) override;
   void DisplayDebugText(const char*) override;
-  //@}
+  ///@}
 
   /**
    * Put the text into the log file without processing it.
@@ -78,4 +79,3 @@ private:
 };
 
 #endif
-// VTK-HeaderTest-Exclude: vtkXMLFileOutputWindow.h

@@ -21,9 +21,9 @@
 #include <vtkm/cont/ExecutionObjectBase.h>
 
 #include <vtkm/Particle.h>
-#include <vtkm/worklet/DispatcherMapField.h>
-#include <vtkm/worklet/particleadvection/IntegratorBase.h>
+#include <vtkm/worklet/WorkletMapField.h>
 #include <vtkm/worklet/particleadvection/Particles.h>
+#include <vtkm/worklet/particleadvection/Stepper.h>
 
 #ifdef VTKM_CUDA
 #include <vtkm/cont/cuda/internal/ScopedCudaStackSize.h>
@@ -48,13 +48,12 @@ public:
 
   template <typename IntegratorType, typename IntegralCurveType>
   VTKM_EXEC void operator()(const vtkm::Id& idx,
-                            const IntegratorType* integrator,
+                            const IntegratorType& integrator,
                             IntegralCurveType& integralCurve,
                             const vtkm::Id& maxSteps) const
   {
     auto particle = integralCurve.GetParticle(idx);
 
-    //vtkm::Vec3f currPos = particle.Pos;
     vtkm::FloatDefault time = particle.Time;
     bool tookAnySteps = false;
 
@@ -67,7 +66,7 @@ public:
     do
     {
       vtkm::Vec3f outpos;
-      auto status = integrator->Step(&particle, time, outpos);
+      auto status = integrator.Step(particle, time, outpos);
       if (status.CheckOk())
       {
         integralCurve.StepUpdate(idx, time, outpos);
@@ -79,21 +78,15 @@ public:
       //Try and take a step just past the boundary.
       else if (status.CheckSpatialBounds())
       {
-        IntegratorStatus status2 = integrator->SmallStep(&particle, time, outpos);
-        if (status2.CheckOk())
+        status = integrator.SmallStep(particle, time, outpos);
+        if (status.CheckOk())
         {
           integralCurve.StepUpdate(idx, time, outpos);
           particle.Pos = outpos;
           tookAnySteps = true;
-          //we took a step, so use this status to consider below.
-          status = status2;
         }
-        else
-          status =
-            IntegratorStatus(true, status2.CheckSpatialBounds(), status2.CheckTemporalBounds());
       }
       integralCurve.StatusUpdate(idx, status, maxSteps);
-
     } while (integralCurve.CanContinue(idx));
 
     //Mark if any steps taken
@@ -232,8 +225,7 @@ public:
       vtkm::cont::make_ArrayHandleConstant<vtkm::UInt8>(vtkm::CELL_SHAPE_POLY_LINE, numSeeds);
     vtkm::cont::ArrayCopy(polyLineShape, cellTypes);
 
-    auto numIndices = vtkm::cont::make_ArrayHandleCast(numPoints, vtkm::IdComponent());
-    auto offsets = vtkm::cont::ConvertNumIndicesToOffsets(numIndices);
+    auto offsets = vtkm::cont::ConvertNumIndicesToOffsets(numPoints);
     polyLines.Fill(positions.GetNumberOfValues(), cellTypes, connectivity, offsets);
   }
 };

@@ -79,7 +79,7 @@ void pqHelpReaction::showHelp(const QString& url)
   // show some home page. Pick the first registered documentation and show its
   // home page.
   QStringList registeredDocumentations = engine->registeredDocumentations();
-  if (registeredDocumentations.size() > 0)
+  if (!registeredDocumentations.empty())
   {
     helpWindow->showHomePage(registeredDocumentations[0]);
   }
@@ -105,9 +105,12 @@ void pqHelpReaction::showProxyHelp(const QString& group, const QString& name)
     QString basename = QFileInfo(doc_namespace).baseName();
     QString url =
       QString("qthelp://%1/%2/%3.%4.html").arg(doc_namespace).arg(basename).arg(group).arg(name);
-    if (engine->findFile(url).isValid())
+
+    // If URL actually point to an existing file
+    if (!engine->fileData(url).isEmpty())
     {
       pqHelpReaction::showHelp(url);
+      break;
     }
   }
 }

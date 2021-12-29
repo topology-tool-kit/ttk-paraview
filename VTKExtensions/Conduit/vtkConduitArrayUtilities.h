@@ -36,8 +36,9 @@
 class vtkCellArray;
 class vtkDataArray;
 
-extern "C" {
-typedef void conduit_node;
+extern "C"
+{
+  typedef void conduit_node;
 }
 
 class VTKPVVTKEXTENSIONSCONDUIT_EXPORT vtkConduitArrayUtilities : public vtkObject
@@ -71,6 +72,12 @@ public:
    */
   static vtkSmartPointer<vtkDataArray> SetNumberOfComponents(
     vtkDataArray* array, int num_components);
+
+  /**
+   * Read a O2MRelation element
+   */
+  static vtkSmartPointer<vtkCellArray> O2MRelationToVTKCellArray(
+    const conduit_node* o2mrelation, const std::string& leafname);
 
 protected:
   vtkConduitArrayUtilities();

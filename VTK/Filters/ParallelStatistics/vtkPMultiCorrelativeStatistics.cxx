@@ -17,7 +17,6 @@
   Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
   the U.S. Government retains certain rights in this software.
   -------------------------------------------------------------------------*/
-#include "vtkToolkits.h"
 
 #include "vtkPMultiCorrelativeStatistics.h"
 
@@ -40,14 +39,14 @@ vtkCxxSetObjectMacro(vtkPMultiCorrelativeStatistics, Controller, vtkMultiProcess
 //------------------------------------------------------------------------------
 vtkPMultiCorrelativeStatistics::vtkPMultiCorrelativeStatistics()
 {
-  this->Controller = 0;
+  this->Controller = nullptr;
   this->SetController(vtkMultiProcessController::GetGlobalController());
 }
 
 //------------------------------------------------------------------------------
 vtkPMultiCorrelativeStatistics::~vtkPMultiCorrelativeStatistics()
 {
-  this->SetController(0);
+  this->SetController(nullptr);
 }
 
 //------------------------------------------------------------------------------
@@ -124,7 +123,7 @@ void vtkPMultiCorrelativeStatistics::GatherStatistics(
   std::map<vtkStdString, vtkIdType> meanIndex;
   for (vtkIdType r = 1; r < nRow; ++r)
   {
-    if (sparseCov->GetValueByName(r, "Column2").ToString() == "")
+    if (sparseCov->GetValueByName(r, "Column2").ToString().empty())
     {
       meanIndex[sparseCov->GetValueByName(r, "Column1").ToString()] = r - 1;
 
@@ -138,7 +137,7 @@ void vtkPMultiCorrelativeStatistics::GatherStatistics(
   for (vtkIdType r = 1; r < nRow; ++r)
   {
     vtkStdString col2 = sparseCov->GetValueByName(r, "Column2").ToString();
-    if (col2 != "")
+    if (!col2.empty())
     {
       covToMeans[r - 1] = std::pair<vtkIdType, vtkIdType>(
         meanIndex[sparseCov->GetValueByName(r, "Column1").ToString()], meanIndex[col2]);

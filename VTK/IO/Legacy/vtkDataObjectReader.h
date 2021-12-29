@@ -43,19 +43,19 @@ public:
   vtkTypeMacro(vtkDataObjectReader, vtkDataReader);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Get the output field of this reader.
    */
   vtkDataObject* GetOutput();
   vtkDataObject* GetOutput(int idx);
   void SetOutput(vtkDataObject*);
-  //@}
+  ///@}
 
   /**
    * Actual reading happens here
    */
-  int ReadMeshSimple(const std::string& fname, vtkDataObject* output) override;
+  int ReadMeshSimple(VTK_FILEPATH const std::string& fname, vtkDataObject* output) override;
 
 protected:
   vtkDataObjectReader();

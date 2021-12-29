@@ -38,10 +38,10 @@ vtkStandardNewMacro(vtkHexahedron);
 
 namespace
 {
-static const double VTK_DIVERGED = 1.e6;
-static const int VTK_HEX_MAX_ITERATION = 10;
-static const double VTK_HEX_CONVERGED = 1.e-05;
-static const double VTK_HEX_OUTSIDE_CELL_TOLERANCE = 1.e-06;
+const double VTK_DIVERGED = 1.e6;
+const int VTK_HEX_MAX_ITERATION = 10;
+const double VTK_HEX_CONVERGED = 1.e-05;
+const double VTK_HEX_OUTSIDE_CELL_TOLERANCE = 1.e-06;
 }
 
 //------------------------------------------------------------------------------
@@ -108,8 +108,8 @@ int vtkHexahedron::EvaluatePosition(const double x[3], double closestPoint[3], i
   for (iteration = 0; !converged && (iteration < VTK_HEX_MAX_ITERATION); iteration++)
   {
     //  calculate element interpolation functions and derivatives
-    this->InterpolationFunctions(pcoords, weights);
-    this->InterpolationDerivs(pcoords, derivs);
+    vtkHexahedron::InterpolationFunctions(pcoords, weights);
+    vtkHexahedron::InterpolationDerivs(pcoords, derivs);
 
     //  calculate newton functions
     double fcol[3] = { 0, 0, 0 }, rcol[3] = { 0, 0, 0 }, scol[3] = { 0, 0, 0 },
@@ -173,7 +173,7 @@ int vtkHexahedron::EvaluatePosition(const double x[3], double closestPoint[3], i
     return -1;
   }
 
-  this->InterpolationFunctions(pcoords, weights);
+  vtkHexahedron::InterpolationFunctions(pcoords, weights);
 
   double lowerlimit = 0.0 - VTK_HEX_OUTSIDE_CELL_TOLERANCE;
   double upperlimit = 1.0 + VTK_HEX_OUTSIDE_CELL_TOLERANCE;
@@ -385,7 +385,7 @@ namespace
 //  |/_____\|
 //  0       3
 //
-static constexpr vtkIdType edges[vtkHexahedron::NumberOfEdges][2] = {
+constexpr vtkIdType edges[vtkHexahedron::NumberOfEdges][2] = {
   { 0, 1 }, // 0
   { 1, 2 }, // 1
   { 3, 2 }, // 2
@@ -399,16 +399,15 @@ static constexpr vtkIdType edges[vtkHexahedron::NumberOfEdges][2] = {
   { 3, 7 }, // 10
   { 2, 6 }, // 11
 };
-static constexpr vtkIdType faces[vtkHexahedron::NumberOfFaces]
-                                [vtkHexahedron::MaximumFaceSize + 1] = {
-                                  { 0, 4, 7, 3, -1 }, // 0
-                                  { 1, 2, 6, 5, -1 }, // 1
-                                  { 0, 1, 5, 4, -1 }, // 2
-                                  { 3, 7, 6, 2, -1 }, // 3
-                                  { 0, 3, 2, 1, -1 }, // 4
-                                  { 4, 5, 6, 7, -1 }, // 5
-                                };
-static constexpr vtkIdType edgeToAdjacentFaces[vtkHexahedron::NumberOfEdges][2] = {
+constexpr vtkIdType faces[vtkHexahedron::NumberOfFaces][vtkHexahedron::MaximumFaceSize + 1] = {
+  { 0, 4, 7, 3, -1 }, // 0
+  { 1, 2, 6, 5, -1 }, // 1
+  { 0, 1, 5, 4, -1 }, // 2
+  { 3, 7, 6, 2, -1 }, // 3
+  { 0, 3, 2, 1, -1 }, // 4
+  { 4, 5, 6, 7, -1 }, // 5
+};
+constexpr vtkIdType edgeToAdjacentFaces[vtkHexahedron::NumberOfEdges][2] = {
   { 2, 4 }, // 0
   { 1, 4 }, // 1
   { 3, 4 }, // 2
@@ -422,48 +421,48 @@ static constexpr vtkIdType edgeToAdjacentFaces[vtkHexahedron::NumberOfEdges][2] 
   { 0, 3 }, // 10
   { 1, 3 }, // 11
 };
-static constexpr vtkIdType faceToAdjacentFaces[vtkHexahedron::NumberOfFaces]
-                                              [vtkHexahedron::MaximumFaceSize] = {
-                                                { 4, 2, 5, 3 }, // 0
-                                                { 4, 3, 5, 2 }, // 1
-                                                { 4, 1, 5, 0 }, // 2
-                                                { 0, 5, 1, 4 }, // 3
-                                                { 0, 3, 1, 2 }, // 4
-                                                { 2, 1, 0, 3 }, // 5
-                                              };
-static constexpr vtkIdType pointToIncidentEdges[vtkHexahedron::NumberOfPoints]
-                                               [vtkHexahedron::MaximumValence] = {
-                                                 { 0, 8, 3 },  // 0
-                                                 { 0, 1, 9 },  // 1
-                                                 { 1, 2, 11 }, // 2
-                                                 { 2, 3, 10 }, // 3
-                                                 { 7, 8, 4 },  // 4
-                                                 { 4, 9, 5 },  // 5
-                                                 { 5, 11, 6 }, // 6
-                                                 { 6, 10, 7 }, // 7
-                                               };
-static constexpr vtkIdType pointToIncidentFaces[vtkHexahedron::NumberOfPoints]
-                                               [vtkHexahedron::MaximumValence] = {
-                                                 { 2, 0, 4 }, // 0
-                                                 { 4, 1, 2 }, // 1
-                                                 { 4, 3, 1 }, // 2
-                                                 { 4, 0, 3 }, // 3
-                                                 { 5, 2, 0 }, // 4
-                                                 { 2, 1, 5 }, // 5
-                                                 { 1, 3, 5 }, // 6
-                                                 { 3, 0, 5 }, // 7
-                                               };
-static constexpr vtkIdType pointToOneRingPoints[vtkHexahedron::NumberOfPoints]
-                                               [vtkHexahedron::MaximumValence] = {
-                                                 { 1, 4, 3 }, // 0
-                                                 { 0, 2, 5 }, // 1
-                                                 { 1, 3, 6 }, // 2
-                                                 { 2, 0, 7 }, // 3
-                                                 { 5, 7, 0 }, // 4
-                                                 { 4, 1, 6 }, // 5
-                                                 { 5, 2, 7 }, // 6
-                                                 { 6, 3, 4 }, // 7
-                                               };
+constexpr vtkIdType faceToAdjacentFaces[vtkHexahedron::NumberOfFaces]
+                                       [vtkHexahedron::MaximumFaceSize] = {
+                                         { 4, 2, 5, 3 }, // 0
+                                         { 4, 3, 5, 2 }, // 1
+                                         { 4, 1, 5, 0 }, // 2
+                                         { 0, 5, 1, 4 }, // 3
+                                         { 0, 3, 1, 2 }, // 4
+                                         { 2, 1, 0, 3 }, // 5
+                                       };
+constexpr vtkIdType pointToIncidentEdges[vtkHexahedron::NumberOfPoints]
+                                        [vtkHexahedron::MaximumValence] = {
+                                          { 0, 8, 3 },  // 0
+                                          { 0, 1, 9 },  // 1
+                                          { 1, 2, 11 }, // 2
+                                          { 2, 3, 10 }, // 3
+                                          { 7, 8, 4 },  // 4
+                                          { 4, 9, 5 },  // 5
+                                          { 5, 11, 6 }, // 6
+                                          { 6, 10, 7 }, // 7
+                                        };
+constexpr vtkIdType pointToIncidentFaces[vtkHexahedron::NumberOfPoints]
+                                        [vtkHexahedron::MaximumValence] = {
+                                          { 2, 0, 4 }, // 0
+                                          { 4, 1, 2 }, // 1
+                                          { 4, 3, 1 }, // 2
+                                          { 4, 0, 3 }, // 3
+                                          { 5, 2, 0 }, // 4
+                                          { 2, 1, 5 }, // 5
+                                          { 1, 3, 5 }, // 6
+                                          { 3, 0, 5 }, // 7
+                                        };
+constexpr vtkIdType pointToOneRingPoints[vtkHexahedron::NumberOfPoints]
+                                        [vtkHexahedron::MaximumValence] = {
+                                          { 1, 4, 3 }, // 0
+                                          { 0, 2, 5 }, // 1
+                                          { 1, 3, 6 }, // 2
+                                          { 2, 0, 7 }, // 3
+                                          { 5, 7, 0 }, // 4
+                                          { 4, 1, 6 }, // 5
+                                          { 5, 2, 7 }, // 6
+                                          { 6, 3, 4 }, // 7
+                                        };
 }
 
 //------------------------------------------------------------------------------

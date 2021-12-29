@@ -37,10 +37,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqApplicationComponentsInit.h"
 #include "pqApplicationCore.h"
 #include "pqComponentsTestUtility.h"
+#include "pqCoreConfiguration.h"
 #include "pqCoreUtilities.h"
 #include "pqItemViewSearchWidget.h"
 #include "pqLoadDataReaction.h"
-#include "pqOptions.h"
 #include "pqPresetGroupsManager.h"
 #include "pqPropertiesPanel.h"
 #include "pqQuickLaunchDialog.h"
@@ -63,8 +63,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QShortcut>
 
 //-----------------------------------------------------------------------------
+#if !defined(VTK_LEGACY_REMOVE)
 pqPVApplicationCore::pqPVApplicationCore(int& argc, char** argv, pqOptions* options)
-  : Superclass(argc, argv, options)
+  : pqPVApplicationCore(argc, argv, static_cast<vtkCLIOptions*>(nullptr), true, nullptr)
+{
+  this->setOptions(options);
+}
+#endif
+
+//-----------------------------------------------------------------------------
+pqPVApplicationCore::pqPVApplicationCore(int& argc, char** argv, vtkCLIOptions* options,
+  bool addStandardArgs /*=true*/, QObject* parentObject /*=nullptr*/)
+  : Superclass(argc, argv, options, addStandardArgs, parentObject)
 {
   // Initialize pqComponents resources.
   pqApplicationComponentsInit();
@@ -75,23 +85,28 @@ pqPVApplicationCore::pqPVApplicationCore(int& argc, char** argv, pqOptions* opti
   pqApplicationCore::instance()->registerManager("SELECTION_MANAGER", this->SelectionManager);
 
   pqPresetGroupsManager* presetGroupManager = new pqPresetGroupsManager(this);
-  QString groupString;
-  QFile groupsFile(":pqWidgets/pqPresetGroups.json");
-
-  if (!groupsFile.open(QIODevice::ReadOnly))
+  bool loadedFromSettings = presetGroupManager->loadGroupsFromSettings();
+  // If the groups could not be loaded from the settings, use the default groups
+  if (!loadedFromSettings)
   {
-    qWarning() << "Could not load preset group list.";
-  }
-  else
-  {
-    groupString = groupsFile.readAll();
-  }
-  groupsFile.close();
+    QString groupString;
+    QFile groupsFile(":pqWidgets/pqPresetGroups.json");
 
-  presetGroupManager->loadGroups(groupString);
+    if (!groupsFile.open(QIODevice::ReadOnly))
+    {
+      qWarning() << "Could not load preset group list.";
+    }
+    else
+    {
+      groupString = groupsFile.readAll();
+    }
+    groupsFile.close();
+
+    presetGroupManager->loadGroups(groupString);
+  }
   pqApplicationCore::instance()->registerManager("PRESET_GROUP_MANAGER", presetGroupManager);
 
-  this->PythonManager = 0;
+  this->PythonManager = nullptr;
 #if VTK_MODULE_ENABLE_ParaView_pqPython
   this->PythonManager = new pqPythonManager(this);
 
@@ -126,7 +141,7 @@ void pqPVApplicationCore::registerForQuicklaunch(QWidget* menu)
 void pqPVApplicationCore::quickLaunch()
 {
   Q_EMIT this->aboutToShowQuickLaunch();
-  if (this->QuickLaunchMenus.size() > 0)
+  if (!this->QuickLaunchMenus.empty())
   {
     pqQuickLaunchDialog dialog(pqCoreUtilities::mainWidget());
     foreach (QWidget* menu, this->QuickLaunchMenus)
@@ -138,7 +153,7 @@ void pqPVApplicationCore::quickLaunch()
         // --> BUT pqProxyGroupMenuManager in order to handle multi-server
         //         setting properly add actions into an internal widget so
         //         actions() should be used instead of findChildren()
-        if (menu->findChildren<QAction*>().size() == 0)
+        if (menu->findChildren<QAction*>().empty())
         {
           dialog.addActions(menu->actions());
         }
@@ -233,7 +248,7 @@ bool pqPVApplicationCore::eventFilter(QObject* obj, QEvent* event_)
       {
         // If the application has not yet started, treat it as a --data argument
         // to be processed after the application starts.
-        this->Options->SetParaViewDataName(files[0].toLocal8Bit().data());
+        pqCoreConfiguration::instance()->addDataFile(files[0].toUtf8().data());
       }
     }
     return false;

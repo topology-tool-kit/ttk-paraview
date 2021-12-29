@@ -19,7 +19,7 @@
  * session methods for the following classes: vtkSMSession,
  *                                            vtkSMSessionClient,
  *                                            vtkSMSessionServer
-*/
+ */
 
 #ifndef vtkPVSessionBase_h
 #define vtkPVSessionBase_h
@@ -167,7 +167,7 @@ public:
   virtual void RegisterSIObject(vtkSMMessage* msg);
 
   /**
-   * Return a vtkSMRemoteObject given its global id if any otherwise return NULL;
+   * Return a vtkSMRemoteObject given its global id if any otherwise return nullptr;
    */
   vtkObject* GetRemoteObject(vtkTypeUInt32 globalid);
 

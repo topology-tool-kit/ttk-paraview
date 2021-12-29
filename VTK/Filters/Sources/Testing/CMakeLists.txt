@@ -1,6 +1,7 @@
 vtk_module_test_data(
   Data/mbwavelet_ascii.q
-  Data/mbwavelet_ascii.xyz)
+  Data/mbwavelet_ascii.xyz
+)
 
 add_subdirectory(Cxx)
 

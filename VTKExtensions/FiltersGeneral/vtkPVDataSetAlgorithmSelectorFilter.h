@@ -21,7 +21,7 @@
  * The idea behind that filter is to merge the usage of any number of existing
  * vtk filter and allow to easily switch from one implementation to another
  * without changing anything in your pipeline.
-*/
+ */
 
 #ifndef vtkPVDataSetAlgorithmSelectorFilter_h
 #define vtkPVDataSetAlgorithmSelectorFilter_h
@@ -69,7 +69,7 @@ public:
   vtkAlgorithm* GetFilter(int index);
 
   /**
-   * Return the current active filter if any otherwise return NULL
+   * Return the current active filter if any otherwise return nullptr
    */
   vtkAlgorithm* GetActiveFilter();
 

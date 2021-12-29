@@ -66,7 +66,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * possible to get additional details about the event.
  * @sa
  * vtkCallbackCommand
-*/
+ */
+
+#ifndef vtkMemberFunctionCommand_h
+#define vtkMemberFunctionCommand_h
 
 #include "vtkCommand.h"
 
@@ -84,7 +87,10 @@ public:
 
   static ThisT* New() { return new ThisT(); }
 
-  void PrintSelf(ostream& os, vtkIndent indent) override { vtkCommand::PrintSelf(os, indent); }
+  void PrintSelf(ostream& os, vtkIndent indent) override
+  {
+    this->Superclass::PrintSelf(os, indent);
+  }
 
   //@{
   /**
@@ -172,5 +178,7 @@ vtkMemberFunctionCommand<ClassT>* vtkMakeMemberFunctionCommand(
   result->SetCallback(object, method);
   return result;
 }
+
+#endif
 //-----------------------------------------------------------------------------
 // VTK-HeaderTest-Exclude: vtkMemberFunctionCommand.h

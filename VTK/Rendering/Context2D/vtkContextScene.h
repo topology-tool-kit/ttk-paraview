@@ -101,40 +101,40 @@ public:
    */
   virtual void SetAnnotationLink(vtkAnnotationLink* link);
 
-  //@{
+  ///@{
   /**
    * Get the vtkAnnotationLink for the chart.
    */
   vtkGetObjectMacro(AnnotationLink, vtkAnnotationLink);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set the width and height of the scene in pixels.
    */
   vtkSetVector2Macro(Geometry, int);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the width and height of the scene in pixels.
    */
   vtkGetVector2Macro(Geometry, int);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set whether the scene should use the color buffer. Default is true.
    */
   vtkSetMacro(UseBufferId, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get whether the scene is using the color buffer. Default is true.
    */
   vtkGetMacro(UseBufferId, bool);
-  //@}
+  ///@}
 
   /**
    * Get the width of the view
@@ -156,7 +156,7 @@ public:
    */
   int GetSceneHeight();
 
-  //@{
+  ///@{
   /**
    * Whether to scale the scene transform when tiling, for example when
    * using vtkWindowToImageFilter to take a large screenshot.
@@ -165,7 +165,7 @@ public:
   vtkSetMacro(ScaleTiles, bool);
   vtkGetMacro(ScaleTiles, bool);
   vtkBooleanMacro(ScaleTiles, bool);
-  //@}
+  ///@}
 
   /**
    * The tile scale of the target vtkRenderWindow. Hardcoded pixel offsets, etc
@@ -175,16 +175,16 @@ public:
    */
   vtkVector2i GetLogicalTileScale();
 
-  //@{
+  ///@{
   /**
    * This should not be necessary as the context view should take care of
    * rendering.
    */
   virtual void SetRenderer(vtkRenderer* renderer);
   virtual vtkRenderer* GetRenderer();
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Inform the scene that something changed that requires a repaint of the
    * scene. This should only be used by the vtkContextItem derived objects in
@@ -192,7 +192,7 @@ public:
    */
   void SetDirty(bool isDirty);
   bool GetDirty() const;
-  //@}
+  ///@}
 
   /**
    * Release graphics resources hold by the scene.
@@ -227,6 +227,19 @@ public:
    * Check whether the scene has a transform.
    */
   bool HasTransform() { return this->Transform != nullptr; }
+
+  /**
+   * Return the item id under mouse cursor at position (x,y).
+   * Return -1 if there is no item under the mouse cursor.
+   * \post valid_result: result>=-1 && result<this->GetNumberOfItems()
+   */
+  vtkIdType GetPickedItem(int x, int y);
+
+  /**
+   * Return the item under the mouse.
+   * If no item is under the mouse, the method returns a null pointer.
+   */
+  vtkAbstractContextItem* GetPickedItem();
 
   /**
    * Enum of valid selection modes for charts in the scene
@@ -296,19 +309,6 @@ protected:
   void TestBufferIdSupport();
 
   /**
-   * Return the item id under mouse cursor at position (x,y).
-   * Return -1 if there is no item under the mouse cursor.
-   * \post valid_result: result>=-1 && result<this->GetNumberOfItems()
-   */
-  vtkIdType GetPickedItem(int x, int y);
-
-  /**
-   * Return the item under the mouse.
-   * If no item is under the mouse, the method returns a null pointer.
-   */
-  vtkAbstractContextItem* GetPickedItem();
-
-  /**
    * Make sure the buffer id used for picking is up-to-date.
    */
   void UpdateBufferId();
@@ -324,13 +324,13 @@ protected:
    */
   friend class vtkContextInteractorStyle;
 
-  //@{
+  ///@{
   /**
    * Private storage object - where we hide all of our STL objects...
    */
   class Private;
   Private* Storage;
-  //@}
+  ///@}
 
   /**
    * This structure provides a list of children, along with convenience

@@ -55,6 +55,8 @@ class vtkSIProxyDefinitionManager::vtkInternals
 public:
   // Keep State Flag of the ProcessType
   bool EnableXMLProxyDefinitionUpdate;
+  // To know if override need to be taken into account and replaced in the parent
+  bool ReplaceOverrideInParent;
   // Keep track of ServerManager definition
   StrToStrToXmlMap CoreDefinitions;
   // Keep track of custom definition
@@ -62,6 +64,7 @@ public:
   //-------------------------------------------------------------------------
   vtkInternals()
     : EnableXMLProxyDefinitionUpdate(true)
+    , ReplaceOverrideInParent(true)
   {
   }
   //-------------------------------------------------------------------------
@@ -73,12 +76,12 @@ public:
   //-------------------------------------------------------------------------
   bool HasCoreDefinition(const char* groupName, const char* proxyName)
   {
-    return this->GetProxyElement(this->CoreDefinitions, groupName, proxyName) != NULL;
+    return this->GetProxyElement(this->CoreDefinitions, groupName, proxyName) != nullptr;
   }
   //-------------------------------------------------------------------------
   bool HasCustomDefinition(const char* groupName, const char* proxyName)
   {
-    return this->GetProxyElement(this->CustomsDefinitions, groupName, proxyName) != NULL;
+    return this->GetProxyElement(this->CustomsDefinitions, groupName, proxyName) != nullptr;
   }
   //-------------------------------------------------------------------------
   unsigned int GetNumberOfProxy(const char* groupName)
@@ -94,13 +97,13 @@ public:
   //-------------------------------------------------------------------------
   vtkPVXMLElement* GetProxyElement(const char* groupName, const char* proxyName)
   {
-    vtkPVXMLElement* elementToReturn = NULL;
+    vtkPVXMLElement* elementToReturn = nullptr;
 
     // Search in ServerManager definitions
     elementToReturn = this->GetProxyElement(this->CoreDefinitions, groupName, proxyName);
 
     // If not found yet, search in customs ones...
-    if (elementToReturn == NULL)
+    if (elementToReturn == nullptr)
     {
       elementToReturn = this->GetProxyElement(this->CustomsDefinitions, groupName, proxyName);
     }
@@ -111,7 +114,7 @@ public:
   vtkPVXMLElement* GetProxyElement(
     const StrToStrToXmlMap& map, const char* firstStr, const char* secondStr)
   {
-    vtkPVXMLElement* elementToReturn = NULL;
+    vtkPVXMLElement* elementToReturn = nullptr;
 
     // Test if parameters are valid
     if (firstStr && secondStr)
@@ -130,13 +133,13 @@ public:
       }
     }
 
-    // The result might be NULL if the value was not found
+    // The result might be nullptr if the value was not found
     return elementToReturn;
   }
 
   static void ExtractMetaInformation(vtkPVXMLElement* proxy,
-    std::map<std::string, vtkSmartPointer<vtkPVXMLElement> >& subProxyMap,
-    std::map<std::string, vtkSmartPointer<vtkPVXMLElement> >& propertyMap)
+    std::map<std::string, vtkSmartPointer<vtkPVXMLElement>>& subProxyMap,
+    std::map<std::string, vtkSmartPointer<vtkPVXMLElement>>& propertyMap)
   {
     std::set<std::string> propertyTypeName;
     propertyTypeName.insert("DoubleMapProperty");
@@ -163,7 +166,7 @@ public:
           }
           vtkPVXMLElement* exposedPropElement = child->FindNestedElementByName("ExposedProperties");
 
-          // exposedPropElement can be NULL if only Shared property are used...
+          // exposedPropElement can be nullptr if only Shared property are used...
           if (exposedPropElement)
           {
             unsigned int ccSub = 0;
@@ -277,7 +280,7 @@ public:
     {
       return definition->FindNestedElementByName("Hints");
     }
-    return NULL;
+    return nullptr;
   }
   //-------------------------------------------------------------------------
   void AddTraversalGroupName(const char* groupName) override
@@ -304,12 +307,12 @@ protected:
   vtkInternalDefinitionIterator()
   {
     this->Initialized = false;
-    this->CoreDefinitionMap = NULL;
-    this->CustomDefinitionMap = 0;
+    this->CoreDefinitionMap = nullptr;
+    this->CustomDefinitionMap = nullptr;
     this->InvalidCoreIterator = true;
     this->InvalidCustomIterator = true;
   }
-  ~vtkInternalDefinitionIterator() override {}
+  ~vtkInternalDefinitionIterator() override = default;
 
   //-------------------------------------------------------------------------
   void Reset()
@@ -318,7 +321,7 @@ protected:
     this->InvalidCoreIterator = true;
     this->InvalidCustomIterator = true;
 
-    if (this->GroupNames.size() == 0)
+    if (this->GroupNames.empty())
     {
       // Look for all name available
       if (this->CoreDefinitionMap)
@@ -340,7 +343,7 @@ protected:
         }
       }
 
-      if (this->GroupNames.size() == 0)
+      if (this->GroupNames.empty())
       {
         // TODO vtkErrorMacro("No definition available for that iterator.");
         return;
@@ -356,7 +359,7 @@ protected:
   //-------------------------------------------------------------------------
   bool IsDoneWithGroupTraversal()
   {
-    return this->GroupNames.size() == 0 || this->GroupNameIterator == this->GroupNames.end();
+    return this->GroupNames.empty() || this->GroupNameIterator == this->GroupNames.end();
   }
   //-------------------------------------------------------------------------
   bool IsDoneWithCoreTraversal()
@@ -414,10 +417,12 @@ private:
   bool InvalidCustomIterator;
 };
 
-//****************************************************************************/
-vtkStandardNewMacro(vtkSIProxyDefinitionManager) vtkStandardNewMacro(vtkInternalDefinitionIterator)
-  //---------------------------------------------------------------------------
-  vtkSIProxyDefinitionManager::vtkSIProxyDefinitionManager()
+//****************************************************************************
+vtkStandardNewMacro(vtkSIProxyDefinitionManager);
+vtkStandardNewMacro(vtkInternalDefinitionIterator);
+
+//---------------------------------------------------------------------------
+vtkSIProxyDefinitionManager::vtkSIProxyDefinitionManager()
 {
   this->Internals = new vtkInternals;
   this->InternalsFlatten = new vtkInternals;
@@ -525,7 +530,7 @@ vtkPVXMLElement* vtkSIProxyDefinitionManager::GetProxyDefinition(
     vtkErrorMacro(<< "No proxy that matches: group=" << groupName << " and proxy=" << proxyName
                   << " were found.");
   }
-  return 0;
+  return nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -559,7 +564,7 @@ void vtkSIProxyDefinitionManager::AttachShowInMenuHintsToProxy(vtkPVXMLElement* 
   }
 
   vtkPVXMLElement* hints = proxy->FindNestedElementByName("Hints");
-  if (hints == NULL)
+  if (hints == nullptr)
   {
     vtkNew<vtkPVXMLElement> madehints;
     madehints->SetName("Hints");
@@ -568,7 +573,7 @@ void vtkSIProxyDefinitionManager::AttachShowInMenuHintsToProxy(vtkPVXMLElement* 
     madehints->AddNestedElement(showInMenu.GetPointer());
     proxy->AddNestedElement(madehints.GetPointer());
   }
-  else if (hints->FindNestedElementByName("ShowInMenu") == NULL)
+  else if (hints->FindNestedElementByName("ShowInMenu") == nullptr)
   {
     vtkNew<vtkPVXMLElement> showInMenu;
     showInMenu->SetName("ShowInMenu");
@@ -735,7 +740,7 @@ void vtkSIProxyDefinitionManager::LoadCustomProxyDefinitionsFromString(const cha
 //---------------------------------------------------------------------------
 void vtkSIProxyDefinitionManager::SaveCustomProxyDefinitions(vtkPVXMLElement* root)
 {
-  assert(root != NULL);
+  assert(root != nullptr);
 
   vtkPVProxyDefinitionIterator* iter =
     this->NewIterator(vtkSIProxyDefinitionManager::CUSTOM_DEFINITIONS);
@@ -894,7 +899,7 @@ vtkPVXMLElement* vtkSIProxyDefinitionManager::ExtractSubProxy(
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -941,13 +946,13 @@ vtkPVXMLElement* vtkSIProxyDefinitionManager::GetCollapsedProxyDefinition(
         }
         else
         {
-          originalDefinition = 0;
+          originalDefinition = nullptr;
         }
       }
 
       // Build the flattened version of it
       vtkNew<vtkPVXMLElement> newElement;
-      while (classHierarchy.size() > 0)
+      while (!classHierarchy.empty())
       {
         vtkPVXMLElement* currentElement = classHierarchy.back();
         classHierarchy.pop_back();
@@ -966,7 +971,7 @@ vtkPVXMLElement* vtkSIProxyDefinitionManager::GetCollapsedProxyDefinition(
     }
   }
 
-  // Could be either the original definition or a NULL pointer if not found
+  // Could be either the original definition or a nullptr pointer if not found
   return this->ExtractSubProxy(originalDefinition, subProxyName);
 }
 //---------------------------------------------------------------------------
@@ -974,17 +979,17 @@ void vtkSIProxyDefinitionManager::MergeProxyDefinition(
   vtkPVXMLElement* element, vtkPVXMLElement* elementToFill)
 {
   // Meta-data of elementToFill
-  std::map<std::string, vtkSmartPointer<vtkPVXMLElement> > subProxyToFill;
-  std::map<std::string, vtkSmartPointer<vtkPVXMLElement> > propertiesToFill;
+  std::map<std::string, vtkSmartPointer<vtkPVXMLElement>> subProxyToFill;
+  std::map<std::string, vtkSmartPointer<vtkPVXMLElement>> propertiesToFill;
   vtkInternals::ExtractMetaInformation(elementToFill, subProxyToFill, propertiesToFill);
 
   // Meta-data of element that should be merged into the other
-  std::map<std::string, vtkSmartPointer<vtkPVXMLElement> > subProxySrc;
-  std::map<std::string, vtkSmartPointer<vtkPVXMLElement> > propertiesSrc;
+  std::map<std::string, vtkSmartPointer<vtkPVXMLElement>> subProxySrc;
+  std::map<std::string, vtkSmartPointer<vtkPVXMLElement>> propertiesSrc;
   vtkInternals::ExtractMetaInformation(element, subProxySrc, propertiesSrc);
 
   // Look for conflicting sub-proxy name and remove their definition if override
-  std::map<std::string, vtkSmartPointer<vtkPVXMLElement> >::iterator mapIter;
+  std::map<std::string, vtkSmartPointer<vtkPVXMLElement>>::iterator mapIter;
   mapIter = subProxyToFill.begin();
   while (mapIter != subProxyToFill.end())
   {
@@ -999,7 +1004,7 @@ void vtkSIProxyDefinitionManager::MergeProxyDefinition(
           << "#####################################" << endl);
         return;
       }
-      else
+      else if (this->Internals->ReplaceOverrideInParent)
       {
         // Replace the overriden sub proxy definition by the new one
         vtkPVXMLElement* subProxyDefToRemove = subProxyToFill[name].GetPointer();
@@ -1020,18 +1025,20 @@ void vtkSIProxyDefinitionManager::MergeProxyDefinition(
     std::string name = mapIter->first;
     if (propertiesSrc.find(name) != propertiesSrc.end())
     {
-      if (!propertiesSrc[name]->GetAttribute("override") &&
-        !propertiesSrc[name]
-           ->GetParent()
-           ->GetParent()
-           ->FindNestedElementByName("Proxy")
-           ->GetAttribute("override"))
+      if (!propertiesSrc[name]->GetAttribute("override"))
       {
-        vtkWarningMacro(<< "Find conflict between 2 property name. (" << name.c_str() << ")");
-        return;
+        vtkPVXMLElement* parentProxyElem =
+          propertiesSrc[name]->GetParent()->GetParent()->FindNestedElementByName("Proxy");
+        if (!parentProxyElem || !parentProxyElem->GetAttribute("override"))
+        {
+          vtkWarningMacro(<< "Find conflict between 2 property name. (" << name.c_str() << ")");
+          return;
+        }
       }
-      else
-      { // Replace the overriden property by the new one
+
+      if (this->Internals->ReplaceOverrideInParent)
+      {
+        // Replace the overriden property by the new one
         vtkPVXMLElement* subPropDefToRemove = propertiesToFill[name].GetPointer();
         vtkPVXMLElement* overridingProp = propertiesSrc[name].GetPointer();
         subPropDefToRemove->GetParent()->ReplaceNestedElement(subPropDefToRemove, overridingProp);
@@ -1143,12 +1150,12 @@ void vtkSIProxyDefinitionManager::Push(vtkSMMessage* msg)
   }
 
   // restore animation and screenshot writers.
-  for (auto pair : animationWriters)
+  for (const auto& pair : animationWriters)
   {
     this->AddElement("animation_writers", pair.first.c_str(), pair.second);
   }
 
-  for (auto pair : screenshotWriters)
+  for (const auto& pair : screenshotWriters)
   {
     this->AddElement("screenshot_writers", pair.first.c_str(), pair.second);
   }
@@ -1191,6 +1198,8 @@ void vtkSIProxyDefinitionManager::HandlePlugin(vtkPVPlugin* plugin)
     // Make sure only the SERVER is processing the XML proxy definition
     if (this->Internals->EnableXMLProxyDefinitionUpdate)
     {
+      bool tmpReplaceOverrideInParent = this->Internals->ReplaceOverrideInParent;
+      this->Internals->ReplaceOverrideInParent = false;
       for (size_t cc = 0; cc < xmls.size(); cc++)
       {
         this->LoadConfigurationXMLFromString(xmls[cc].c_str(),
@@ -1201,6 +1210,7 @@ void vtkSIProxyDefinitionManager::HandlePlugin(vtkPVPlugin* plugin)
 
       // Make sure we invalidate any cached flatten version of our proxy definition
       this->InternalsFlatten->Clear();
+      this->Internals->ReplaceOverrideInParent = tmpReplaceOverrideInParent;
     }
   }
 }
@@ -1218,7 +1228,7 @@ bool vtkSIProxyDefinitionManager::HasDefinition(const char* groupName, const cha
 // legacy XML
 void vtkSIProxyDefinitionManager::PatchXMLProperty(vtkPVXMLElement* propElement)
 {
-  vtkPVXMLElement* informationHelper = NULL;
+  vtkPVXMLElement* informationHelper = nullptr;
 
   // Search InformationHelper XML element
   for (unsigned int i = 0; i < propElement->GetNumberOfNestedElements(); ++i)

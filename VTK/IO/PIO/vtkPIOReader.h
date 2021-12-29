@@ -28,7 +28,7 @@
 
 #include "vtkIOPIOModule.h" // For export macro
 #include "vtkMultiBlockDataSetAlgorithm.h"
-#include "vtkStdString.h"
+#include "vtkStdString.h" // for vtkStdString
 
 class vtkCallbackCommand;
 class vtkDataArraySelection;
@@ -37,7 +37,6 @@ class vtkInformation;
 class vtkMultiBlockDataSet;
 class vtkMultiProcessController;
 class vtkStringArray;
-class vtkStdString;
 
 class PIOAdaptor;
 class PIO_DATA;
@@ -49,55 +48,55 @@ public:
   vtkTypeMacro(vtkPIOReader, vtkMultiBlockDataSetAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Specify file name of PIO data file to read.
    */
-  vtkSetStringMacro(FileName);
-  vtkGetStringMacro(FileName);
-  //@}
+  vtkSetFilePathMacro(FileName);
+  vtkGetFilePathMacro(FileName);
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Specify the timestep to be loaded
    */
   vtkSetMacro(CurrentTimeStep, int);
   vtkGetMacro(CurrentTimeStep, int);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Specify the creation of hypertree grid
    */
   vtkGetMacro(HyperTreeGrid, bool);
   vtkSetMacro(HyperTreeGrid, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Specify the creation of tracer data
    */
   vtkSetMacro(Tracers, bool);
   vtkGetMacro(Tracers, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Specify the use of float64 for data
    */
   vtkSetMacro(Float64, bool);
   vtkGetMacro(Float64, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the reader's output
    */
   vtkMultiBlockDataSet* GetOutput();
   vtkMultiBlockDataSet* GetOutput(int index);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * The following methods allow selective reading of solutions fields.
    * By default, ALL data fields on the nodes are read, but this can
@@ -110,18 +109,18 @@ public:
   void DisableAllCellArrays();
   void EnableAllCellArrays();
   vtkGetObjectMacro(CellDataArraySelection, vtkDataArraySelection);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Getters for time data array candidates.
    */
   int GetNumberOfTimeDataArrays() const;
   const char* GetTimeDataArray(int idx) const;
   vtkGetObjectMacro(TimeDataStringArray, vtkStringArray);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Setter / Getter on ActiveTimeDataArrayName. This string
    * holds the selected time array name. If set to `nullptr`,
@@ -129,7 +128,7 @@ public:
    */
   vtkGetStringMacro(ActiveTimeDataArrayName);
   vtkSetStringMacro(ActiveTimeDataArrayName);
-  //@}
+  ///@}
 
 protected:
   vtkPIOReader();

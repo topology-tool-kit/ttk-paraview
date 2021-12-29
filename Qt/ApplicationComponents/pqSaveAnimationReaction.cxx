@@ -75,7 +75,7 @@ pqSaveAnimationReaction::pqSaveAnimationReaction(QAction* parentObject)
 void pqSaveAnimationReaction::updateEnableState()
 {
   pqActiveObjects* activeObjects = &pqActiveObjects::instance();
-  bool is_enabled = (activeObjects->activeServer() != NULL);
+  bool is_enabled = (activeObjects->activeServer() != nullptr);
   this->parentAction()->setEnabled(is_enabled);
 }
 
@@ -134,7 +134,7 @@ void pqSaveAnimationReaction::saveAnimation()
   vtkSMPropertyHelper(ahProxy, "View").Set(viewProxy);
   vtkSMPropertyHelper(ahProxy, "Layout").Set(layout);
   vtkSMPropertyHelper(ahProxy, "AnimationScene").Set(scene);
-  ahProxy->UpdateDefaultsAndVisibilities(filename.toLocal8Bit().data());
+  ahProxy->UpdateDefaultsAndVisibilities(filename.toUtf8().data());
   controller->PostInitializeProxy(ahProxy);
 
   if (layout)
@@ -197,9 +197,4 @@ void pqSaveAnimationReaction::saveAnimation()
     widthLink->RemoveAllLinks();
     colorLink->RemoveAllLinks();
   }
-
-  // This should not be needed as image capturing code only affects back buffer,
-  // however it is currently needed due to paraview/paraview#17256. Once that's
-  // fixed, we should remove this.
-  pqApplicationCore::instance()->render();
 }

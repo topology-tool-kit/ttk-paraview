@@ -1,7 +1,7 @@
 /*=========================================================================
 
    Program: ParaView
-   Module:    vtkVRSpaceNavigatorGrabWorldStyle.h
+   Module:  vtkVRSpaceNavigatorGrabWorldStyle.h
 
    Copyright (c) 2005,2006 Sandia Corporation, Kitware Inc.
    All rights reserved.
@@ -40,7 +40,7 @@ class vtkSMProxy;
 class vtkSMRenderViewProxy;
 class vtkTransform;
 
-struct vtkVREventData;
+struct vtkVREvent;
 
 class vtkVRSpaceNavigatorGrabWorldStyle : public vtkVRInteractorStyle
 {
@@ -53,11 +53,12 @@ protected:
   vtkVRSpaceNavigatorGrabWorldStyle();
   ~vtkVRSpaceNavigatorGrabWorldStyle() override;
 
-  void HandleAnalog(const vtkVREventData& data) override;
+  void HandleAnalog(const vtkVREvent& event) override;
 
 private:
-  vtkVRSpaceNavigatorGrabWorldStyle(const vtkVRSpaceNavigatorGrabWorldStyle&) = delete;
-  void operator=(const vtkVRSpaceNavigatorGrabWorldStyle&) = delete;
+  vtkVRSpaceNavigatorGrabWorldStyle(
+    const vtkVRSpaceNavigatorGrabWorldStyle&) = delete;              // Not implemented
+  void operator=(const vtkVRSpaceNavigatorGrabWorldStyle&) = delete; // Not implemented
 };
 
-#endif // vtkVRSpaceNavigatorGrabWorldStyle.h_
+#endif // vtkVRSpaceNavigatorGrabWorldStyle_h

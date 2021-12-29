@@ -29,7 +29,7 @@ vtkStandardNewMacro(vtkFontConfigFreeTypeTools);
 namespace
 {
 // The FreeType face requester callback:
-static FT_Error vtkFontConfigFreeTypeToolsFaceRequester(
+FT_Error vtkFontConfigFreeTypeToolsFaceRequester(
   FTC_FaceID face_id, FT_Library lib, FT_Pointer request_data, FT_Face* face)
 {
   // Get a pointer to the current vtkFontConfigFreeTypeTools object
@@ -41,12 +41,12 @@ static FT_Error vtkFontConfigFreeTypeToolsFaceRequester(
 
   bool faceIsSet = self->GetForceCompiledFonts() || tprop->GetFontFamily() == VTK_FONT_FILE
     ? false
-    : self->LookupFaceFontConfig(tprop, lib, face);
+    : vtkFontConfigFreeTypeTools::LookupFaceFontConfig(tprop, lib, face);
 
   // Fall back to compiled fonts if lookup fails/compiled fonts are forced:
   if (!faceIsSet)
   {
-    faceIsSet = self->Superclass::LookupFace(tprop, lib, face);
+    faceIsSet = vtkFontConfigFreeTypeTools::Superclass::LookupFace(tprop, lib, face);
   }
 
   if (!faceIsSet)
@@ -65,7 +65,7 @@ static FT_Error vtkFontConfigFreeTypeToolsFaceRequester(
     matrix.xy = (FT_Fixed)(-sin(angle) * 0x10000L);
     matrix.yx = (FT_Fixed)(sin(angle) * 0x10000L);
     matrix.yy = (FT_Fixed)(cos(angle) * 0x10000L);
-    FT_Set_Transform(*face, &matrix, NULL);
+    FT_Set_Transform(*face, &matrix, nullptr);
   }
 
   return static_cast<FT_Error>(0);

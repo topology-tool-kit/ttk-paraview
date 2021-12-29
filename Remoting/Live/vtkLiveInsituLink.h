@@ -33,7 +33,7 @@
  * application (by using a proxy that instantiates the
  * vtkLiveInsituLink).
  * @ingroup LiveInsitu
-*/
+ */
 
 #ifndef vtkLiveInsituLink_h
 #define vtkLiveInsituLink_h
@@ -113,7 +113,7 @@ public:
    * Initializes the link. For in situ this returns true it there is a
    * connection and false otherwise. For live it always returns true.
    */
-  bool Initialize() { return this->Initialize(NULL); }
+  bool Initialize() { return this->Initialize(nullptr); }
   bool Initialize(vtkSMSessionProxyManager*);
 
   // **************************************************************************

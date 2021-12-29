@@ -36,63 +36,63 @@ public:
   vtkTypeMacro(vtkBYUReader, vtkPolyDataAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Specify name of geometry FileName.
    */
-  vtkSetStringMacro(GeometryFileName);
-  vtkGetStringMacro(GeometryFileName);
-  //@}
+  vtkSetFilePathMacro(GeometryFileName);
+  vtkGetFilePathMacro(GeometryFileName);
+  ///@}
 
   /**
    * Specify name of geometry FileName (alias).
    */
-  virtual void SetFileName(const char* f) { this->SetGeometryFileName(f); }
-  virtual char* GetFileName() { return this->GetGeometryFileName(); }
+  virtual void SetFileName(VTK_FILEPATH const char* f) { this->SetGeometryFileName(f); }
+  virtual VTK_FILEPATH char* GetFileName() { return this->GetGeometryFileName(); }
 
-  //@{
+  ///@{
   /**
    * Specify name of displacement FileName.
    */
-  vtkSetStringMacro(DisplacementFileName);
-  vtkGetStringMacro(DisplacementFileName);
-  //@}
+  vtkSetFilePathMacro(DisplacementFileName);
+  vtkGetFilePathMacro(DisplacementFileName);
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Specify name of scalar FileName.
    */
-  vtkSetStringMacro(ScalarFileName);
-  vtkGetStringMacro(ScalarFileName);
-  //@}
+  vtkSetFilePathMacro(ScalarFileName);
+  vtkGetFilePathMacro(ScalarFileName);
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Specify name of texture coordinates FileName.
    */
-  vtkSetStringMacro(TextureFileName);
-  vtkGetStringMacro(TextureFileName);
-  //@}
+  vtkSetFilePathMacro(TextureFileName);
+  vtkGetFilePathMacro(TextureFileName);
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Turn on/off the reading of the displacement file.
    */
   vtkSetMacro(ReadDisplacement, vtkTypeBool);
   vtkGetMacro(ReadDisplacement, vtkTypeBool);
   vtkBooleanMacro(ReadDisplacement, vtkTypeBool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Turn on/off the reading of the scalar file.
    */
   vtkSetMacro(ReadScalar, vtkTypeBool);
   vtkGetMacro(ReadScalar, vtkTypeBool);
   vtkBooleanMacro(ReadScalar, vtkTypeBool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Turn on/off the reading of the texture coordinate file.
    * Specify name of geometry FileName.
@@ -100,15 +100,15 @@ public:
   vtkSetMacro(ReadTexture, vtkTypeBool);
   vtkGetMacro(ReadTexture, vtkTypeBool);
   vtkBooleanMacro(ReadTexture, vtkTypeBool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/Get the part number to be read.
    */
   vtkSetClampMacro(PartNumber, int, 1, VTK_INT_MAX);
   vtkGetMacro(PartNumber, int);
-  //@}
+  ///@}
 
   /**
    * Returns 1 if this file can be read and 0 if the file cannot be read.
@@ -116,7 +116,7 @@ public:
    * type, the result is not definitive.  Invalid files may still return 1
    * although a valid file will never return 0.
    */
-  static int CanReadFile(const char* filename);
+  static int CanReadFile(VTK_FILEPATH const char* filename);
 
 protected:
   vtkBYUReader();

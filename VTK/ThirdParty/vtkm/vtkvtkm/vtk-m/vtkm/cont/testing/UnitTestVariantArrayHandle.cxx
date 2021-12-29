@@ -8,6 +8,12 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
+#include <vtkm/Deprecated.h>
+
+// This is testing a deprecated functionality. Remove this test once VariantArrayHandle
+// is completely removed from VTK-m.
+VTKM_DEPRECATED_SUPPRESS_BEGIN
+
 #include <vtkm/cont/VariantArrayHandle.h>
 
 #include <vtkm/TypeTraits.h>
@@ -71,6 +77,8 @@ namespace vtkm
 template <>
 struct VecTraits<UnusualType> : VecTraits<UnusualType::T>
 {
+  using ComponentType = UnusualType;
+  using BaseComponentType = UnusualType;
 };
 
 } // namespace vtkm
@@ -118,7 +126,6 @@ struct CheckFunctor
   }
 
 #ifndef VTKM_NO_DEPRECATED_VIRTUAL
-  VTKM_DEPRECATED_SUPPRESS_BEGIN
   template <typename T>
   void operator()(const vtkm::cont::ArrayHandleVirtual<T>& array,
                   bool& vtkmNotUsed(calledBasic),
@@ -129,7 +136,6 @@ struct CheckFunctor
 
     CheckArray(array);
   }
-  VTKM_DEPRECATED_SUPPRESS_END
 #endif //VTKM_NO_DEPRECATED_VIRTUAL
 
   template <typename T, typename S>
@@ -145,9 +151,9 @@ void BasicArrayVariantChecks(const vtkm::cont::VariantArrayHandleBase<TypeList>&
 {
   VTKM_TEST_ASSERT(array.GetNumberOfValues() == ARRAY_SIZE,
                    "Dynamic array reports unexpected size.");
-  std::cout << "array.GetNumberOfComponents() = " << array.GetNumberOfComponents() << ", "
+  std::cout << "array.GetNumberOfComponents() = " << array.GetNumberOfComponentsFlat() << ", "
             << "numComponents = " << numComponents << "\n";
-  VTKM_TEST_ASSERT(array.GetNumberOfComponents() == numComponents,
+  VTKM_TEST_ASSERT(array.GetNumberOfComponentsFlat() == numComponents,
                    "Dynamic array reports unexpected number of components.");
 }
 
@@ -239,14 +245,13 @@ void CheckCastToArrayHandle(const ArrayHandleType& array)
   arrayVariant.CopyTo(castArray1);
   VTKM_TEST_ASSERT(arrayVariant.CanConvert<ArrayHandleType>(), "Did not query handle correctly.");
   //VTKM_TEST_ASSERT(array == castArray1, "Did not get back same array.");
-  auto result = vtkm::cont::testing::test_equal_ArrayHandles(array, castArray1);
+  auto result = test_equal_ArrayHandles(array, castArray1);
   VTKM_TEST_ASSERT(result, result.GetMergedMessage());
 
 
   ArrayHandleType castArray2 = arrayVariant.Cast<ArrayHandleType>();
   //VTKM_TEST_ASSERT(array == castArray2, "Did not get back same array.");
-  result = vtkm::cont::testing::test_equal_ArrayHandles(array, castArray2);
-  VTKM_TEST_ASSERT(result, result.GetMergedMessage());
+  VTKM_TEST_ASSERT(test_equal_ArrayHandles(array, castArray2));
 }
 
 // A vtkm::Vec if NumComps > 1, otherwise a scalar
@@ -272,7 +277,6 @@ void CheckCastToVirtualArrayHandle(const ArrayType& array)
 
   VariantArrayType arrayVariant = array;
 
-  VTKM_DEPRECATED_SUPPRESS_BEGIN
   {
     auto testArray = arrayVariant.template AsVirtual<ValueType, StorageList>();
     VTKM_TEST_ASSERT(testArray.GetNumberOfValues() == array.GetNumberOfValues(),
@@ -328,7 +332,6 @@ void CheckCastToVirtualArrayHandle(const ArrayType& array)
   VTKM_TEST_ASSERT(threw,
                    "Casting to different vector width did not throw expected "
                    "ErrorBadType exception.");
-  VTKM_DEPRECATED_SUPPRESS_END
 }
 #endif //VTKM_NO_DEPRECATED_VIRTUAL
 
@@ -398,7 +401,7 @@ void TryAsMultiplexer(T, ArrayVariantType sourceArray)
     MultiplexerType multiplexArray = sourceArray.template AsMultiplexer<MultiplexerType>();
 
     VTKM_TEST_ASSERT(multiplexArray.IsValid());
-    VTKM_TEST_ASSERT(multiplexArray.GetStorage().GetArrayHandleVariant().GetIndex() == 0);
+    VTKM_TEST_ASSERT(multiplexArray.GetArrayHandleVariant().GetIndex() == 0);
     VTKM_TEST_ASSERT(test_equal_portals(multiplexArray.ReadPortal(), originalArray.ReadPortal()));
   }
 
@@ -410,22 +413,25 @@ void TryAsMultiplexer(T, ArrayVariantType sourceArray)
     MultiplexerType multiplexArray = sourceArray.template AsMultiplexer<MultiplexerType>();
 
     VTKM_TEST_ASSERT(multiplexArray.IsValid());
-    VTKM_TEST_ASSERT(multiplexArray.GetStorage().GetArrayHandleVariant().GetIndex() == 1);
+    VTKM_TEST_ASSERT(multiplexArray.GetArrayHandleVariant().GetIndex() == 1);
     VTKM_TEST_ASSERT(test_equal_portals(multiplexArray.ReadPortal(), originalArray.ReadPortal()));
   }
 }
 
-template <typename T>
-void TryDefaultType(T)
+struct TryDefaultType
 {
-  vtkm::cont::VariantArrayHandle array = CreateArrayVariant(T());
+  template <typename T>
+  void operator()(T) const
+  {
+    vtkm::cont::VariantArrayHandle array = CreateArrayVariant(T());
 
-  CheckArrayVariant(array, vtkm::VecTraits<T>::NUM_COMPONENTS, true);
+    CheckArrayVariant(array, vtkm::VecTraits<T>::NUM_COMPONENTS, true);
 
-  TryNewInstance(T(), array);
+    TryNewInstance(T(), array);
 
-  TryAsMultiplexer(T(), array);
-}
+    TryAsMultiplexer(T(), array);
+  }
+};
 
 struct TryBasicVTKmType
 {
@@ -470,18 +476,18 @@ void TryCastToArrayHandle(const ArrayHandleType& array)
 void TryCastToArrayHandle()
 {
   std::cout << "  Normal array handle." << std::endl;
-  vtkm::Id buffer[ARRAY_SIZE];
+  vtkm::FloatDefault buffer[ARRAY_SIZE];
   for (vtkm::Id index = 0; index < ARRAY_SIZE; index++)
   {
-    buffer[index] = TestValue(index, vtkm::Id());
+    buffer[index] = TestValue(index, vtkm::FloatDefault());
   }
 
-  vtkm::cont::ArrayHandle<vtkm::Id> array =
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> array =
     vtkm::cont::make_ArrayHandle(buffer, ARRAY_SIZE, vtkm::CopyFlag::On);
   TryCastToArrayHandle(array);
 
   std::cout << "  Cast array handle." << std::endl;
-  TryCastToArrayHandle(vtkm::cont::make_ArrayHandleCast(array, vtkm::FloatDefault()));
+  TryCastToArrayHandle(vtkm::cont::make_ArrayHandleCast<vtkm::Id>(array));
 
   std::cout << "  Composite vector array handle." << std::endl;
   TryCastToArrayHandle(vtkm::cont::make_ArrayHandleCompositeVector(array, array));
@@ -494,7 +500,8 @@ void TryCastToArrayHandle()
   TryCastToArrayHandle(countingArray);
 
   std::cout << "  Group vec array handle" << std::endl;
-  vtkm::cont::ArrayHandleGroupVec<vtkm::cont::ArrayHandle<vtkm::Id>, 2> groupVecArray(array);
+  vtkm::cont::ArrayHandleGroupVec<vtkm::cont::ArrayHandle<vtkm::FloatDefault>, 2> groupVecArray(
+    array);
   TryCastToArrayHandle(groupVecArray);
 
   std::cout << "  Implicit array handle." << std::endl;
@@ -521,18 +528,7 @@ void TryCastToArrayHandle()
 void TestVariantArrayHandle()
 {
   std::cout << "Try common types with default type lists." << std::endl;
-  std::cout << "*** vtkm::Id **********************" << std::endl;
-  TryDefaultType(vtkm::Id());
-  std::cout << "*** vtkm::FloatDefault ************" << std::endl;
-  TryDefaultType(vtkm::FloatDefault());
-  std::cout << "*** vtkm::Float32 *****************" << std::endl;
-  TryDefaultType(vtkm::Float32());
-  std::cout << "*** vtkm::Float64 *****************" << std::endl;
-  TryDefaultType(vtkm::Float64());
-  std::cout << "*** vtkm::Vec<Float32,3> **********" << std::endl;
-  TryDefaultType(vtkm::Vec3f_32());
-  std::cout << "*** vtkm::Vec<Float64,3> **********" << std::endl;
-  TryDefaultType(vtkm::Vec3f_64());
+  vtkm::testing::Testing::TryTypes(TryDefaultType{}, VTKM_DEFAULT_TYPE_LIST{});
 
   std::cout << "Try exemplar VTK-m types." << std::endl;
   vtkm::testing::Testing::TryTypes(TryBasicVTKmType());
@@ -550,3 +546,7 @@ int UnitTestVariantArrayHandle(int argc, char* argv[])
 {
   return vtkm::cont::testing::Testing::Run(TestVariantArrayHandle, argc, argv);
 }
+
+// The MSVC compiler is sometimes complaining about use of deprecated VariantArrayHandle at the
+// end of this file. This is the end of the translation unit, so just keep the suppression on.
+//VTKM_DEPRECATED_SUPPRESS_END

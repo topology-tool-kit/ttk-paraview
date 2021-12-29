@@ -68,7 +68,7 @@ void vtkBlockDeliveryPreprocessor::AddCompositeDataSetIndex(unsigned int index)
 //----------------------------------------------------------------------------
 void vtkBlockDeliveryPreprocessor::RemoveAllCompositeDataSetIndices()
 {
-  if (this->CompositeDataSetIndices->size() > 0)
+  if (!this->CompositeDataSetIndices->empty())
   {
     this->CompositeDataSetIndices->clear();
     this->Modified();
@@ -169,7 +169,7 @@ int vtkBlockDeliveryPreprocessor::RequestData(
       vtkPartitionedDataSetCollection::SafeDownCast(data) != nullptr)
     {
       // this is a hack. a cleaner solution requires a more aggressive change to
-      // this filter. for now, we're just doing this special case for Ioss
+      // this filter. for now, we're just doing this special case for IOSS
       // datasets.
       // not sure what's the best way to deal with field data on the root-node
       // itself.
@@ -177,7 +177,7 @@ int vtkBlockDeliveryPreprocessor::RequestData(
       table->GetFieldData()->PassData(data->GetFieldData());
       data = table;
     }
-    else if (indices.size() != 0 && indices.find(0) == indices.end())
+    else if (!indices.empty() && indices.find(0) == indices.end())
     {
       // need to extract chosen blocks.
       vtkNew<vtkExtractBlock> eb;

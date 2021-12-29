@@ -36,7 +36,6 @@ dataToLoad = os.path.join(vtkGetDataRoot(), 'Testing/Data/can.ex2')
 
 # Load data file
 reader = OpenDataFile(dataToLoad)
-reader.GlobalVariables = ['KE', 'XMOM', 'YMOM', 'ZMOM', 'NSTEPS', 'TMSTEP']
 reader.UpdatePipeline()
 
 # Time management
@@ -55,7 +54,7 @@ calculator = PythonCalculator(Expression="t_index*t_value*time_index*time_value"
 
 # Annotation filter
 annotation = PythonAnnotation()
-annotation.Expression = '"%f %f %f" % (XMOM[t_index], YMOM[t_index], ZMOM[t_index])'
+annotation.Expression = '"%f %f %f" % (xmom, ymom, zmom)'
 
 # Update time and trigger pipeline execution
 time = timesteps[5]
@@ -119,6 +118,19 @@ expected = "43 0.004300 (0.0, 0.004299988504499197)"
 if not equal(value, expected):
   errors += 1
   print ("Error: Expected ", expected, " and got ", value)
+
+# update expression and time to test string substitutions
+annotation.Expression = '"{timeindex} {timevalue} {timerange}"'
+# annotation.Expression = '"%i %f %s" % (t_index, t_value, str(t_range))'
+time = timesteps[7]
+annotation.UpdatePipeline(time)
+
+annotation.SMProxy.UpdatePropertyInformation()
+value = annotation.SMProxy.GetProperty('AnnotationValue').GetElement(0)
+expected = "7 0.000700 [0.0, 0.004299988504499197]"
+if not equal(value, expected):
+    errors += 1
+    print ("Error: Expected ", expected, " and got ", value)
 
 # Disconnect and quit application...
 Disconnect()

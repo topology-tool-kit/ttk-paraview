@@ -16,23 +16,29 @@
 #include "vtkProcessModule.h"
 #include "vtkProcessModuleInternals.h"
 
+#include "vtkCLIOptions.h"
 #include "vtkCommand.h"
 #include "vtkCompositeDataSet.h"
 #include "vtkDummyController.h"
 #include "vtkFloatingPointExceptions.h"
 #include "vtkInformation.h"
+#include "vtkLogger.h"
 #include "vtkMultiThreader.h"
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
 #include "vtkOutputWindow.h"
 #include "vtkPSystemTools.h"
 #include "vtkPVConfig.h"
-#include "vtkPVOptions.h"
 #include "vtkPolyData.h"
+#include "vtkProcessModuleConfiguration.h"
 #include "vtkSessionIterator.h"
 #include "vtkStreamingDemandDrivenPipeline.h"
 #include "vtkTCPNetworkAccessManager.h"
 #include "vtkUnstructuredGrid.h"
+
+#if !defined(VTK_LEGACY_REMOVE)
+#include "vtkPVOptions.h"
+#endif
 
 #include <vtksys/SystemTools.hxx>
 
@@ -48,34 +54,20 @@
 #ifdef _WIN32
 #include "vtkDynamicLoader.h"
 #else
-#include <signal.h>
+#include <csignal>
 #endif
 
 // this include is needed to ensure that vtkPVPluginLoader singleton doesn't get
 // destroyed before the process module singleton is cleaned up.
 #include "vtkPVPluginLoader.h"
 
-#include <assert.h>
+#include <cassert>
 #include <clocale> // needed for setlocale()
 #include <sstream>
 #include <stdexcept> // for runtime_error
 
 namespace
 {
-#if VTK_MODULE_ENABLE_VTK_ParallelMPI
-// Returns true if the arguments has the specified boolean_arg.
-bool vtkFindArgument(const char* boolean_arg, int argc, char**& argv)
-{
-  for (int cc = 0; cc < argc; cc++)
-  {
-    if (argv[cc] != NULL && strcmp(argv[cc], boolean_arg) == 0)
-    {
-      return true;
-    }
-  }
-  return false;
-}
-#endif
 
 // This is used to avoid creating vtkWin32OutputWindow on ParaView executables.
 // vtkWin32OutputWindow is not a useful window for any of the ParaView commandline
@@ -87,10 +79,71 @@ public:
   static vtkPVGenericOutputWindow* New();
 
 private:
-  vtkPVGenericOutputWindow() {}
-  ~vtkPVGenericOutputWindow() override {}
+  vtkPVGenericOutputWindow() = default;
+  ~vtkPVGenericOutputWindow() override = default;
 };
 vtkStandardNewMacro(vtkPVGenericOutputWindow);
+
+static void UpdateThreadName(
+  vtkProcessModule::ProcessTypes type, vtkMultiProcessController* controller)
+{
+  // set thread name based on application.
+  std::string tname_suffix;
+  if (controller->GetNumberOfProcesses() > 1)
+  {
+    tname_suffix = "." + std::to_string(controller->GetLocalProcessId());
+  }
+  switch (type)
+  {
+    case vtkProcessModule::PROCESS_CLIENT:
+      vtkLogger::SetThreadName("paraview" + tname_suffix);
+      break;
+    case vtkProcessModule::PROCESS_SERVER:
+      vtkLogger::SetThreadName("pvserver" + tname_suffix);
+      break;
+    case vtkProcessModule::PROCESS_DATA_SERVER:
+      vtkLogger::SetThreadName("pvdatserver" + tname_suffix);
+      break;
+    case vtkProcessModule::PROCESS_RENDER_SERVER:
+      vtkLogger::SetThreadName("pvrenderserver" + tname_suffix);
+      break;
+    case vtkProcessModule::PROCESS_BATCH:
+      vtkLogger::SetThreadName("pvbatch" + tname_suffix);
+      break;
+    default:
+      break;
+  }
+}
+
+void HandleDisplay(int& argc, char**& argv)
+{
+  // This is largely left for legacy purposes. There are better ways of specifying
+  // display options.
+
+  // Hack to support -display parameter.  CLI Options requires parameters to be
+  // specified as -option=value, but it is generally expected that X window
+  // programs allow you to set the display as -display host:port (i.e. without
+  // the = between the option and value).
+  for (int i = 1; i < argc - 1; i++)
+  {
+    if (strcmp(argv[i], "-display") == 0)
+    {
+      size_t size = strlen(argv[i + 1]) + 10;
+      char* displayenv = new char[size];
+      snprintf(displayenv, size, "DISPLAY=%s", argv[i + 1]);
+      vtksys::SystemTools::PutEnv(displayenv);
+      delete[] displayenv;
+      // safe to delete since PutEnv keeps a copy of the string.
+      argc -= 2;
+      for (int j = i; j < argc; j++)
+      {
+        argv[j] = argv[j + 2];
+      }
+      argv[argc] = nullptr;
+      break;
+    }
+  }
+}
 }
 
 //----------------------------------------------------------------------------
@@ -112,8 +165,23 @@ bool vtkProcessModule::Initialize(ProcessTypes type, int& argc, char**& argv)
   setlocale(LC_NUMERIC, "C");
 
   vtkProcessModule::ProcessType = type;
-
   vtkProcessModule::GlobalController = vtkSmartPointer<vtkDummyController>::New();
+
+  // This needs special handling. Generally, `vtkProcessModule::Initialize` is
+  // called first and then all arguments are processed. This is required since
+  // the arguments may be modified by the `MPI_Init` call and hence we should
+  // let MPI_Init process the args before the application processes them. The
+  // only exception is args that affect `vtkProcessModule::Initialize` itself.
+  // Hence, we handle those here explicitly.
+  auto config = vtkProcessModuleConfiguration::GetInstance();
+  vtkNew<vtkCLIOptions> options;
+  options->GenerateWarningsOff();
+  config->PopulateOptions(options, type);
+
+  // At this point, the args are loaded with stuff we don't parse,
+  // so it's essential to set allow-extras to true.
+  options->SetAllowExtras(true);
+  options->Parse(argc, argv);
 
 #if VTK_MODULE_ENABLE_VTK_ParallelMPI
   // scan the arguments to determine if we need to initialize MPI on client.
@@ -131,12 +199,11 @@ bool vtkProcessModule::Initialize(ProcessTypes type, int& argc, char**& argv)
     use_mpi = true;
   }
 
-  // Refer to vtkPVOptions.cxx for details.
-  if (vtkFindArgument("--mpi", argc, argv))
+  if (config->GetForceMPIInit())
   {
     use_mpi = true;
   }
-  else if (vtkFindArgument("--no-mpi", argc, argv))
+  else if (config->GetForceNoMPIInit())
   {
     use_mpi = false;
   }
@@ -158,7 +225,7 @@ bool vtkProcessModule::Initialize(ProcessTypes type, int& argc, char**& argv)
     MPI_Init(&argc, &argv);
 
     // restore CWD to what it was before the MPI initialization.
-    vtksys::SystemTools::ChangeDirectory(cwd.c_str());
+    vtksys::SystemTools::ChangeDirectory(cwd);
 
     vtkProcessModule::FinalizeMPI = true;
   } // END if MPI is already initialized
@@ -190,31 +257,24 @@ bool vtkProcessModule::Initialize(ProcessTypes type, int& argc, char**& argv)
   vtkProcessModule::GlobalController->BroadcastTriggerRMIOn();
   vtkMultiProcessController::SetGlobalController(vtkProcessModule::GlobalController);
 
-  // Hack to support -display parameter.  vtkPVOptions requires parameters to be
-  // specified as -option=value, but it is generally expected that X window
-  // programs allow you to set the display as -display host:port (i.e. without
-  // the = between the option and value).  Unless someone wants to change
-  // vtkPVOptions to work with or without the = (which may or may not be a good
-  // idea), then this is the easiest way around the problem.
-  for (int i = 1; i < argc - 1; i++)
+  // Setup logging
+  UpdateThreadName(type, vtkProcessModule::GlobalController);
+  if (config->GetLogStdErrVerbosity() != vtkLogger::VERBOSITY_INVALID)
   {
-    if (strcmp(argv[i], "-display") == 0)
-    {
-      size_t size = strlen(argv[i + 1]) + 10;
-      char* displayenv = new char[size];
-      snprintf(displayenv, size, "DISPLAY=%s", argv[i + 1]);
-      vtksys::SystemTools::PutEnv(displayenv);
-      delete[] displayenv;
-      // safe to delete since PutEnv keeps a copy of the string.
-      argc -= 2;
-      for (int j = i; j < argc; j++)
-      {
-        argv[j] = argv[j + 2];
-      }
-      argv[argc] = NULL;
-      break;
-    }
+    vtkLogger::SetStderrVerbosity(
+      static_cast<vtkLogger::Verbosity>(config->GetLogStdErrVerbosity()));
   }
+  vtkLogger::Init(argc, argv, nullptr);
+  for (const auto& log_pair : config->GetLogFiles())
+  {
+    vtkLogger::LogToFile(
+      vtkProcessModuleConfiguration::GetRankAnnotatedFileName(log_pair.first).c_str(),
+      vtkLogger::TRUNCATE, log_pair.second);
+  }
+
+  // This is left over for legacy cases, just in case users are still using
+  // this.
+  HandleDisplay(argc, argv);
 
 #ifdef _WIN32
   // Avoid Ghost windows on windows XP
@@ -251,7 +311,7 @@ bool vtkProcessModule::Initialize(ProcessTypes type, int& argc, char**& argv)
   vtkOutputWindow::GetInstance()->PromptUserOff();
 
 #if VTK_MODULE_ENABLE_VTK_ParallelMPI
-  if (vtksys::SystemTools::GetEnv("PARAVIEW_USE_MPI_SSEND"))
+  if (config->GetUseMPISSend())
   {
     vtkMPIController::SetUseSsendForRMI(1);
   }
@@ -301,14 +361,14 @@ bool vtkProcessModule::Finalize()
   }
 
   // destroy the process-module.
-  vtkProcessModule::Singleton = NULL;
+  vtkProcessModule::Singleton = nullptr;
 
-  // We don't really need to call SetGlobalController(NULL) since
-  // it's really stored with a weak pointer.  We set it to null anyways
+  // We don't really need to call SetGlobalController(nullptr) since
+  // it's really stored with a weak pointer.  We set it to nullptr anyways
   // in case it gets changed later to reference counting the pointer
-  vtkMultiProcessController::SetGlobalController(NULL);
+  vtkMultiProcessController::SetGlobalController(nullptr);
   vtkProcessModule::GlobalController->Finalize(/*finalizedExternally*/ 1);
-  vtkProcessModule::GlobalController = NULL;
+  vtkProcessModule::GlobalController = nullptr;
 
 #if VTK_MODULE_ENABLE_VTK_ParallelMPI
   if (vtkProcessModule::FinalizeMPI)
@@ -351,33 +411,47 @@ vtkProcessModule* vtkProcessModule::GetProcessModule()
 // * vtkProcessModule non-static methods
 vtkStandardNewMacro(vtkProcessModule);
 vtkCxxSetObjectMacro(vtkProcessModule, NetworkAccessManager, vtkNetworkAccessManager);
+
+#if !defined(VTK_LEGACY_REMOVE)
+vtkCxxSetObjectMacro(vtkProcessModule, Options, vtkPVOptions);
+#endif
+
 //----------------------------------------------------------------------------
 vtkProcessModule::vtkProcessModule()
 {
   this->NetworkAccessManager = vtkTCPNetworkAccessManager::New();
-  this->Options = 0;
   this->Internals = new vtkProcessModuleInternals();
   this->MaxSessionId = 0;
   this->ReportInterpreterErrors = true;
-  this->SymmetricMPIMode = false;
   this->MultipleSessionsSupport = false; // Set MULTI-SERVER to false as DEFAULT
   this->EventCallDataSessionId = 0;
+#if !defined(VTK_LEGACY_REMOVE)
+  this->Options = nullptr;
+#endif
 }
 
 //----------------------------------------------------------------------------
 vtkProcessModule::~vtkProcessModule()
 {
-  this->SetNetworkAccessManager(NULL);
-  this->SetOptions(NULL);
+  this->SetNetworkAccessManager(nullptr);
+#if !defined(VTK_LEGACY_REMOVE)
+  this->SetOptions(nullptr);
+#endif
 
   delete this->Internals;
-  this->Internals = 0;
+  this->Internals = nullptr;
+}
+
+//----------------------------------------------------------------------------
+bool vtkProcessModule::GetSymmetricMPIMode()
+{
+  return vtkProcessModuleConfiguration::GetInstance()->GetSymmetricMPIMode();
 }
 
 //----------------------------------------------------------------------------
 vtkIdType vtkProcessModule::RegisterSession(vtkSession* session)
 {
-  assert(session != NULL);
+  assert(session != nullptr);
   this->MaxSessionId++;
   this->Internals->Sessions[this->MaxSessionId] = session;
   this->EventCallDataSessionId = this->MaxSessionId;
@@ -433,7 +507,7 @@ vtkSession* vtkProcessModule::GetSession(vtkIdType sessionID)
     return iter->second.GetPointer();
   }
 
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -484,7 +558,7 @@ bool vtkProcessModule::IsMPIInitialized()
 //----------------------------------------------------------------------------
 void vtkProcessModule::PushActiveSession(vtkSession* session)
 {
-  assert(session != NULL);
+  assert(session != nullptr);
 
   this->Internals->ActiveSessionStack.push_back(session);
 }
@@ -492,7 +566,7 @@ void vtkProcessModule::PushActiveSession(vtkSession* session)
 //----------------------------------------------------------------------------
 void vtkProcessModule::PopActiveSession(vtkSession* session)
 {
-  assert(session != NULL);
+  assert(session != nullptr);
 
   if (this->Internals->ActiveSessionStack.back() != session)
   {
@@ -505,9 +579,9 @@ void vtkProcessModule::PopActiveSession(vtkSession* session)
 //----------------------------------------------------------------------------
 vtkSession* vtkProcessModule::GetActiveSession()
 {
-  if (this->Internals->ActiveSessionStack.size() == 0)
+  if (this->Internals->ActiveSessionStack.empty())
   {
-    return NULL;
+    return nullptr;
   }
   return this->Internals->ActiveSessionStack.back();
 }
@@ -523,17 +597,7 @@ vtkSession* vtkProcessModule::GetSession()
 
   vtkProcessModuleInternals::MapOfSessions::iterator iter;
   iter = this->Internals->Sessions.begin();
-  return (iter != this->Internals->Sessions.end() ? iter->second.GetPointer() : NULL);
-}
-
-//----------------------------------------------------------------------------
-void vtkProcessModule::SetOptions(vtkPVOptions* options)
-{
-  vtkSetObjectBodyMacro(Options, vtkPVOptions, options);
-  if (options)
-  {
-    this->SetSymmetricMPIMode(options->GetSymmetricMPIMode() != 0);
-  }
+  return (iter != this->Internals->Sessions.end() ? iter->second.GetPointer() : nullptr);
 }
 
 //----------------------------------------------------------------------------
@@ -627,6 +691,7 @@ void vtkProcessModule::PrintSelf(ostream& os, vtkIndent indent)
   os << indent << "NetworkAccessManager: " << endl;
   this->NetworkAccessManager->PrintSelf(os, indent.GetNextIndent());
 
+#if !defined(VTK_LEGACY_REMOVE)
   if (this->Options)
   {
     os << indent << "Options: " << endl;
@@ -637,6 +702,7 @@ void vtkProcessModule::PrintSelf(ostream& os, vtkIndent indent)
     os << indent << "Options: "
        << "(null)" << endl;
   }
+#endif
 }
 
 //----------------------------------------------------------------------------
@@ -695,3 +761,12 @@ int vtkProcessModule::GetNumberOfGhostLevelsToRequest(vtkInformation* info)
     return 0;
   }
 }
+
+//----------------------------------------------------------------------------
+#if !defined(VTK_LEGACY_REMOVE)
+vtkPVOptions* vtkProcessModule::GetOptions()
+{
+  VTK_LEGACY_BODY(vtkProcessModule::GetOptions, "ParaView 5.10");
+  return this->Options;
+}
+#endif

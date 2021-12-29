@@ -37,14 +37,25 @@ public:
   vtkTypeMacro(vtkGenerateGlobalIds, vtkPassInputTypeAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
+  /**
+   * Get/Set the tolerance to use to identify coincident points. 0 means the
+   * points should be exactly identical.
+   *
+   * Default is 0.
+   */
+  vtkSetClampMacro(Tolerance, double, 0, VTK_DOUBLE_MAX);
+  vtkGetMacro(Tolerance, double);
+  ///@}
+
+  ///@{
   /**
    * Get/Set the controller to use. By default
    * vtkMultiProcessController::GlobalController will be used.
    */
   void SetController(vtkMultiProcessController*);
   vtkGetObjectMacro(Controller, vtkMultiProcessController);
-  //@}
+  ///@}
 
 protected:
   vtkGenerateGlobalIds();
@@ -57,6 +68,7 @@ private:
   void operator=(const vtkGenerateGlobalIds&) = delete;
 
   vtkMultiProcessController* Controller;
+  double Tolerance;
 };
 
 #endif

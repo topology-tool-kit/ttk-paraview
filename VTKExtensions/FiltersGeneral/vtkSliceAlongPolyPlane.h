@@ -23,7 +23,7 @@
  *
  * @sa
  * vtkCutter vtkPolyPlane
-*/
+ */
 
 #ifndef vtkSliceAlongPolyPlane_h
 #define vtkSliceAlongPolyPlane_h
@@ -41,11 +41,16 @@ public:
   vtkTypeMacro(vtkSliceAlongPolyPlane, vtkDataObjectAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
-  vtkSetMacro(Tolerance, double) vtkGetMacro(Tolerance, double)
-    //@}
+  ///@{
+  /**
+   * Get/Set tolerance to use.
+   */
+  vtkSetMacro(Tolerance, double);
+  vtkGetMacro(Tolerance, double);
+  ///@}
 
-    protected : vtkSliceAlongPolyPlane();
+protected:
+  vtkSliceAlongPolyPlane();
   ~vtkSliceAlongPolyPlane() override;
 
   int RequestDataObject(vtkInformation*, vtkInformationVector** inputVector,

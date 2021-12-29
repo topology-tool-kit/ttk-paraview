@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqPipelineModel.h"
 #include "pqPipelineModelSelectionAdaptor.h"
 #include "pqPipelineSource.h"
+#include "pqRenderView.h"
 #include "pqServer.h"
 #include "pqServerManagerModel.h"
 #include "pqUndoStack.h"
@@ -88,9 +89,7 @@ pqPipelineBrowserWidget::pqPipelineBrowserWidget(QWidget* parentObject)
 }
 
 //-----------------------------------------------------------------------------
-pqPipelineBrowserWidget::~pqPipelineBrowserWidget()
-{
-}
+pqPipelineBrowserWidget::~pqPipelineBrowserWidget() = default;
 
 //-----------------------------------------------------------------------------
 void pqPipelineBrowserWidget::configureModel()
@@ -196,8 +195,8 @@ void pqPipelineBrowserWidget::handleIndexClicked(const QModelIndex& index_)
     if (port)
     {
       pqView* activeView = pqActiveObjects::instance().activeView();
-      vtkSMViewProxy* viewProxy = activeView ? activeView->getViewProxy() : NULL;
-      bool cur_state = (viewProxy == NULL
+      vtkSMViewProxy* viewProxy = activeView ? activeView->getViewProxy() : nullptr;
+      bool cur_state = (viewProxy == nullptr
           ? false
           : (controller->GetVisibility(port->getSourceProxy(), port->getPortNumber(), viewProxy)));
 
@@ -317,7 +316,7 @@ void pqPipelineBrowserWidget::setVisibility(bool visible, pqOutputPort* port)
     auto& activeObjects = pqActiveObjects::instance();
     vtkNew<vtkSMParaViewPipelineControllerWithRendering> controller;
     pqView* activeView = activeObjects.activeView();
-    vtkSMViewProxy* viewProxy = activeView ? activeView->getViewProxy() : NULL;
+    vtkSMViewProxy* viewProxy = activeView ? activeView->getViewProxy() : nullptr;
     int scalarBarMode = vtkPVGeneralSettings::GetInstance()->GetScalarBarMode();
 
     if (pqLiveInsituManager::isInsituServer(port->getServer()))
@@ -354,6 +353,8 @@ void pqPipelineBrowserWidget::setVisibility(bool visible, pqOutputPort* port)
         // and also add it to layout.
         viewProxy = vtkSMViewProxy::FindView(repr);
         controller->AssignViewToLayout(viewProxy, activeLayout, location);
+        activeView =
+          pqApplicationCore::instance()->getServerManagerModel()->findItem<pqView*>(viewProxy);
       }
 
       // assign to layout, in case a new view is created.
@@ -387,6 +388,13 @@ void pqPipelineBrowserWidget::setVisibility(bool visible, pqOutputPort* port)
                       << std::endl;
           }
         }
+      }
+
+      // BUG #20521. Toggle interaction mode for 3D views; @sa pqApplyBehavior.
+      auto rview = qobject_cast<pqRenderView*>(activeView);
+      if (visible && rview != nullptr && rview->getNumberOfVisibleDataRepresentations() == 1)
+      {
+        rview->updateInteractionMode(port);
       }
     }
   }
@@ -428,7 +436,7 @@ void pqPipelineBrowserWidget::disableSessionFilter()
 }
 
 //----------------------------------------------------------------------------
-const QModelIndex pqPipelineBrowserWidget::pipelineModelIndex(const QModelIndex& index) const
+QModelIndex pqPipelineBrowserWidget::pipelineModelIndex(const QModelIndex& index) const
 {
   if (qobject_cast<const pqPipelineModel*>(index.model()))
   {

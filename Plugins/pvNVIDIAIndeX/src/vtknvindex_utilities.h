@@ -1,29 +1,29 @@
 /* Copyright 2021 NVIDIA Corporation. All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions
-* are met:
-*  * Redistributions of source code must retain the above copyright
-*    notice, this list of conditions and the following disclaimer.
-*  * Redistributions in binary form must reproduce the above copyright
-*    notice, this list of conditions and the following disclaimer in the
-*    documentation and/or other materials provided with the distribution.
-*  * Neither the name of NVIDIA CORPORATION nor the names of its
-*    contributors may be used to endorse or promote products derived
-*    from this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-* EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-* PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-* CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-* EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-* PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-* PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-* OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #ifndef vtknvindex_utilities_h
 #define vtknvindex_utilities_h
@@ -108,7 +108,7 @@ inline mi::Float64 get_time()
   return (mi::Float64)counter.QuadPart / frequency;
 #else
   timeval tv;
-  gettimeofday(&tv, NULL);
+  gettimeofday(&tv, nullptr);
   return static_cast<mi::Float64>(tv.tv_sec) + (static_cast<mi::Float64>(tv.tv_usec) * 1.0e-6);
 #endif
 }
@@ -125,10 +125,10 @@ inline std::string get_host_name()
     host_name = buf;
 #else
   char* host_name_env = getenv("HOSTNAME");
-  if (host_name_env == NULL)
+  if (host_name_env == nullptr)
     host_name_env = getenv("HOST");
 
-  if (host_name_env != NULL)
+  if (host_name_env != nullptr)
     host_name = host_name_env;
 // else
 //    INFO_LOG << "Environment variable 'HOSTNAME' or 'HOST' not set on host.";
@@ -163,24 +163,24 @@ inline mi::Uint8* get_vol_shm(const std::string& shmname, const mi::Uint64& shar
   HANDLE hMapFile;
   ULARGE_INTEGER liMaximumSize;
   liMaximumSize.QuadPart = shared_seg_size;
-  hMapFile = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, liMaximumSize.HighPart,
-    liMaximumSize.LowPart, shmname.c_str());
+  hMapFile = CreateFileMapping(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE,
+    liMaximumSize.HighPart, liMaximumSize.LowPart, shmname.c_str());
 
-  if (hMapFile == NULL)
+  if (hMapFile == nullptr)
   {
     ERROR_LOG << "shm_open(): Could not create file mapping object, shared memory: " << shmname
               << ".";
-    return NULL;
+    return nullptr;
   }
 
   void* shm_volume = MapViewOfFile(hMapFile, FILE_MAP_ALL_ACCESS, 0, 0, shared_seg_size);
 
-  if (shm_volume == NULL)
+  if (shm_volume == nullptr)
   {
     CloseHandle(hMapFile);
 
     ERROR_LOG << "shm_open(): Could not map view of file, shared memory: " << shmname << ".";
-    return NULL;
+    return nullptr;
   }
 
   CloseHandle(hMapFile);
@@ -192,7 +192,7 @@ inline mi::Uint8* get_vol_shm(const std::string& shmname, const mi::Uint64& shar
   if (shmfd < 0)
   {
     ERROR_LOG << "Error shm_open() in vtknvindex_representation, shmname: " << shmname;
-    return NULL;
+    return nullptr;
   }
 
   // Adjusting mapped file size.
@@ -201,15 +201,15 @@ inline mi::Uint8* get_vol_shm(const std::string& shmname, const mi::Uint64& shar
     ERROR_LOG << "The function ftruncate() failed to truncate the shared memory when writing, "
                  "shared memory: "
               << shmname << ".";
-    return NULL;
+    return nullptr;
   }
 
-  void* shm_volume = mmap(NULL, shared_seg_size, PROT_READ | PROT_WRITE, MAP_SHARED, shmfd, 0);
-  if (shm_volume == NULL)
+  void* shm_volume = mmap(nullptr, shared_seg_size, PROT_READ | PROT_WRITE, MAP_SHARED, shmfd, 0);
+  if (shm_volume == nullptr)
   {
     ERROR_LOG << "The function mmap() failed in vtknvindex_representation, shared memory: "
               << shmname << ".";
-    return NULL;
+    return nullptr;
   }
   close(shmfd);
 

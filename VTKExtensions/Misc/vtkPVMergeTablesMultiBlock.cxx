@@ -35,9 +35,7 @@ vtkPVMergeTablesMultiBlock::vtkPVMergeTablesMultiBlock()
 }
 
 //----------------------------------------------------------------------------
-vtkPVMergeTablesMultiBlock::~vtkPVMergeTablesMultiBlock()
-{
-}
+vtkPVMergeTablesMultiBlock::~vtkPVMergeTablesMultiBlock() = default;
 
 //----------------------------------------------------------------------------
 int vtkPVMergeTablesMultiBlock::FillInputPortInformation(int vtkNotUsed(port), vtkInformation* info)
@@ -119,7 +117,7 @@ int vtkPVMergeTablesMultiBlock::RequestData(
     }
   }
 
-  if (nonempty_inputs.size() == 0)
+  if (nonempty_inputs.empty())
   {
     return 1;
   }
@@ -148,7 +146,7 @@ int vtkPVMergeTablesMultiBlock::RequestData(
         }
       }
     }
-    if (leaves.size())
+    if (!leaves.empty())
     {
       auto result = ::vtkPVMergeTablesMultiBlockMerge(leaves);
       output->SetDataSet(iter, result);

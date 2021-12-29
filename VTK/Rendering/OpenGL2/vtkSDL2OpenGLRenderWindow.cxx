@@ -102,6 +102,14 @@ void vtkSDL2OpenGLRenderWindow::MakeCurrent()
   }
 }
 
+void vtkSDL2OpenGLRenderWindow::ReleaseCurrent()
+{
+  if (this->ContextId)
+  {
+    SDL_GL_MakeCurrent(this->WindowId, nullptr);
+  }
+}
+
 void vtkSDL2OpenGLRenderWindow::PushContext()
 {
   SDL_GLContext current = SDL_GL_GetCurrentContext();
@@ -331,7 +339,7 @@ int* vtkSDL2OpenGLRenderWindow::GetPosition(void)
   }
 
   //  Find the current window position
-  //  x,y,&this->Position[0],&this->Position[1],&child);
+  SDL_GetWindowPosition(this->WindowId, &this->Position[0], &this->Position[1]);
 
   return this->Position;
 }

@@ -37,7 +37,7 @@ vtkStandardNewMacro(vtkPythonProgrammableFilter);
 //----------------------------------------------------------------------------
 
 typedef std::map<std::string, std::string> ParametersT;
-typedef std::map<std::string, std::vector<std::string> > RepeatableParametersT;
+typedef std::map<std::string, std::vector<std::string>> RepeatableParametersT;
 
 class vtkPythonProgrammableFilterImplementation
 {
@@ -52,24 +52,24 @@ public:
 vtkPythonProgrammableFilter::vtkPythonProgrammableFilter()
   : Implementation(new vtkPythonProgrammableFilterImplementation())
 {
-  this->Script = NULL;
-  this->InformationScript = NULL;
-  this->UpdateExtentScript = NULL;
-  this->CheckNeedsUpdateScript = NULL;
-  this->PythonPath = 0;
+  this->Script = nullptr;
+  this->InformationScript = nullptr;
+  this->UpdateExtentScript = nullptr;
+  this->CheckNeedsUpdateScript = nullptr;
+  this->PythonPath = nullptr;
   this->SetExecuteMethod(vtkPythonProgrammableFilter::ExecuteScript, this);
   this->OutputDataSetType = VTK_POLY_DATA;
   this->NeedsUpdate = false;
-  this->Request = NULL;
+  this->Request = nullptr;
 }
 
 //----------------------------------------------------------------------------
 vtkPythonProgrammableFilter::~vtkPythonProgrammableFilter()
 {
-  this->SetScript(NULL);
-  this->SetInformationScript(NULL);
-  this->SetUpdateExtentScript(NULL);
-  this->SetPythonPath(0);
+  this->SetScript(nullptr);
+  this->SetInformationScript(nullptr);
+  this->SetUpdateExtentScript(nullptr);
+  this->SetPythonPath(nullptr);
 
   delete this->Implementation;
 }
@@ -164,7 +164,7 @@ int vtkPythonProgrammableFilter::ProcessRequest(
 {
   this->Request = request;
   int retVal = this->Superclass::ProcessRequest(request, inputVector, outputVector);
-  this->Request = NULL;
+  this->Request = nullptr;
   return retVal;
 }
 //----------------------------------------------------------------------------
@@ -294,12 +294,17 @@ void vtkPythonProgrammableFilter::Exec(const char* script, const char* funcname)
     {
       if (!paths[cc].empty())
       {
-        pathscript += "if not ";
-        pathscript += paths[cc];
-        pathscript += " in sys.path:\n";
-        pathscript += "  sys.path.insert(0, ";
-        pathscript += paths[cc];
-        pathscript += ")\n";
+        std::string path = paths[cc];
+
+        // Remove any quotes from the path
+        path.erase(std::remove(path.begin(), path.end(), '"'), path.end());
+        path.erase(std::remove(path.begin(), path.end(), '\''), path.end());
+
+        // Re-add qoutes
+        path = std::string("\"").append(path).append("\"");
+
+        pathscript += std::string("if not ").append(path).append(" in sys.path:\n");
+        pathscript += std::string("  sys.path.insert(0, ").append(path).append(")\n");
 
         vtkPythonInterpreter::RunSimpleString(pathscript.c_str());
       }
@@ -307,8 +312,9 @@ void vtkPythonProgrammableFilter::Exec(const char* script, const char* funcname)
   }
 
   // Remove the function if it already exists
-  std::string cleanupScript = "try: del " + std::string(funcname) + "\n"
-                                                                    "except NameError: pass\n";
+  std::string cleanupScript = "try: del " + std::string(funcname) +
+    "\n"
+    "except NameError: pass\n";
   vtkPythonInterpreter::RunSimpleString(cleanupScript.c_str());
 
   // Construct a script that defines a function

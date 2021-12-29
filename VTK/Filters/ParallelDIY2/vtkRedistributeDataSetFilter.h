@@ -46,6 +46,26 @@
  * on when it is known that the data is spatially partitioned as is the case
  * after this filter has executed.
  *
+ * @section vtkRedistributeDataSetFilter-SupportedDataTypes  Supported Data Types
+ *
+ * vtkRedistributeDataSetFilter is primarily intended for unstructured datasets
+ * i.e. vtkUnstructuredGrid, vtkPolyData and composite datasets comprising of
+ * the same. It will work when applied to structured datasets as well, however,
+ * it results in conversion of the dataset to an unstructured grid -- which is
+ * often not suitable. Also, other redistribution and load balancing strategies
+ * can be applied to structured data which may be more efficient and hence
+ * should be preferred over using this filter.
+ *
+ * For composite datasets, the filter supports `vtkPartitionedDataSet` and
+ * `vtkPartitionedDataSetCollection`. When input is a
+ * `vtkPartitionedDataSetCollection`, you can set `LoadBalanceAcrossAllBlocks`
+ * to true to build the load balancing KdTree using all vtkPartitionedDataSets
+ * in the collection. Default is load balance each `vtkPartitionedDataSet`
+ * separately.
+ *
+ * For `vtkMultiBlockDataSet`, the filter internally uses
+ * `vtkDataAssemblyUtilities` to convert the
+ * vtkMultiBlockDataSet to a vtkPartitionedDataSetCollection and back.
  */
 #ifndef vtkRedistributeDataSetFilter_h
 #define vtkRedistributeDataSetFilter_h
@@ -58,7 +78,7 @@
 #include <vector> // for std::vector
 
 // clang-format off
-#include "vtk_diy2.h"
+#include "vtk_diy2.h" // for DIY2 APIs
 #include VTK_DIY2(diy/assigner.hpp)
 // clang-format on
 
@@ -67,6 +87,7 @@ class vtkBoundingBox;
 class vtkPartitionedDataSet;
 class vtkMultiBlockDataSet;
 class vtkMultiPieceDataSet;
+class vtkDataObjectTree;
 
 class VTKFILTERSPARALLELDIY2_EXPORT vtkRedistributeDataSetFilter : public vtkDataObjectAlgorithm
 {
@@ -75,14 +96,14 @@ public:
   vtkTypeMacro(vtkRedistributeDataSetFilter, vtkDataObjectAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Get/Set the controller to use. By default
    * vtkMultiProcessController::GlobalController will be used.
    */
   void SetController(vtkMultiProcessController*);
   vtkGetObjectMacro(Controller, vtkMultiProcessController);
-  //@}
+  ///@}
 
   enum BoundaryModes
   {
@@ -91,7 +112,7 @@ public:
     SPLIT_BOUNDARY_CELLS = 2
   };
 
-  //@{
+  ///@{
   /**
    * Specify how cells on the boundaries are handled.
    *
@@ -112,9 +133,9 @@ public:
     this->SetBoundaryMode(ASSIGN_TO_ALL_INTERSECTING_REGIONS);
   }
   void SetBoundaryModeToSplitBoundaryCells() { this->SetBoundaryMode(SPLIT_BOUNDARY_CELLS); }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Specify whether to compute the load balancing automatically or use
    * explicitly provided cuts. Set to false (default) to automatically compute
@@ -123,9 +144,9 @@ public:
   vtkSetMacro(UseExplicitCuts, bool);
   vtkGetMacro(UseExplicitCuts, bool);
   vtkBooleanMacro(UseExplicitCuts, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Specify the cuts to use when `UseExplicitCuts` is true.
    */
@@ -136,9 +157,9 @@ public:
   void AddExplicitCut(const double bbox[6]);
   int GetNumberOfExplicitCuts() const;
   const vtkBoundingBox& GetExplicitCut(int index) const;
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Specify the DIY assigner used for distributing cuts. If you use this API, you have to be
    * careful and use an assigner matching your setup. For example, if you use explicit cuts (by
@@ -148,7 +169,7 @@ public:
   std::shared_ptr<diy::Assigner> GetAssigner();
   std::shared_ptr<const diy::Assigner> GetAssigner() const;
 
-  //@{
+  ///@{
   /**
    * When using explicit cuts, it possible that the bounding box defined by all
    * the cuts is smaller than the input's bounds. In that case, the filter can
@@ -162,16 +183,16 @@ public:
   vtkSetMacro(ExpandExplicitCuts, bool);
   vtkGetMacro(ExpandExplicitCuts, bool);
   vtkBooleanMacro(ExpandExplicitCuts, bool);
-  //@}
+  ///@}
 
-  //@}
+  ///@}
   /**
    * Returns the cuts used by the most recent `RequestData` call. This is only
    * valid after a successful `Update` request.
    */
   const std::vector<vtkBoundingBox>& GetCuts() const { return this->Cuts; }
 
-  //@{
+  ///@{
   /**
    * Specify the number of partitions to split the input dataset into.
    * Set to 0 to indicate that the partitions should match the number of
@@ -192,9 +213,9 @@ public:
    */
   vtkSetClampMacro(NumberOfPartitions, int, 0, VTK_INT_MAX);
   vtkGetMacro(NumberOfPartitions, int);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * When set to true (default is false), this filter will generate a vtkPartitionedDataSet as the
    * output. The advantage of doing that is each partition that the input dataset was split
@@ -211,9 +232,9 @@ public:
   vtkSetMacro(PreservePartitionsInOutput, bool);
   vtkGetMacro(PreservePartitionsInOutput, bool);
   vtkBooleanMacro(PreservePartitionsInOutput, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Generate global cell ids if none present in the input. If global cell ids are present
    * in the input then this flag is ignored. Default is true.
@@ -221,7 +242,7 @@ public:
   vtkSetMacro(GenerateGlobalCellIds, bool);
   vtkGetMacro(GenerateGlobalCellIds, bool);
   vtkBooleanMacro(GenerateGlobalCellIds, bool);
-  //@}
+  ///@}
 
   /**
    * Helper function to expand a collection of bounding boxes to include the
@@ -232,7 +253,7 @@ public:
   std::vector<vtkBoundingBox> ExpandCuts(
     const std::vector<vtkBoundingBox>& cuts, const vtkBoundingBox& bounds);
 
-  //@{
+  ///@{
   /**
    * Enable/disable debugging mode. In this mode internal arrays are preserved
    * and ghost cells are not explicitly marked as such so that they can be inspected
@@ -243,7 +264,21 @@ public:
   vtkSetMacro(EnableDebugging, bool);
   vtkGetMacro(EnableDebugging, bool);
   vtkBooleanMacro(EnableDebugging, bool);
-  //@}
+  ///@}
+
+  ///@{
+  /**
+   * When UseExplicitCuts is false, and input is a
+   * `vtkPartitionedDataSetCollection`, set this to true to generate cuts for
+   * load balancing using all the datasets in the
+   * vtkPartitionedDataSetCollection.
+   *
+   * Default is true.
+   */
+  vtkSetMacro(LoadBalanceAcrossAllBlocks, bool);
+  vtkGetMacro(LoadBalanceAcrossAllBlocks, bool);
+  vtkBooleanMacro(LoadBalanceAcrossAllBlocks, bool);
+  ///@}
 
 protected:
   vtkRedistributeDataSetFilter();
@@ -281,14 +316,11 @@ private:
   vtkRedistributeDataSetFilter(const vtkRedistributeDataSetFilter&) = delete;
   void operator=(const vtkRedistributeDataSetFilter&) = delete;
 
-  bool Redistribute(vtkDataObject* inputDO, vtkPartitionedDataSet* outputPDS,
+  bool InitializeCuts(vtkDataObjectTree* input);
+  bool Redistribute(vtkPartitionedDataSet* inputDO, vtkPartitionedDataSet* outputPDS,
     const std::vector<vtkBoundingBox>& cuts, vtkIdType* mb_offset = nullptr);
   bool RedistributeDataSet(
     vtkDataSet* inputDS, vtkPartitionedDataSet* outputPDS, const std::vector<vtkBoundingBox>& cuts);
-  int RedistributeMultiBlockDataSet(
-    vtkMultiBlockDataSet* input, vtkMultiBlockDataSet* output, vtkIdType* mb_offset = nullptr);
-  int RedistributeMultiPieceDataSet(
-    vtkMultiPieceDataSet* input, vtkMultiPieceDataSet* output, vtkIdType* mb_offset = nullptr);
   vtkSmartPointer<vtkDataSet> ClipDataSet(vtkDataSet* dataset, const vtkBoundingBox& bbox);
 
   void MarkGhostCells(vtkPartitionedDataSet* pieces);
@@ -313,6 +345,7 @@ private:
   bool ExpandExplicitCuts;
   bool EnableDebugging;
   bool ValidDim[3];
+  bool LoadBalanceAcrossAllBlocks;
 };
 
 #endif

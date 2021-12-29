@@ -16,7 +16,7 @@
  * @class   vtkRealtimeAnimationPlayer
  *
  * Animation player that plays in real time.
-*/
+ */
 
 #ifndef vtkRealtimeAnimationPlayer_h
 #define vtkRealtimeAnimationPlayer_h
@@ -38,6 +38,16 @@ public:
    */
   vtkGetMacro(Duration, unsigned long);
   vtkSetMacro(Duration, unsigned long);
+  //@}
+
+  //@{
+  /**
+   * Setter is noop, getter return 1.
+   *
+   * Stride is not relevant for realtime animation so let it be always 1.
+   */
+  void SetStride(int) override final{};
+  int GetStride() override final { return 1; }
   //@}
 
 protected:

@@ -54,13 +54,13 @@ vtkStandardNewMacro(@_add_visit_reader_plugin_name@);
 //-----------------------------------------------------------------------------
 @_add_visit_reader_plugin_name@::@_add_visit_reader_plugin_name@()
 {
-  this->FileName = 0;
+  this->FileName = nullptr;
 }
 
 //-----------------------------------------------------------------------------
 @_add_visit_reader_plugin_name@::~@_add_visit_reader_plugin_name@()
 {
-  this->SetFileName(0);
+  this->SetFileName(nullptr);
 }
 
 #if _add_visit_reader_uses_interface
@@ -107,13 +107,13 @@ bool @_add_visit_reader_plugin_name@::InitializeAVTReader(  const int&  )
     catch(const VisItException& e)
       {
       vtkErrorMacro(<<e.Message());
-      this->AvtFile = NULL;
+      this->AvtFile = nullptr;
       return false;
       }
     catch(const std::exception& e)
       {
       vtkErrorMacro(<<e.what());
-      this->AvtFile = NULL;
+      this->AvtFile = nullptr;
       return false;
       }
     @_add_visit_reader_VISIT_READER_NAME@ *file = dynamic_cast<@_add_visit_reader_VISIT_READER_NAME@*>

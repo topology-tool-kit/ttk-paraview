@@ -90,33 +90,6 @@
     </SourceProxy>
 
     <!-- ==================================================================== -->
-    <SourceProxy class="vtkGridConnectivity"
-                 label="Grid Connectivity"
-                 name="GridConnectivity">
-      <Documentation long_help="Mass properties of connected fragments for unstructured grids."
-                     short_help="Parallel connectivity and integration.">This
-                     filter works on multiblock unstructured grid inputs and
-                     also works in parallel. It Ignores any cells with a cell
-                     data Status value of 0. It performs connectivity to
-                     distict fragments separately. It then integrates
-                     attributes of the fragments.</Documentation>
-      <InputProperty command="SetInputConnection"
-                     name="Input">
-        <ProxyGroupDomain name="groups">
-          <Group name="sources" />
-          <Group name="filters" />
-        </ProxyGroupDomain>
-        <DataTypeDomain name="input_type">
-          <DataType value="vtkUnstructuredGrid" />
-          <DataType value="vtkCompositeDataSet" />
-        </DataTypeDomain>
-        <Documentation>This property specifies the input of the
-        filter.</Documentation>
-      </InputProperty>
-      <!-- End Grid Fragment -->
-    </SourceProxy>
-
-    <!-- ==================================================================== -->
     <SourceProxy class="vtkHybridProbeFilter"
                  label="Extract Location"
                  name="ExtractLocation">
@@ -376,14 +349,12 @@ using the ( and ) buttons.
 - x^y: Raise one scalar to the power of another scalar. The operands for
   this function are not required to be enclosed in parentheses.
 - sqrt: Compute the square root of a scalar.
-- e^x: Raise e to the power of a scalar.
-- log: Compute the logarithm of a scalar (deprecated. same as log10).
-- log10: Compute the logarithm of a scalar to the base 10.
+- exp: Raise e to the power of a scalar.
 - ln: Compute the logarithm of a scalar to the base 'e'.
+- log10: Compute the logarithm of a scalar to the base 10.
 - ceil: Compute the ceiling of a scalar. floor: Compute the floor of a scalar.
 - abs: Compute the absolute value of a scalar.
-- v1.v2: Compute the dot product of two vectors. The operands for this
-  function are not required to be enclosed in parentheses.
+- dot: Compute the dot product of two vectors.
 - cross: Compute cross product of two vectors.
 - mag: Compute the magnitude of a vector.
 - norm: Normalize a vector.
@@ -534,6 +505,14 @@ array.
         </EnumerationDomain>
         <Documentation>This property determines what array type to output.
         The default is a vtkDoubleArray.</Documentation>
+      </IntVectorProperty>
+      <IntVectorProperty name="FunctionParserType"
+                         command="SetFunctionParserTypeFromInt"
+                         default_values="1"
+                         number_of_elements="1"
+                         panel_visibility="never">
+        <Documentation>Hidden property that specifies whether the old (ParaView 5.9 and before)
+        expression parser or new (ParaView 5.10) vtkPVLinearExtrusionFilter is used.</Documentation>
       </IntVectorProperty>
       <!-- End Calculator -->
     </SourceProxy>
@@ -2152,6 +2131,388 @@ Every Nth Point.
     </SourceProxy>
 
     <!-- ==================================================================== -->
+    <SourceProxy class="vtkPVGradientFilter"
+                 label="Gradient"
+                 name="Gradient">
+      <Documentation long_help="Estimate the gradient for each point or cell in any type of dataset."
+                     short_help="Compute the gradient for any type of dataset.">
+                     The Gradient filter estimates the gradient vector at each
+                     point or cell. It operates on any type of vtkDataSet, and
+                     the output is of the same type as the input.
+                     For unstructured grids, the gradient is computed with the
+                     cell derivatives. For structured grids, the gradient is computed
+                     using central differencing, except on the boundary of the
+                     dataset where forward and backward differencing is used for
+                     the boundary elements.
+                     If the dataset is a vtkImageData, the gradient computation
+                     at the boundaries can also be done with central differencing
+                     using a duplication of the boundary values, smoothing out
+                     the result (see 'Boundary Method' property).
+      </Documentation>
+      <InputProperty command="SetInputConnection"
+                     name="Input">
+        <ProxyGroupDomain name="groups">
+          <Group name="sources" />
+          <Group name="filters" />
+        </ProxyGroupDomain>
+        <DataTypeDomain name="input_type">
+          <DataType value="vtkDataSet" />
+        </DataTypeDomain>
+        <InputArrayDomain name="input_array" />
+        <Documentation>
+          Specify the input to the Gradient filter.
+        </Documentation>
+      </InputProperty>
+      <StringVectorProperty command="SetInputArrayToProcess"
+                            element_types="0 0 0 0 2"
+                            label="Scalar Array"
+                            name="SelectInputScalars"
+                            number_of_elements="5">
+        <ArrayListDomain attribute_type="Scalars"
+                         name="array_list">
+          <RequiredProperties>
+            <Property function="Input"
+                      name="Input" />
+          </RequiredProperties>
+        </ArrayListDomain>
+        <Documentation>
+          Specify the name of the scalar array from which to compute the gradient.
+        </Documentation>
+      </StringVectorProperty>
+      <IntVectorProperty command="SetBoundaryMethod"
+                         default_values="1"
+                         name="BoundaryMethod"
+                         number_of_elements="1">
+        <EnumerationDomain name="enum">
+          <Entry text="Smoothed"
+                 value="0" />
+          <Entry text="Non-Smoothed"
+                 value="1" />
+        </EnumerationDomain>
+        <Hints>
+          <PropertyWidgetDecorator type="InputDataTypeDecorator"
+                                   name="vtkImageData"
+                                   mode="visibility" />
+        </Hints>
+        <Documentation>
+          Specify how to compute the gradient on the boundaries.
+          'Smoothed' uses central differencing by duplicating the boundary values
+          to compute the gradient on the boundary elements (corresponds to the
+          old 'Gradient' filter). 'Non-Smoothed' uses forward/backward differencing
+          with the values of a boundary element and its neighbor to compute the
+          gradient (corresponds to the old 'Gradient Of Unstructured DataSet' filter).
+        </Documentation>
+      </IntVectorProperty>
+      <IntVectorProperty command="SetDimensionality"
+                         default_values="3"
+                         name="Dimensionality"
+                         number_of_elements="1">
+        <EnumerationDomain name="enum">
+          <Entry text="Two"
+                 value="2" />
+          <Entry text="Three"
+                 value="3" />
+        </EnumerationDomain>
+        <Hints>
+          <PropertyWidgetDecorator type="InputDataTypeDecorator"
+                                   name="vtkImageData"
+                                   mode="visibility" />
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   property="BoundaryMethod"
+                                   value="0"
+                                   mode="enabled_state" />
+        </Hints>
+        <Documentation>
+          Specify whether to compute the gradient in two or three dimensions.
+          In two dimensions, the X and Y dimensions are used.
+        </Documentation>
+      </IntVectorProperty>
+      <IntVectorProperty command="SetComputeGradient"
+                         default_values="1"
+                         name="ComputeGradient"
+                         number_of_elements="1"
+                         panel_visibility="advanced">
+        <BooleanDomain name="bool" />
+        <Hints>
+          <PropertyWidgetDecorator type="CompositeDecorator">
+            <Expression type="or">
+              <PropertyWidgetDecorator type="InputDataTypeDecorator"
+                                       name="vtkImageData"
+                                       exclude="1"
+                                       mode="enabled_state" />
+              <PropertyWidgetDecorator type="GenericDecorator"
+                                       property="BoundaryMethod"
+                                       value="1"
+                                       mode="enabled_state" />
+            </Expression>
+          </PropertyWidgetDecorator>
+        </Hints>
+        <Documentation>
+          If on, the gradient of the input array is computed.
+        </Documentation>
+      </IntVectorProperty>
+      <StringVectorProperty command="SetResultArrayName"
+                            default_values="Gradient"
+                            name="ResultArrayName"
+                            number_of_elements="1">
+        <Hints>
+          <PropertyWidgetDecorator type="CompositeDecorator">
+            <Expression type="or">
+              <PropertyWidgetDecorator type="InputDataTypeDecorator"
+                                       name="vtkImageData"
+                                       exclude="1"
+                                       mode="enabled_state" />
+              <PropertyWidgetDecorator type="GenericDecorator"
+                                       property="BoundaryMethod"
+                                       value="1"
+                                       mode="enabled_state" />
+            </Expression>
+          </PropertyWidgetDecorator>
+        </Hints>
+        <Documentation>
+          Provide a name for the output array containing the gradient vectors.
+        </Documentation>
+      </StringVectorProperty>
+      <IntVectorProperty command="SetFasterApproximation"
+                         default_values="0"
+                         name="FasterApproximation"
+                         number_of_elements="1"
+                         panel_visibility="advanced">
+        <BooleanDomain name="bool" />
+        <Hints>
+          <PropertyWidgetDecorator type="CompositeDecorator">
+            <Expression type="or">
+              <PropertyWidgetDecorator type="InputDataTypeDecorator"
+                                       name="vtkImageData"
+                                       exclude="1"
+                                       mode="enabled_state" />
+              <PropertyWidgetDecorator type="GenericDecorator"
+                                       property="BoundaryMethod"
+                                       value="1"
+                                       mode="enabled_state" />
+            </Expression>
+          </PropertyWidgetDecorator>
+        </Hints>
+        <Documentation>
+          If on, the Gradient filter will provide a less accurate (but close)
+          algorithm that performs fewer derivative calculations (and is therefore
+          faster). The error contains some smoothing of the output data and some
+          possible errors on the boundary. Has no effect when performing the
+          gradient of cell data or when the input grid is not a vtkUnstructuredGrid.
+        </Documentation>
+      </IntVectorProperty>
+      <IntVectorProperty command="SetComputeDivergence"
+                         default_values="0"
+                         name="ComputeDivergence"
+                         number_of_elements="1"
+                         panel_visibility="advanced">
+        <BooleanDomain name="bool" />
+        <Hints>
+          <PropertyWidgetDecorator type="CompositeDecorator">
+            <Expression type="or">
+              <PropertyWidgetDecorator type="InputDataTypeDecorator"
+                                       name="vtkImageData"
+                                       exclude="1"
+                                       mode="enabled_state" />
+              <PropertyWidgetDecorator type="GenericDecorator"
+                                       property="BoundaryMethod"
+                                       value="1"
+                                       mode="enabled_state" />
+            </Expression>
+          </PropertyWidgetDecorator>
+        </Hints>
+        <Documentation>
+          If on, the divergence of a 3-component array is computed.
+        </Documentation>
+      </IntVectorProperty>
+      <StringVectorProperty command="SetDivergenceArrayName"
+                            default_values="Divergence"
+                            name="DivergenceArrayName"
+                            number_of_elements="1"
+                            panel_visibility="advanced">
+        <Hints>
+          <PropertyWidgetDecorator type="CompositeDecorator">
+            <Expression type="or">
+              <PropertyWidgetDecorator type="InputDataTypeDecorator"
+                                       name="vtkImageData"
+                                       exclude="1"
+                                       mode="enabled_state" />
+              <PropertyWidgetDecorator type="GenericDecorator"
+                                       property="BoundaryMethod"
+                                       value="1"
+                                       mode="enabled_state" />
+            </Expression>
+          </PropertyWidgetDecorator>
+        </Hints>
+        <Documentation>
+          Provide a name for the output array containing the divergence vector.
+        </Documentation>
+      </StringVectorProperty>
+      <IntVectorProperty command="SetComputeVorticity"
+                         default_values="0"
+                         name="ComputeVorticity"
+                         number_of_elements="1"
+                         panel_visibility="advanced">
+        <BooleanDomain name="bool" />
+        <Hints>
+          <PropertyWidgetDecorator type="CompositeDecorator">
+            <Expression type="or">
+              <PropertyWidgetDecorator type="InputDataTypeDecorator"
+                                       name="vtkImageData"
+                                       exclude="1"
+                                       mode="enabled_state" />
+              <PropertyWidgetDecorator type="GenericDecorator"
+                                       property="BoundaryMethod"
+                                       value="1"
+                                       mode="enabled_state" />
+            </Expression>
+          </PropertyWidgetDecorator>
+        </Hints>
+        <Documentation>
+          If on, the vorticity/curl of a 3-component array is computed.
+        </Documentation>
+      </IntVectorProperty>
+      <StringVectorProperty command="SetVorticityArrayName"
+                            default_values="Vorticity"
+                            name="VorticityArrayName"
+                            number_of_elements="1"
+                            panel_visibility="advanced">
+        <Hints>
+          <PropertyWidgetDecorator type="CompositeDecorator">
+            <Expression type="or">
+              <PropertyWidgetDecorator type="InputDataTypeDecorator"
+                                       name="vtkImageData"
+                                       exclude="1"
+                                       mode="enabled_state" />
+              <PropertyWidgetDecorator type="GenericDecorator"
+                                       property="BoundaryMethod"
+                                       value="1"
+                                       mode="enabled_state" />
+            </Expression>
+          </PropertyWidgetDecorator>
+        </Hints>
+        <Documentation>
+          Provide a name for the output array containing the vorticity vector.
+        </Documentation>
+      </StringVectorProperty>
+      <IntVectorProperty command="SetComputeQCriterion"
+                         default_values="0"
+                         name="ComputeQCriterion"
+                         label="Compute Q Criterion"
+                         number_of_elements="1"
+                         panel_visibility="advanced">
+        <BooleanDomain name="bool" />
+        <Hints>
+          <PropertyWidgetDecorator type="CompositeDecorator">
+            <Expression type="or">
+              <PropertyWidgetDecorator type="InputDataTypeDecorator"
+                                       name="vtkImageData"
+                                       exclude="1"
+                                       mode="enabled_state" />
+              <PropertyWidgetDecorator type="GenericDecorator"
+                                       property="BoundaryMethod"
+                                       value="1"
+                                       mode="enabled_state" />
+            </Expression>
+          </PropertyWidgetDecorator>
+        </Hints>
+        <Documentation>
+          If on, the Q-criterion of a 3-component array is computed.
+        </Documentation>
+      </IntVectorProperty>
+      <StringVectorProperty command="SetQCriterionArrayName"
+                            default_values="Q Criterion"
+                            name="QCriterionArrayName"
+                            number_of_elements="1"
+                            panel_visibility="advanced">
+        <Hints>
+          <PropertyWidgetDecorator type="CompositeDecorator">
+            <Expression type="or">
+              <PropertyWidgetDecorator type="InputDataTypeDecorator"
+                                       name="vtkImageData"
+                                       exclude="1"
+                                       mode="enabled_state" />
+              <PropertyWidgetDecorator type="GenericDecorator"
+                                       property="BoundaryMethod"
+                                       value="1"
+                                       mode="enabled_state" />
+            </Expression>
+          </PropertyWidgetDecorator>
+        </Hints>
+        <Documentation>
+          Provide a name for the output array containing the Q criterion.
+        </Documentation>
+      </StringVectorProperty>
+      <IntVectorProperty command="SetContributingCellOption"
+                         default_values="2"
+                         name="ContributingCellOption"
+                         number_of_elements="1"
+                         panel_visibility="advanced">
+        <EnumerationDomain name="enum">
+          <Entry text="All"
+                 value="0" />
+          <Entry text="Patch"
+                 value="1" />
+          <Entry text="Dataset Max"
+                 value="2" />
+        </EnumerationDomain>
+        <Hints>
+          <PropertyWidgetDecorator type="CompositeDecorator">
+            <Expression type="or">
+              <PropertyWidgetDecorator type="InputDataTypeDecorator"
+                                       name="vtkImageData"
+                                       exclude="1"
+                                       mode="enabled_state" />
+              <PropertyWidgetDecorator type="GenericDecorator"
+                                       property="BoundaryMethod"
+                                       value="1"
+                                       mode="enabled_state" />
+            </Expression>
+          </PropertyWidgetDecorator>
+        </Hints>
+        <Documentation>
+          Specify which dimensions of cells should be used when computing
+          gradient quantities. Default is to use the dataset maximum cell dimension.
+        </Documentation>
+      </IntVectorProperty>
+      <IntVectorProperty command="SetReplacementValueOption"
+                         default_values="1"
+                         name="ReplacementValueOption"
+                         number_of_elements="1"
+                         panel_visibility="advanced">
+        <EnumerationDomain name="enum">
+          <Entry text="Zero"
+                 value="0" />
+          <Entry text="NaN"
+                 value="1" />
+          <Entry text="Data Type Min"
+                 value="2" />
+          <Entry text="Data Type Max"
+                 value="3" />
+        </EnumerationDomain>
+        <Hints>
+          <PropertyWidgetDecorator type="CompositeDecorator">
+            <Expression type="or">
+              <PropertyWidgetDecorator type="InputDataTypeDecorator"
+                                       name="vtkImageData"
+                                       exclude="1"
+                                       mode="enabled_state" />
+              <PropertyWidgetDecorator type="GenericDecorator"
+                                       property="BoundaryMethod"
+                                       value="1"
+                                       mode="enabled_state" />
+            </Expression>
+          </PropertyWidgetDecorator>
+        </Hints>
+        <Documentation>
+          Specify what value to use when the gradient quantities at a point cannot
+          be computed with the selected **ContributingCellOption**.
+        </Documentation>
+      </IntVectorProperty>
+      <!-- End Gradient -->
+    </SourceProxy>
+
+    <!-- ==================================================================== -->
     <SourceProxy class="vtkPVLinearExtrusionFilter"
                  label="Linear Extrusion"
                  name="LinearExtrusionFilter">
@@ -2330,16 +2691,7 @@ Every Nth Point.
           <Group name="implicit_functions" />
         </ProxyGroupDomain>
         <ProxyListDomain name="proxy_list">
-          <Proxy group="implicit_functions"
-                 name="Plane" />
-          <Proxy group="implicit_functions"
-                 name="Box" />
-          <Proxy group="implicit_functions"
-                 name="Sphere" />
-          <Proxy group="implicit_functions"
-                 name="Cylinder" />
-          <Proxy group="implicit_functions"
-                 name="Scalar" />
+          <Group name="clip_implicit_functions" default="Plane" />
         </ProxyListDomain>
         <Hints>
           <PropertyWidgetDecorator type="InputDataTypeDecorator"
@@ -2353,22 +2705,8 @@ Every Nth Point.
       <ProxyProperty command="SetHyperTreeGridClipFunction"
                      label="Hyper Tree Grid Clipper"
                      name="HyperTreeGridClipFunction">
-        <ProxyGroupDomain name="groups">
-          <Group name="implicit_functions" />
-        </ProxyGroupDomain>
         <ProxyListDomain name="proxy_list">
-          <Proxy group="implicit_functions"
-                 name="Plane" />
-          <Proxy group="implicit_functions"
-                 name="Axis Aligned Box" />
-          <Proxy group="implicit_functions"
-                 name="Sphere" />
-          <Proxy group="implicit_functions"
-                 name="Cylinder" />
-          <Proxy group="implicit_functions"
-                 name="Quadric" />
-          <Proxy group="implicit_functions"
-                 name="Scalar" />
+          <Group name="clip_htg_implicit_functions" default="Plane" />
         </ProxyListDomain>
         <Documentation>This property specifies the parameters of the clip
         function (an implicit description) used to clip the hyper tree grid.</Documentation>
@@ -2550,18 +2888,8 @@ Every Nth Point.
                                    exclude="1"
                                    mode="visibility"/>
         </Hints>
-        <ProxyGroupDomain name="groups">
-          <Group name="implicit_functions" />
-        </ProxyGroupDomain>
         <ProxyListDomain name="proxy_list">
-          <Proxy group="implicit_functions"
-                 name="Plane" />
-          <Proxy group="implicit_functions"
-                 name="Box" />
-          <Proxy group="implicit_functions"
-                 name="Sphere" />
-          <Proxy group="implicit_functions"
-                 name="Cylinder" />
+          <Group name="slice_implicit_functions" default="Plane"/>
         </ProxyListDomain>
         <Documentation>This property sets the parameters of the slice
         function.</Documentation>
@@ -2574,14 +2902,8 @@ Every Nth Point.
                                    name="vtkHyperTreeGrid"
                                    mode="visibility"/>
         </Hints>
-        <ProxyGroupDomain name="groups">
-          <Group name="implicit_functions" />
-        </ProxyGroupDomain>
         <ProxyListDomain name="proxy_list">
-          <Proxy group="implicit_functions"
-                 name="Plane" />
-          <Proxy group="implicit_functions"
-                 name="Axis Aligned Plane" />
+          <Group name="slice_htg_implicit_functions" default="Plane"/>
         </ProxyListDomain>
         <Documentation>This property sets the parameters of the slice
         function.</Documentation>
@@ -2716,22 +3038,19 @@ Every Nth Point.
                      The Threshold filter extracts the portions of the input
                      dataset whose scalars lie within the specified range. This
                      filter operates on either point-centered or cell-centered
-                     data. This filter operates on any type of dataset and
-                     produces unstructured grid output. To select between these
-                     two options, select either Point Data or Cell Data from
-                     the Attribute Mode menu. Once the Attribute Mode has been
-                     selected, choose the scalar array from which to threshold
-                     the data from the Scalars menu. The Lower Threshold and
-                     Upper Threshold sliders determine the range of the scalars
-                     to retain in the output. The All Scalars check box only
-                     takes effect when the Attribute Mode is set to Point Data.
-                     If the All Scalars option is checked, then a cell will
-                     only be passed to the output if the scalar values of all
-                     of its points lie within the range indicated by the Lower
-                     Threshold and Upper Threshold sliders. If unchecked, then
-                     a cell will be added to the output if the specified scalar
-                     value for any of its points is within the chosen
-                     range.</Documentation>
+                     data. It operates on any type of dataset and produces
+                     unstructured grid output.
+                     The scalar array from which to threshold the data can be selected
+                     in the 'Scalars' menu.
+                     The 'Lower Threshold' and 'Upper Threshold' sliders determine
+                     the range of the scalars to retain in the output.
+                     The threshold method can be selected from the 'Threshold Method' menu.
+                     The 'All Scalars' option only applies to Point Data. When this
+                     option is on, a cell will only be passed to the output if the
+                     scalar values of all of its points lie within the chosen range.
+                     When off, a cell will be added to the output if the specified
+                     scalar value for any of its points is within the chosen range.
+      </Documentation>
       <InputProperty command="SetInputConnection"
                      name="Input">
         <ProxyGroupDomain name="groups">
@@ -2763,13 +3082,12 @@ Every Nth Point.
         <Documentation>The value of this property contains the name of the
         scalar array from which to perform thresholding.</Documentation>
       </StringVectorProperty>
-      <DoubleVectorProperty command="ThresholdBetween"
-                            default_values="0 0"
-                            label="Threshold Range"
-                            name="ThresholdBetween"
-                            number_of_elements="2"
-                            panel_widget="double_range">
-        <ArrayRangeDomain name="range">
+      <DoubleVectorProperty command="SetLowerThreshold"
+                            default_values="0"
+                            name="LowerThreshold"
+                            number_of_elements="1">
+        <ArrayRangeDomain name="range"
+                          default_mode="min">
           <RequiredProperties>
             <Property function="Input"
                       name="Input" />
@@ -2777,9 +3095,59 @@ Every Nth Point.
                       name="SelectInputScalars" />
           </RequiredProperties>
         </ArrayRangeDomain>
-        <Documentation>The values of this property specify the upper and lower
-        bounds of the thresholding operation.</Documentation>
+        <Hints>
+          <PropertyWidgetDecorator type="CompositeDecorator">
+            <Expression type="or">
+              <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="ThresholdMethod" value="0" />
+              <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="ThresholdMethod" value="1" />
+            </Expression>
+          </PropertyWidgetDecorator>
+        </Hints>
+        <Documentation>
+          The value of this property specifies the lower bound of the
+          thresholding operation.
+        </Documentation>
       </DoubleVectorProperty>
+      <DoubleVectorProperty command="SetUpperThreshold"
+                            default_values="0"
+                            name="UpperThreshold"
+                            number_of_elements="1">
+        <ArrayRangeDomain name="range"
+                          default_mode="max">
+          <RequiredProperties>
+            <Property function="Input"
+                      name="Input" />
+            <Property function="ArraySelection"
+                      name="SelectInputScalars" />
+          </RequiredProperties>
+        </ArrayRangeDomain>
+        <Hints>
+          <PropertyWidgetDecorator type="CompositeDecorator">
+            <Expression type="or">
+              <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="ThresholdMethod" value="0" />
+              <PropertyWidgetDecorator type="GenericDecorator" mode="visibility" property="ThresholdMethod" value="2" />
+            </Expression>
+          </PropertyWidgetDecorator>
+        </Hints>
+        <Documentation>
+          The value of this property specifies the upper bound of the
+          thresholding operation.
+        </Documentation>
+      </DoubleVectorProperty>
+      <IntVectorProperty command="SetThresholdFunction"
+                         default_values="0"
+                         name="ThresholdMethod"
+                         number_of_elements="1"
+                         panel_visibility="default">
+        <EnumerationDomain name="enum">
+          <Entry text="Between" value="0"/>
+          <Entry text="Below Lower Threshold" value="1"/>
+          <Entry text="Above Upper Threshold" value="2"/>
+        </EnumerationDomain>
+        <Documentation>
+          This property indicates the threshold method.
+        </Documentation>
+      </IntVectorProperty>
       <IntVectorProperty command="SetAllScalars"
                          default_values="1"
                          name="AllScalars"
@@ -3238,13 +3606,13 @@ Every Nth Point.
         display the time.</Documentation>
       </InputProperty>
       <StringVectorProperty command="SetFormat"
-                            default_values="Time: %f"
+                            default_values="Time: {time:f}"
                             name="Format"
                             number_of_elements="1"
                             panel_visibility="default">
         <Documentation>The value of this property is a format string used to
-        display the input time. The format string is specified using printf
-        style.</Documentation>
+        display the input time. The format string is specified using fmt style
+        </Documentation>
       </StringVectorProperty>
       <DoubleVectorProperty command="SetShift"
                             default_values="0.0"
@@ -3490,5 +3858,103 @@ Every Nth Point.
       </Hints>
       <!-- End AnnotateGlobalData -->
     </SourceProxy>
+
+    <!-- ==================================================================== -->
+    <SourceProxy class="vtkMergeVectorComponents"
+                 label="Merge Vector Components"
+                 name="MergeVectorComponents">
+     <Documentation
+        long_help="Merge three 1-component arrays of the same attribute type (point-data or cell-data)
+                   into one 3-component vector."
+        short_help="Merge three 1-component arrays into one 3-component vector.">
+        The MergeVectorComponents filter can be used to merge 1-component arrays of
+        the same attribute type (point-data or cell-data) into one 3-component vector.
+     </Documentation>
+     <InputProperty command="SetInputConnection"
+                    name="Input">
+        <ProxyGroupDomain name="groups">
+          <Group name="sources"/>
+          <Group name="filters"/>
+        </ProxyGroupDomain>
+        <DataTypeDomain name="input_type">
+          <DataType value="vtkDataSet"/>
+        </DataTypeDomain>
+       <InputArrayDomain name="scale_array"
+                         number_of_components="1"
+                         optional="1" />
+     </InputProperty>
+      <IntVectorProperty command="SetAttributeType"
+                         default_values="0"
+                         name="AttributeType"
+                         number_of_elements="1">
+        <FieldDataDomain name="enum">
+          <RequiredProperties>
+            <Property function="Input"
+                      name="Input" />
+          </RequiredProperties>
+        </FieldDataDomain>
+        <Documentation>This property determines on which types of field data the computation is to
+        be performed on.</Documentation>
+      </IntVectorProperty>
+      <StringVectorProperty command="SetXArrayName"
+                            name="XArrayName"
+                            label="X Array"
+                            number_of_elements="1">
+        <ArrayListDomain name="array_list"
+                         input_domain_name="scale_array">
+          <RequiredProperties>
+            <Property function="Input"
+                      name="Input" />
+            <Property function="FieldDataSelection"
+                      name="AttributeType" />
+          </RequiredProperties>
+        </ArrayListDomain>
+        <Documentation>
+          This property indicates the name of the array with the X component.
+        </Documentation>
+      </StringVectorProperty>
+      <StringVectorProperty command="SetYArrayName"
+                            name="YArrayName"
+                            label="Y Array"
+                            number_of_elements="1">
+        <ArrayListDomain name="array_list"
+                         input_domain_name="scale_array">
+          <RequiredProperties>
+            <Property function="Input"
+                      name="Input" />
+            <Property function="FieldDataSelection"
+                      name="AttributeType" />
+          </RequiredProperties>
+        </ArrayListDomain>
+        <Documentation>
+          This property indicates the name of the array with the Y component.
+        </Documentation>
+      </StringVectorProperty>
+      <StringVectorProperty command="SetZArrayName"
+                            name="ZArrayName"
+                            label="Z Array"
+                            number_of_elements="1">
+        <ArrayListDomain name="array_list"
+                         input_domain_name="scale_array">
+          <RequiredProperties>
+            <Property function="Input"
+                      name="Input" />
+            <Property function="FieldDataSelection"
+                      name="AttributeType" />
+          </RequiredProperties>
+        </ArrayListDomain>
+        <Documentation>
+          This property indicates the name of the array with the Z component.
+        </Documentation>
+      </StringVectorProperty>
+      <StringVectorProperty command="SetOutputVectorName"
+                            default_values="Vector"
+                            name="OutputVectorName"
+                            number_of_elements="1">
+        <Documentation>This property contains the name for the output vector
+        containing the result of the merging.</Documentation>
+      </StringVectorProperty>
+      <!-- End MergeVectorComponents -->
+   </SourceProxy>
   </ProxyGroup>
 </ServerManagerConfiguration>

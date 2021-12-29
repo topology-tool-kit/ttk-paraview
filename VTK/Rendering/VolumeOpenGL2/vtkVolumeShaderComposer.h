@@ -177,9 +177,7 @@ std::string BaseDeclarationFragment(vtkRenderer* vtkNotUsed(ren), vtkVolumeMappe
 
   toShaderStr << "uniform int in_noOfComponents;\n"
                  "\n"
-                 "#ifndef GL_ES\n"
                  "uniform sampler2D in_depthSampler;\n"
-                 "#endif\n"
                  "\n"
                  "// Camera position\n"
                  "uniform vec3 in_cameraPos;\n";
@@ -550,6 +548,7 @@ std::string BaseImplementation(
             \n    // are blanked, skip the texel. In other words, if cell 1\
             \n    // is blanked, texels 1 and 2 would have to be skipped.\
             \n    else if (blankValue.y > 0.0 ||\
+            \n             any(greaterThan(blankValuePy, vec3(0.0))) ||\
             \n             any(greaterThan(blankValueNy, vec3(0.0))))\
             \n      {\
             \n      // skip this texel\
@@ -565,6 +564,7 @@ std::string BaseImplementation(
           \n    // are blanked, skip the texel. In other words, if cell 1\
           \n    // is blanked, texels 1 and 2 would have to be skipped.\
           \n    if (blankValue.x > 0.0 ||\
+          \n        any(greaterThan(blankValueNx, vec3(0.0))) ||\
           \n        any(greaterThan(blankValuePx, vec3(0.0))))\
           \n      {\
           \n      // skip this texel\
@@ -1134,7 +1134,7 @@ std::string ComputeLightingMultiDeclaration(vtkRenderer* vtkNotUsed(ren), vtkVol
 
   shaderStr += std::string("\
       \n  finalColor.a = color.a;\
-      \n  return finalColor;\
+      \n  return clamp(finalColor, 0.0, 1.0);\
       \n  }");
 
   return shaderStr;
@@ -1178,9 +1178,9 @@ std::string ComputeColorDeclaration(vtkRenderer* vtkNotUsed(ren),
     shaderStr += std::string("\
           \nvec4 computeColor(vec4 scalar, float opacity)\
           \n  {\
-          \n  return computeLighting(vec4(texture2D(" +
+          \n  return clamp(computeLighting(vec4(texture2D(" +
       colorTableMap[0] + ",\
-          \n                         vec2(scalar.w, 0.0)).xyz, opacity), 0, 0.0);\
+          \n                         vec2(scalar.w, 0.0)).xyz, opacity), 0, 0.0), 0.0, 1.0);\
           \n  }");
     return shaderStr;
   }
@@ -1201,14 +1201,14 @@ std::string ComputeColorDeclaration(vtkRenderer* vtkNotUsed(ren),
 
       shaderStr += std::string("\
             \n    {\
-            \n    return computeLighting(vec4(texture2D(\
+            \n    return clamp(computeLighting(vec4(texture2D(\
             \n      " +
         colorTableMap[i]);
       shaderStr += std::string(", vec2(\
             \n      scalar[" +
         toString.str() + "],0.0)).xyz,\
             \n      opacity)," +
-        toString.str() + ", 0.0);\
+        toString.str() + ", 0.0), 0.0, 1.0);\
             \n    }");
 
       // Reset
@@ -1224,10 +1224,10 @@ std::string ComputeColorDeclaration(vtkRenderer* vtkNotUsed(ren),
     shaderStr += std::string("\
           \nvec4 computeColor(vec4 scalar, float opacity)\
           \n  {\
-          \n  return computeLighting(vec4(texture2D(" +
+          \n  return clamp(computeLighting(vec4(texture2D(" +
       colorTableMap[0] + ",\
           \n                                        vec2(scalar.x, 0.0)).xyz,\
-          \n                              opacity), 0, 0.0);\
+          \n                              opacity), 0, 0.0), 0.0, 1.0);\
           \n  }");
     return shaderStr;
   }
@@ -1236,7 +1236,7 @@ std::string ComputeColorDeclaration(vtkRenderer* vtkNotUsed(ren),
     shaderStr += std::string("\
           \nvec4 computeColor(vec4 scalar, float opacity)\
           \n  {\
-          \n  return computeLighting(vec4(scalar.xyz, opacity), 0, 0.0);\
+          \n  return clamp(computeLighting(vec4(scalar.xyz, opacity), 0, 0.0), 0.0, 1.0);\
           \n  }");
     return shaderStr;
   }
@@ -1268,8 +1268,8 @@ std::string ComputeColorMultiDeclaration(vtkOpenGLGPUVolumeRayCastMapper::Volume
   {
     ss << "vec4 computeColor(vec4 scalar, const in sampler2D colorTF)\
       \n  {\
-      \n  return computeLighting(vec4(texture2D(colorTF,\
-      \n                         vec2(scalar.w, 0.0)).xyz, opacity), 0);\
+      \n  return clamp(computeLighting(vec4(texture2D(colorTF,\
+      \n                         vec2(scalar.w, 0.0)).xyz, opacity), 0), 0.0, 1.0);\
       \n  }\n";
   }
   else
@@ -1277,9 +1277,9 @@ std::string ComputeColorMultiDeclaration(vtkOpenGLGPUVolumeRayCastMapper::Volume
     ss << "vec4 computeColor(vec3 texPos, vec4 scalar, float opacity, const in sampler2D colorTF, "
           "const in sampler2D gradientTF, const in sampler3D volume, const int volIdx)\n"
           "{\n"
-          "  return computeLighting(texPos, vec4(texture2D(colorTF,\n"
+          "  return clamp(computeLighting(texPos, vec4(texture2D(colorTF,\n"
           "                         vec2(scalar.w, 0.0)).xyz, opacity), gradientTF, volume, "
-          "volIdx, 0);\n"
+          "volIdx, 0), 0.0, 1.0);\n"
           "}\n";
   }
 
@@ -1395,10 +1395,40 @@ std::string ComputeOpacityDeclaration(vtkRenderer* vtkNotUsed(ren),
 }
 
 //--------------------------------------------------------------------------
+std::string ComputeColor2DYAxisDeclaration(int noOfComponents,
+  int vtkNotUsed(independentComponents), std::map<int, std::string> colorTableMap)
+{
+  if (noOfComponents == 1)
+  {
+    // Single component
+    return std::string(
+      "vec4 computeColor(vec4 scalar, float opacity)\n"
+      "{\n"
+      "  vec4 yscalar = texture3D(in_transfer2DYAxis, g_dataPos);\n"
+      "  yscalar.r = yscalar.r * in_transfer2DYAxis_scale.r + in_transfer2DYAxis_bias.r;\n"
+      "  yscalar = vec4(yscalar.r);\n"
+      "  vec4 color = texture2D(" +
+      colorTableMap[0] +
+      ",\n"
+      "                         vec2(scalar.w, yscalar.w));\n"
+      "  return computeLighting(color, 0, 0);\n"
+      "}\n");
+  }
+  return std::string("vec4 computeColor(vec4 scalar, float opacity)\n"
+                     "{\n"
+                     "  return vec4(0, 0, 0, 0)\n"
+                     "}\n");
+}
+
+//--------------------------------------------------------------------------
 std::string ComputeColor2DDeclaration(vtkRenderer* vtkNotUsed(ren),
   vtkVolumeMapper* vtkNotUsed(mapper), vtkVolume* vtkNotUsed(vol), int noOfComponents,
-  int independentComponents, std::map<int, std::string> colorTableMap)
+  int independentComponents, std::map<int, std::string> colorTableMap, int useGradient)
 {
+  if (!useGradient)
+  {
+    return ComputeColor2DYAxisDeclaration(noOfComponents, independentComponents, colorTableMap);
+  }
   if (noOfComponents == 1)
   {
     // Single component
@@ -1408,7 +1438,7 @@ std::string ComputeColor2DDeclaration(vtkRenderer* vtkNotUsed(ren),
       colorTableMap[0] +
       ",\n"
       "    vec2(scalar.w, g_gradients_0[0].w));\n"
-      "  return computeLighting(color, 0, 0.0);\n"
+      "  return computeLighting(color, 0, 0);\n"
       "}\n");
   }
   else if (noOfComponents > 1 && independentComponents)
@@ -1479,13 +1509,18 @@ std::string Transfer2DDeclaration(vtkOpenGLGPUVolumeRayCastMapper::VolumeInputMa
     i++;
   }
 
-  return ss.str();
+  std::string result = ss.str() +
+    std::string("uniform sampler3D in_transfer2DYAxis;\n"
+                "uniform vec4 in_transfer2DYAxis_scale;\n"
+                "uniform vec4 in_transfer2DYAxis_bias;\n");
+
+  return result;
 }
 
 //--------------------------------------------------------------------------
 std::string ComputeOpacity2DDeclaration(vtkRenderer* vtkNotUsed(ren),
   vtkVolumeMapper* vtkNotUsed(mapper), vtkVolume* vtkNotUsed(vol), int noOfComponents,
-  int independentComponents, std::map<int, std::string> opacityTableMap)
+  int independentComponents, std::map<int, std::string> opacityTableMap, int useGradient)
 {
   std::ostringstream toString;
   if (noOfComponents > 1 && independentComponents)
@@ -1493,44 +1528,107 @@ std::string ComputeOpacity2DDeclaration(vtkRenderer* vtkNotUsed(ren),
     // Multiple independent components
     toString << "float computeOpacity(vec4 scalar, int component)\n"
                 "{\n";
+    if (!useGradient)
+    {
+      toString
+        << "vec4 yscalar = texture3D(in_transfer2DYAxis, g_dataPos);\n"
+           "for (int i = 0; i < 4; ++i)\n"
+           "{\n"
+           "  yscalar[i] = yscalar[i] * in_transfer2DYAxis_scale[i] + in_transfer2DYAxis_bias[i];\n"
+           "}\n";
+      if (noOfComponents == 1)
+      {
+        toString << "yscalar = vec4(yscalar.r);\n";
+      }
+    }
 
     for (int i = 0; i < noOfComponents; ++i)
     {
-      toString << "  if (component == " << i
-               << ")\n"
-                  "  {\n"
-                  "    return texture2D("
-               << opacityTableMap[i]
-               << ",\n"
-                  "      vec2(scalar["
-               << i << "], g_gradients_0[" << i
-               << "].w)).a;\n"
-                  "  }\n";
+      if (useGradient)
+      {
+        toString << "  if (component == " << i
+                 << ")\n"
+                    "  {\n"
+                    "    return texture2D("
+                 << opacityTableMap[i]
+                 << ",\n"
+                    "      vec2(scalar["
+                 << i << "], g_gradients_0[" << i
+                 << "].w)).a;\n"
+                    "  }\n";
+      }
+      else
+      {
+        toString << "  if (component == " << i
+                 << ")\n"
+                    "  {\n"
+                    "    return texture2D("
+                 << opacityTableMap[i]
+                 << ",\n"
+                    "      vec2(scalar["
+                 << i << "], yscalar[" << i
+                 << "])).a;\n"
+                    "  }\n";
+      }
     }
 
     toString << "}\n";
   }
+
   else if (noOfComponents == 2 && !independentComponents)
   {
-    // Dependent components (Luminance/ Opacity)
-    toString << "float computeOpacity(vec4 scalar)\n"
-                "{\n"
-                "  return texture2D(" +
-        opacityTableMap[0] +
-        ",\n"
-        "    vec2(scalar.y, g_gradients_0[0].w)).a;\n"
-        "}\n";
+    if (useGradient)
+    {
+      // Dependent components (Luminance/ Opacity)
+      toString << "float computeOpacity(vec4 scalar)\n"
+                  "{\n"
+                  "  return texture2D(" +
+          opacityTableMap[0] +
+          ",\n"
+          "    vec2(scalar.y, g_gradients_0[0].w)).a;\n"
+          "}\n";
+    }
+    else
+    {
+      // Dependent components (Luminance/ Opacity)
+      toString << "float computeOpacity(vec4 scalar)\n"
+                  "{\n"
+                  "  return texture2D(" +
+          opacityTableMap[0] +
+          ",\n"
+          "    vec2(scalar.y, yscalar.y)).a;\n"
+          "}\n";
+    }
   }
+
   else
   {
-    // Dependent components (RGBA) || Single component
-    toString << "float computeOpacity(vec4 scalar)\n"
-                "{\n"
-                "  return texture2D(" +
-        opacityTableMap[0] +
-        ",\n"
-        "    vec2(scalar.a, g_gradients_0[0].w)).a;\n"
-        "}\n";
+    if (useGradient)
+    {
+      // Dependent compoennts (RGBA) || Single component
+      toString << "float computeOpacity(vec4 scalar)\n"
+                  "{\n"
+                  "  return texture2D(" +
+          opacityTableMap[0] +
+          ",\n"
+          "    vec2(scalar.a, g_gradients_0[0].w)).a;\n"
+          "}\n";
+    }
+    else
+    {
+      // Dependent compoennts (RGBA) || Single component
+      toString
+        << "float computeOpacity(vec4 scalar)\n"
+           "{\n"
+           "  vec4 yscalar = texture3D(in_transfer2DYAxis, g_dataPos);\n"
+           "  yscalar.r = yscalar.r * in_transfer2DYAxis_scale.r + in_transfer2DYAxis_bias.r;\n"
+           "  yscalar = vec4(yscalar.r);\n"
+           "  return texture2D(" +
+          opacityTableMap[0] +
+          ",\n"
+          "    vec2(scalar.a, yscalar.w)).a;\n"
+          "}\n";
+    }
   }
   return toString.str();
 }
@@ -2405,11 +2503,7 @@ std::string TerminationInit(vtkRenderer* vtkNotUsed(ren), vtkVolumeMapper* mappe
       \n\
       \n  g_terminatePointMax = 0.0;\
       \n\
-      \n#ifdef GL_ES\
-      \n  vec4 l_depthValue = vec4(1.0,1.0,1.0,1.0);\
-      \n#else\
       \n  vec4 l_depthValue = texture2D(in_depthSampler, fragTexCoord);\
-      \n#endif\
       \n  // Depth test\
       \n  if(gl_FragCoord.z >= l_depthValue.x)\
       \n    {\

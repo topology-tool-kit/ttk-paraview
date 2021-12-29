@@ -21,7 +21,7 @@
 #include "vtkSISourceProxy.h"
 #include "vtkSMMessage.h"
 
-#include <assert.h>
+#include <cassert>
 
 vtkStandardNewMacro(vtkSIInputProperty);
 //----------------------------------------------------------------------------
@@ -31,9 +31,7 @@ vtkSIInputProperty::vtkSIInputProperty()
 }
 
 //----------------------------------------------------------------------------
-vtkSIInputProperty::~vtkSIInputProperty()
-{
-}
+vtkSIInputProperty::~vtkSIInputProperty() = default;
 
 //----------------------------------------------------------------------------
 bool vtkSIInputProperty::ReadXMLAttributes(vtkSIProxy* proxyhelper, vtkPVXMLElement* element)
@@ -90,15 +88,16 @@ bool vtkSIInputProperty::Push(vtkSMMessage* message, int offset)
   {
     vtkSISourceProxy* siProxy = vtkSISourceProxy::SafeDownCast(this->GetSIObject(proxy_ids[cc]));
     vtkAlgorithmOutput* input_connection =
-      (siProxy ? siProxy->GetOutputPort(output_ports[cc]) : NULL);
+      (siProxy ? siProxy->GetOutputPort(output_ports[cc]) : nullptr);
     stream << vtkClientServerStream::Invoke << this->SIProxyObject << "AddInput" << this->PortIndex
            << input_connection << this->GetCommand() << vtkClientServerStream::End;
   }
 
-  if (this->NullOnEmpty && this->CleanCommand == NULL && proxy_ids.size() == 0)
+  if (this->NullOnEmpty && this->CleanCommand == nullptr && proxy_ids.empty())
   {
     stream << vtkClientServerStream::Invoke << this->SIProxyObject << "AddInput" << this->PortIndex
-           << static_cast<vtkObjectBase*>(NULL) << this->GetCommand() << vtkClientServerStream::End;
+           << static_cast<vtkObjectBase*>(nullptr) << this->GetCommand()
+           << vtkClientServerStream::End;
   }
 
   // Save to cache when pulled for collaboration

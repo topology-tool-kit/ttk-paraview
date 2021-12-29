@@ -12,11 +12,16 @@
      PURPOSE.  See the above copyright notice for more information.
 
 =========================================================================*/
+
+// Hide VTK_DEPRECATED_IN_9_1_0() warning for this class
+#define VTK_DEPRECATION_LEVEL 0
+
 #include "vtkOverlappingCellsDetector.h"
 
 #include "vtkAbstractPointLocator.h"
 #include "vtkBoundingBox.h"
 #include "vtkCellData.h"
+#include "vtkCompositeDataIterator.h"
 #include "vtkCompositeDataSet.h"
 #include "vtkDIYExplicitAssigner.h"
 #include "vtkDIYUtilities.h"
@@ -64,8 +69,8 @@
 
 namespace
 {
-static constexpr char SPHERE_RADIUS_ARRAY_NAME[21] = "SphereRadius";
-static constexpr char ID_MAP_TO_ORIGIN_DATASET_IDS_NAME[32] = "IdMapToOriginDataSetIds";
+constexpr char SPHERE_RADIUS_ARRAY_NAME[21] = "SphereRadius";
+constexpr char ID_MAP_TO_ORIGIN_DATASET_IDS_NAME[32] = "IdMapToOriginDataSetIds";
 
 //----------------------------------------------------------------------------
 double ComputeEpsilon(const vtkBoundingBox& boundingBox)
@@ -358,7 +363,7 @@ int vtkOverlappingCellsDetector::RequestData(
     return 0;
   }
 
-  std::vector<vtkPointSet*> outputs = vtkDIYUtilities::GetDataSets<vtkPointSet>(outputDO);
+  std::vector<vtkPointSet*> outputs = vtkCompositeDataSet::GetDataSets<vtkPointSet>(outputDO);
 
   return this->ExposeOverlappingCellsAmongBlocks(outputs);
 }
@@ -373,6 +378,7 @@ int vtkOverlappingCellsDetector::ExposeOverlappingCellsAmongBlocks(
   const int size = static_cast<int>(outputs.size());
 
   vtkLogStartScope(TRACE, "extract cell bounding spheres");
+  pointCloudArray.reserve(size);
   for (int localId = 0; localId < size; ++localId)
   {
     pointCloudArray.emplace_back(vtkSmartPointer<vtkPointSet>::Take(

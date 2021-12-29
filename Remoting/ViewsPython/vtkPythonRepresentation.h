@@ -18,7 +18,7 @@
  * Representation for showing data in a vtkPythonView. This representation
  * does not create any intermediate data for display. Instead, it simply
  * fetches data from the server.
-*/
+ */
 
 #ifndef vtkPythonRepresentation_h
 #define vtkPythonRepresentation_h
@@ -48,7 +48,7 @@ public:
 
   //@{
   /**
-   * Gets local copy of the input. This will be NULL on the client when running in client-only
+   * Gets local copy of the input. This will be nullptr on the client when running in client-only
    * mode until after Update() is called.
    */
   vtkGetMacro(LocalInput, vtkDataObject*);

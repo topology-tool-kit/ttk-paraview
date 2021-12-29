@@ -99,6 +99,7 @@ void vtkTextRenderer::SetInstance(vtkTextRenderer* instance)
 vtkTextRenderer::vtkTextRenderer()
   : MathTextRegExp(new vtksys::RegularExpression("[^\\]\\$.*[^\\]\\$"))
   , MathTextRegExp2(new vtksys::RegularExpression("^\\$.*[^\\]\\$"))
+  , MathTextRegExpColumn(new vtksys::RegularExpression("[^\\]\\|"))
   , DefaultBackend(Detect)
 {
 }
@@ -108,6 +109,7 @@ vtkTextRenderer::~vtkTextRenderer()
 {
   delete this->MathTextRegExp;
   delete this->MathTextRegExp2;
+  delete this->MathTextRegExpColumn;
 }
 
 //------------------------------------------------------------------------------
@@ -122,7 +124,10 @@ int vtkTextRenderer::DetectBackend(const vtkStdString& str)
     //   MathTextRegExp  = "[^\\]\\$.*[^\\]\\$"
     // Find unescaped "$...$" patterns where "$" is the first character:
     //   MathTextRegExp2 = "^\\$.*[^\\]\\$"
-    if ((str[0] == '$' && this->MathTextRegExp2->find(str)) || this->MathTextRegExp->find(str))
+    // Find unescaped "|" character that defines a multicolumn line
+    //  MathTextRegExpColumn = "[^\\]|"
+    if ((str[0] == '$' && this->MathTextRegExp2->find(str)) || this->MathTextRegExp->find(str) ||
+      this->MathTextRegExpColumn->find(str))
     {
       return static_cast<int>(MathText);
     }
@@ -142,8 +147,11 @@ int vtkTextRenderer::DetectBackend(const vtkUnicodeString& str)
     //   MathTextRegExp  = "[^\\]\\$.*[^\\]\\$"
     // Find unescaped "$...$" patterns where "$" is the first character:
     //   MathTextRegExp2 = "^\\$.*[^\\]\\$"
+    // Find unescaped "|" character that defines a multicolumn line
+    //  MathTextRegExpColumn = "[^\\]|"
     if ((str[0] == '$' && this->MathTextRegExp2->find(str.utf8_str())) ||
-      this->MathTextRegExp->find(str.utf8_str()))
+      this->MathTextRegExp->find(str.utf8_str()) ||
+      this->MathTextRegExpColumn->find(str.utf8_str()))
     {
       return static_cast<int>(MathText);
     }

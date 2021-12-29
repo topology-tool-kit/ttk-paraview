@@ -56,7 +56,7 @@ public:
     : QLabel(parentObj)
     , ProgressPercentage(0)
     , ShowProgress(false)
-    , Style(NULL)
+    , Style(nullptr)
   {
     this->setFrameShape(QFrame::Panel);
     this->setFrameShadow(QFrame::Sunken);
@@ -71,7 +71,7 @@ public:
     }
 #endif
   }
-  ~pqProgressWidgetLabel() { delete this->Style; }
+  ~pqProgressWidgetLabel() override { delete this->Style; }
   // returns true if value changed.
   bool setProgressPercentage(int val)
   {
@@ -86,9 +86,10 @@ public:
   int progressPercentage() const { return this->ProgressPercentage; }
   void setShowProgress(bool val) { this->ShowProgress = val; }
   bool showProgress() const { return this->ShowProgress; }
+
 protected:
   QStyle* astyle() { return this->Style ? this->Style : this->style(); }
-  void paintEvent(QPaintEvent* evt)
+  void paintEvent(QPaintEvent* evt) override
   {
     QStyleOptionProgressBar pbstyle;
     pbstyle.initFrom(this);

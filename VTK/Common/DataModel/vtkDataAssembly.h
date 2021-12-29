@@ -27,9 +27,9 @@
  *
  * @section Overview Overview
  *
- * At its core, vtkDataAssembly is simply a tree comprising on nodes starting
+ * At its core, vtkDataAssembly is simply a tree of nodes starting
  * with the root node. Each node has a unique id and a string name (names need not
- * be unique). On initialization, `vtkDataAssembly::Initialize` a empty tree
+ * be unique). On initialization with `vtkDataAssembly::Initialize`, an empty tree
  * with a root node is created. The root node's id and name can be obtained
  * using `vtkDataAssembly::GetRootNode` and `vtkDataAssembly::GetRootNodeName`.
  * The root node's id is fixed (vtkDataAssembly::GetRootNode), however the name
@@ -39,10 +39,10 @@
  * `vtkDataAssembly::AddNodes`, each of which returns the ids for every child
  * node added. A non-root node can be removed using `vtkDataAssembly::RemoveNode`.
  *
- * Each node in the tree (including the root node) can has associated dataset
+ * Each node in the tree (including the root node) can have associated dataset
  * indices. For a vtkDataAssembly associated with a
  * vtkPartitionedDataSetCollection, these indices refer to the item index, or
- * partioned-dataset-index for items in the collection. Dataset indices can be
+ * partitioned-dataset-index for items in the collection. Dataset indices can be
  * specified using `vtkDataAssembly::AddDataSetIndex`,
  * `vtkDataAssembly::AddDataSetIndices` and removed using `vtkDataAssembly::RemoveDataSetIndex`,
  * `vtkDataAssembly::RemoveAllDataSetIndices`.
@@ -63,7 +63,7 @@
  *
  * @section Traversal Traversal
  *
- * `vtkDataAssemblyVisitor` defines a visitor API. An instance of concretized
+ * `vtkDataAssemblyVisitor` defines a visitor API. An instance of a concretized
  * `vtkDataAssemblyVisitor` subclass can be passed to `vtkDataAssembly::Visit`
  * to traverse the data-assembly hierarchy either in depth-first or
  * breadth-first order.
@@ -71,8 +71,9 @@
  * @section DataAssemblyPathQueries Supported Path Queries
  *
  * `vtkDataAssembly::SelectNodes` can be used find nodes that match the
- * specified query (or queries). The syntax for queries, which is a minimal/simplified
- * subset of XPath location queries, is as follows:
+ * specified query (or queries) using XPath 1.0 syntax.
+ *
+ * For example:
  *
  * * '/' is used as the path separator. If a node name has a `/` it must be
  * escaped using `\\` in the query. Note, escaping is not necessary when using
@@ -140,21 +141,21 @@ public:
    */
   void Initialize();
 
-  //@{
+  ///@{
   /**
    * Initializes a data-assembly using an XML representation of the assembly.
    * Returns true if the initialization was successful, otherwise the assembly
    * is set a clean state and returns false.
    */
   bool InitializeFromXML(const char* xmlcontents);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Saves the data-assembly as a XML.
    */
   std::string SerializeToXML(vtkIndent indent) const;
-  //@}
+  ///@}
 
   /**
    * Returns the ID for the root node.
@@ -162,13 +163,13 @@ public:
    */
   static int GetRootNode() { return 0; }
 
-  //@{
+  ///@{
   /**
    * Get/Set root node name. Defaults to DataAssembly.
    */
   void SetRootNodeName(const char* name) { this->SetNodeName(this->GetRootNode(), name); }
   const char* GetRootNodeName() const { return this->GetNodeName(this->GetRootNode()); }
-  //@}
+  ///@}
 
   /**
    * Adds a node to the assembly with the given name and returns its id. `parent` is the id for
@@ -190,6 +191,12 @@ public:
   std::vector<int> AddNodes(const std::vector<std::string>& names, int parent = 0);
 
   /**
+   * Add a subtree by copy the nodes from another tree starting with the
+   * specified parent index.
+   */
+  int AddSubtree(int parent, vtkDataAssembly* other, int otherParent = 0);
+
+  /**
    * Removes a node from the assembly. The node identified by the id and all its
    * children are removed.
    *
@@ -200,7 +207,7 @@ public:
    */
   bool RemoveNode(int id);
 
-  //@{
+  ///@{
   /**
    * Get/Set a node's name. If node id is invalid, `SetNodeName` will raise an
    * error; `GetNodeName` will also raise an error and return nullptr.
@@ -210,12 +217,17 @@ public:
    */
   void SetNodeName(int id, const char* name);
   const char* GetNodeName(int id) const;
-  //@}
+  ///@}
 
   /**
    * Returns the path for a node.
    */
   std::string GetNodePath(int id) const;
+
+  /**
+   * Return a node id given the path. Returns `-1` if path is not valid.
+   */
+  int GetFirstNodeByPath(const char* path) const;
 
   /**
    * Add a dataset index to a node. The node id can refer to any
@@ -230,12 +242,20 @@ public:
   bool AddDataSetIndex(int id, unsigned int dataset_index);
 
   /**
-   * Same as `AddDataSetIndex` except supported adding multiple dataset indices
+   * Same as `AddDataSetIndex` except supports adding multiple dataset indices
    * in one go. Note, a dataset index only gets added once.
    *
    * @returns true if any dataset index was successfully added.
    */
   bool AddDataSetIndices(int id, const std::vector<unsigned int>& dataset_indices);
+
+  /**
+   * Same as `AddDataSetIndices` except this supports adding a contiguous range of dataset
+   * indices in one go.
+   *
+   * @ returns true if any dataset index was successfully added.
+   */
+  bool AddDataSetIndexRange(int id, unsigned int index_start, int count);
 
   /**
    * Removes a dataset index from a node.
@@ -313,7 +333,51 @@ public:
    */
   int GetParent(int id) const;
 
-  //@{
+  /**
+   * Returns true if attribute with the given name is present
+   * on the chosen node.
+   */
+  bool HasAttribute(int id, const char* name) const;
+
+  ///@{
+  /**
+   * Set an attribute. Will replace an existing attribute with the same name if
+   * present.
+   */
+  void SetAttribute(int id, const char* name, const char* value);
+  void SetAttribute(int id, const char* name, int value);
+  void SetAttribute(int id, const char* name, unsigned int value);
+#if VTK_ID_TYPE_IMPL != VTK_INT
+  void SetAttribute(int id, const char* name, vtkIdType value);
+#endif
+  ///@}
+
+  ///@{
+  /**
+   * Get an attribute value. Returns true if a value was provided else false.
+   */
+  bool GetAttribute(int id, const char* name, const char*& value) const;
+  bool GetAttribute(int id, const char* name, int& value) const;
+  bool GetAttribute(int id, const char* name, unsigned int& value) const;
+#if VTK_ID_TYPE_IMPL != VTK_INT
+  bool GetAttribute(int id, const char* name, vtkIdType& value) const;
+#endif
+  ///@}
+
+  ///@{
+  /**
+   * Get an attribute value. Returns the value associated with the node or the
+   * provided default value.
+   */
+  const char* GetAttributeOrDefault(int id, const char* name, const char* default_value) const;
+  int GetAttributeOrDefault(int id, const char* name, int default_value) const;
+  unsigned int GetAttributeOrDefault(int id, const char* name, unsigned int default_value) const;
+#if VTK_ID_TYPE_IMPL != VTK_INT
+  vtkIdType GetAttributeOrDefault(int id, const char* name, vtkIdType default_value) const;
+#endif
+  ///@}
+
+  ///@{
   /**
    * Visit each node in the assembly for processing. The traversal order can be
    * specified using `traversal_order` which defaults to depth-first.
@@ -325,8 +389,9 @@ public:
   }
   void Visit(int id, vtkDataAssemblyVisitor* visitor,
     int traversal_order = vtkDataAssembly::TraversalOrder::DepthFirst) const;
-  //@}
+  ///@}
 
+  ///@{
   /**
    * Returns the dataset indices associated with the node.
    *
@@ -341,6 +406,10 @@ public:
    */
   std::vector<unsigned int> GetDataSetIndices(int id, bool traverse_subtree = true,
     int traversal_order = vtkDataAssembly::TraversalOrder::DepthFirst) const;
+  std::vector<unsigned int> GetDataSetIndices(const std::vector<int>& ids,
+    bool traverse_subtree = true,
+    int traversal_order = vtkDataAssembly::TraversalOrder::DepthFirst) const;
+  ///@}
 
   /**
    * Returns ids for nodes matching the path_queries. See Section
@@ -374,6 +443,24 @@ public:
    * Deep copy the `other`.
    */
   void DeepCopy(vtkDataAssembly* other);
+
+  /**
+   * Validates a node name.
+   */
+  static bool IsNodeNameValid(const char* name);
+
+  /**
+   * Converts any string to a string that is a valid node name.
+   * This is done by simply discarding any non-supported character.
+   * Additionally, if the first character is not a "_" or an alphabet, then
+   * the "_" is prepended.
+   */
+  static std::string MakeValidNodeName(const char* name);
+
+  /**
+   * Returns true for node names that are reserved.
+   */
+  static bool IsNodeNameReserved(const char* name);
 
 protected:
   vtkDataAssembly();

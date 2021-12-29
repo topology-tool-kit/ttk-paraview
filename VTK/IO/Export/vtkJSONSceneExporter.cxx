@@ -14,6 +14,7 @@
 =========================================================================*/
 #include "vtkJSONSceneExporter.h"
 
+#include "vtkAbstractVolumeMapper.h"
 #include "vtkArchiver.h"
 #include "vtkCamera.h"
 #include "vtkCompositeDataIterator.h"
@@ -29,6 +30,7 @@
 #include "vtkMapper.h"
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
+#include "vtkPiecewiseFunction.h"
 #include "vtkProp.h"
 #include "vtkPropCollection.h"
 #include "vtkProperty.h"
@@ -38,6 +40,9 @@
 #include "vtkRendererCollection.h"
 #include "vtkScalarsToColors.h"
 #include "vtkTexture.h"
+#include "vtkVolume.h"
+#include "vtkVolumeCollection.h"
+#include "vtkVolumeProperty.h"
 #include "vtksys/FStream.hxx"
 #include "vtksys/SystemTools.hxx"
 
@@ -65,12 +70,15 @@ vtkJSONSceneExporter::vtkJSONSceneExporter()
 
 vtkJSONSceneExporter::~vtkJSONSceneExporter()
 {
-  delete[] this->FileName;
+  this->SetFileName(nullptr);
+  this->SetTextureLODsBaseUrl(nullptr);
+  this->SetPolyLODsBaseUrl(nullptr);
 }
 
 //------------------------------------------------------------------------------
 
-void vtkJSONSceneExporter::WriteDataObject(ostream& os, vtkDataObject* dataObject, vtkActor* actor)
+void vtkJSONSceneExporter::WriteDataObject(
+  ostream& os, vtkDataObject* dataObject, vtkActor* actor = nullptr, vtkVolume* volume = nullptr)
 {
   // Skip if nothing to process
   if (dataObject == nullptr)
@@ -82,19 +90,27 @@ void vtkJSONSceneExporter::WriteDataObject(ostream& os, vtkDataObject* dataObjec
   if (dataObject->IsA("vtkDataSet"))
   {
     std::string texturesString;
-    if (this->WriteTextures && actor->GetTexture())
-    {
-      // Write out the textures, add it to the textures string
-      texturesString += this->WriteTexture(actor->GetTexture());
-    }
+    std::string renderingSetup;
 
-    if (this->WriteTextureLODs && actor->GetTexture())
+    if (actor)
     {
-      // Write out the texture LODs, add it to the textures string
-      texturesString += this->WriteTextureLODSeries(actor->GetTexture());
-    }
+      if (this->WriteTextures && actor->GetTexture())
+      {
+        // Write out the textures, add it to the textures string
+        texturesString += this->WriteTexture(actor->GetTexture());
+      }
 
-    std::string renderingSetup = this->ExtractRenderingSetup(actor);
+      if (this->WriteTextureLODs && actor->GetTexture())
+      {
+        // Write out the texture LODs, add it to the textures string
+        texturesString += this->WriteTextureLODSeries(actor->GetTexture());
+      }
+      renderingSetup = this->ExtractActorRenderingSetup(actor);
+    }
+    else if (volume)
+    {
+      renderingSetup = this->ExtractVolumeRenderingSetup(volume);
+    }
     std::string addOnMeta = renderingSetup + texturesString + "\n";
     std::string dsMeta =
       this->WriteDataSet(vtkDataSet::SafeDownCast(dataObject), addOnMeta.c_str());
@@ -109,12 +125,13 @@ void vtkJSONSceneExporter::WriteDataObject(ostream& os, vtkDataObject* dataObjec
   if (dataObject->IsA("vtkCompositeDataSet"))
   {
     vtkCompositeDataSet* composite = vtkCompositeDataSet::SafeDownCast(dataObject);
-    vtkSmartPointer<vtkCompositeDataIterator> iter = composite->NewIterator();
+    vtkSmartPointer<vtkCompositeDataIterator> iter;
+    iter.TakeReference(composite->NewIterator());
     iter->SkipEmptyNodesOn();
     iter->InitTraversal();
     while (!iter->IsDoneWithTraversal())
     {
-      this->WriteDataObject(os, iter->GetCurrentDataObject(), actor);
+      this->WriteDataObject(os, iter->GetCurrentDataObject(), actor, volume);
       iter->GoToNextItem();
     }
   }
@@ -122,7 +139,175 @@ void vtkJSONSceneExporter::WriteDataObject(ostream& os, vtkDataObject* dataObjec
 
 //------------------------------------------------------------------------------
 
-std::string vtkJSONSceneExporter::ExtractRenderingSetup(vtkActor* actor)
+std::string vtkJSONSceneExporter::ExtractColorTransferFunctionSetup(
+  vtkColorTransferFunction* function)
+{
+  std::stringstream configuration;
+
+  bool useAboveRangeColor = function->GetUseAboveRangeColor();
+  bool useBelowRangeColor = function->GetUseBelowRangeColor();
+  int colorSpace = function->GetColorSpace();
+  double aboveRangeColor[3] = { 0 };
+  double belowRangeColor[3] = { 0 };
+  double nanColor[3] = { 0 };
+  function->GetAboveRangeColor(aboveRangeColor);
+  function->GetBelowRangeColor(belowRangeColor);
+  function->GetNanColor(nanColor);
+
+  vtkIdType numberOfNodes = function->GetSize();
+  constexpr const char* INDENT = "            ";
+  configuration << INDENT << "  \"useAboveRangeColor\": " << (useAboveRangeColor ? "true" : "false")
+                << ",\n"
+                << INDENT << "  \"useBelowRangeColor\": " << (useBelowRangeColor ? "true" : "false")
+                << ",\n"
+                << INDENT << "  \"colorSpace\": " << colorSpace << ",\n";
+  if (useAboveRangeColor)
+  {
+    configuration << INDENT << "  \"aboveRangeColor\": [" << aboveRangeColor[0] << ", "
+                  << aboveRangeColor[1] << ", " << aboveRangeColor[2] << "],\n";
+  }
+  if (useBelowRangeColor)
+  {
+    configuration << INDENT << "  \"belowRangeColor\": [" << belowRangeColor[0] << ", "
+                  << belowRangeColor[1] << ", " << belowRangeColor[2] << "],\n";
+  }
+  configuration << INDENT << "  \"nanColor\": [" << nanColor[0] << ", " << nanColor[1] << ", "
+                << nanColor[2] << "],\n";
+  configuration << INDENT << "  \"nodes\": [\n";
+  for (vtkIdType nodeId = 0; nodeId < numberOfNodes; ++nodeId)
+  {
+    double node[6];
+    function->GetNodeValue(nodeId, node);
+    configuration << INDENT << "    [";
+    for (int i = 0; i < 6; ++i)
+    {
+      configuration << node[i] << (i == 5 ? "]" : ", ");
+    }
+    if (nodeId < numberOfNodes - 1)
+    {
+      configuration << ",";
+    }
+    configuration << "\n";
+  }
+  configuration << INDENT << "  ]\n";
+  return configuration.str();
+}
+
+//------------------------------------------------------------------------------
+
+std::string vtkJSONSceneExporter::ExtractPiecewiseFunctionSetup(vtkPiecewiseFunction* function)
+{
+  bool clamping = function->GetClamping();
+  vtkIdType numberOfPoints = function->GetSize();
+  constexpr const char* INDENT = "            ";
+  std::stringstream configuration;
+  configuration << INDENT << "  \"clamping\": " << (clamping ? "true" : "false") << ",\n";
+  configuration << INDENT << "  \"points\": [\n";
+  for (vtkIdType pointId = 0; pointId < numberOfPoints; ++pointId)
+  {
+    double point[4];
+    function->GetNodeValue(pointId, point);
+    configuration << INDENT << "    [";
+    for (int i = 0; i < 4; ++i)
+    {
+      configuration << point[i] << (i < 3 ? ", " : "");
+    }
+    configuration << "]";
+    if (pointId < numberOfPoints - 1)
+    {
+      configuration << ",";
+    }
+    configuration << "\n";
+  }
+  configuration << INDENT << "  ]\n";
+  return configuration.str();
+}
+
+//------------------------------------------------------------------------------
+std::string vtkJSONSceneExporter::ExtractVolumeRenderingSetup(vtkVolume* volume)
+{
+  vtkVolumeProperty* property = volume->GetProperty();
+
+  double* p3dPosition = volume->GetPosition();
+  double* p3dScale = volume->GetScale();
+  double* p3dOrigin = volume->GetOrigin();
+  double* p3dRotateWXYZ = volume->GetOrientationWXYZ();
+
+  int interpolationType = property->GetInterpolationType();
+
+  vtkTypeBool independentComponents = property->GetIndependentComponents();
+  int shade = property->GetShade();
+  double ambient = property->GetAmbient();
+  double diffuse = property->GetDiffuse();
+  double specular = property->GetSpecular();
+  double specularPower = property->GetSpecularPower();
+
+  constexpr const char* INDENT = "      ";
+  std::stringstream renderingConfig;
+  renderingConfig << ",\n"
+                  << "\"volume\": {\n"
+                  << INDENT << "  \"origin\": [" << p3dOrigin[0] << ", " << p3dOrigin[1] << ", "
+                  << p3dOrigin[2] << "],\n"
+                  << INDENT << "  \"scale\": [" << p3dScale[0] << ", " << p3dScale[1] << ", "
+                  << p3dScale[2] << "],\n"
+                  << INDENT << "  \"position\": [" << p3dPosition[0] << ", " << p3dPosition[1]
+                  << ", " << p3dPosition[2] << "]\n"
+                  << INDENT << "},\n"
+                  << INDENT << "\"volumeRotation\": [" << p3dRotateWXYZ[0] << ", "
+                  << p3dRotateWXYZ[1] << ", " << p3dRotateWXYZ[2] << ", " << p3dRotateWXYZ[3]
+                  << "],\n"
+                  << INDENT << "\"mapper\": {},\n"
+                  << INDENT << "\"property\": {\n"
+                  << INDENT << "  \"interpolationType\": " << interpolationType << ",\n"
+                  << INDENT
+                  << "  \"independentComponents\": " << (independentComponents ? "true" : "false")
+                  << ",\n"
+                  << INDENT << "  \"ambient\": " << ambient << ",\n"
+                  << INDENT << "  \"diffuse\": " << diffuse << ",\n"
+                  << INDENT << "  \"specular\": " << specular << ",\n"
+                  << INDENT << "  \"specularPower\": " << specularPower << ",\n"
+                  << INDENT << "  \"shade\": " << shade << ",\n"
+                  << INDENT << "  \"components\": [\n";
+  for (vtkIdType component = 0; component < VTK_MAX_VRCOMP; ++component)
+  {
+    renderingConfig << INDENT << "  {\n";
+    int colorChannels = property->GetColorChannels(component);
+    renderingConfig << INDENT << "    \"colorChannels\": " << colorChannels << ",\n";
+    if (colorChannels == 3)
+    {
+      renderingConfig << INDENT << "    \"rgbTransferFunction\":\n"
+                      << INDENT << "    {\n"
+                      << this->ExtractColorTransferFunctionSetup(
+                           property->GetRGBTransferFunction(component))
+                      << INDENT << "    },\n";
+    }
+    else if (colorChannels == 1)
+    {
+      renderingConfig << INDENT << "    \"grayTransferFunction\":\n"
+                      << INDENT << "    {\n"
+                      << this->ExtractPiecewiseFunctionSetup(
+                           property->GetGrayTransferFunction(component))
+                      << INDENT << "    },\n";
+    }
+    renderingConfig << INDENT << "    \"scalarOpacity\":\n"
+                    << INDENT << "    {\n"
+                    << this->ExtractPiecewiseFunctionSetup(property->GetScalarOpacity(component))
+                    << INDENT << "    },\n";
+    double scalarOpacityUnitDistance = property->GetScalarOpacityUnitDistance(component);
+    renderingConfig << INDENT << "    \"scalarOpacityUnitDistance\": " << scalarOpacityUnitDistance
+                    << "\n"
+                    << INDENT << "  }";
+    if (component < VTK_MAX_VRCOMP - 1)
+    {
+      renderingConfig << ",";
+    }
+    renderingConfig << "\n";
+  }
+  renderingConfig << INDENT << "  ]\n" << INDENT << "}\n";
+  return renderingConfig.str();
+}
+
+std::string vtkJSONSceneExporter::ExtractActorRenderingSetup(vtkActor* actor)
 {
   vtkMapper* mapper = actor->GetMapper();
   // int scalarVisibility = mapper->GetScalarVisibility();
@@ -146,7 +331,7 @@ std::string vtkJSONSceneExporter::ExtractRenderingSetup(vtkActor* actor)
   double* p3dOrigin = actor->GetOrigin();
   double* p3dRotateWXYZ = actor->GetOrientationWXYZ();
 
-  const char* INDENT = "      ";
+  constexpr const char* INDENT = "      ";
   std::stringstream renderingConfig;
   renderingConfig << ",\n"
                   << INDENT << "\"actor\": {\n"
@@ -228,11 +413,11 @@ std::string vtkJSONSceneExporter::WriteDataSet(vtkDataSet* dataset, const char* 
   {
     meta << "\n";
   }
-  const char* INDENT = "    ";
+  constexpr const char* INDENT = "    ";
   meta << INDENT << "{\n"
        << INDENT << "  \"name\": \"" << this->DatasetCount << "\",\n"
-       << INDENT << "  \"type\": \"httpDataSetReader\",\n"
-       << INDENT << "  \"httpDataSetReader\": { \"url\": \"" << this->DatasetCount << "\" }";
+       << INDENT << "  \"type\": \"vtkHttpDataSetReader\",\n"
+       << INDENT << "  \"vtkHttpDataSetReader\": { \"url\": \"" << this->DatasetCount << "\" }";
 
   if (addOnMeta != nullptr)
   {
@@ -258,7 +443,7 @@ void vtkJSONSceneExporter::WriteLookupTable(const char* name, vtkScalarsToColors
     vtkDiscretizableColorTransferFunction::SafeDownCast(lookupTable);
   if (dctfn != nullptr)
   {
-    const char* INDENT = "    ";
+    constexpr const char* INDENT = "    ";
     std::stringstream lutJSON;
     lutJSON << "{\n"
             << INDENT << "  \"clamping\": " << (dctfn->GetClamping() ? "true" : "false") << ",\n"
@@ -296,7 +481,53 @@ void vtkJSONSceneExporter::WriteLookupTable(const char* name, vtkScalarsToColors
 }
 
 //------------------------------------------------------------------------------
+void vtkJSONSceneExporter::WritePropCollection(
+  vtkPropCollection* props, std::ostream& sceneComponents)
+{
+  vtkIdType nbProps = props->GetNumberOfItems();
+  for (vtkIdType rpIdx = 0; rpIdx < nbProps; rpIdx++)
+  {
+    vtkProp* prop = vtkProp::SafeDownCast(props->GetItemAsObject(rpIdx));
+    // Skip non-visible actors
+    if (!prop || !prop->GetVisibility())
+    {
+      continue;
+    }
 
+    // Skip actors with no geometry
+    vtkActor* actor = vtkActor::SafeDownCast(prop);
+    if (actor)
+    {
+      vtkMapper* mapper = actor->GetMapper();
+
+      vtkDataObject* dataObject = mapper->GetInputDataObject(0, 0);
+      this->WriteDataObject(sceneComponents, dataObject, actor);
+      this->WriteLookupTable(mapper->GetArrayName(), mapper->GetLookupTable());
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
+void vtkJSONSceneExporter::WriteVolumeCollection(
+  vtkVolumeCollection* volumes, std::ostream& sceneComponents)
+{
+  vtkVolume* volume = nullptr;
+  volumes->InitTraversal();
+  while ((volume = volumes->GetNextVolume()))
+  {
+    // Skip non-visible actors
+    if (!volume || !volume->GetVisibility())
+    {
+      continue;
+    }
+
+    vtkAbstractVolumeMapper* mapper = volume->GetMapper();
+    vtkDataObject* dataObject = mapper->GetInputDataObject(0, 0);
+    this->WriteDataObject(sceneComponents, dataObject, nullptr, volume);
+  }
+}
+
+//------------------------------------------------------------------------------
 void vtkJSONSceneExporter::WriteData()
 {
   this->DatasetCount = 0;
@@ -326,29 +557,9 @@ void vtkJSONSceneExporter::WriteData()
 
   std::stringstream sceneComponents;
   vtkPropCollection* renProps = renderer->GetViewProps();
-  vtkIdType nbProps = renProps->GetNumberOfItems();
-  for (vtkIdType rpIdx = 0; rpIdx < nbProps; rpIdx++)
-  {
-    vtkProp* renProp = vtkProp::SafeDownCast(renProps->GetItemAsObject(rpIdx));
 
-    // Skip non-visible actors
-    if (!renProp || !renProp->GetVisibility())
-    {
-      continue;
-    }
-
-    // Skip actors with no geometry
-    vtkActor* actor = vtkActor::SafeDownCast(renProp);
-    if (!actor)
-    {
-      continue;
-    }
-
-    vtkMapper* mapper = actor->GetMapper();
-    vtkDataObject* dataObject = mapper->GetInputDataObject(0, 0);
-    this->WriteDataObject(sceneComponents, dataObject, actor);
-    this->WriteLookupTable(mapper->GetArrayName(), mapper->GetLookupTable());
-  }
+  this->WritePropCollection(renProps, sceneComponents);
+  this->WriteVolumeCollection(renderer->GetVolumes(), sceneComponents);
 
   std::stringstream sceneJsonFile;
   sceneJsonFile << "{\n"
@@ -443,7 +654,7 @@ std::string vtkJSONSceneExporter::WriteTexture(vtkTexture* texture)
   writer->SetInputDataObject(image);
   writer->Write();
 
-  const char* INDENT = "      ";
+  constexpr const char* INDENT = "      ";
   std::stringstream config;
   config << ",\n" << INDENT << "\"texture\": \"" << this->DatasetCount + 1 << "/texture.jpg\"";
   this->TextureStrings[texture] = config.str();
@@ -513,7 +724,7 @@ std::string vtkJSONSceneExporter::WriteTextureLODSeries(vtkTexture* texture)
   std::string baseUrl = url ? url : "";
 
   // Now, write out the config
-  const char* INDENT = "      ";
+  constexpr const char* INDENT = "      ";
   std::stringstream config;
   config << ",\n"
          << INDENT << "\"textureLODs\": {\n"
@@ -708,7 +919,7 @@ vtkSmartPointer<vtkPolyData> vtkJSONSceneExporter::WritePolyLODSeries(
   const char* url = this->PolyLODsBaseUrl;
   std::string baseUrl = url ? url : "";
 
-  const char* INDENT = "      ";
+  constexpr const char* INDENT = "      ";
   std::stringstream config;
   config << ",\n"
          << INDENT << "\"sourceLODs\": {\n"

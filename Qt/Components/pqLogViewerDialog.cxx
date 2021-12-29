@@ -62,6 +62,7 @@ constexpr int RENDERING_CATEGORY = 1;
 constexpr int APPLICATION_CATEGORY = 2;
 constexpr int PIPELINE_CATEGORY = 3;
 constexpr int PLUGINS_CATEGORY = 4;
+constexpr int EXECUTION_CATEGORY = 5;
 }
 
 //----------------------------------------------------------------------------
@@ -231,12 +232,14 @@ pqLogViewerDialog::pqLogViewerDialog(QWidget* parent)
     [=](bool checked) { this->updateCategory(PIPELINE_CATEGORY, checked); });
   QObject::connect(this->Ui->pluginsCheckBox, &QCheckBox::stateChanged,
     [=](bool checked) { this->updateCategory(PLUGINS_CATEGORY, checked); });
+  QObject::connect(this->Ui->executionCheckBox, &QCheckBox::stateChanged,
+    [=](bool checked) { this->updateCategory(EXECUTION_CATEGORY, checked); });
 }
 
 //----------------------------------------------------------------------------
 pqLogViewerDialog::~pqLogViewerDialog()
 {
-  for (auto logRecorderProxy : this->LogRecorderProxies)
+  for (const auto& logRecorderProxy : this->LogRecorderProxies)
   {
     logRecorderProxy->Delete();
   }
@@ -256,7 +259,7 @@ void pqLogViewerDialog::refresh()
 //----------------------------------------------------------------------------
 void pqLogViewerDialog::clear()
 {
-  for (auto logRecorderProxy : this->LogRecorderProxies)
+  for (const auto& logRecorderProxy : this->LogRecorderProxies)
   {
     logRecorderProxy->InvokeCommand("ClearLogs");
   }
@@ -432,7 +435,7 @@ void pqLogViewerDialog::updateCategory(int category, bool promote)
   this->CategoryPromoted[static_cast<int>(category)] = promote;
 
   auto DoUpdate = [=](int proxyIndex, int categoryIndex) {
-    // Reset log messages to INFO
+    // Reset log messages to TRACE
     int verbosity = static_cast<int>(vtkLogger::VERBOSITY_TRACE);
     if (promote)
     {

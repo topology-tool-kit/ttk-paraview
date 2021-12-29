@@ -89,15 +89,15 @@ vtkQtDebugLeaksView::vtkQtDebugLeaksView(QWidget* p)
 
   this->connect(filterHelpButton, SIGNAL(clicked()), SLOT(onFilterHelp()));
 
-  this->connect(this->Internal->TableView->selectionModel(),
+  vtkQtDebugLeaksView::connect(this->Internal->TableView->selectionModel(),
     SIGNAL(currentRowChanged(const QModelIndex&, const QModelIndex&)), this,
     SLOT(onCurrentRowChanged(const QModelIndex&)));
 
-  this->connect(this->Internal->TableView, SIGNAL(doubleClicked(const QModelIndex&)), this,
-    SLOT(onRowDoubleClicked(const QModelIndex&)));
+  vtkQtDebugLeaksView::connect(this->Internal->TableView, SIGNAL(doubleClicked(const QModelIndex&)),
+    this, SLOT(onRowDoubleClicked(const QModelIndex&)));
 
-  this->connect(this->Internal->ReferenceTableView, SIGNAL(doubleClicked(const QModelIndex&)), this,
-    SLOT(onRowDoubleClicked(const QModelIndex&)));
+  vtkQtDebugLeaksView::connect(this->Internal->ReferenceTableView,
+    SIGNAL(doubleClicked(const QModelIndex&)), this, SLOT(onRowDoubleClicked(const QModelIndex&)));
 
   this->resize(400, 600);
   this->setWindowTitle("VTK Debug Leaks View");
@@ -162,7 +162,11 @@ void vtkQtDebugLeaksView::onFilterTextChanged(const QString& text)
 {
   if (this->filterEnabled())
   {
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 12, 0))
+    this->Internal->ProxyModel->setFilterRegularExpression(text);
+#else
     this->Internal->ProxyModel->setFilterRegExp(text);
+#endif
   }
 }
 
@@ -175,7 +179,11 @@ void vtkQtDebugLeaksView::onFilterToggled()
     text = "";
   }
 
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 12, 0))
+  this->Internal->ProxyModel->setFilterRegularExpression(text);
+#else
   this->Internal->ProxyModel->setFilterRegExp(text);
+#endif
 }
 
 //------------------------------------------------------------------------------

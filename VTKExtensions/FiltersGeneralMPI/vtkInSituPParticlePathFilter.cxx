@@ -15,7 +15,6 @@
 #include "vtkInSituPParticlePathFilter.h"
 
 #include "vtkCellArray.h"
-#include "vtkCharArray.h"
 #include "vtkDataArray.h"
 #include "vtkDoubleArray.h"
 #include "vtkFloatArray.h"
@@ -25,6 +24,7 @@
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
 #include "vtkPointData.h"
+#include "vtkSignedCharArray.h"
 #include "vtkStreamingDemandDrivenPipeline.h"
 #include "vtkTemporalInterpolatedVelocityField.h"
 
@@ -40,9 +40,7 @@ vtkInSituPParticlePathFilter::vtkInSituPParticlePathFilter()
   this->FirstTimeStep = 0;
 }
 
-vtkInSituPParticlePathFilter::~vtkInSituPParticlePathFilter()
-{
-}
+vtkInSituPParticlePathFilter::~vtkInSituPParticlePathFilter() = default;
 
 //----------------------------------------------------------------------------
 void vtkInSituPParticlePathFilter::SetClearCache(bool clearCache)
@@ -59,7 +57,7 @@ void vtkInSituPParticlePathFilter::AddRestartConnection(vtkAlgorithmOutput* inpu
 //----------------------------------------------------------------------------
 void vtkInSituPParticlePathFilter::RemoveAllRestarts()
 {
-  this->SetInputConnection(2, 0);
+  this->SetInputConnection(2, nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -148,7 +146,8 @@ void vtkInSituPParticlePathFilter::AssignSeedsToProcessors(double t, vtkDataSet*
     if (this->UseArrays)
     {
       vtkPointData* pd = source->GetPointData();
-      vtkCharArray* sourceId = vtkCharArray::SafeDownCast(pd->GetArray("ParticleSourceId"));
+      vtkSignedCharArray* sourceId =
+        vtkSignedCharArray::SafeDownCast(pd->GetArray("ParticleSourceId"));
       info.SourceID = sourceId->GetValue(i);
       vtkIntArray* injectedPointId = vtkIntArray::SafeDownCast(pd->GetArray("InjectedPointId"));
       info.InjectedPointId = injectedPointId->GetValue(i);

@@ -28,6 +28,7 @@
 #include "vtkObjectFactory.h"
 #include "vtkStreamingDemandDrivenPipeline.h"
 #include "vtkTypeInt64Array.h"
+#include "vtkTypeUInt32Array.h"
 #include "vtkXMLDataElement.h"
 #include "vtkXMLDataParser.h"
 
@@ -41,7 +42,7 @@ vtkStandardNewMacro(vtkXMLHyperTreeGridReader);
 vtkXMLHyperTreeGridReader::vtkXMLHyperTreeGridReader()
   : NumberOfPoints(0)
   , NumberOfPieces(0)
-  , FixedLevel(std::numeric_limits<uint32_t>::max())
+  , FixedLevel(std::numeric_limits<unsigned int>::max())
   , UpdatedPiece(0)
   , UpdateNumberOfPieces(0)
   , StartPiece(0)
@@ -56,11 +57,11 @@ vtkXMLHyperTreeGridReader::vtkXMLHyperTreeGridReader()
   this->CoordinatesBoundingBox[5] = -1;
 
   this->IndicesBoundingBox[0] = 0;
-  this->IndicesBoundingBox[1] = 0;
+  this->IndicesBoundingBox[1] = std::numeric_limits<unsigned int>::max();
   this->IndicesBoundingBox[2] = 0;
-  this->IndicesBoundingBox[3] = 0;
+  this->IndicesBoundingBox[3] = std::numeric_limits<unsigned int>::max();
   this->IndicesBoundingBox[4] = 0;
-  this->IndicesBoundingBox[5] = 0;
+  this->IndicesBoundingBox[5] = std::numeric_limits<unsigned int>::max();
 }
 
 //------------------------------------------------------------------------------
@@ -76,6 +77,13 @@ void vtkXMLHyperTreeGridReader::PrintSelf(ostream& os, vtkIndent indent)
 void vtkXMLHyperTreeGridReader::SetCoordinatesBoundingBox(
   double xmin, double xmax, double ymin, double ymax, double zmin, double zmax)
 {
+  if (xmin == this->CoordinatesBoundingBox[0] && xmax == this->CoordinatesBoundingBox[1] &&
+    ymin == this->CoordinatesBoundingBox[2] && ymax == this->CoordinatesBoundingBox[3] &&
+    zmin == this->CoordinatesBoundingBox[4] && zmax == this->CoordinatesBoundingBox[5])
+  {
+    return;
+  }
+  this->FixedHTs = false;
   assert("pre: too_late" && !this->FixedHTs);
   this->SelectedHTs = COORDINATES_BOUNDING_BOX;
   this->CoordinatesBoundingBox[0] = xmin;
@@ -84,6 +92,7 @@ void vtkXMLHyperTreeGridReader::SetCoordinatesBoundingBox(
   this->CoordinatesBoundingBox[3] = ymax;
   this->CoordinatesBoundingBox[4] = zmin;
   this->CoordinatesBoundingBox[5] = zmax;
+  this->Modified();
 }
 
 //------------------------------------------------------------------------------
@@ -124,19 +133,26 @@ void vtkXMLHyperTreeGridReader::CalculateHTs(const vtkHyperTreeGrid* grid)
   if (this->SelectedHTs == COORDINATES_BOUNDING_BOX)
   {
     this->SelectedHTs = INDICES_BOUNDING_BOX;
-    this->IndicesBoundingBox[0] = grid->FindDichotomicX(this->CoordinatesBoundingBox[0]);
+    // if coord_min{x,y,z} < HTG->coord_min{x,y,z} then ht_idx{x,y,z} = 0
+    double* htg_bbox = const_cast<vtkHyperTreeGrid*>(grid)->GetBounds();
+    this->IndicesBoundingBox[0] = this->CoordinatesBoundingBox[0] <= htg_bbox[0]
+      ? 0
+      : grid->FindDichotomicX(this->CoordinatesBoundingBox[0]);
     this->IndicesBoundingBox[1] = grid->FindDichotomicX(this->CoordinatesBoundingBox[1]);
-    this->IndicesBoundingBox[2] = grid->FindDichotomicY(this->CoordinatesBoundingBox[2]);
+    this->IndicesBoundingBox[2] = this->CoordinatesBoundingBox[2] <= htg_bbox[2]
+      ? 0
+      : grid->FindDichotomicY(this->CoordinatesBoundingBox[2]);
     this->IndicesBoundingBox[3] = grid->FindDichotomicY(this->CoordinatesBoundingBox[3]);
-    this->IndicesBoundingBox[4] = grid->FindDichotomicZ(this->CoordinatesBoundingBox[4]);
+    this->IndicesBoundingBox[4] = this->CoordinatesBoundingBox[4] <= htg_bbox[4]
+      ? 0
+      : grid->FindDichotomicZ(this->CoordinatesBoundingBox[4]);
     this->IndicesBoundingBox[5] = grid->FindDichotomicZ(this->CoordinatesBoundingBox[5]);
   }
   this->FixedHTs = true;
 }
 
 //------------------------------------------------------------------------------
-bool vtkXMLHyperTreeGridReader::IsSelectedHT(
-  const vtkHyperTreeGrid* grid, unsigned int treeIndx) const
+bool vtkXMLHyperTreeGridReader::IsSelectedHT(const vtkHyperTreeGrid* grid, vtkIdType treeIndx) const
 {
   assert("pre: not_calculateHTs" && this->FixedHTs);
   switch (this->SelectedHTs)
@@ -146,9 +162,9 @@ bool vtkXMLHyperTreeGridReader::IsSelectedHT(
     case vtkXMLHyperTreeGridReader::INDICES_BOUNDING_BOX:
       unsigned int i, j, k;
       grid->GetLevelZeroCoordinatesFromIndex(treeIndx, i, j, k);
-      return this->IndicesBoundingBox[0] >= i && i <= this->IndicesBoundingBox[1] &&
-        this->IndicesBoundingBox[2] >= j && j <= this->IndicesBoundingBox[3] &&
-        this->IndicesBoundingBox[4] >= k && k <= this->IndicesBoundingBox[5];
+      return this->IndicesBoundingBox[0] <= i && i <= this->IndicesBoundingBox[1] &&
+        this->IndicesBoundingBox[2] <= j && j <= this->IndicesBoundingBox[3] &&
+        this->IndicesBoundingBox[4] <= k && k <= this->IndicesBoundingBox[5];
     case vtkXMLHyperTreeGridReader::IDS_SELECTED:
       if (this->Verbose)
       {
@@ -168,14 +184,14 @@ bool vtkXMLHyperTreeGridReader::IsSelectedHT(
 }
 
 //------------------------------------------------------------------------------
-uint32_t vtkXMLHyperTreeGridReader::GetFixedLevelOfThisHT(
-  uint32_t numberOfLevels, unsigned int treeIndx) const
+unsigned int vtkXMLHyperTreeGridReader::GetFixedLevelOfThisHT(
+  unsigned int numberOfLevels, vtkIdType treeIndx) const
 {
-  uint32_t fixedLevel = this->FixedLevel;
+  unsigned int fixedLevel = this->FixedLevel;
   if (this->IdsSelected.find(treeIndx) != this->IdsSelected.end())
   {
-    uint32_t htFixedLevel = this->IdsSelected.at(treeIndx);
-    if (htFixedLevel != std::numeric_limits<uint32_t>::max())
+    unsigned int htFixedLevel = this->IdsSelected.at(treeIndx);
+    if (htFixedLevel != std::numeric_limits<unsigned int>::max())
     {
       fixedLevel = htFixedLevel;
     }
@@ -392,13 +408,17 @@ void vtkXMLHyperTreeGridReader::ReadXMLData()
   eNested = ePrimary->LookupElementWithName("Trees");
   if (eNested)
   {
-    if (this->GetFileMajorVersion() < 1)
+    if (this->GetFileMajorVersion() == 0)
     {
       this->ReadTrees_0(eNested);
     }
-    else
+    else if (this->GetFileMajorVersion() == 1)
     {
       this->ReadTrees_1(eNested);
+    }
+    else if (this->GetFileMajorVersion() == 2)
+    {
+      this->ReadTrees_2(ePrimary);
     }
   }
   this->IdsSelected.clear();
@@ -475,7 +495,6 @@ void vtkXMLHyperTreeGridReader::ReadTrees_0(vtkXMLDataElement* elem)
 
   // Number of trees in this hypertree grid file
   int numberOfTrees = elem->GetNumberOfNestedElements();
-  elem->GetScalarAttribute("NumberOfTrees", numberOfTrees);
 
   // Hypertree grid mask collected while processing hypertrees
   vtkNew<vtkBitArray> htgMask;
@@ -663,12 +682,12 @@ void vtkXMLHyperTreeGridReader::SubdivideFromDescriptor_0(
 // Functor used to accumulate in the native array type with dispatch
 struct AccImpl
 {
-  explicit AccImpl(uint32_t limitedLevel)
+  explicit AccImpl(unsigned int limitedLevel)
     : LimitedLevel(limitedLevel)
   {
   }
   // Fixed input
-  const uint32_t LimitedLevel{ 0 };
+  const unsigned int LimitedLevel{ 0 };
   // Output
   vtkTypeInt64 FixedNbVertices{ 0 };
   vtkTypeInt64 LimitedLevelElement{ 0 };
@@ -690,7 +709,6 @@ void vtkXMLHyperTreeGridReader::ReadTrees_1(vtkXMLDataElement* elem)
 
   // Number of trees in this hypertree grid file
   int numberOfTrees = elem->GetNumberOfNestedElements();
-  elem->GetScalarAttribute("NumberOfTrees", numberOfTrees);
 
   vtkIdType globalOffset = 0;
   for (int treeIndxInFile = 0; treeIndxInFile < numberOfTrees; ++treeIndxInFile)
@@ -741,37 +759,10 @@ void vtkXMLHyperTreeGridReader::ReadTrees_1(vtkXMLDataElement* elem)
     }
 
     // Parse descriptor storing the global index per level of hypertree
-    vtkNew<vtkIdTypeArray> posByLevel;
     output->InitializeNonOrientedCursor(treeCursor, treeIndxInHTG, true);
 
     treeCursor->SetGlobalIndexStart(globalOffset);
-
-    // Level 0 contains root of hypertree
-    posByLevel->SetNumberOfValues(1);
-    posByLevel->SetValue(0, 0);
-
-    vtkIdType nRefined = 0;
-    vtkIdType nCurrentLevel = 0;
-    vtkIdType nNextLevel = 1;
-    unsigned int numberOfChildren = output->GetNumberOfChildren();
-
-    // Determine position of the start of each level within descriptor
-    for (vtkIdType i = 0; i < descSize; ++i)
-    {
-      if (nCurrentLevel >= nNextLevel)
-      {
-        // reached the next level of data in the breadth first descriptor array
-        nNextLevel = nRefined * numberOfChildren;
-        nRefined = 0;
-        nCurrentLevel = 0;
-        posByLevel->InsertNextValue(i);
-      }
-      if (desc->GetValue(i) == 1)
-      {
-        nRefined++;
-      }
-      nCurrentLevel++;
-    }
+    vtkHyperTree* tree = treeCursor->GetTree();
 
     vtkXMLDataElement* maskElement =
       eTree->FindNestedElementWithNameAndAttribute("DataArray", "Name", "Mask");
@@ -784,6 +775,7 @@ void vtkXMLHyperTreeGridReader::ReadTrees_1(vtkXMLDataElement* elem)
       maskElement->GetScalarAttribute("NumberOfTuples", numberOfNodes);
       maskArray->SetNumberOfTuples(numberOfNodes);
       this->ReadArrayValues(maskElement, 0, maskArray, 0, numberOfNodes);
+
       if (!output->GetMask())
       {
         vtkNew<vtkBitArray> mask;
@@ -810,7 +802,7 @@ void vtkXMLHyperTreeGridReader::ReadTrees_1(vtkXMLDataElement* elem)
       cerr << "Falling back to vtkDataArray, can pose problems on windows" << endl;
       accFunctor(nbVerticesByLevelArray.GetPointer());
     }
-    treeCursor->GetTree()->InitializeForReader(accFunctor.LimitedLevel, accFunctor.FixedNbVertices,
+    tree->InitializeForReader(accFunctor.LimitedLevel, accFunctor.FixedNbVertices,
       accFunctor.LimitedLevelElement, desc, maskArray, output->GetMask());
 
     // CellData belonging to hypertree immediately follows descriptor
@@ -860,6 +852,203 @@ void vtkXMLHyperTreeGridReader::ReadTrees_1(vtkXMLDataElement* elem)
       }
     }
     // Calculating the first offset of the next HyperTree
-    globalOffset += treeCursor->GetTree()->GetNumberOfVertices();
+    globalOffset += tree->GetNumberOfVertices();
+  }
+}
+
+//------------------------------------------------------------------------------
+void vtkXMLHyperTreeGridReader::ReadTrees_2(vtkXMLDataElement* element)
+{
+  vtkHyperTreeGrid* output = vtkHyperTreeGrid::SafeDownCast(this->GetCurrentOutput());
+  vtkNew<vtkHyperTreeGridNonOrientedCursor> treeCursor;
+
+  vtkXMLDataElement* treesElement = element->LookupElementWithName("Trees");
+
+  vtkXMLDataElement* treeIdsElement =
+    treesElement->FindNestedElementWithNameAndAttribute("DataArray", "Name", "TreeIds");
+
+  if (!treeIdsElement->GetAttribute("NumberOfTuples"))
+  {
+    // Empty htg
+    return;
+  }
+
+  auto treeIds = vtkSmartPointer<vtkTypeInt64Array>::Take(
+    vtkArrayDownCast<vtkTypeInt64Array>(this->CreateArray(treeIdsElement)));
+  vtkIdType treeIdsSize;
+
+  treeIdsElement->GetScalarAttribute("NumberOfTuples", treeIdsSize);
+  treeIds->SetNumberOfValues(treeIdsSize);
+  if (!this->ReadArrayValues(treeIdsElement, 0, treeIds, 0, treeIdsSize))
+  {
+    vtkErrorMacro("Failed to parse " << this->GetFileName()
+                                     << ". Missing / flawed array TreeIds, in XML element Trees");
+    return;
+  }
+
+  vtkXMLDataElement* depthPerTreeElement =
+    treesElement->FindNestedElementWithNameAndAttribute("DataArray", "Name", "DepthPerTree");
+  auto depthPerTree = vtkSmartPointer<vtkTypeUInt32Array>::Take(
+    vtkArrayDownCast<vtkTypeUInt32Array>(this->CreateArray(depthPerTreeElement)));
+  vtkIdType depthPerTreeSize;
+  depthPerTreeElement->GetScalarAttribute("NumberOfTuples", depthPerTreeSize);
+  depthPerTree->SetNumberOfValues(depthPerTreeSize);
+  if (!this->ReadArrayValues(depthPerTreeElement, 0, depthPerTree, 0, depthPerTreeSize))
+  {
+    vtkErrorMacro("Failed to parse "
+      << this->GetFileName() << ". Missing /flawed array DepthPerTree, in XML element Trees"
+      << ", which is required in HyperTreeGrid XML format of version 2. Aborting");
+    return;
+  }
+
+  vtkXMLDataElement* numberOfVerticesPerDepthElement =
+    treesElement->FindNestedElementWithNameAndAttribute(
+      "DataArray", "Name", "NumberOfVerticesPerDepth");
+  auto numberOfVerticesPerDepth = vtkSmartPointer<vtkTypeInt64Array>::Take(
+    vtkArrayDownCast<vtkTypeInt64Array>(this->CreateArray(numberOfVerticesPerDepthElement)));
+
+  vtkIdType numberOfVerticesPerDepthSize;
+  numberOfVerticesPerDepthElement->GetScalarAttribute(
+    "NumberOfTuples", numberOfVerticesPerDepthSize);
+  numberOfVerticesPerDepth->SetNumberOfValues(numberOfVerticesPerDepthSize);
+  if (!this->ReadArrayValues(numberOfVerticesPerDepthElement, 0, numberOfVerticesPerDepth, 0,
+        numberOfVerticesPerDepthSize))
+  {
+    vtkErrorMacro("Failed to parse "
+      << this->GetFileName()
+      << ". Missing / flawed array NumberOfVerticesPerDepth, in XML element Trees"
+      << ", which is required in HyperTreeGrid XML format of version 2. Aborting");
+    return;
+  }
+
+  vtkXMLDataElement* descriptorsElement =
+    treesElement->FindNestedElementWithNameAndAttribute("DataArray", "Name", "Descriptors");
+
+  vtkIdType totalNumberOfVertices = 0;
+  auto numberOfVerticesPerDepthRange = vtk::DataArrayValueRange<1>(numberOfVerticesPerDepth);
+  auto numberOfVerticesPerDepthIterator = numberOfVerticesPerDepthRange.cbegin();
+
+  // Computing the total size of scalar fields / mask
+  for (vtkIdType treeId = 0; treeId < treeIdsSize; ++treeId)
+  {
+    unsigned int depth = 0;
+    for (; depth < std::min<unsigned int>(depthPerTree->GetValue(treeId), this->FixedLevel);
+         ++depth, ++numberOfVerticesPerDepthIterator)
+    {
+      totalNumberOfVertices += *numberOfVerticesPerDepthIterator;
+    }
+    while (depth < depthPerTree->GetValue(treeId) && ++numberOfVerticesPerDepthIterator)
+    {
+      ++depth;
+    }
+  }
+
+  vtkXMLDataElement* maskElement =
+    treesElement->FindNestedElementWithNameAndAttribute("DataArray", "Name", "Mask");
+  vtkSmartPointer<vtkBitArray> mask = nullptr;
+  if (maskElement)
+  {
+    mask = vtkSmartPointer<vtkBitArray>::Take(
+      vtkArrayDownCast<vtkBitArray>(this->CreateArray(maskElement)));
+    mask->SetNumberOfValues(totalNumberOfVertices);
+    output->SetMask(mask);
+  }
+
+  vtkCellData* cellData = output->GetCellData();
+  vtkXMLDataElement* cellDataElement = element->FindNestedElementWithName("CellData");
+  std::vector<vtkXMLDataElement*> arrayElements;
+  std::vector<vtkSmartPointer<vtkAbstractArray>> arrays;
+  if (cellDataElement)
+  {
+    for (vtkIdType id = 0; id < cellDataElement->GetNumberOfNestedElements(); ++id)
+    {
+      arrayElements.emplace_back(cellDataElement->GetNestedElement(id));
+      int numberOfComponents = 1;
+      const char* numberOfComponentsChar = arrayElements.back()->GetAttribute("NumberOfComponents");
+      if (numberOfComponentsChar)
+      {
+        numberOfComponents = atoi(numberOfComponentsChar);
+      }
+
+      arrays.emplace_back(
+        vtkSmartPointer<vtkAbstractArray>::Take(this->CreateArray(arrayElements.back())));
+      arrays.back()->SetNumberOfComponents(numberOfComponents);
+      arrays.back()->SetNumberOfTuples(totalNumberOfVertices);
+      cellData->AddArray(arrays.back());
+    }
+  }
+
+  vtkIdType descriptorOffset = 0;
+  vtkIdType inputOffset = 0;
+  vtkIdType outputOffset = 0;
+  numberOfVerticesPerDepthIterator = numberOfVerticesPerDepthRange.cbegin();
+
+  for (vtkIdType treeId = 0; treeId < treeIdsSize; ++treeId)
+  {
+    vtkIdType treeSize = 0;
+    vtkIdType readableTreeSize = 0;
+    vtkIdType lastDepthSize = 0;
+    vtkIdType lastReadableDepthSize = 0;
+    for (unsigned int depth = 0; depth < depthPerTree->GetValue(treeId);
+         ++depth, ++numberOfVerticesPerDepthIterator)
+    {
+      lastDepthSize = *numberOfVerticesPerDepthIterator;
+      if (depth < this->FixedLevel)
+      {
+        lastReadableDepthSize = lastDepthSize;
+        readableTreeSize += lastDepthSize;
+      }
+      treeSize += lastDepthSize;
+    }
+
+    vtkIdType descriptorSize = treeSize - lastDepthSize;
+    vtkIdType readableDescriptorSize = readableTreeSize - lastReadableDepthSize;
+    auto descriptor = vtkSmartPointer<vtkBitArray>::Take(
+      vtkArrayDownCast<vtkBitArray>(this->CreateArray(descriptorsElement)));
+    descriptor->SetNumberOfValues(readableDescriptorSize);
+    if (!descriptor)
+    {
+      vtkErrorMacro(<< "Missing Descriptor. Aborting");
+      return;
+    }
+    if (readableDescriptorSize &&
+      !this->ReadArrayValues(
+        descriptorsElement, 0, descriptor, descriptorOffset, readableDescriptorSize))
+    {
+      vtkErrorMacro(<< "Failed reading descriptor at tree " << treeIds->GetValue(treeId)
+                    << ". Aborting.");
+      return;
+    }
+
+    // Parse descriptor storing the global index per level of hypertree
+    output->InitializeNonOrientedCursor(treeCursor, treeIds->GetValue(treeId), true);
+
+    treeCursor->SetGlobalIndexStart(outputOffset);
+    vtkHyperTree* tree = treeCursor->GetTree();
+
+    if (maskElement)
+    {
+      if (!this->ReadArrayValues(maskElement, outputOffset, mask, inputOffset, readableTreeSize))
+      {
+        vtkErrorMacro(<< "Failed reading mask at tree " << treeIds->GetValue(treeId)
+                      << ". Aborting.");
+        return;
+      }
+    }
+
+    for (std::size_t arrayId = 0; arrayId < arrays.size(); ++arrayId)
+    {
+      if (!this->ReadArrayValues(
+            arrayElements[arrayId], outputOffset, arrays[arrayId], inputOffset, readableTreeSize))
+      {
+        vtkErrorMacro(<< "Failed reading array " << arrayId << ". Aborting.");
+        return;
+      }
+    }
+
+    tree->BuildFromBreadthFirstOrderDescriptor(descriptor, readableDescriptorSize, 0);
+    descriptorOffset += descriptorSize;
+    outputOffset += readableTreeSize;
+    inputOffset += treeSize;
   }
 }

@@ -21,24 +21,23 @@
 #include "vtkSMProxy.h"
 #include "vtkSMRenderViewProxy.h"
 
-vtkStandardNewMacro(vtkSMGL2PSExporterProxy)
+vtkStandardNewMacro(vtkSMGL2PSExporterProxy);
 
-  //----------------------------------------------------------------------------
-  vtkSMGL2PSExporterProxy::vtkSMGL2PSExporterProxy()
+//----------------------------------------------------------------------------
+vtkSMGL2PSExporterProxy::vtkSMGL2PSExporterProxy()
   : ViewType(None)
 {
 }
 
 //----------------------------------------------------------------------------
-vtkSMGL2PSExporterProxy::~vtkSMGL2PSExporterProxy()
-{
-}
+vtkSMGL2PSExporterProxy::~vtkSMGL2PSExporterProxy() = default;
 
 //----------------------------------------------------------------------------
 bool vtkSMGL2PSExporterProxy::CanExport(vtkSMProxy* proxy)
 {
-  return proxy && ((this->ViewType == RenderView && proxy->IsA("vtkSMRenderViewProxy")) ||
-                    (this->ViewType == ContextView && proxy->IsA("vtkSMContextViewProxy")));
+  return proxy &&
+    ((this->ViewType == RenderView && proxy->IsA("vtkSMRenderViewProxy")) ||
+      (this->ViewType == ContextView && proxy->IsA("vtkSMContextViewProxy")));
 }
 
 //----------------------------------------------------------------------------
@@ -49,11 +48,11 @@ void vtkSMGL2PSExporterProxy::Write()
   vtkPVGL2PSExporter* exporter = vtkPVGL2PSExporter::SafeDownCast(this->GetClientSideObject());
 
   vtkSMRenderViewProxy* rv =
-    this->ViewType == RenderView ? vtkSMRenderViewProxy::SafeDownCast(this->View) : NULL;
+    this->ViewType == RenderView ? vtkSMRenderViewProxy::SafeDownCast(this->View) : nullptr;
   vtkSMContextViewProxy* cv =
-    this->ViewType == ContextView ? vtkSMContextViewProxy::SafeDownCast(this->View) : NULL;
+    this->ViewType == ContextView ? vtkSMContextViewProxy::SafeDownCast(this->View) : nullptr;
 
-  vtkRenderWindow* renWin = NULL;
+  vtkRenderWindow* renWin = nullptr;
   if (rv)
   {
     renWin = rv->GetRenderWindow();
@@ -67,7 +66,7 @@ void vtkSMGL2PSExporterProxy::Write()
   {
     exporter->SetRenderWindow(renWin);
     exporter->Write();
-    exporter->SetRenderWindow(NULL);
+    exporter->SetRenderWindow(nullptr);
   }
 }
 

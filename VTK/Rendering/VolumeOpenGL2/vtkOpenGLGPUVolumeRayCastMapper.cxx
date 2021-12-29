@@ -120,6 +120,8 @@ public:
     this->CubeVAOId = 0;
     this->CubeIndicesId = 0;
     this->DepthTextureObject = nullptr;
+    this->DepthCopyColorTextureObject = nullptr;
+    this->DepthCopyFBO = nullptr;
     this->SharedDepthTextureObject = false;
     this->TextureWidth = 1024;
     this->ActualSampleDistance = 1.0;
@@ -245,6 +247,8 @@ public:
   void ReleaseGraphicsMaskTransfer(vtkWindow* window);
   void DeleteMaskTransfer();
   ///@}
+
+  void UpdateTransfer2DYAxisArray(vtkRenderer* ren, vtkVolume* vol);
 
   bool LoadMask(vtkRenderer* ren);
 
@@ -427,6 +431,8 @@ public:
   GLuint CubeIndicesId;
 
   vtkTextureObject* DepthTextureObject;
+  vtkTextureObject* DepthCopyColorTextureObject;
+  vtkOpenGLFramebufferObject* DepthCopyFBO;
   bool SharedDepthTextureObject;
 
   int TextureWidth;
@@ -491,6 +497,10 @@ public:
   size_t NumImageSampleDrawBuffers = 0;
   bool RebuildImageSampleProg = false;
   bool RenderPassAttached = false;
+
+  bool Transfer2DUseGradient = true;
+  vtkSmartPointer<vtkVolumeTexture> Transfer2DYAxisScalars;
+  vtkTimeStamp Transfer2DYAxisScalarsUpdateTime;
 
   vtkNew<vtkContourFilter> ContourFilter;
   vtkNew<vtkPolyDataMapper> ContourMapper;
@@ -659,8 +669,9 @@ bool vtkOpenGLGPUVolumeRayCastMapper::vtkInternal::LoadMask(vtkRenderer* ren)
     }
 
     int isCellData;
-    vtkDataArray* arr = this->Parent->GetScalars(maskInput, this->Parent->ScalarMode,
-      this->Parent->ArrayAccessMode, this->Parent->ArrayId, this->Parent->ArrayName, isCellData);
+    vtkDataArray* arr =
+      vtkOpenGLGPUVolumeRayCastMapper::GetScalars(maskInput, this->Parent->ScalarMode,
+        this->Parent->ArrayAccessMode, this->Parent->ArrayId, this->Parent->ArrayName, isCellData);
     if (maskInput->GetMTime() > this->MaskUpdateTime ||
       this->CurrentMask->GetLoadedScalars() != arr ||
       (arr && arr->GetMTime() > this->MaskUpdateTime))
@@ -746,27 +757,65 @@ void vtkOpenGLGPUVolumeRayCastMapper::vtkInternal::CaptureDepthTexture(vtkRender
   if (!this->DepthTextureObject)
   {
     this->DepthTextureObject = vtkTextureObject::New();
+    this->DepthCopyColorTextureObject = vtkTextureObject::New();
   }
 
-  this->DepthTextureObject->SetContext(vtkOpenGLRenderWindow::SafeDownCast(ren->GetRenderWindow()));
+  vtkOpenGLRenderWindow* orenWin = vtkOpenGLRenderWindow::SafeDownCast(ren->GetRenderWindow());
+  this->DepthTextureObject->SetContext(orenWin);
+  this->DepthCopyColorTextureObject->SetContext(orenWin);
 
   //  this->DepthTextureObject->Activate();
   if (!this->DepthTextureObject->GetHandle())
   {
     // First set the parameters
-    this->DepthTextureObject->SetWrapS(vtkTextureObject::ClampToEdge);
-    this->DepthTextureObject->SetWrapT(vtkTextureObject::ClampToEdge);
+    this->DepthTextureObject->SetWrapS(vtkTextureObject::Repeat);
+    this->DepthTextureObject->SetWrapT(vtkTextureObject::Repeat);
     this->DepthTextureObject->SetMagnificationFilter(vtkTextureObject::Linear);
     this->DepthTextureObject->SetMinificationFilter(vtkTextureObject::Linear);
-    this->DepthTextureObject->AllocateDepth(this->WindowSize[0], this->WindowSize[1], 4);
+    if (orenWin->GetStencilCapable())
+    {
+      this->DepthTextureObject->AllocateDepthStencil(this->WindowSize[0], this->WindowSize[1]);
+    }
+    else
+    {
+      this->DepthTextureObject->AllocateDepth(this->WindowSize[0], this->WindowSize[1], 4);
+    }
   }
 
-#ifndef GL_ES_VERSION_3_0
-  // currently broken on ES
-  this->DepthTextureObject->CopyFromFrameBuffer(this->WindowLowerLeft[0], this->WindowLowerLeft[1],
-    0, 0, this->WindowSize[0], this->WindowSize[1]);
-#endif
-  //  this->DepthTextureObject->Deactivate();
+  if (!this->DepthCopyColorTextureObject->GetHandle())
+  {
+    // First set the parameters
+    this->DepthCopyColorTextureObject->SetWrapS(vtkTextureObject::Repeat);
+    this->DepthCopyColorTextureObject->SetWrapT(vtkTextureObject::Repeat);
+    this->DepthCopyColorTextureObject->SetMagnificationFilter(vtkTextureObject::Linear);
+    this->DepthCopyColorTextureObject->SetMinificationFilter(vtkTextureObject::Linear);
+    this->DepthCopyColorTextureObject->Allocate2D(
+      this->WindowSize[0], this->WindowSize[1], 4, VTK_UNSIGNED_CHAR);
+  }
+  this->DepthTextureObject->Resize(this->WindowSize[0], this->WindowSize[1]);
+  this->DepthCopyColorTextureObject->Resize(this->WindowSize[0], this->WindowSize[1]);
+
+  // copy depth with a blit
+  if (!this->DepthCopyFBO)
+  {
+    this->DepthCopyFBO = vtkOpenGLFramebufferObject::New();
+    this->DepthCopyFBO->SetContext(orenWin);
+    orenWin->GetState()->PushDrawFramebufferBinding();
+    this->DepthCopyFBO->Bind(GL_DRAW_FRAMEBUFFER);
+    this->DepthCopyFBO->AddDepthAttachment(this->DepthTextureObject);
+    this->DepthCopyFBO->AddColorAttachment(0, this->DepthCopyColorTextureObject);
+  }
+  else
+  {
+    orenWin->GetState()->PushDrawFramebufferBinding();
+  }
+
+  this->DepthCopyFBO->Bind(GL_DRAW_FRAMEBUFFER);
+  orenWin->GetState()->vtkglBlitFramebuffer(this->WindowLowerLeft[0], this->WindowLowerLeft[1],
+    this->WindowLowerLeft[0] + this->WindowSize[0], this->WindowLowerLeft[1] + this->WindowSize[1],
+    0, 0, this->WindowSize[0], this->WindowSize[1], GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+
+  orenWin->GetState()->PopDrawFramebufferBinding();
 }
 
 //------------------------------------------------------------------------------
@@ -827,7 +876,7 @@ void vtkOpenGLGPUVolumeRayCastMapper::vtkInternal::SetLightingShaderParameters(
     {
       double* aColor = light->GetAmbientColor();
       double* dColor = light->GetDiffuseColor();
-      double* sColor = light->GetDiffuseColor();
+      double* sColor = light->GetSpecularColor();
       double intensity = light->GetIntensity();
       lightAmbientColor[numberOfLights][0] = aColor[0] * intensity;
       lightAmbientColor[numberOfLights][1] = aColor[1] * intensity;
@@ -962,12 +1011,12 @@ bool vtkOpenGLGPUVolumeRayCastMapper::vtkInternal::IsGeometryUpdateRequired(
     return true;
   }
 
-  using namespace std;
   const auto GeomTime = this->BBoxPolyData->GetMTime();
-  const bool uploadTimeChanged = any_of(this->Parent->AssembledInputs.begin(),
-    this->Parent->AssembledInputs.end(), [&GeomTime](const pair<int, vtkVolumeInputHelper>& item) {
-      return item.second.Texture->UploadTime > GeomTime;
-    });
+  const bool uploadTimeChanged =
+    any_of(this->Parent->AssembledInputs.begin(), this->Parent->AssembledInputs.end(),
+      [&GeomTime](const std::pair<int, vtkVolumeInputHelper>& item) {
+        return item.second.Texture->UploadTime > GeomTime;
+      });
 
   return (this->NeedToInitializeResources || uploadTimeChanged ||
     this->IsCameraInside(ren, vol, geometry) || this->CameraWasInsideInLastUpdate ||
@@ -2061,7 +2110,6 @@ void vtkOpenGLGPUVolumeRayCastMapper::vtkInternal ::ReleaseImageSampleGraphicsRe
 
 //------------------------------------------------------------------------------
 vtkOpenGLGPUVolumeRayCastMapper::vtkOpenGLGPUVolumeRayCastMapper()
-  : vtkGPUVolumeRayCastMapper()
 {
   this->Impl = new vtkInternal(this);
   this->ReductionFactor = 1.0;
@@ -2167,6 +2215,12 @@ void vtkOpenGLGPUVolumeRayCastMapper::ReleaseGraphicsResources(vtkWindow* window
     this->Impl->DepthTextureObject->ReleaseGraphicsResources(window);
     this->Impl->DepthTextureObject->Delete();
     this->Impl->DepthTextureObject = nullptr;
+    this->Impl->DepthCopyColorTextureObject->ReleaseGraphicsResources(window);
+    this->Impl->DepthCopyColorTextureObject->Delete();
+    this->Impl->DepthCopyColorTextureObject = nullptr;
+    this->Impl->DepthCopyFBO->ReleaseGraphicsResources(window);
+    this->Impl->DepthCopyFBO->Delete();
+    this->Impl->DepthCopyFBO = nullptr;
   }
 
   this->Impl->ReleaseRenderToTextureGraphicsResources(window);
@@ -2392,11 +2446,11 @@ void vtkOpenGLGPUVolumeRayCastMapper::ReplaceShaderCompute(
       case vtkVolumeProperty::TF_2D:
         vtkShaderProgram::Substitute(fragmentShader, "//VTK::ComputeOpacity::Dec",
           vtkvolume::ComputeOpacity2DDeclaration(ren, this, vol, numComps, independentComponents,
-            this->AssembledInputs[0].TransferFunctions2DMap));
+            this->AssembledInputs[0].TransferFunctions2DMap, this->Impl->Transfer2DUseGradient));
 
         vtkShaderProgram::Substitute(fragmentShader, "//VTK::ComputeColor::Dec",
           vtkvolume::ComputeColor2DDeclaration(ren, this, vol, numComps, independentComponents,
-            this->AssembledInputs[0].TransferFunctions2DMap));
+            this->AssembledInputs[0].TransferFunctions2DMap, this->Impl->Transfer2DUseGradient));
 
         vtkShaderProgram::Substitute(fragmentShader, "//VTK::GradientCache::Dec",
           vtkvolume::GradientCacheDec(ren, vol, this->AssembledInputs, independentComponents));
@@ -2886,9 +2940,9 @@ bool vtkOpenGLGPUVolumeRayCastMapper::vtkInternal::UpdateInputs(vtkRenderer* ren
     // (across input objects) can be rendered. This could be addressed by
     // overriding the mapper's settings with array settings defined in the
     // vtkMultiVolume instance.
-    vtkDataArray* scalars =
-      this->Parent->GetScalars(input, this->Parent->ScalarMode, this->Parent->ArrayAccessMode,
-        this->Parent->ArrayId, this->Parent->ArrayName, this->Parent->CellFlag);
+    vtkDataArray* scalars = vtkOpenGLGPUVolumeRayCastMapper::GetScalars(input,
+      this->Parent->ScalarMode, this->Parent->ArrayAccessMode, this->Parent->ArrayId,
+      this->Parent->ArrayName, this->Parent->CellFlag);
 
     if (this->NeedToInitializeResources || (input->GetMTime() > it->second.Texture->UploadTime) ||
       (scalars != it->second.Texture->GetLoadedScalars()) ||
@@ -2919,7 +2973,63 @@ bool vtkOpenGLGPUVolumeRayCastMapper::vtkInternal::UpdateInputs(vtkRenderer* ren
   return success;
 }
 
-//------------------------------------------------------------------------------
+//----------------------------------------------------------------------------
+void vtkOpenGLGPUVolumeRayCastMapper::vtkInternal::UpdateTransfer2DYAxisArray(
+  vtkRenderer* ren, vtkVolume* vol)
+{
+  vtkVolumeProperty* prop = vol->GetProperty();
+  vtkImageData* input = vtkImageData::SafeDownCast(this->Parent->GetTransformedInput(0));
+  if (prop->GetTransferFunctionMode() != vtkVolumeProperty::TF_2D)
+  {
+    this->Transfer2DUseGradient = true;
+    return;
+  }
+
+  bool hasTransfer2DYAxisArray = this->Parent->GetTransfer2DYAxisArray() != nullptr;
+  bool isCellData = hasTransfer2DYAxisArray &&
+    input->GetCellData()->HasArray(this->Parent->GetTransfer2DYAxisArray());
+  bool isPointData = hasTransfer2DYAxisArray &&
+    input->GetPointData()->HasArray(this->Parent->GetTransfer2DYAxisArray());
+  hasTransfer2DYAxisArray = hasTransfer2DYAxisArray && (isCellData || isPointData);
+  if (!hasTransfer2DYAxisArray)
+  {
+    this->Transfer2DUseGradient = true;
+    return;
+  }
+  else
+  {
+    this->Transfer2DUseGradient = false;
+  }
+
+  // Now load the array
+  if (!this->Transfer2DYAxisScalars)
+  {
+    this->Transfer2DYAxisScalars = vtkSmartPointer<vtkVolumeTexture>::New();
+
+    const auto part = this->Partitions;
+    this->Transfer2DYAxisScalars->SetPartitions(part[0], part[1], part[2]);
+  }
+  vtkDataArray* arr = nullptr;
+  if (isPointData)
+  {
+    arr = input->GetPointData()->GetArray(this->Parent->GetTransfer2DYAxisArray());
+  }
+  else
+  {
+    arr = input->GetCellData()->GetArray(this->Parent->GetTransfer2DYAxisArray());
+  }
+
+  if (input->GetMTime() > this->Transfer2DYAxisScalarsUpdateTime ||
+    this->Transfer2DYAxisScalars->GetLoadedScalars() != arr ||
+    (arr && arr->GetMTime() > this->Transfer2DYAxisScalarsUpdateTime))
+  {
+    this->Transfer2DYAxisScalars->LoadVolume(
+      ren, input, arr, isCellData, prop->GetInterpolationType());
+    this->Transfer2DYAxisScalarsUpdateTime.Modified();
+  }
+}
+
+//----------------------------------------------------------------------------
 int vtkOpenGLGPUVolumeRayCastMapper::vtkInternal::GetComponentMode(
   vtkVolumeProperty* prop, vtkDataArray* array) const
 {
@@ -2998,6 +3108,7 @@ void vtkOpenGLGPUVolumeRayCastMapper::GPURender(vtkRenderer* ren, vtkVolume* vol
   this->Impl->ClearRemovedInputs(renWin);
   this->Impl->UpdateInputs(ren, vol);
   this->Impl->UpdateSamplingDistance(ren);
+  this->Impl->UpdateTransfer2DYAxisArray(ren, vol);
   this->Impl->UpdateTransferFunctions(ren);
 
   // Masks are only supported on single-input rendering.
@@ -3341,16 +3452,13 @@ void vtkOpenGLGPUVolumeRayCastMapper::vtkInternal::SetVolumeShaderParameters(
 
 ////----------------------------------------------------------------------------
 void vtkOpenGLGPUVolumeRayCastMapper::vtkInternal::SetMapperShaderParameters(
-  vtkShaderProgram* prog, vtkRenderer* ren, int vtkNotUsed(independent), int numComp)
+  vtkShaderProgram* prog, vtkRenderer* ren, int independent, int numComp)
 {
-#ifndef GL_ES_VERSION_3_0
-  // currently broken on ES
   if (!this->SharedDepthTextureObject)
   {
     this->DepthTextureObject->Activate();
   }
   prog->SetUniformi("in_depthSampler", this->DepthTextureObject->GetTextureUnit());
-#endif
 
   if (this->Parent->GetUseJittering())
   {
@@ -3365,6 +3473,35 @@ void vtkOpenGLGPUVolumeRayCastMapper::vtkInternal::SetMapperShaderParameters(
   prog->SetUniformf("in_scale", 1.0 / this->Parent->FinalColorWindow);
   prog->SetUniformf(
     "in_bias", (0.5 - (this->Parent->FinalColorLevel / this->Parent->FinalColorWindow)));
+  // prog->SetUniformi("in_useTransfer2DGradient", this->Transfer2DUseGradient);
+  if (!this->Transfer2DUseGradient && this->Transfer2DYAxisScalars)
+  {
+    vtkTextureObject* transfer2DYAxisTex =
+      this->Transfer2DYAxisScalars->GetCurrentBlock()->TextureObject;
+    transfer2DYAxisTex->Activate();
+    prog->SetUniformi("in_transfer2DYAxis", transfer2DYAxisTex->GetTextureUnit());
+    // LargeDataTypes have been already biased and scaled so in those cases 0s
+    // and 1s are passed respectively.
+    float tscale[4] = { 1.0, 1.0, 1.0, 1.0 };
+    float tbias[4] = { 0.0, 0.0, 0.0, 0.0 };
+    auto volTex = this->Transfer2DYAxisScalars;
+    auto noOfComponents = volTex->GetLoadedScalars()->GetNumberOfComponents();
+    if (!volTex->HandleLargeDataTypes &&
+      (noOfComponents == 1 || noOfComponents == 2 || independent))
+    {
+      prog->SetUniform4f("in_transfer2DYAxis_scale", volTex->Scale);
+      prog->SetUniform4f("in_transfer2DYAxis_bias", volTex->Bias);
+    }
+    else
+    {
+      prog->SetUniform4f("in_transfer2DYAxis_scale", tscale);
+      prog->SetUniform4f("in_transfer2DYAxis_bias", tbias);
+    }
+  }
+  else
+  {
+    prog->SetUniformi("in_transfer2DYAxis", 0);
+  }
 }
 
 ////----------------------------------------------------------------------------
@@ -3544,12 +3681,10 @@ void vtkOpenGLGPUVolumeRayCastMapper::vtkInternal::FinishRendering(const int num
     input.DeactivateTransferFunction(this->Parent->BlendMode);
   }
 
-#ifndef GL_ES_VERSION_3_0
   if (this->DepthTextureObject && !this->SharedDepthTextureObject)
   {
     this->DepthTextureObject->Deactivate();
   }
-#endif
 
   if (this->CurrentMask)
   {
@@ -3616,6 +3751,9 @@ void vtkOpenGLGPUVolumeRayCastMapper::vtkInternal::RenderMultipleInputs(
   this->SetVolumeShaderParameters(prog, independent, numComp, wcvc);
   this->SetLightingShaderParameters(ren, prog, this->MultiVolume, numSamplers);
   this->SetCameraShaderParameters(prog, ren, cam);
+
+  this->SetClippingPlanes(ren, prog, this->MultiVolume);
+
   this->RenderVolumeGeometry(ren, prog, this->MultiVolume, geometry);
   this->FinishRendering(numComp);
 }

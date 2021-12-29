@@ -113,9 +113,7 @@ pqRecentFilesMenu::pqRecentFilesMenu(QMenu& menu, QObject* p)
 }
 
 //-----------------------------------------------------------------------------
-pqRecentFilesMenu::~pqRecentFilesMenu()
-{
-}
+pqRecentFilesMenu::~pqRecentFilesMenu() = default;
 
 //-----------------------------------------------------------------------------
 void pqRecentFilesMenu::buildMenu()
@@ -136,7 +134,7 @@ void pqRecentFilesMenu::buildMenu()
     pqApplicationCore::instance()->recentlyUsedResources().list();
 
   // Sort resources to cluster them by servers.
-  typedef QMap<QString, QList<pqServerResource> > ClusteredResourcesType;
+  typedef QMap<QString, QList<pqServerResource>> ClusteredResourcesType;
   ClusteredResourcesType clusteredResources;
 
   for (int cc = 0; cc < resources.size(); cc++)
@@ -145,7 +143,7 @@ void pqRecentFilesMenu::buildMenu()
     QString key;
     if (this->SortByServers)
     {
-      pqServerConfiguration config = resource.configuration();
+      const pqServerConfiguration& config = resource.configuration();
       if (config.isNameDefault())
       {
         pqServerResource hostResource = (resource.scheme() == "session")

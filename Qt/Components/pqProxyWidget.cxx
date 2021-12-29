@@ -110,9 +110,9 @@ QWidget* newGroupSeparator(QWidget* parent)
   return widget;
 }
 
-std::vector<vtkWeakPointer<vtkPVXMLElement> > get_decorators(vtkPVXMLElement* hints)
+std::vector<vtkWeakPointer<vtkPVXMLElement>> get_decorators(vtkPVXMLElement* hints)
 {
-  std::vector<vtkWeakPointer<vtkPVXMLElement> > decoratorTypes;
+  std::vector<vtkWeakPointer<vtkPVXMLElement>> decoratorTypes;
   vtkNew<vtkCollection> collection;
   if (hints)
   {
@@ -134,7 +134,7 @@ void add_decorators(pqPropertyWidget* widget, vtkPVXMLElement* hints)
   if (widget && hints)
   {
     auto xmls = get_decorators(hints);
-    for (auto xml : xmls)
+    for (const auto& xml : xmls)
     {
       assert(xml && xml->GetAttribute("type"));
       pqPropertyWidgetDecorator::create(xml, widget);
@@ -258,7 +258,7 @@ public:
   {
     pqProxyWidgetItem* item = newItem(widget, widget_label, parentObj);
     item->Group = true;
-    // ensure GroupTag is not null for multi-property groups.
+    // ensure GroupTag is not nullptr for multi-property groups.
     item->GroupTag = group_label.isNull() ? QString("") : group_label;
     if (!group_label.isEmpty() && showSeparators)
     {
@@ -317,7 +317,7 @@ public:
       return false;
     }
     else if (filterText.isEmpty() == false &&
-      this->SearchTags.filter(filterText, Qt::CaseInsensitive).size() == 0)
+      this->SearchTags.filter(filterText, Qt::CaseInsensitive).empty())
     {
       // skip properties not matching search criteria.
       return false;
@@ -353,7 +353,7 @@ public:
 
   bool isAdvanced(vtkSMProxy* proxy) const
   {
-    if (this->DefaultVisibilityForRepresentations.size() > 0 && proxy &&
+    if (!this->DefaultVisibilityForRepresentations.empty() && proxy &&
       proxy->GetProperty("Representation") &&
       this->DefaultVisibilityForRepresentations.contains(
         vtkSMPropertyHelper(proxy, "Representation").GetAsString(), Qt::CaseInsensitive))
@@ -463,37 +463,26 @@ private:
 };
 
 //--------------------------------------------------------------------------------------------------
-// Returns true if the property should be skipped from the panel.
-bool skip_property(vtkSMProperty* smproperty, const std::string& key,
-  const QStringList& chosenProperties, const QSet<QString>& legacyHiddenProperties)
+bool skip(const char* key, const char* visibility, const QStringList& chosenProperties,
+  const QSet<QString>& legacyHiddenProperties, const pqProxyWidget* self)
 {
-  const QString skey = QString(key.c_str());
-  const QString simplifiedKey = QString(key.c_str()).remove(' ');
+  const QString skey = QString(key);
+  const QString simplifiedKey = QString(key).remove(' ');
 
-  if (!chosenProperties.isEmpty() &&
-    !(chosenProperties.contains(simplifiedKey) || chosenProperties.contains(skey)))
+  if (chosenProperties.contains(simplifiedKey) || chosenProperties.contains(skey))
+  {
+    // property has been explicitly chosen.
+    return false;
+  }
+  else if (!chosenProperties.isEmpty())
   {
     vtkVLogF(PARAVIEW_LOG_APPLICATION_VERBOSITY(), "skip since not in chosen properties set.");
     return true;
   }
 
-  if (smproperty->GetIsInternal())
-  {
-    // skip internal properties
-    vtkVLogF(PARAVIEW_LOG_APPLICATION_VERBOSITY(), "skip since internal.");
-    return true;
-  }
+  Q_ASSERT(chosenProperties.isEmpty());
 
-  if (smproperty->GetPanelVisibility() && strcmp(smproperty->GetPanelVisibility(), "never") == 0 &&
-    chosenProperties.size() == 0)
-  {
-    vtkVLogF(PARAVIEW_LOG_APPLICATION_VERBOSITY(),
-      "skip since marked as never show (unless it was explicitly 'chosen').");
-    return true;
-  }
-
-  if (chosenProperties.size() == 0 &&
-    (legacyHiddenProperties.contains(skey) || legacyHiddenProperties.contains(simplifiedKey)))
+  if (legacyHiddenProperties.contains(skey) || legacyHiddenProperties.contains(simplifiedKey))
   {
     // skipping properties marked with "show=0" in the hints section.
     vtkVLogF(
@@ -501,28 +490,57 @@ bool skip_property(vtkSMProperty* smproperty, const std::string& key,
     return true;
   }
 
+  if (visibility == nullptr)
+  {
+    // unclear what to do here, let's go with skipping the property since
+    // typically, we have a non-null string.
+    vtkVLogF(
+      PARAVIEW_LOG_APPLICATION_VERBOSITY(), "skip since no panel visibility flag specified.");
+    return true;
+  }
+
+  if (strcmp(visibility, "never") == 0)
+  {
+    vtkVLogF(PARAVIEW_LOG_APPLICATION_VERBOSITY(),
+      "skip since marked as never show (unless it was explicitly 'chosen').");
+  }
+
+  if (!self->defaultVisibilityLabels().contains(visibility) &&
+    !self->advancedVisibilityLabels().contains(visibility))
+  {
+    vtkVLogF(PARAVIEW_LOG_APPLICATION_VERBOSITY(),
+      "skip since not in default/advanced visibility label sets.");
+    return true;
+  }
+
   return false;
 }
 
 //--------------------------------------------------------------------------------------------------
-// Returns true if the group should be skipped from the panel.
-bool skip_group(vtkSMPropertyGroup* smgroup, const QStringList& chosenProperties)
+// Returns true if the property should be skipped from the panel.
+bool skip_property(vtkSMProperty* smproperty, const std::string& key,
+  const QStringList& chosenProperties, const QSet<QString>& legacyHiddenProperties,
+  const pqProxyWidget* self)
 {
-  if (!chosenProperties.empty() && !chosenProperties.contains(smgroup->GetXMLLabel()))
+  if (smproperty->GetIsInternal())
   {
-    vtkVLogF(PARAVIEW_LOG_APPLICATION_VERBOSITY(), "skip since group not chosen.");
+    // skip internal properties
+    vtkVLogF(PARAVIEW_LOG_APPLICATION_VERBOSITY(), "skip since internal.");
     return true;
   }
 
-  if (smgroup->GetPanelVisibility() && strcmp(smgroup->GetPanelVisibility(), "never") == 0 &&
-    chosenProperties.size() == 0)
-  {
-    // skip property groups marked as never show
-    vtkVLogF(PARAVIEW_LOG_APPLICATION_VERBOSITY(), "skip since group visibility is set to `never`");
-    return true;
-  }
-  return false;
+  return skip(
+    key.c_str(), smproperty->GetPanelVisibility(), chosenProperties, legacyHiddenProperties, self);
 }
+
+//--------------------------------------------------------------------------------------------------
+// Returns true if the group should be skipped from the panel.
+bool skip_group(
+  vtkSMPropertyGroup* smgroup, const QStringList& chosenProperties, const pqProxyWidget* self)
+{
+  return skip(smgroup->GetXMLLabel(), smgroup->GetPanelVisibility(), chosenProperties, {}, self);
+}
+
 } // end of namespace {}
 
 //-----------------------------------------------------------------------------------
@@ -539,7 +557,7 @@ QWidget* pqProxyWidget::newGroupLabelWidget(
   label->setWordWrap(true);
   label->setAlignment(Qt::AlignBottom | Qt::AlignLeft);
 
-  if (buttons.size() > 0)
+  if (!buttons.empty())
   {
     auto hbox = new QHBoxLayout();
     hbox->setContentsMargins(0, 0, 0, 0);
@@ -565,7 +583,7 @@ class pqProxyWidget::pqInternals
 {
 public:
   vtkSmartPointer<vtkSMProxy> Proxy;
-  QList<QPointer<pqProxyWidgetItem> > Items;
+  QList<QPointer<pqProxyWidgetItem>> Items;
   bool CachedShowAdvanced;
   QString CachedFilterText;
   vtkStringList* Properties;
@@ -592,7 +610,7 @@ public:
     if (this->Properties->GetLength() == 0)
     {
       this->Properties->Delete();
-      this->Properties = NULL;
+      this->Properties = nullptr;
     }
   }
 
@@ -628,42 +646,59 @@ public:
 };
 
 //*****************************************************************************
-pqProxyWidget::pqProxyWidget(vtkSMProxy* smproxy, QWidget* parentObject, Qt::WindowFlags wflags)
-  : Superclass(parentObject, wflags)
+pqProxyWidget::pqProxyWidget(vtkSMProxy* proxy)
+  : pqProxyWidget(proxy, QStringList{}, { "default" }, { "advanced" }, /*showHeadersFooters*/ true,
+      /*parent*/ nullptr, Qt::WindowFlags{})
 {
-  this->constructor(smproxy, QStringList(), true, parentObject, wflags);
+}
+
+//-----------------------------------------------------------------------------
+pqProxyWidget::pqProxyWidget(vtkSMProxy* proxy, QWidget* parent, Qt::WindowFlags flags)
+  : pqProxyWidget(proxy, QStringList{}, { "default" }, { "advanced" }, /*showHeadersFooters*/ true,
+      /*parent*/ parent, flags)
+{
+}
+
+//-----------------------------------------------------------------------------
+pqProxyWidget::pqProxyWidget(vtkSMProxy* proxy, const QStringList& properties,
+  bool showHeadersFooters /* = true*/, QWidget* parent /* = nullptr*/,
+  Qt::WindowFlags flags /* = Qt::WindowFlags{}*/)
+  : pqProxyWidget(
+      proxy, properties, { "default" }, { "advanced" }, showHeadersFooters, parent, flags)
+{
+}
+
+//-----------------------------------------------------------------------------
+pqProxyWidget::pqProxyWidget(vtkSMProxy* proxy, std::initializer_list<QString> defaultLabels,
+  std::initializer_list<QString> advancedLabels, QWidget* parent /* = nullptr*/,
+  Qt::WindowFlags flags /* = Qt::WindowFlags{}*/)
+  : pqProxyWidget(proxy, QStringList{}, defaultLabels, advancedLabels, /*showHeadersFooters*/ true,
+      parent, flags)
+{
 }
 
 //-----------------------------------------------------------------------------
 pqProxyWidget::pqProxyWidget(vtkSMProxy* smproxy, const QStringList& properties,
-  bool showHeadersFooters, QWidget* parentObject, Qt::WindowFlags wflags)
-  : Superclass(parentObject, wflags)
+  std::initializer_list<QString> defaultLabels, std::initializer_list<QString> advancedLabels,
+  bool showHeadersFooters /* = true*/, QWidget* parent /* = nullptr*/,
+  Qt::WindowFlags flags /* = Qt::WindowFlags{}*/)
+  : Superclass(parent, flags)
+  , DefaultVisibilityLabels{ defaultLabels }
+  , AdvancedVisibilityLabels{ advancedLabels }
+  , ApplyChangesImmediately(false)
+  , UseDocumentationForLabels(pqProxyWidget::useDocumentationForLabels(smproxy))
+  , ShowHeadersFooters{ showHeadersFooters }
+  , Internals(new pqProxyWidget::pqInternals(smproxy, properties))
 {
-  this->constructor(smproxy, properties, showHeadersFooters, parentObject, wflags);
-  this->updatePanel();
-}
+  Q_ASSERT(smproxy != nullptr);
 
-//-----------------------------------------------------------------------------
-void pqProxyWidget::constructor(vtkSMProxy* smproxy, const QStringList& properties,
-  bool showHeadersFooters, QWidget* parentObject, Qt::WindowFlags wflags)
-{
-  assert(smproxy);
-  (void)parentObject;
-  (void)wflags;
-
-  this->ApplyChangesImmediately = false;
-  // if the proxy wants a more descriptive layout for the panel, use it.
-  this->UseDocumentationForLabels = pqProxyWidget::useDocumentationForLabels(smproxy);
-  this->Internals = new pqProxyWidget::pqInternals(smproxy, properties);
-  this->Internals->ProxyDocumentationLabel = new QLabel(this);
-  this->Internals->ProxyDocumentationLabel->hide();
-  this->Internals->ProxyDocumentationLabel->setWordWrap(true);
-  this->Internals->RequestUpdatePanel.setInterval(0);
-  this->Internals->RequestUpdatePanel.setSingleShot(true);
-  this->connect(&this->Internals->RequestUpdatePanel, SIGNAL(timeout()), SLOT(updatePanel()));
-
-  // record whether to create and show header and footers for property groups
-  this->ShowHeadersFooters = showHeadersFooters;
+  auto& internals = (*this->Internals);
+  internals.ProxyDocumentationLabel = new QLabel(this);
+  internals.ProxyDocumentationLabel->hide();
+  internals.ProxyDocumentationLabel->setWordWrap(true);
+  internals.RequestUpdatePanel.setInterval(0);
+  internals.RequestUpdatePanel.setSingleShot(true);
+  this->connect(&internals.RequestUpdatePanel, SIGNAL(timeout()), SLOT(updatePanel()));
 
   QGridLayout* gridLayout = new QGridLayout(this);
   gridLayout->setMargin(pqPropertiesPanel::suggestedMargin());
@@ -682,9 +717,7 @@ void pqProxyWidget::constructor(vtkSMProxy* smproxy, const QStringList& properti
   }
 
   this->createWidgets(properties);
-
-  this->setApplyChangesImmediately(false);
-  this->hideEvent(NULL);
+  this->hideEvent(nullptr);
 
   // In collaboration setup any pqProxyWidget should be disable
   // when the user lose its MASTER role. And enable back when
@@ -693,13 +726,21 @@ void pqProxyWidget::constructor(vtkSMProxy* smproxy, const QStringList& properti
   // to the current container.
   this->setProperty("PV_MUST_BE_MASTER", QVariant(true));
   this->setEnabled(pqApplicationCore::instance()->getActiveServer()->isMaster());
+
+  // This is here to keep behaviour consistent with earlier versions of the
+  // code. If an explicit lists of properties is provided, we update the panel
+  // in the constructor itself.
+  if (!properties.empty())
+  {
+    this->updatePanel();
+  }
 }
 
 //-----------------------------------------------------------------------------
 pqProxyWidget::~pqProxyWidget()
 {
   delete this->Internals;
-  this->Internals = NULL;
+  this->Internals = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -727,7 +768,7 @@ const char* vtkGetDocumentation(vtkSMDocumentation* doc, pqProxyWidget::Document
         break;
     }
   }
-  return NULL;
+  return nullptr;
 }
 }
 
@@ -735,7 +776,7 @@ const char* vtkGetDocumentation(vtkSMDocumentation* doc, pqProxyWidget::Document
 QString pqProxyWidget::documentationText(vtkSMProperty* smProperty, DocumentationType dtype)
 {
   const char* xmlDocumentation =
-    smProperty ? vtkGetDocumentation(smProperty->GetDocumentation(), dtype) : NULL;
+    smProperty ? vtkGetDocumentation(smProperty->GetDocumentation(), dtype) : nullptr;
   if (!xmlDocumentation || xmlDocumentation[0] == 0)
   {
     const char* xmlLabel = smProperty->GetXMLLabel();
@@ -751,7 +792,7 @@ QString pqProxyWidget::documentationText(vtkSMProperty* smProperty, Documentatio
 QString pqProxyWidget::documentationText(vtkSMProxy* smProxy, DocumentationType dtype)
 {
   const char* xmlDocumentation =
-    smProxy ? vtkGetDocumentation(smProxy->GetDocumentation(), dtype) : NULL;
+    smProxy ? vtkGetDocumentation(smProxy->GetDocumentation(), dtype) : nullptr;
   return (!xmlDocumentation || xmlDocumentation[0] == 0)
     ? QString()
     : pqProxy::rstToHtml(xmlDocumentation).c_str();
@@ -762,7 +803,7 @@ pqProxyWidget::DocumentationType pqProxyWidget::showProxyDocumentationInPanel(vt
 {
   vtkPVXMLElement* xml = (smproxy && smproxy->GetHints())
     ? smproxy->GetHints()->FindNestedElementByName("ShowProxyDocumentationInPanel")
-    : NULL;
+    : nullptr;
   if (xml)
   {
     const QString type = QString(xml->GetAttributeOrDefault("type", "description")).toLower();
@@ -789,7 +830,7 @@ vtkSMProxy* pqProxyWidget::proxy() const
 void pqProxyWidget::showEvent(QShowEvent* sevent)
 {
   this->Superclass::showEvent(sevent);
-  if (sevent == NULL || !sevent->spontaneous())
+  if (sevent == nullptr || !sevent->spontaneous())
   {
     foreach (const pqProxyWidgetItem* item, this->Internals->Items)
     {
@@ -801,7 +842,7 @@ void pqProxyWidget::showEvent(QShowEvent* sevent)
 //-----------------------------------------------------------------------------
 void pqProxyWidget::hideEvent(QHideEvent* hevent)
 {
-  if (hevent == NULL || !hevent->spontaneous())
+  if (hevent == nullptr || !hevent->spontaneous())
   {
     foreach (const pqProxyWidgetItem* item, this->Internals->Items)
     {
@@ -916,7 +957,7 @@ void pqProxyWidget::createPropertyWidgets(const QStringList& properties)
   //         that corresponds to the order in which the widgets will be rendered.
   //         this is generally same as the order in the XML with one exception,
   //         properties in groups with same label are placed next to each other.
-  std::list<std::pair<vtkSMProperty*, std::string> > ordered_properties;
+  std::list<std::pair<vtkSMProperty*, std::string>> ordered_properties;
   std::map<std::string, decltype(ordered_properties)::iterator> group_end_iterators;
 
   vtkNew<vtkSMOrderedPropertyIterator> opiter;
@@ -976,7 +1017,7 @@ void pqProxyWidget::createPropertyWidgets(const QStringList& properties)
     vtkVLogScopeF(
       PARAVIEW_LOG_APPLICATION_VERBOSITY(), "create property widget for  `%s`", smkey.c_str());
     if (smproperty == nullptr ||
-      ::skip_property(smproperty, smkey, properties, legacyHiddenProperties))
+      ::skip_property(smproperty, smkey, properties, legacyHiddenProperties, this))
     {
       continue;
     }
@@ -992,9 +1033,9 @@ void pqProxyWidget::createPropertyWidgets(const QStringList& properties)
     vtkVLogIfF(PARAVIEW_LOG_APPLICATION_VERBOSITY(), smgroup != nullptr,
       "part of property-group with label `%s`",
       (smgroup->GetXMLLabel() ? smgroup->GetXMLLabel() : "(unspecified)"));
-    if (smgroup != nullptr && ::skip_group(smgroup, properties))
+    if (smgroup != nullptr && ::skip_group(smgroup, properties, this))
     {
-      if (properties.size() > 0)
+      if (!properties.empty())
       {
         // We're encountering a weird case. The user explicitly listed the
         // properties to create widgets for, however, only one (or some) properties from
@@ -1145,7 +1186,7 @@ void pqProxyWidget::create3DWidgets()
 {
   vtkSMProxy* smProxy = this->proxy();
   vtkPVXMLElement* hints = smProxy->GetHints();
-  if (hints && (hints->FindNestedElementByName("PropertyGroup") != NULL))
+  if (hints && (hints->FindNestedElementByName("PropertyGroup") != nullptr))
   {
     qCritical("Obsolete 3DWidget request encountered in the proxy hints. "
               "Please refer to the 'Major API Changes' guide in ParaView developer documentation.");
@@ -1157,7 +1198,7 @@ pqPropertyWidget* pqProxyWidget::createWidgetForProperty(
   vtkSMProperty* smproperty, vtkSMProxy* smproxy, QWidget* parentObj)
 {
   // check for custom widgets
-  pqPropertyWidget* widget = NULL;
+  pqPropertyWidget* widget = nullptr;
   pqInterfaceTracker* interfaceTracker = pqApplicationCore::instance()->interfaceTracker();
   QList<pqPropertyWidgetInterface*> interfaces =
     interfaceTracker->interfaces<pqPropertyWidgetInterface*>();
@@ -1170,7 +1211,7 @@ pqPropertyWidget* pqProxyWidget::createWidgetForProperty(
     }
   }
 
-  if (widget != NULL)
+  if (widget != nullptr)
   {
   }
   else if (vtkSMDoubleVectorProperty* dvp = vtkSMDoubleVectorProperty::SafeDownCast(smproperty))
@@ -1191,7 +1232,7 @@ pqPropertyWidget* pqProxyWidget::createWidgetForProperty(
       (pp->GetHints() && pp->GetHints()->FindNestedElementByName("SelectionInput"));
 
     // find the domain
-    vtkSMDomain* domain = 0;
+    vtkSMDomain* domain = nullptr;
     vtkSMDomainIterator* domainIter = pp->NewDomainIterator();
     for (domainIter->Begin(); !domainIter->IsAtEnd(); domainIter->Next())
     {
@@ -1250,7 +1291,7 @@ bool pqProxyWidget::filterWidgets(bool show_advanced, const QString& filterText)
     this->setUpdatesEnabled(false);
   }
 
-  const pqProxyWidgetItem* prevItem = NULL;
+  const pqProxyWidgetItem* prevItem = nullptr;
   vtkSMProxy* smProxy = this->Internals->Proxy;
   foreach (const pqProxyWidgetItem* item, this->Internals->Items)
   {
@@ -1269,7 +1310,7 @@ bool pqProxyWidget::filterWidgets(bool show_advanced, const QString& filterText)
   {
     this->setUpdatesEnabled(prevUE);
   }
-  return (prevItem != NULL);
+  return (prevItem != nullptr);
 }
 
 //-----------------------------------------------------------------------------
@@ -1333,7 +1374,7 @@ bool pqProxyWidget::restoreDefaults()
 void pqProxyWidget::saveAsDefaults()
 {
   vtkSMSettings* settings = vtkSMSettings::GetInstance();
-  vtkSMNamedPropertyIterator* propertyIt = NULL;
+  vtkSMNamedPropertyIterator* propertyIt = nullptr;
   if (this->Internals->Properties)
   {
     propertyIt = vtkSMNamedPropertyIterator::New();

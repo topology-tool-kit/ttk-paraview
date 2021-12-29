@@ -47,31 +47,19 @@ public:
   static vtkASCIITextCodec* New();
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * The name this codec goes by - should match the string the factory will take to create it
    */
   const char* Name() override;
   bool CanHandle(const char* NameString) override;
-  //@}
+  ///@}
 
   /**
-   * is the given sample valid for this codec?
+   * Return the next code point from the sequence represented by the begin, end iterators
+   * advancing begin through however many places needed to assemble that code point
    */
-  bool IsValid(istream& InputStream) override;
-
-  /**
-   * Iterate through the sequence represented by the stream assigning the result
-   * to the output iterator.  The stream will be advanced to its end so subsequent use
-   * would need to reset it.
-   */
-  void ToUnicode(istream& InputStream, vtkTextCodec::OutputIterator& output) override;
-
-  /**
-   * Return the next code point from the sequence represented by the stream
-   * advancing the stream through however many places needed to assemble that code point
-   */
-  vtkUnicodeString::value_type NextUnicode(istream& inputStream) override;
+  vtkTypeUInt32 NextUTF32CodePoint(istream& inputStream) override;
 
 protected:
   vtkASCIITextCodec();

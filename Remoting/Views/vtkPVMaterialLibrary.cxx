@@ -83,11 +83,11 @@ vtkPVMaterialLibrary::vtkPVMaterialLibrary()
   if (!resource_dir.empty())
   {
     // append results to search path
-    if (paths.size())
+    if (!paths.empty())
     {
       paths += ENV_PATH_SEP;
     }
-    paths += resource_dir.c_str();
+    paths += resource_dir;
   }
 
   // now we are ready

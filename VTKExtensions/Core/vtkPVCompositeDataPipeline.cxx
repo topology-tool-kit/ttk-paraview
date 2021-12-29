@@ -25,18 +25,14 @@ PURPOSE.  See the above copyright notice for more information.
 #include "vtkObjectFactory.h"
 #include "vtkPVPostFilterExecutive.h"
 
-#include <assert.h>
+#include <cassert>
 
 vtkStandardNewMacro(vtkPVCompositeDataPipeline);
 //----------------------------------------------------------------------------
-vtkPVCompositeDataPipeline::vtkPVCompositeDataPipeline()
-{
-}
+vtkPVCompositeDataPipeline::vtkPVCompositeDataPipeline() = default;
 
 //----------------------------------------------------------------------------
-vtkPVCompositeDataPipeline::~vtkPVCompositeDataPipeline()
-{
-}
+vtkPVCompositeDataPipeline::~vtkPVCompositeDataPipeline() = default;
 
 //----------------------------------------------------------------------------
 void vtkPVCompositeDataPipeline::CopyDefaultInformation(vtkInformation* request, int direction,

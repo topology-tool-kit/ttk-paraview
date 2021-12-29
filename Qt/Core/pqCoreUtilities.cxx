@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QFileInfo>
 #include <QMainWindow>
 #include <QMessageBox>
+#include <QPalette>
 #include <QString>
 #include <QStringList>
 
@@ -53,7 +54,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cstdlib>
 #include <sstream>
 
-QPointer<QWidget> pqCoreUtilities::MainWidget = 0;
+QPointer<QWidget> pqCoreUtilities::MainWidget = nullptr;
+
+namespace
+{
+bool ApplicationIsRunningInDashboard()
+{
+  return vtksys::SystemTools::GetEnv("DASHBOARD_TEST_FROM_CTEST") != nullptr;
+}
+}
 
 //-----------------------------------------------------------------------------
 QWidget* pqCoreUtilities::findMainWindow()
@@ -75,7 +84,7 @@ QWidget* pqCoreUtilities::findMainWindow()
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -198,10 +207,10 @@ void pqCoreUtilitiesEventHelper::executeEvent(vtkObject* obj, unsigned long even
 unsigned long pqCoreUtilities::connect(vtkObject* vtk_object, int vtk_event_id, QObject* qobject,
   const char* signal_or_slot, Qt::ConnectionType type /* = Qt::AutoConnection*/)
 {
-  assert(vtk_object != NULL);
-  assert(qobject != NULL);
-  assert(signal_or_slot != NULL);
-  if (vtk_object == NULL || qobject == NULL || signal_or_slot == NULL)
+  assert(vtk_object != nullptr);
+  assert(qobject != nullptr);
+  assert(signal_or_slot != nullptr);
+  if (vtk_object == nullptr || qobject == nullptr || signal_or_slot == nullptr)
   {
     // qCritical is Qt's 'print error message' stream
     qCritical() << "Error: Cannot connect to or from NULL.";
@@ -233,10 +242,11 @@ bool pqCoreUtilities::promptUser(const QString& settingsKey, QMessageBox::Icon i
   const QString& title, const QString& message, QMessageBox::StandardButtons buttons,
   QWidget* parentWdg)
 {
-  if (vtksys::SystemTools::GetEnv("DASHBOARD_TEST_FROM_CTEST") != NULL)
+  if (::ApplicationIsRunningInDashboard())
   {
     return true;
   }
+
   parentWdg = parentWdg ? parentWdg : pqCoreUtilities::mainWidget();
 
   pqSettings* settings = pqApplicationCore::instance()->settings();
@@ -280,9 +290,38 @@ bool pqCoreUtilities::promptUser(const QString& settingsKey, QMessageBox::Icon i
 }
 
 //-----------------------------------------------------------------------------
+QMessageBox::Button pqCoreUtilities::promptUserGeneric(const QString& title, const QString& message,
+  const QMessageBox::Icon icon, QMessageBox::StandardButtons buttons, QWidget* parentWidget)
+{
+  if (::ApplicationIsRunningInDashboard())
+  {
+    return QMessageBox::Save;
+  }
+
+  parentWidget = parentWidget ? parentWidget : pqCoreUtilities::mainWidget();
+
+  QMessageBox mbox(icon, title, message, buttons, parentWidget);
+  Q_UNUSED(mbox.exec());
+
+  return mbox.standardButton(mbox.clickedButton());
+}
+
+//-----------------------------------------------------------------------------
 QString pqCoreUtilities::number(double value)
 {
-  std::ostringstream str;
-  str << vtkNumberToString()(value);
-  return QString::fromLocal8Bit(str.str().c_str());
+  std::ostringstream stream;
+  stream << vtkNumberToString()(value);
+  return QString::fromStdString(stream.str());
+}
+
+//-----------------------------------------------------------------------------
+void pqCoreUtilities::initializeClickMeButton(QAbstractButton* button)
+{
+  if (button)
+  {
+    QPalette applyPalette = button->palette();
+    applyPalette.setColor(QPalette::Active, QPalette::Button, QColor(161, 213, 135));
+    applyPalette.setColor(QPalette::Inactive, QPalette::Button, QColor(161, 213, 135));
+    button->setPalette(applyPalette);
+  }
 }

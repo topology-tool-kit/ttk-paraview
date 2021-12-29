@@ -22,7 +22,6 @@
 
 #include "vtkMultiProcessController.h"
 #include "vtkObjectFactory.h"
-#include "vtkToolkits.h"
 
 // Include the MPI headers and then determine if MPIIO is available.
 #include "vtkMPI.h"
@@ -101,12 +100,10 @@ inline void vtkMPIImageReaderMaskBits(T* data, vtkIdType length, vtkTypeUInt64 _
 template <>
 void vtkMPIImageReaderMaskBits(float*, vtkIdType, vtkTypeUInt64)
 {
-  return;
 }
 template <>
 void vtkMPIImageReaderMaskBits(double*, vtkIdType, vtkTypeUInt64)
 {
-  return;
 }
 #endif // VTK_USE_MPI_IO
 

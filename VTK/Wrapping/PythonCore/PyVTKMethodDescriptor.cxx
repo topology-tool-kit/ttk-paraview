@@ -95,7 +95,7 @@ static PyObject* PyVTKMethodDescriptor_Call(PyObject* ob, PyObject* args, PyObje
 
   if (func)
   {
-    result = PyEval_CallObjectWithKeywords(func, args, kwds);
+    result = PyObject_Call(func, args, kwds);
     Py_DECREF(func);
   }
 
@@ -163,6 +163,10 @@ static PyMemberDef PyVTKMethodDescriptor_Members[] = {
 #endif
   { nullptr, 0, 0, 0, nullptr }
 };
+
+#ifdef VTK_PYTHON_NEEDS_DEPRECATION_WARNING_SUPPRESSION
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 
 //------------------------------------------------------------------------------
 // clang-format off

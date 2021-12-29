@@ -36,8 +36,15 @@ mark_as_advanced(VTK_ALL_NEW_OBJECT_FACTORY)
 
 set(vtk_smp_sources)
 set(vtk_smp_headers)
+set(vtk_smp_nowrap_headers)
+set(vtk_smp_templates)
 set(vtk_smp_defines)
 set(vtk_smp_libraries)
+set(vtk_smp_enable_sequential 0)
+set(vtk_smp_enable_stdthread 0)
+set(vtk_smp_enable_tbb 0)
+set(vtk_smp_enable_openmp 0)
+set(VTK_SMP_IMPLEMENTATION_TYPE)
 include("${CMAKE_CURRENT_SOURCE_DIR}/vtkSMPSelection.cmake")
 
 # An optional dependency on memkind
@@ -82,6 +89,38 @@ configure_file(
   "${CMAKE_CURRENT_BINARY_DIR}/vtkArrayDispatchArrayList.h"
   @ONLY)
 
+# create a list of source files for explicit array type instantiations
+set(instantiation_sources)
+
+# steal the list of array types from vtkCreateArrayDispatchArrayList.cmake
+foreach (INSTANTIATION_VALUE_TYPE IN LISTS vtkArrayDispatch_all_types)
+  # only instantiate fundamental types, not typedefs
+  if (INSTANTIATION_VALUE_TYPE STREQUAL "vtkIdType")
+    continue()
+  endif ()
+  # create a file suffix from the type
+  string(REPLACE " " "_" _suffix "${INSTANTIATION_VALUE_TYPE}")
+
+  set(_list "vtkSOADataArrayTemplateInstantiate")
+  if (VTK_BUILD_SCALED_SOA_ARRAYS)
+    list(APPEND _list "vtkScaledSOADataArrayTemplateInstantiate")
+  endif ()
+  # see comments in vtkGenericDataArray.h for explanation
+  if (INSTANTIATION_VALUE_TYPE MATCHES "(^| )long( |$)")
+    list(APPEND _list "vtkGenericDataArrayValueRangeInstantiate")
+  endif ()
+
+  # generate cxx file to instantiate template with this type
+  foreach (_prefix IN LISTS _list)
+    configure_file(
+      "${CMAKE_CURRENT_SOURCE_DIR}/${_prefix}.cxx.in"
+      "${CMAKE_CURRENT_BINARY_DIR}/${_prefix}_${_suffix}.cxx"
+      @ONLY)
+    list(APPEND instantiation_sources
+      "${CMAKE_CURRENT_BINARY_DIR}/${_prefix}_${_suffix}.cxx")
+  endforeach ()
+endforeach ()
+
 set(classes
   vtkAbstractArray
   vtkAnimationCue
@@ -105,8 +144,6 @@ set(classes
   vtkCollectionIterator
   vtkCommand
   vtkCommonInformationKeyManager
-  vtkConditionVariable
-  vtkCriticalSection
   vtkDataArray
   vtkDataArrayCollection
   vtkDataArrayCollectionIterator
@@ -159,7 +196,6 @@ set(classes
   vtkMersenneTwister
   vtkMinimalStandardRandomSequence
   vtkMultiThreader
-  vtkMutexLock
   vtkOStrStreamWrapper
   vtkOStreamWrapper
   vtkObject
@@ -179,7 +215,6 @@ set(classes
   vtkScalarsToColors
   vtkShortArray
   vtkSignedCharArray
-  vtkSimpleCriticalSection
   vtkSmartPointerBase
   vtkSortDataArray
   vtkStdString
@@ -201,7 +236,13 @@ set(classes
   vtkWeakPointerBase
   vtkWeakReference
   vtkWindow
-  vtkXMLFileOutputWindow)
+  vtkXMLFileOutputWindow
+
+  # These classes are deprecated.
+  vtkConditionVariable
+  vtkCriticalSection
+  vtkSimpleCriticalSection
+  vtkMutexLock)
 
 set(template_classes
   vtkAOSDataArrayTemplate
@@ -221,12 +262,11 @@ set(template_classes
 set(sources
   vtkArrayIteratorTemplateInstantiate.cxx
   vtkGenericDataArray.cxx
-  vtkSOADataArrayTemplateInstantiate.cxx
+  ${instantiation_sources}
   ${vtk_smp_sources})
 
 if (VTK_BUILD_SCALED_SOA_ARRAYS)
   list (APPEND template_classes vtkScaledSOADataArrayTemplate)
-  list (APPEND sources  vtkScaledSOADataArrayTemplateInstantiate.cxx)
   set(VTK_USE_SCALED_SOA_ARRAYS 1)
 endif ()
 configure_file(
@@ -284,11 +324,11 @@ set(headers
   "${CMAKE_CURRENT_BINARY_DIR}/vtkVTK_USE_SCALED_SOA_ARRAYS.h")
 
 set(private_headers
-  "${CMAKE_CURRENT_BINARY_DIR}/vtkFloatingPointExceptionsConfigure.h"
-  vtkMathPrivate.hxx)
+  "${CMAKE_CURRENT_BINARY_DIR}/vtkFloatingPointExceptionsConfigure.h")
 
 set(templates
-  vtkArrayIteratorTemplateImplicit.txx)
+  vtkArrayIteratorTemplateImplicit.txx
+  ${vtk_smp_templates})
 
 set(private_templates
   vtkDataArrayPrivate.txx)
@@ -361,7 +401,26 @@ endif()
 include(TestBigEndian)
 test_big_endian(VTK_WORDS_BIGENDIAN)
 
-set(nowrap_headers)
+# vtkSMP header information.
+set(smp_backends
+  OpenMP
+  Sequential
+  STDThread
+  TBB)
+foreach (smp_backend IN LISTS smp_backends)
+  string(TOLOWER "${smp_backend}" smp_backend_lower)
+  string(TOUPPER "${smp_backend}" smp_backend_upper)
+  set("VTK_SMP_ENABLE_${smp_backend_upper}" "${vtk_smp_enable_${smp_backend_lower}}")
+  if (VTK_SMP_IMPLEMENTATION_TYPE STREQUAL smp_backend)
+    set("VTK_SMP_DEFAULT_IMPLEMENTATION_${smp_backend_upper}" 1)
+  else ()
+    set("VTK_SMP_DEFAULT_IMPLEMENTATION_${smp_backend_upper}" 0)
+  endif ()
+endforeach ()
+
+set(nowrap_headers
+  vtkMathPrivate.hxx
+  ${vtk_smp_nowrap_headers})
 set(generated_headers
   vtkBuild.h
   vtkDebug.h
@@ -373,7 +432,7 @@ set(generated_headers
   vtkPlatform.h
   vtkSMP.h
   vtkThreads.h
-  vtkToolkits.h
+  vtkVersionFull.h
   vtkVersionMacros.h)
 if (NOT VTK_LEGACY_REMOVE)
   list(APPEND generated_headers
@@ -384,13 +443,14 @@ foreach (generated_header IN LISTS generated_headers)
     "${CMAKE_CURRENT_SOURCE_DIR}/${generated_header}.in"
     "${CMAKE_CURRENT_BINARY_DIR}/${generated_header}"
     @ONLY)
-  list(APPEND nowrap_headers
+  list(APPEND headers
     "${CMAKE_CURRENT_BINARY_DIR}/${generated_header}")
 endforeach ()
 
 if (NOT VTK_LEGACY_REMOVE)
   list(APPEND nowrap_headers
-    vtkConfigure.h)
+    vtkConfigure.h
+    vtkToolkits.h)
 endif ()
 
 add_custom_command(
@@ -482,6 +542,7 @@ if(MSVC)
 endif()
 
 vtk_module_add_module(VTK::CommonCore
+  HEADER_DIRECTORIES
   CLASSES           ${classes}
   TEMPLATE_CLASSES  ${template_classes}
   SOURCES           ${sources}
@@ -495,11 +556,6 @@ if (vtk_include_dirs)
     PRIVATE
     ${vtk_include_dirs})
 endif ()
-
-# We need to install the private headers so that consumers of VTK
-# can use private headers (vtkMathPrivate.hxx for instance)
-vtk_module_install_headers(
-    FILES   ${private_headers})
 
 vtk_module_link(VTK::CommonCore
   PUBLIC

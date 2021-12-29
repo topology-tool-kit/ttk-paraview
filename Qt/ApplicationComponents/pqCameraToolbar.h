@@ -36,9 +36,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QToolBar>
 
 /**
-* pqCameraToolbar is the toolbar that has icons for resetting camera
-* orientations as well as zoom-to-data and zoom-to-box.
-*/
+ * pqCameraToolbar is the toolbar that has icons for resetting camera
+ * orientations as well as zoom-to-data and zoom-to-box.
+ */
 class PQAPPLICATIONCOMPONENTS_EXPORT pqCameraToolbar : public QToolBar
 {
   Q_OBJECT
@@ -63,6 +63,7 @@ private:
   Q_DISABLE_COPY(pqCameraToolbar)
   void constructor();
   QAction* ZoomToDataAction;
+  QAction* ZoomClosestToDataAction;
 };
 
 #endif

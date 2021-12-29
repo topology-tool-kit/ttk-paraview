@@ -44,12 +44,14 @@ pqDesktopServicesReaction::pqDesktopServicesReaction(const QUrl& url, QAction* p
   : Superclass(parentObject)
   , URL(url)
 {
+  if (parentObject)
+  {
+    parentObject->setStatusTip(url.toString());
+  }
 }
 
 //-----------------------------------------------------------------------------
-pqDesktopServicesReaction::~pqDesktopServicesReaction()
-{
-}
+pqDesktopServicesReaction::~pqDesktopServicesReaction() = default;
 
 //-----------------------------------------------------------------------------
 bool pqDesktopServicesReaction::openUrl(const QUrl& url)

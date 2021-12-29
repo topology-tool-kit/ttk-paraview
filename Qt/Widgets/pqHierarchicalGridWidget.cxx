@@ -56,7 +56,7 @@ public:
   QRegion VSplitRegion;
   QScopedPointer<QRubberBand> RubberBand;
 
-  std::vector<std::pair<pqHierarchicalGridWidget::SplitterInfo, QRect> > Splitters;
+  std::vector<std::pair<pqHierarchicalGridWidget::SplitterInfo, QRect>> Splitters;
 
   bool isMoving() const { return this->Active != -1; }
   void start(const QPoint& pos)
@@ -161,9 +161,7 @@ pqHierarchicalGridWidget::pqHierarchicalGridWidget(QWidget* parentObject)
 }
 
 //-----------------------------------------------------------------------------
-pqHierarchicalGridWidget::~pqHierarchicalGridWidget()
-{
-}
+pqHierarchicalGridWidget::~pqHierarchicalGridWidget() = default;
 
 //-----------------------------------------------------------------------------
 void pqHierarchicalGridWidget::setUserResizability(bool val)

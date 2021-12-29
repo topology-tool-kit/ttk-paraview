@@ -37,13 +37,13 @@
 class VTKCOMMONCORE_EXPORT vtkRandomSequence : public vtkObject
 {
 public:
-  //@{
+  ///@{
   /**
    * Standard methods for type information and printing.
    */
   vtkTypeMacro(vtkRandomSequence, vtkObject);
   void PrintSelf(ostream& os, vtkIndent indent) override;
-  //@}
+  ///@}
 
   /**
    * Initialize the sequence with a seed.
@@ -59,6 +59,11 @@ public:
    * Move to the next number in the random sequence.
    */
   virtual void Next() = 0;
+
+  /**
+   * Advance the sequence and return the new value.
+   */
+  double GetNextValue();
 
 protected:
   vtkRandomSequence();

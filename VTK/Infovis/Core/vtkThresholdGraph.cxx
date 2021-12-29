@@ -13,17 +13,13 @@ vtkStandardNewMacro(vtkThresholdGraph);
 
 //------------------------------------------------------------------------------
 vtkThresholdGraph::vtkThresholdGraph()
-  : vtkGraphAlgorithm()
-  , LowerThreshold(0.0)
+  : LowerThreshold(0.0)
   , UpperThreshold(0.0)
 {
 }
 
 //------------------------------------------------------------------------------
-vtkThresholdGraph::~vtkThresholdGraph()
-{
-  // Do nothing.
-}
+vtkThresholdGraph::~vtkThresholdGraph() = default;
 
 //------------------------------------------------------------------------------
 void vtkThresholdGraph::PrintSelf(ostream& os, vtkIndent indent)

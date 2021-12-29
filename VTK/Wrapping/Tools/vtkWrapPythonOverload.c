@@ -80,6 +80,7 @@
 #include "vtkWrapPythonMethod.h"
 #include "vtkWrapPythonTemplate.h"
 
+#include "vtkParseExtras.h"
 #include "vtkWrap.h"
 #include "vtkWrapText.h"
 
@@ -294,6 +295,22 @@ static char* vtkWrapPython_ArgCheckString(ClassInfo* data, FunctionInfo* current
         }
       }
     }
+    else if (vtkWrap_IsStdVector(arg))
+    {
+      /* tclass, ttype will hold the value type of the vector */
+      const char* tclass;
+      unsigned int ttype;
+      /* first, decompose template into template name + args */
+      const char* tname;                      /* will store template name, i.e. "std::vector" */
+      size_t n;                               /* will store length of the template name */
+      const char** targs;                     /* will store the template args */
+      const char* defaults[2] = { NULL, "" }; /* NULL means "not optional" */
+      vtkParse_DecomposeTemplatedType(arg->Class, &tname, 2, &targs, defaults);
+      vtkParse_BasicTypeFromString(targs[0], &ttype, &tclass, &n);
+      c = 'T';
+      result[endPos++] = ' ';
+      result[endPos++] = vtkWrapPython_FormatChar(ttype);
+    }
 
     /* add the format char to the string */
     result[currPos++] = c;
@@ -415,7 +432,7 @@ int* vtkWrapPython_ArgCountToOverloadMap(FunctionInfo** wrappedFunctions,
 
 void vtkWrapPython_OverloadMethodDef(FILE* fp, const char* classname, ClassInfo* data,
   int* overloadMap, FunctionInfo** wrappedFunctions, int numberOfWrappedFunctions, int fnum,
-  int numberOfOccurrences, int all_legacy)
+  int numberOfOccurrences)
 {
   char occSuffix[16];
   int occ, occCounter;
@@ -426,11 +443,6 @@ void vtkWrapPython_OverloadMethodDef(FILE* fp, const char* classname, ClassInfo*
   int putInTable;
 
   theFunc = wrappedFunctions[fnum];
-
-  if (all_legacy)
-  {
-    fprintf(fp, "#if !defined(VTK_LEGACY_REMOVE)\n");
-  }
 
   fprintf(fp, "static PyMethodDef Py%s_%s_Methods[] = {\n", classname, theFunc->Name);
 
@@ -472,11 +484,6 @@ void vtkWrapPython_OverloadMethodDef(FILE* fp, const char* classname, ClassInfo*
       continue;
     }
 
-    if (theOccurrence->IsLegacy && !all_legacy)
-    {
-      fprintf(fp, "#if !defined(VTK_LEGACY_REMOVE)\n");
-    }
-
     /* method suffix to distinguish between signatures */
     occSuffix[0] = '\0';
     if (numberOfOccurrences > 1)
@@ -489,23 +496,12 @@ void vtkWrapPython_OverloadMethodDef(FILE* fp, const char* classname, ClassInfo*
       "   \"%s\"},\n",
       classname, theOccurrence->Name, occSuffix, theOccurrence->IsStatic ? " | METH_STATIC" : "",
       vtkWrapPython_ArgCheckString(data, theOccurrence));
-
-    if (theOccurrence->IsLegacy && !all_legacy)
-    {
-      fprintf(fp, "#endif\n");
-    }
   }
 
   fprintf(fp,
     "  {nullptr, nullptr, 0, nullptr}\n"
-    "};\n");
-
-  if (all_legacy)
-  {
-    fprintf(fp, "#endif\n");
-  }
-
-  fprintf(fp, "\n");
+    "};\n"
+    "\n");
 }
 
 /* -------------------------------------------------------------------- */
@@ -513,7 +509,7 @@ void vtkWrapPython_OverloadMethodDef(FILE* fp, const char* classname, ClassInfo*
 
 void vtkWrapPython_OverloadMasterMethod(FILE* fp, const char* classname, int* overloadMap,
   int maxArgs, FunctionInfo** wrappedFunctions, int numberOfWrappedFunctions, int fnum,
-  int is_vtkobject, int all_legacy)
+  int is_vtkobject)
 {
   FunctionInfo* currentFunction;
   FunctionInfo* theOccurrence;
@@ -542,11 +538,6 @@ void vtkWrapPython_OverloadMasterMethod(FILE* fp, const char* classname, int* ov
     {
       overlap = 1;
     }
-  }
-
-  if (all_legacy)
-  {
-    fprintf(fp, "#if !defined(VTK_LEGACY_REMOVE)\n");
   }
 
   fprintf(fp,
@@ -585,10 +576,6 @@ void vtkWrapPython_OverloadMasterMethod(FILE* fp, const char* classname, int* ov
       {
         if (overloadMap[i] == occCounter)
         {
-          if (!foundOne && theOccurrence->IsLegacy && !all_legacy)
-          {
-            fprintf(fp, "#if !defined(VTK_LEGACY_REMOVE)\n");
-          }
           fprintf(fp, "    case %d:\n", i);
           foundOne = 1;
         }
@@ -597,10 +584,6 @@ void vtkWrapPython_OverloadMasterMethod(FILE* fp, const char* classname, int* ov
       {
         fprintf(fp, "      return Py%s_%s_s%d(self, args);\n", classname, currentFunction->Name,
           occCounter);
-        if (theOccurrence->IsLegacy && !all_legacy)
-        {
-          fprintf(fp, "#endif\n");
-        }
       }
     }
   }
@@ -627,11 +610,4 @@ void vtkWrapPython_OverloadMasterMethod(FILE* fp, const char* classname, int* ov
     "  return nullptr;\n"
     "}\n"
     "\n");
-
-  if (all_legacy)
-  {
-    fprintf(fp, "#endif\n");
-  }
-
-  fprintf(fp, "\n");
 }

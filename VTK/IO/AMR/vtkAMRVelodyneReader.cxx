@@ -14,6 +14,7 @@
 #include "vtkDoubleArray.h"
 #include "vtkFloatArray.h"
 #include "vtkInformation.h"
+#include "vtkInformationVector.h"
 #include "vtkIntArray.h"
 #include "vtkLongArray.h"
 #include "vtkLongLongArray.h"
@@ -65,8 +66,8 @@ void vtkAMRVelodyneReader::PrintSelf(std::ostream& os, vtkIndent indent)
 void vtkAMRVelodyneReader::SetFileName(const char* fileName)
 {
   assert("pre: Internal Velodyne Reader is nullptr" && (this->Internal != nullptr));
-  if (fileName && strcmp(fileName, "") &&
-    ((this->FileName == nullptr) || strcmp(fileName, this->FileName)))
+  if (fileName && *fileName &&
+    ((this->FileName == nullptr) || strcmp(fileName, this->FileName) != 0))
   {
     if (this->FileName)
     {
@@ -107,7 +108,7 @@ void vtkAMRVelodyneReader::UpdateFileName(int index)
 int vtkAMRVelodyneReader::RequestInformation(
   vtkInformation* rqst, vtkInformationVector** inputVector, vtkInformationVector* outputVector)
 {
-  this->vtkOverlappingAMRAlgorithm::RequestInformation(rqst, inputVector, outputVector);
+  this->Superclass::RequestInformation(rqst, inputVector, outputVector);
   this->FillMetaData();
   vtkInformation* info = outputVector->GetInformationObject(0);
   info->Remove(vtkStreamingDemandDrivenPipeline::TIME_STEPS());

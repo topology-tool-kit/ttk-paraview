@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqApplicationCore.h"
 #include "pqCameraUndoRedoReaction.h"
 #include "pqChartSelectionReaction.h"
+#include "pqColorOverlay.h"
 #include "pqContextView.h"
 #include "pqCoreUtilities.h"
 #include "pqDataQueryReaction.h"
@@ -69,10 +70,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QGuiApplication>
 #include <QKeyEvent>
 #include <QMenu>
+#include <QPropertyAnimation>
 #include <QPushButton>
 #include <QSet>
 #include <QShortcut>
 #include <QStyle>
+#include <QToolTip>
 
 #include <algorithm>
 #include <cassert>
@@ -101,7 +104,7 @@ QAction* findActiveAction(const QString& name)
   {
     return activeView->widget()->parentWidget()->parentWidget()->findChild<QAction*>(name);
   }
-  return NULL;
+  return nullptr;
 }
 
 void triggerAction(const QString& name)
@@ -160,8 +163,8 @@ pqStandardViewFrameActionsImplementation::~pqStandardViewFrameActionsImplementat
 //-----------------------------------------------------------------------------
 void pqStandardViewFrameActionsImplementation::frameConnected(pqViewFrame* frame, pqView* view)
 {
-  assert(frame != NULL);
-  if (view == NULL)
+  assert(frame != nullptr);
+  if (view == nullptr)
   {
     // Setup the UI shown when no view is present in the frame.
     QWidget* empty_frame = new QWidget(frame);
@@ -242,9 +245,9 @@ QActionGroup* pqStandardViewFrameActionsImplementation::addSelectionModifierActi
   assert(view);
   assert(frame);
 
-  QAction* toggleAction = NULL;
-  QAction* minusAction = NULL;
-  QAction* plusAction = NULL;
+  QAction* toggleAction = nullptr;
+  QAction* minusAction = nullptr;
+  QAction* plusAction = nullptr;
 
   this->addSeparator(frame, view);
 
@@ -352,7 +355,7 @@ void pqStandardViewFrameActionsImplementation::addGenericActions(pqViewFrame* fr
       QAction* captureViewAction = frame->addTitleBarAction(
         QIcon(":/pqWidgets/Icons/pqCaptureScreenshot.svg"), "Capture to Clipboard or File");
       captureViewAction->setObjectName("actionCaptureView");
-      captureViewAction->setToolTip("Capture screenshot to the clipboard or to a file if a "
+      captureViewAction->setToolTip("Capture screenshot to a file or to the clipboard if a "
                                     "modifier key (Ctrl, Alt or Shift) is pressed.");
       this->connect(captureViewAction, SIGNAL(triggered(bool)), SLOT(captureViewTriggered()));
     }
@@ -628,7 +631,7 @@ bool pqStandardViewFrameActionsImplementation::isButtonVisible(
     {
       // Turn all actions off *unless* the button has been
       // explicitly enabled by listing them as child elements
-      isVisible = isVisible && buttonElement != NULL;
+      isVisible = isVisible && buttonElement != nullptr;
     }
   }
 
@@ -700,7 +703,8 @@ void pqStandardViewFrameActionsImplementation::aboutToShowConvertMenu()
     {
       QAction* view_action = new QAction(type.Label, menu);
       menu->addAction(view_action);
-      QObject::connect(view_action, &QAction::triggered, this,
+      QObject::connect(
+        view_action, &QAction::triggered, this,
         [viewframe, type, this](bool) { this->invoked(viewframe, type, "Convert To"); },
         Qt::QueuedConnection);
     }
@@ -721,7 +725,8 @@ void pqStandardViewFrameActionsImplementation::setupEmptyFrame(QWidget* frame)
   {
     QPushButton* button = new QPushButton(type.Label, ui.ConvertActionsFrame);
     button->setObjectName(type.Name);
-    QObject::connect(button, &QPushButton::clicked, this,
+    QObject::connect(
+      button, &QPushButton::clicked, this,
       [viewframe, type, this]() { this->invoked(viewframe, type, "Create"); },
       Qt::QueuedConnection);
     ui.ConvertActionsFrame->layout()->addWidget(button);
@@ -911,7 +916,30 @@ void pqStandardViewFrameActionsImplementation::captureViewTriggered()
   {
     // If a modifier key is enabled, let's save screenshot to a file, otherwise
     // copy the screenshot to the clipboard.
-    bool clipboardMode = QGuiApplication::queryKeyboardModifiers() == 0;
-    pqSaveScreenshotReaction::saveScreenshot(clipboardMode);
+    bool clipboardMode = QGuiApplication::queryKeyboardModifiers() != Qt::NoModifier;
+    bool captured = pqSaveScreenshotReaction::saveScreenshot(clipboardMode);
+    if (clipboardMode && captured)
+    {
+      auto viewWidget = pqActiveObjects::instance().activeView()->widget();
+      auto overlay = new pqColorOverlay(viewWidget);
+      overlay->resize(viewWidget->size());
+      // Light blue
+      overlay->setRgb(171, 223, 255);
+      overlay->show();
+
+      // Makes the overlay appear then disappear quickly to indicate a screenshot was taken
+      auto animation = new QPropertyAnimation(overlay, "opacity");
+
+      animation->setEasingCurve(QEasingCurve::OutQuad);
+      animation->setDuration(250);
+
+      animation->setKeyValueAt(0, 0);
+      animation->setKeyValueAt(0.1, 192);
+      animation->setKeyValueAt(1, 0);
+
+      animation->start();
+
+      this->connect(animation, &QPropertyAnimation::finished, [=] { overlay->deleteLater(); });
+    }
   }
 }

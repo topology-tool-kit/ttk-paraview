@@ -26,19 +26,19 @@
 #include <sstream>
 #include <vector>
 
-#include <assert.h>
+#include <cassert>
 
 vtkStandardNewMacro(vtkSIMetaReaderProxy);
 //----------------------------------------------------------------------------
 vtkSIMetaReaderProxy::vtkSIMetaReaderProxy()
 {
-  this->FileNameMethod = 0;
+  this->FileNameMethod = nullptr;
 }
 
 //----------------------------------------------------------------------------
 vtkSIMetaReaderProxy::~vtkSIMetaReaderProxy()
 {
-  this->SetFileNameMethod(0);
+  this->SetFileNameMethod(nullptr);
 }
 
 //----------------------------------------------------------------------------

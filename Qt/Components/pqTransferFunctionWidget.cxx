@@ -167,7 +167,7 @@ protected:
     this->NeedUpdate = false;
     this->DataValid = false;
   }
-  ~vtkTransferFunctionChartXY() override {}
+  ~vtkTransferFunctionChartXY() override = default;
 
   void AdjustAxes()
   {
@@ -200,6 +200,7 @@ public:
 
   pqTimer Timer;
   pqTimer RangeTimer;
+  pqTimer EditColorPointTimer;
 
   vtkSmartPointer<vtkRangeHandlesItem> RangeHandlesItem;
   vtkSmartPointer<vtkScalarsToColorsItem> TransferFunctionItem;
@@ -218,6 +219,11 @@ public:
 
     this->RangeTimer.setSingleShot(true);
     this->RangeTimer.setInterval(0);
+
+    // A delay is necessary otherwise the color dialog grabs focus
+    // too quickly causing #20758.
+    this->EditColorPointTimer.setSingleShot(true);
+    this->EditColorPointTimer.setInterval(100);
 
     this->Window->SetMultiSamples(8);
 
@@ -282,6 +288,9 @@ pqTransferFunctionWidget::pqTransferFunctionWidget(QWidget* parentObject)
       renWin->Render();
     }
   });
+
+  this->connect(&this->Internals->EditColorPointTimer, SIGNAL(timeout()),
+    SLOT(editColorAtCurrentControlPoint()));
 }
 
 //-----------------------------------------------------------------------------
@@ -473,6 +482,14 @@ void pqTransferFunctionWidget::initialize(
 //-----------------------------------------------------------------------------
 void pqTransferFunctionWidget::onCurrentPointEditEvent()
 {
+  // defer the invocation to avoid paraview/paraview#20758.
+  auto& internals = (*this->Internals);
+  internals.EditColorPointTimer.start();
+}
+
+//-----------------------------------------------------------------------------
+void pqTransferFunctionWidget::editColorAtCurrentControlPoint()
+{
   vtkColorTransferControlPointsItem* cpitem =
     vtkColorTransferControlPointsItem::SafeDownCast(this->Internals->ControlPointsItem);
   if (cpitem == nullptr)
@@ -489,6 +506,11 @@ void pqTransferFunctionWidget::onCurrentPointEditEvent()
   vtkColorTransferFunction* ctf = cpitem->GetColorTransferFunction();
   assert(ctf != nullptr);
 
+  // Disable the interactor to ignore any events that may be issues
+  // from the operating system after the dialog is shown and closed.
+  // Fixes #20758.
+  this->Internals->Widget->interactor()->Disable();
+
   double xrgbms[6];
   ctf->GetNodeValue(currentIdx, xrgbms);
   QColor color = QColorDialog::getColor(QColor::fromRgbF(xrgbms[1], xrgbms[2], xrgbms[3]), this,
@@ -502,6 +524,16 @@ void pqTransferFunctionWidget::onCurrentPointEditEvent()
 
     Q_EMIT this->controlPointsModified();
   }
+
+  // Simulate a MouseButtonReleaseEvent that can get lost when the color
+  // selector is closed. Fixes #20758.
+  vtkContextMouseEvent mouseEvent;
+  mouseEvent.SetButton(vtkContextMouseEvent::LEFT_BUTTON);
+  cpitem->MouseButtonReleaseEvent(mouseEvent);
+
+  // Re-enable the widget interactor a short time after the dialog closes.
+  // Fixes #20758.
+  QTimer::singleShot(100, [=]() { this->Internals->Widget->interactor()->Enable(); });
 }
 
 //-----------------------------------------------------------------------------

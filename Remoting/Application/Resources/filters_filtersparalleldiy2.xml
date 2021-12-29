@@ -81,7 +81,76 @@
         </DataTypeDomain>
         <Documentation>This property specifies the input.</Documentation>
       </InputProperty>
+
+      <DoubleVectorProperty name="Tolerance"
+        command="SetTolerance"
+        number_of_elements="1"
+        default_values="0">
+        <Documentation>
+          Set the tolerance to use to identify coincident points. 0 means the
+          points should be exactly identical.
+        </Documentation>
+        <DoubleRangeDomain name="range" min="0" />
+      </DoubleVectorProperty>
       <!-- End GenerateGlobalIds -->
+    </SourceProxy>
+
+    <!-- ==================================================================== -->
+    <SourceProxy class="vtkGhostCellsGenerator"
+                 label="Ghost Cells Generator"
+                 name="GhostCellsGenerator">
+      <Documentation short_help="Generate ghosts.">
+        Generate ghost cells and ghost points in a composite data set. Ghosts are exchanged
+        between blocks / partitions of same type. Currently, vtkImageData, vtkRectilinearGrid,
+        vtkStructuredGrid, vtkPolyData and vtkUnstructuredGrid are supported. Those input types can
+        be dispatched in vtkPartitionedDataSet or vtkPartitionedDataSetCollection. Inside a,
+        collection, 2 partitioned data sets do not exchange ghosts, but partitions inside a
+        partitioned data set do.
+      </Documentation>
+      <InputProperty command="SetInputConnection"
+                     name="Input">
+        <ProxyGroupDomain name="groups">
+          <Group name="sources" />
+          <Group name="filters" />
+        </ProxyGroupDomain>
+        <DataTypeDomain name="input_type">
+          <DataType value="vtkCompositeDataSet" />
+          <DataType value="vtkDataSet" />
+        </DataTypeDomain>
+        <Documentation>This property specifies the input.</Documentation>
+      </InputProperty>
+      <IntVectorProperty command="SetNumberOfGhostLayers"
+                         default_values="1"
+                         name="MinimumNumberOfGhosts"
+                         number_of_elements="1"
+                         panel_visibility="default">
+        <Documentation>
+          When **BuildIfRequired** if off, use this to specify the minimum number of
+          ghost cells to request. The filter may request more ghost levels than indicated if a
+          downstream filter asked for more ghost levels.
+        </Documentation>
+        <IntRangeDomain name="range" min="1" max="100"/>
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   mode="visibility"
+                                   property="BuildIfRequired"
+                                   value="0">
+          </PropertyWidgetDecorator>
+        </Hints>
+      </IntVectorProperty>
+      <IntVectorProperty command="SetBuildIfRequired"
+                         default_values="0"
+                         name="BuildIfRequired"
+                        number_of_elements="1">
+      <Documentation>
+        Specify if the filter must generate the ghost cells only
+        if required by the pipeline downstream. To force at least a fixed level
+        of ghosts, this must be set to 0 (unchecked).
+      </Documentation>
+                         panel_visibility="advanced">
+        <BooleanDomain name="bool" />
+      </IntVectorProperty>
+      <!-- End CompositeDataSetGhostCellsGenerator -->
     </SourceProxy>
 
     <!-- ==================================================================== -->
@@ -132,6 +201,17 @@
           Set to 0 to indicate that the partitions should match the number of ranks.
           The value provided is a hint and the actual number of partitions will be
         equal to the power of 2 greater than or equal to the chosen value.</Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="LoadBalanceAcrossAllBlocks"
+        command="SetLoadBalanceAcrossAllBlocks"
+        number_of_elements="1"
+        default_values="1">
+        <BooleanDomain name="bool" />
+        <Documentation>When checked, for datasets with multiple blocks,
+          the filter will try to load balance across all blocks otherwise each block is separately
+          load balanced.
+        </Documentation>
       </IntVectorProperty>
 
       <IntVectorProperty name="PreservePartitionsInOutput"
@@ -187,7 +267,17 @@
         </DataTypeDomain>
         <Documentation>This property specifies the input.</Documentation>
       </InputProperty>
-      <!-- End GenerateGlobalIds -->
+      <DoubleVectorProperty name="Tolerance"
+                         command="SetTolerance"
+                         number_of_elements="1"
+                         default_values="0">
+      <Documentation short_help="The higher, the less overlaps are detected">
+        Cells are deflated by 0.5 * Tolerance before the cell overlaps are computed.
+        Deflating is done by translating each cell's faces and edges, in their normal direction,
+        by a vector of norm Tolerance.
+      </Documentation>
+      </DoubleVectorProperty>
+      <!-- End OverlappingCellsDetector -->
     </SourceProxy>
 
     <!-- ==================================================================== -->

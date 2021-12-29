@@ -19,15 +19,15 @@
  * "ColorTransferFunction" and "PiecewiseFunction".
  * It provides utility API to update lookup-table ranges, invert transfer
  * function, etc. that can be used from C++ as well as Python layers.
-*/
+ */
 
 #ifndef vtkSMTransferFunctionProxy_h
 #define vtkSMTransferFunctionProxy_h
 
 #include "vtkRemotingViewsModule.h" // needed for export macro
 #include "vtkSMProxy.h"
-#include "vtkSmartPointer.h"
-#include "vtkTable.h"
+#include "vtkSmartPointer.h" // for ivars
+#include "vtkTable.h"        // for vtkTable
 
 #include <vtk_jsoncpp_fwd.h> // for forward declarations
 
@@ -239,7 +239,7 @@ public:
   static vtkSMProxy* FindScalarBarRepresentation(vtkSMProxy* proxy, vtkSMProxy* view)
   {
     vtkSMTransferFunctionProxy* self = vtkSMTransferFunctionProxy::SafeDownCast(proxy);
-    return self ? self->FindScalarBarRepresentation(view) : NULL;
+    return self ? self->FindScalarBarRepresentation(view) : nullptr;
   }
   //@}
 
@@ -372,8 +372,8 @@ public:
   //@}
 
   /**
-   * Export a transfer function to a json file. opacityTransferFunction can be null but
-   * colorTransferFunction must not be null. The tfname will be the preset name
+   * Export a transfer function to a json file. opacityTransferFunction can be nullptr but
+   * colorTransferFunction must not be nullptr. The tfname will be the preset name
    * upon importing the transfer function back into ParaView.
    */
   static bool ExportTransferFunction(vtkSMTransferFunctionProxy* colorTransferFunction,

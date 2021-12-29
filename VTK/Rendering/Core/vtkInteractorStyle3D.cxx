@@ -62,14 +62,12 @@ vtkInteractorStyle3D::~vtkInteractorStyle3D()
 
 //------------------------------------------------------------------------------
 // We handle all adjustments here
-void vtkInteractorStyle3D::PositionProp(vtkEventData* ed)
+void vtkInteractorStyle3D::PositionProp(vtkEventData* ed, double* lwpos, double* lwori)
 {
   if (this->CurrentRenderer == nullptr || this->InteractionProp == nullptr)
   {
     return;
   }
-
-  vtkRenderWindowInteractor3D* rwi = static_cast<vtkRenderWindowInteractor3D*>(this->Interactor);
 
   if (ed->GetType() != vtkCommand::Move3DEvent)
   {
@@ -79,7 +77,22 @@ void vtkInteractorStyle3D::PositionProp(vtkEventData* ed)
   double wpos[3];
   edd->GetWorldPosition(wpos);
 
-  double* lwpos = rwi->GetLastWorldEventPosition(rwi->GetPointerIndex());
+  double wori[4];
+  edd->GetWorldOrientation(wori);
+
+  // If no user defined last world event and last world orientation,
+  // use the ones stored by vtkRenderWindowInteractor3D
+  if (lwpos == nullptr || lwori == nullptr)
+  {
+    vtkRenderWindowInteractor3D* rwi = static_cast<vtkRenderWindowInteractor3D*>(this->Interactor);
+    if (rwi == nullptr)
+    {
+      vtkErrorMacro("vtkRenderWindowInteractor3D is necessary without setting lwpos and lwori.");
+      return;
+    }
+    lwpos = rwi->GetLastWorldEventPosition(rwi->GetPointerIndex());
+    lwori = rwi->GetLastWorldEventOrientation(rwi->GetPointerIndex());
+  }
 
   double trans[3];
   for (int i = 0; i < 3; i++)
@@ -102,10 +115,6 @@ void vtkInteractorStyle3D::PositionProp(vtkEventData* ed)
   {
     this->InteractionProp->AddPosition(trans);
   }
-
-  double* wori = rwi->GetWorldEventOrientation(rwi->GetPointerIndex());
-
-  double* lwori = rwi->GetLastWorldEventOrientation(rwi->GetPointerIndex());
 
   // compute the net rotation
   vtkQuaternion<double> q1;
@@ -221,10 +230,6 @@ void vtkInteractorStyle3D::Dolly3D(vtkEventData* ed)
 
   vtkRenderWindowInteractor3D* rwi = static_cast<vtkRenderWindowInteractor3D*>(this->Interactor);
 
-  if (ed->GetType() != vtkCommand::Move3DEvent)
-  {
-    return;
-  }
   vtkEventDataDevice3D* edd = static_cast<vtkEventDataDevice3D*>(ed);
   const double* wori = edd->GetWorldOrientation();
 
@@ -240,14 +245,18 @@ void vtkInteractorStyle3D::Dolly3D(vtkEventData* ed)
   double* trans = rwi->GetPhysicalTranslation(this->CurrentRenderer->GetActiveCamera());
 
   // scale speed by thumb position on the touchpad along Y axis
-  float tpos[3];
-  rwi->GetTouchPadPosition(edd->GetDevice(), vtkEventDataDeviceInput::Unknown, tpos);
-  if (fabs(tpos[0]) > fabs(tpos[1]))
+  // update touchpad/joystick if we have the data
+  if (edd->GetType() == vtkCommand::ViewerMovement3DEvent)
+  {
+    edd->GetTrackPadPosition(this->LastTrackPadPosition);
+  }
+
+  if (fabs(this->LastTrackPadPosition[0]) > fabs(this->LastTrackPadPosition[1]))
   {
     // do not dolly if pressed direction is not up or down but left or right
     return;
   }
-  double speedScaleFactor = tpos[1]; // -1 to +1 (the Y axis of the trackpad)
+  double speedScaleFactor = this->LastTrackPadPosition[1]; // -1 to +1 (the Y axis of the trackpad)
   double physicalScale = rwi->GetPhysicalScale();
 
   this->LastDolly3DEventTime->StopTimer();

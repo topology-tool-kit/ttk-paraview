@@ -14,6 +14,7 @@
 =========================================================================*/
 #include "vtkJSONDataSetWriter.h"
 
+#include "vtkArchiver.h"
 #include "vtkCellArray.h"
 #include "vtkCellData.h"
 #include "vtkDataArray.h"
@@ -34,8 +35,6 @@
 #include "vtksys/FStream.hxx"
 #include "vtksys/MD5.h"
 #include "vtksys/SystemTools.hxx"
-
-#include "vtkArchiver.h"
 
 #include <fstream>
 #include <sstream>
@@ -205,8 +204,6 @@ void vtkJSONDataSetWriter::Write(vtkDataSet* dataset)
     return;
   }
 
-  this->GetArchiver()->OpenArchive();
-
   // Capture vtkDataSet definition
   std::stringstream metaJsonFile;
   metaJsonFile << "{\n";
@@ -276,9 +273,11 @@ void vtkJSONDataSetWriter::Write(vtkDataSet* dataset)
   }
 
   // PointData
+  bool isEmpty = true;
   std::string fieldJSON = this->WriteDataSetAttributes(dataset->GetPointData(), "pointData");
   if (!fieldJSON.empty())
   {
+    isEmpty = false;
     metaJsonFile << ",\n" << fieldJSON.c_str();
   }
 
@@ -286,17 +285,21 @@ void vtkJSONDataSetWriter::Write(vtkDataSet* dataset)
   fieldJSON = this->WriteDataSetAttributes(dataset->GetCellData(), "cellData");
   if (!fieldJSON.empty())
   {
+    isEmpty = false;
     metaJsonFile << ",\n" << fieldJSON.c_str();
   }
 
   metaJsonFile << "}\n";
 
-  // Write meta-data file
-  std::string metaJsonFileStr = metaJsonFile.str();
-  this->GetArchiver()->InsertIntoArchive(
-    "index.json", metaJsonFileStr.c_str(), metaJsonFileStr.size());
-
-  this->GetArchiver()->CloseArchive();
+  // Create archive only if there's actually something to write
+  if (this->ValidDataSet || !isEmpty)
+  {
+    this->GetArchiver()->OpenArchive();
+    std::string metaJsonFileStr = metaJsonFile.str();
+    this->GetArchiver()->InsertIntoArchive(
+      "index.json", metaJsonFileStr.c_str(), metaJsonFileStr.size());
+    this->GetArchiver()->CloseArchive();
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -316,7 +319,7 @@ bool vtkJSONDataSetWriter::WriteArrayContents(vtkDataArray* input, const char* f
   }
 
   // Check if we need to convert the (u)int64 to (u)int32
-  vtkSmartPointer<vtkDataArray> arrayToWrite = input;
+  vtkSmartPointer<vtkDataArray> arrayToWrite;
   vtkIdType arraySize = input->GetNumberOfTuples() * input->GetNumberOfComponents();
   switch (input->GetDataType())
   {
@@ -353,6 +356,9 @@ bool vtkJSONDataSetWriter::WriteArrayContents(vtkDataArray* input, const char* f
         }
         arrayToWrite = int32;
       }
+      break;
+    default:
+      arrayToWrite = input;
       break;
   }
 

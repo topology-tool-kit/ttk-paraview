@@ -15,13 +15,15 @@
 
 set(VTKM_NO_ASSERT ${VTKm_NO_ASSERT})
 set(VTKM_NO_ASSERT_CUDA ${VTKm_NO_ASSERT_CUDA})
+set(VTKM_NO_ASSERT_HIP ${VTKm_NO_ASSERT_HIP})
 set(VTKM_USE_DOUBLE_PRECISION ${VTKm_USE_DOUBLE_PRECISION})
 set(VTKM_USE_64BIT_IDS ${VTKm_USE_64BIT_IDS})
 
 set(VTKM_ENABLE_CUDA ${VTKm_ENABLE_CUDA})
-set(VTKM_ENABLE_TBB ${VTKm_ENABLE_TBB})
-set(VTKM_ENABLE_OPENMP ${VTKm_ENABLE_OPENMP})
 set(VTKM_ENABLE_KOKKOS ${VTKm_ENABLE_KOKKOS})
+set(VTKM_ENABLE_OPENMP ${VTKm_ENABLE_OPENMP})
+set(VTKM_ENABLE_TBB ${VTKm_ENABLE_TBB})
+
 set(VTKM_ENABLE_MPI ${VTKm_ENABLE_MPI})
 
 if(VTKM_ENABLE_CUDA)
@@ -31,10 +33,11 @@ endif()
 
 if (TARGET vtkm::kokkos_cuda)
   set(VTKM_KOKKOS_CUDA ON)
+elseif(TARGET vtkm::kokkos_hip)
+  set(VTKM_KOKKOS_HIP ON)
 endif()
 
 set(VTKM_ENABLE_LOGGING ${VTKm_ENABLE_LOGGING})
-
 set(VTKM_NO_DEPRECATED_VIRTUAL ${VTKm_NO_DEPRECATED_VIRTUAL})
 
 vtkm_get_kit_name(kit_name kit_dir)
@@ -45,17 +48,10 @@ vtkm_install_headers(vtkm/internal
   ${VTKm_BINARY_INCLUDE_DIR}/${kit_dir}/Configure.h
   )
 
-unset(VTKM_ENABLE_MPI)
-unset(VTKM_ENABLE_TBB)
-unset(VTKM_ENABLE_CUDA)
-
-unset(VTKM_USE_64BIT_IDS)
-unset(VTKM_USE_DOUBLE_PRECISION)
-unset(VTKM_NO_ASSERT)
-
 
 set(headers
   ArrayPortalBasic.h
+  ArrayPortalDummy.h
   ArrayPortalHelpers.h
   ArrayPortalUniformPointCoordinates.h
   ArrayPortalValueReference.h
@@ -74,8 +70,8 @@ set(headers
   IndicesExtrude.h
   Invocation.h
   Unreachable.h
-  Variant.h
-  VariantDetail.h
+  VariantImpl.h
+  VariantImplDetail.h
   VecOperators.h
   Windows.h
   )
@@ -84,7 +80,7 @@ vtkm_declare_headers(${headers})
 
 vtkm_pyexpander_generated_file(FunctionInterfaceDetailPre.h)
 vtkm_pyexpander_generated_file(FunctionInterfaceDetailPost.h)
-vtkm_pyexpander_generated_file(VariantDetail.h)
+vtkm_pyexpander_generated_file(VariantImplDetail.h)
 vtkm_pyexpander_generated_file(VecOperators.h)
 
 add_subdirectory(testing)

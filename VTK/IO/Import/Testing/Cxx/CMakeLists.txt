@@ -1,7 +1,7 @@
 # This is an alternative  way to add a named test that uses a common executable
 # Use this if it does not require MPI
 
-set(TEMP ${VTK_BINARY_DIR}/Testing/Temporary)
+set(TEMP "${_vtk_build_TEST_OUTPUT_DATA_DIRECTORY}")
 
 vtk_add_test_cxx(vtkIOImportCxxTests tests
   OBJImporter-TwoTrianglesWithNegativeIndices,TestOBJImporter.cxx
@@ -65,15 +65,23 @@ vtk_add_test_cxx(vtkIOImportCxxTests tests
   )
 
 vtk_add_test_cxx(vtkIOImportCxxTests tests
-  TestGLTFImporter,TestGLTFImporter.cxx DATA{../Data/glTF/Avocado/Avocado.glb}
+  TestGLTFImporter,TestGLTFImporter.cxx DATA{../Data/glTF/Avocado/Avocado.glb} -1
 )
 
 vtk_add_test_cxx(vtkIOImportCxxTests tests
-  TestGLTFImporterPBR,TestGLTFImporter.cxx DATA{../Data/glTF/WaterBottle/WaterBottle.glb}
+  TestGLTFImporterPBR,TestGLTFImporter.cxx DATA{../Data/glTF/WaterBottle/WaterBottle.glb} -1
 )
 
 vtk_add_test_cxx(vtkIOImportCxxTests tests
-  TestGLTFImporterKHRLightsPunctual,TestGLTFImporter.cxx DATA{../Data/glTF/Lights/lights.gltf}
+  TestGLTFImporterKHRLightsPunctual,TestGLTFImporter.cxx DATA{../Data/glTF/Lights/lights.gltf} 0
+)
+
+vtk_add_test_cxx(vtkIOImportCxxTests tests
+  TestGLTFImporterCamera,TestGLTFImporter.cxx DATA{../Data/glTF/Cameras/Cameras.gltf} 1
+)
+
+vtk_add_test_cxx(vtkIOImportCxxTests tests
+  TestGLTFImporterUnlit,TestGLTFImporter.cxx DATA{../Data/glTF/UnlitTest/UnlitTest.glb} -1
 )
 
 vtk_add_test_cxx(vtkIOImportCxxTests tests

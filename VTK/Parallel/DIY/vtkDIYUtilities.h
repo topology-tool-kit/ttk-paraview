@@ -22,6 +22,7 @@
 #ifndef vtkDIYUtilities_h
 #define vtkDIYUtilities_h
 
+#include "vtkDeprecation.h" // for VTK_DEPRECATED_IN_9_1_0
 #include "vtkObject.h"
 #include "vtkParallelDIYModule.h" // for export macros
 #include "vtkSmartPointer.h"      // needed for vtkSmartPointer
@@ -38,11 +39,14 @@
 #include VTK_DIY2(diy/types.hpp)
 // clang-format on
 
+class vtkDataArray;
 class vtkBoundingBox;
 class vtkDataObject;
 class vtkDataSet;
+class vtkFieldData;
 class vtkMultiProcessController;
 class vtkPoints;
+class vtkStringArray;
 
 class VTKPARALLELDIY_EXPORT vtkDIYUtilities : public vtkObject
 {
@@ -63,13 +67,37 @@ public:
    */
   static diy::mpi::communicator GetCommunicator(vtkMultiProcessController* controller);
 
-  //@{
+  ///@{
   /**
    * Load/Save a vtkDataSet in a diy::BinaryBuffer.
    */
   static void Save(diy::BinaryBuffer& bb, vtkDataSet*);
   static void Load(diy::BinaryBuffer& bb, vtkDataSet*&);
-  //@}
+  ///@}
+
+  ///@{
+  /**
+   * Load/Save a vtkFieldData in a diy::BinaryBuffer.
+   */
+  static void Save(diy::BinaryBuffer& bb, vtkFieldData*);
+  static void Load(diy::BinaryBuffer& bb, vtkFieldData*&);
+  ///@}
+
+  ///@{
+  /**
+   * Load/Save a vtkStringArray in a diy::BinaryBuffer.
+   */
+  static void Save(diy::BinaryBuffer& bb, vtkStringArray*);
+  static void Load(diy::BinaryBuffer& bb, vtkStringArray*&);
+  ///@}
+
+  ///@{
+  /**
+   * Load/Save a vtkDataArray in a diy::BinaryBuffer.
+   */
+  static void Save(diy::BinaryBuffer& bb, vtkDataArray*);
+  static void Load(diy::BinaryBuffer& bb, vtkDataArray*&);
+  ///@}
 
   /**
    * Reduce bounding box.
@@ -105,10 +133,11 @@ public:
    * vector will have just 1 DataSetT. If dobj is a vtkCompositeDataSet, then
    * we iterate over it and add all non-null leaf nodes to the returned vector.
    */
+  VTK_DEPRECATED_IN_9_1_0("Use vtkCompositeDataSet::GetDataSets instead")
   template <class DataSetT = vtkDataSet>
   static std::vector<DataSetT*> GetDataSets(vtkDataObject* dobj);
 
-  //@{
+  ///@{
   /**
    * Extracts points from the input. If input is not a vtkPointSet, it will use
    * an appropriate filter to extract the vtkPoints. If use_cell_centers is
@@ -117,7 +146,7 @@ public:
    */
   static std::vector<vtkSmartPointer<vtkPoints>> ExtractPoints(
     const std::vector<vtkDataSet*>& datasets, bool use_cell_centers);
-  //@}
+  ///@}
 
   /**
    * Convenience method to get local bounds for the data object.
@@ -156,6 +185,20 @@ struct Serialization<vtkDataSet*>
   static void save(BinaryBuffer& bb, vtkDataSet* const& p) { vtkDIYUtilities::Save(bb, p); }
   static void load(BinaryBuffer& bb, vtkDataSet*& p) { vtkDIYUtilities::Load(bb, p); }
 };
+
+template <>
+struct Serialization<vtkDataArray*>
+{
+  static void save(BinaryBuffer& bb, vtkDataArray* const& da) { vtkDIYUtilities::Save(bb, da); }
+  static void load(BinaryBuffer& bb, vtkDataArray*& da) { vtkDIYUtilities::Load(bb, da); }
+};
+
+template <>
+struct Serialization<vtkFieldData*>
+{
+  static void save(BinaryBuffer& bb, vtkFieldData* const& fd) { vtkDIYUtilities::Save(bb, fd); }
+  static void load(BinaryBuffer& bb, vtkFieldData*& fd) { vtkDIYUtilities::Load(bb, fd); }
+};
 }
 
 // Implementation detail for Schwarz counter idiom.
@@ -171,7 +214,6 @@ private:
 };
 static vtkDIYUtilitiesCleanup vtkDIYUtilitiesCleanupInstance;
 
-#include "vtkDIYUtilities.txx"
+#include "vtkDIYUtilities.txx" // for template implementations
 
 #endif
-// VTK-HeaderTest-Exclude: vtkDIYUtilities.h

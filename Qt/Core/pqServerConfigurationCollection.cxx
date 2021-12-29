@@ -32,7 +32,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqServerConfigurationCollection.h"
 
 #include "pqCoreUtilities.h"
-#include "pqOptions.h"
 #include "pqServerConfiguration.h"
 #include "pqServerResource.h"
 #include "vtkNew.h"
@@ -40,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkPVXMLElement.h"
 #include "vtkPVXMLParser.h"
 #include "vtkProcessModule.h"
+#include "vtkRemotingCoreConfiguration.h"
 #include "vtkResourceFileLocator.h"
 
 #include <vtksys/SystemTools.hxx>
@@ -55,21 +55,21 @@ namespace
 // get path to user-servers
 static QString userServers()
 {
-  const char* serversFileName =
-    vtkProcessModule::GetProcessModule()->GetOptions()->GetServersFileName();
-
-  return serversFileName ? serversFileName
-                         : pqCoreUtilities::getParaViewUserDirectory() + "/servers.pvsc";
+  return pqCoreUtilities::getParaViewUserDirectory() + "/servers.pvsc";
 }
 
+static const std::vector<std::string>& customServers()
+{
+  return vtkRemotingCoreConfiguration::GetInstance()->GetServerConfigurationsFiles();
+}
 // get path to shared system servers.
 static QString systemServers()
 {
   QString settingsRoot;
 #if defined(Q_OS_WIN)
-  settingsRoot = QString::fromLocal8Bit(getenv("COMMON_APPDATA"));
+  settingsRoot = QString::fromUtf8(getenv("COMMON_APPDATA"));
 #else
-  settingsRoot = QString::fromLocal8Bit("/usr/share");
+  settingsRoot = QString::fromUtf8("/usr/share");
 #endif
   QString settingsPath = QString("%2%1%3%1%4");
   settingsPath = settingsPath.arg(QDir::separator());
@@ -82,7 +82,7 @@ static QString systemServers()
 static QString defaultServers()
 {
   auto vtk_libs = vtkGetLibraryPathForSymbol(GetVTKVersion);
-  std::vector<std::string> prefixes = { ".", "bin", "lib" };
+  std::vector<std::string> prefixes = { ".", "bin", "lib", "MacOS" };
 
   vtkNew<vtkResourceFileLocator> locator;
   locator->SetLogVerbosity(vtkPVLogger::GetApplicationVerbosity());
@@ -107,11 +107,14 @@ pqServerConfigurationCollection::pqServerConfigurationCollection(QObject* parent
   config.setMutable(false);
   this->Configurations["builtin"] = config;
 
-  pqOptions* options = pqOptions::SafeDownCast(vtkProcessModule::GetProcessModule()->GetOptions());
-  if (!options || !options->GetDisableRegistry())
+  if (!vtkRemotingCoreConfiguration::GetInstance()->GetDisableRegistry())
   {
     this->load(defaultServers(), false);
     this->load(systemServers(), false);
+    for (auto& fname : customServers())
+    {
+      this->load(fname.c_str(), false);
+    }
     this->load(userServers(), true);
   }
 }
@@ -119,8 +122,8 @@ pqServerConfigurationCollection::pqServerConfigurationCollection(QObject* parent
 //-----------------------------------------------------------------------------
 pqServerConfigurationCollection::~pqServerConfigurationCollection()
 {
-  pqOptions* options = pqOptions::SafeDownCast(vtkProcessModule::GetProcessModule()->GetOptions());
-  if (!options || !options->GetDisableRegistry())
+  auto config = vtkRemotingCoreConfiguration::GetInstance();
+  if (!config->GetDisableRegistry())
   {
     this->save(userServers(), true);
   }
@@ -143,8 +146,9 @@ bool pqServerConfigurationCollection::load(const QString& filename, bool mutable
 //-----------------------------------------------------------------------------
 bool pqServerConfigurationCollection::saveNow()
 {
-  pqOptions* options = pqOptions::SafeDownCast(vtkProcessModule::GetProcessModule()->GetOptions());
-  if (!options || !options->GetDisableRegistry())
+  auto config = vtkRemotingCoreConfiguration::GetInstance();
+  if (!config->GetDisableRegistry())
+
   {
     return this->save(userServers(), true);
   }
@@ -153,7 +157,7 @@ bool pqServerConfigurationCollection::saveNow()
     static bool warned = false;
     if (!warned)
     {
-      qWarning() << "When running with the -dr flag the server settings will not be saved.";
+      qWarning() << "When running with the `--dr` flag the server settings will not be saved.";
       warned = true;
     }
     return true;
@@ -167,7 +171,7 @@ bool pqServerConfigurationCollection::save(const QString& filename, bool only_mu
   QFile file(filename);
   if (!contents.isEmpty() && file.open(QIODevice::WriteOnly))
   {
-    file.write(contents.toLocal8Bit().data());
+    file.write(contents.toUtf8().data());
     file.close();
     return true;
   }
@@ -178,7 +182,7 @@ bool pqServerConfigurationCollection::save(const QString& filename, bool only_mu
 bool pqServerConfigurationCollection::loadContents(const QString& contents, bool mutable_configs)
 {
   vtkNew<vtkPVXMLParser> parser;
-  if (!parser->Parse(contents.toLocal8Bit().data()))
+  if (!parser->Parse(contents.toUtf8().data()))
   {
     qWarning() << "Configuration not a valid xml.";
     return false;
@@ -307,5 +311,5 @@ const pqServerConfiguration* pqServerConfigurationCollection::configuration(
     return &iter.value();
   }
 
-  return NULL;
+  return nullptr;
 }

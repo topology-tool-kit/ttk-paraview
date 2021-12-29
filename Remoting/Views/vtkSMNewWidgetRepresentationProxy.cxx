@@ -63,7 +63,7 @@ public:
     }
   }
   vtkSMNewWidgetRepresentationObserver()
-    : Proxy(0)
+    : Proxy(nullptr)
   {
   }
   vtkSMNewWidgetRepresentationProxy* Proxy;
@@ -71,7 +71,7 @@ public:
 
 struct vtkSMNewWidgetRepresentationInternals
 {
-  typedef std::list<vtkSmartPointer<vtkSMLink> > LinksType;
+  typedef std::list<vtkSmartPointer<vtkSMLink>> LinksType;
   LinksType Links;
   vtkWeakPointer<vtkSMRenderViewProxy> ViewProxy;
 
@@ -84,9 +84,9 @@ struct vtkSMNewWidgetRepresentationInternals
 vtkSMNewWidgetRepresentationProxy::vtkSMNewWidgetRepresentationProxy()
 {
   this->SetLocation(vtkPVSession::CLIENT_AND_SERVERS);
-  this->RepresentationProxy = 0;
-  this->WidgetProxy = 0;
-  this->Widget = 0;
+  this->RepresentationProxy = nullptr;
+  this->WidgetProxy = nullptr;
+  this->Widget = nullptr;
   this->Observer = vtkSMNewWidgetRepresentationObserver::New();
   this->Observer->Proxy = this;
   this->Internal = new vtkSMNewWidgetRepresentationInternals;
@@ -95,16 +95,13 @@ vtkSMNewWidgetRepresentationProxy::vtkSMNewWidgetRepresentationProxy()
 //----------------------------------------------------------------------------
 vtkSMNewWidgetRepresentationProxy::~vtkSMNewWidgetRepresentationProxy()
 {
-  this->RepresentationProxy = 0;
-  this->WidgetProxy = 0;
-  this->Widget = 0;
-  this->Observer->Proxy = 0;
+  this->RepresentationProxy = nullptr;
+  this->WidgetProxy = nullptr;
+  this->Widget = nullptr;
+  this->Observer->Proxy = nullptr;
   this->Observer->Delete();
 
-  if (this->Internal)
-  {
-    delete this->Internal;
-  }
+  delete this->Internal;
 }
 
 //-----------------------------------------------------------------------------
@@ -263,7 +260,7 @@ void vtkSMNewWidgetRepresentationProxy::ExecuteEvent(unsigned long event)
 bool vtkSMNewWidgetRepresentationProxy::LinkProperties(
   vtkSMProxy* controlledProxy, vtkSMPropertyGroup* controlledPropertyGroup)
 {
-  if (this->Internal->ControlledProxy != NULL)
+  if (this->Internal->ControlledProxy != nullptr)
   {
     vtkErrorMacro("Cannot `LinkProperties` with multiple proxies.");
     return false;

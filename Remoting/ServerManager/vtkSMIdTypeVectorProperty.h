@@ -20,13 +20,15 @@
  * representing a vector of integers (vtkIdType, possibly 64 bit).
  * @sa
  * vtkSMVectorProperty vtkSMDoubleVectorProperty vtkSMStringVectorProperty
-*/
+ */
 
 #ifndef vtkSMIdTypeVectorProperty_h
 #define vtkSMIdTypeVectorProperty_h
 
 #include "vtkRemotingServerManagerModule.h" //needed for exports
 #include "vtkSMVectorProperty.h"
+
+#include <vector> // for std::vector
 
 class vtkSMStateLocator;
 
@@ -135,6 +137,14 @@ public:
    * before a domain check is performed.
    */
   unsigned int GetNumberOfUncheckedElements() override;
+
+  ///@{
+  /**
+   * Another API to access elements.
+   */
+  const std::vector<vtkIdType>& GetElements() const;
+  const std::vector<vtkIdType>& GetUncheckedElements() const;
+  ///@}
 
   //@{
   /**

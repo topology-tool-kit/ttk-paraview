@@ -40,23 +40,17 @@ void vtkMinMaxExecute(vtkMinMax* self, int numComp, int compIdx, T* idata, T* od
 vtkMinMax::vtkMinMax()
 {
   this->Operation = vtkMinMax::MIN;
-  this->CFirstPass = NULL;
-  this->PFirstPass = NULL;
-  this->FirstPasses = NULL;
+  this->CFirstPass = nullptr;
+  this->PFirstPass = nullptr;
+  this->FirstPasses = nullptr;
   this->MismatchOccurred = 0;
 }
 
 //-----------------------------------------------------------------------------
 vtkMinMax::~vtkMinMax()
 {
-  if (this->CFirstPass)
-  {
-    delete[] this->CFirstPass;
-  }
-  if (this->PFirstPass)
-  {
-    delete[] this->PFirstPass;
-  }
+  delete[] this->CFirstPass;
+  delete[] this->PFirstPass;
 }
 
 //-----------------------------------------------------------------------------
@@ -102,7 +96,7 @@ int vtkMinMax::RequestData(vtkInformation* vtkNotUsed(reqInfo), vtkInformationVe
 {
   int numInputs;
   int idx, numArrays;
-  vtkCompositeDataSet* cdobj = NULL;
+  vtkCompositeDataSet* cdobj = nullptr;
 
   // get hold of input, output
   vtkPolyData* output = vtkPolyData::SafeDownCast(
@@ -152,20 +146,14 @@ int vtkMinMax::RequestData(vtkInformation* vtkNotUsed(reqInfo), vtkInformationVe
   // initialize first pass flags for the cell data
   int numComp;
   numComp = ocd->GetNumberOfComponents();
-  if (this->CFirstPass)
-  {
-    delete[] this->CFirstPass;
-  }
+  delete[] this->CFirstPass;
   this->CFirstPass = new char[numComp];
   for (idx = 0; idx < numComp; idx++)
   {
     this->CFirstPass[idx] = 1;
   }
   numComp = ipd->GetNumberOfComponents();
-  if (this->PFirstPass)
-  {
-    delete[] this->PFirstPass;
-  }
+  delete[] this->PFirstPass;
   this->PFirstPass = new char[numComp];
   for (idx = 0; idx < numComp; idx++)
   {
@@ -264,9 +252,9 @@ void vtkMinMax::OperateOnField(vtkFieldData* ifd, vtkFieldData* ofd)
     vtkAbstractArray* oa = ofd->GetArray(idx);
 
     // type check
-    // oa will not be null since we are iterating over ifd
+    // oa will not be nullptr since we are iterating over ifd
     // input and output numtuples don't need to match (out will always be 1)
-    if (ia == NULL || ia->GetDataType() != oa->GetDataType() ||
+    if (ia == nullptr || ia->GetDataType() != oa->GetDataType() ||
       ia->GetNumberOfComponents() != oa->GetNumberOfComponents() ||
       (strcmp(ia->GetName(), oa->GetName()) != 0))
     {
@@ -300,7 +288,7 @@ void vtkMinMax::OperateOnArray(vtkAbstractArray* ia, vtkAbstractArray* oa)
   {
     this->Idx = idx;
 
-    if ((this->GhostArray != NULL) &&
+    if ((this->GhostArray != nullptr) &&
       (this->GhostArray->GetValue(idx) & vtkDataSetAttributes::DUPLICATECELL))
     {
       // skip cell and point attributes that don't belong to me
@@ -318,8 +306,8 @@ void vtkMinMax::OperateOnArray(vtkAbstractArray* ia, vtkAbstractArray* oa)
       vtkTemplateMacro(vtkMinMaxExecute(this, numComp, this->ComponentIdx,
         static_cast<VTK_TT*>(idata), static_cast<VTK_TT*>(odata)));
 
-      // if you can make an operator for things like strings etc,
-      // put the cases for those strings here
+        // if you can make an operator for things like strings etc,
+        // put the cases for those strings here
 
       default:
         vtkErrorMacro(<< "Unknown data type refusing to operate on this array");

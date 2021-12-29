@@ -177,7 +177,7 @@ pqCollaborationPanel::~pqCollaborationPanel()
   }
 
   delete this->Internal;
-  this->Internal = 0;
+  this->Internal = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -226,7 +226,7 @@ void pqCollaborationPanel::itemChanged(QTableWidgetItem* item)
         QString userName = item->text();
         if (userName != collab->GetUserLabel(id))
         {
-          collab->SetUserLabel(id, userName.toLocal8Bit().data());
+          collab->SetUserLabel(id, userName.toUtf8().data());
         }
       }
     }
@@ -256,7 +256,8 @@ void pqCollaborationPanel::followUserCamera(int userId)
     this->getSMCollaborationManager()->FollowUser(userId);
   }
 
-  if (this->Internal->CameraToFollowOfUserId == userId || this->getSMCollaborationManager() == NULL)
+  if (this->Internal->CameraToFollowOfUserId == userId ||
+    this->getSMCollaborationManager() == nullptr)
   {
     return;
   }
@@ -320,7 +321,7 @@ void pqCollaborationPanel::onNewMaster(int masterId)
   }
 
   vtkSMCollaborationManager* collabManager = this->getSMCollaborationManager();
-  if (collabManager != NULL)
+  if (collabManager != nullptr)
   {
     this->Internal->masterControl->setVisible(collabManager->IsMaster());
   }
@@ -360,7 +361,7 @@ vtkSMCollaborationManager* pqCollaborationPanel::getSMCollaborationManager()
     }
     return this->Internal->LastSeenCollaborationManager;
   }
-  return NULL;
+  return nullptr;
 }
 //-----------------------------------------------------------------------------
 void pqCollaborationPanel::onUserUpdate()

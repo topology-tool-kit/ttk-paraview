@@ -54,14 +54,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqColorDialogEventTranslator.h"
 #include "pqConsoleWidgetEventPlayer.h"
 #include "pqConsoleWidgetEventTranslator.h"
+#include "pqCoreConfiguration.h"
 #include "pqEventDispatcher.h"
 #include "pqFileDialogEventPlayer.h"
 #include "pqFileDialogEventTranslator.h"
+#include "pqFileUtilitiesEventPlayer.h"
 #include "pqFlatTreeViewEventPlayer.h"
 #include "pqFlatTreeViewEventTranslator.h"
 #include "pqImageUtil.h"
 #include "pqLineEditEventPlayer.h"
-#include "pqOptions.h"
 #include "pqQVTKWidget.h"
 #include "pqQVTKWidgetEventPlayer.h"
 #include "pqQVTKWidgetEventTranslator.h"
@@ -107,7 +108,7 @@ bool saveImage(vtkWindowToImageFilter* Capture, const QFileInfo& File)
 {
   WriterT* const writer = WriterT::New();
   writer->SetInputConnection(Capture->GetOutputPort());
-  writer->SetFileName(File.filePath().toLocal8Bit().data());
+  writer->SetFileName(File.filePath().toUtf8().data());
   writer->Write();
   const bool result = writer->GetErrorCode() == vtkErrorCode::NoError;
   writer->Delete();
@@ -140,6 +141,7 @@ pqCoreTestUtility::pqCoreTestUtility(QObject* p)
   this->eventTranslator()->addWidgetEventTranslator(new pqColorDialogEventTranslator(this));
   this->eventTranslator()->addWidgetEventTranslator(new pqConsoleWidgetEventTranslator(this));
 
+  this->eventPlayer()->addWidgetEventPlayer(new pqFileUtilitiesEventPlayer(this));
   this->eventPlayer()->addWidgetEventPlayer(new pqLineEditEventPlayer(this));
   this->eventPlayer()->addWidgetEventPlayer(new pqQVTKWidgetEventPlayer(this));
   this->eventPlayer()->addWidgetEventPlayer(new pqFileDialogEventPlayer(this));
@@ -151,61 +153,54 @@ pqCoreTestUtility::pqCoreTestUtility(QObject* p)
 }
 
 //-----------------------------------------------------------------------------
-pqCoreTestUtility::~pqCoreTestUtility()
-{
-}
+pqCoreTestUtility::~pqCoreTestUtility() = default;
 
 //-----------------------------------------------------------------------------
 QString pqCoreTestUtility::DataRoot()
 {
-  QString result;
-  if (pqOptions* const options =
-        pqOptions::SafeDownCast(vtkProcessModule::GetProcessModule()->GetOptions()))
-  {
-    result = options->GetDataDirectory();
-  }
-
-  // Let the user override the defaults by setting an environment variable ...
-  if (result.isEmpty())
-  {
-    result = vtksys::SystemTools::GetEnv("PARAVIEW_DATA_ROOT");
-  }
-
-  return result.isEmpty() ? result : QDir::cleanPath(result);
+  return pqCoreTestUtility::cleanPath(
+    QString::fromStdString(pqCoreConfiguration::instance()->dataDirectory()));
 }
 
 //-----------------------------------------------------------------------------
 QString pqCoreTestUtility::BaselineDirectory()
 {
-  QString result;
-  if (pqOptions* const options =
-        pqOptions::SafeDownCast(vtkProcessModule::GetProcessModule()->GetOptions()))
+  auto dir = QString::fromStdString(pqCoreConfiguration::instance()->baselineDirectory());
+  if (dir.isEmpty())
   {
-    result = options->GetBaselineDirectory();
-  }
-
-  // Let the user override the defaults by setting an environment variable ...
-  if (result.isEmpty())
-  {
-    result = vtksys::SystemTools::GetEnv("PARAVIEW_TEST_BASELINE_DIR");
-  }
-
-  // Finally use the xml file location if an instance is available
-  if (result.isEmpty())
-  {
+    // Finally use the xml file location if an instance is available
     pqApplicationCore* core = pqApplicationCore::instance();
-    if (core != NULL)
+    if (core != nullptr)
     {
       pqTestUtility* testUtil = core->testUtility();
-      result = QFileInfo(testUtil->filename()).path();
+      dir = QFileInfo(testUtil->filename()).path();
     }
   }
 
-  // Use current repo in case non are provided
-  if (result.isEmpty())
+  if (dir.isEmpty())
   {
-    result = ".";
+    // Use current CWD in case none is provided
+    dir = ".";
   }
+
+  return pqCoreTestUtility::cleanPath(dir);
+}
+
+//-----------------------------------------------------------------------------
+QString pqCoreTestUtility::TestDirectory()
+{
+  return pqCoreTestUtility::cleanPath(
+    QString::fromStdString(pqCoreConfiguration::instance()->testDirectory()));
+}
+
+//-----------------------------------------------------------------------------
+QString pqCoreTestUtility::cleanPath(const QString& arg)
+{
+  if (arg.isEmpty())
+  {
+    return arg;
+  }
+  auto result = QDir::cleanPath(arg);
 
   // Ensure all slashes face forward ...
   result.replace('\\', '/');
@@ -218,7 +213,6 @@ QString pqCoreTestUtility::BaselineDirectory()
 
   // Trim excess whitespace ...
   result = result.trimmed();
-
   return result;
 }
 
@@ -264,9 +258,9 @@ bool pqCoreTestUtility::CompareImage(vtkRenderWindow* renderWindow, const QStrin
 
   vtkSmartPointer<vtkTesting> testing = vtkSmartPointer<vtkTesting>::New();
   testing->AddArgument("-T");
-  testing->AddArgument(tempDirectory.toLocal8Bit().data());
+  testing->AddArgument(tempDirectory.toUtf8().data());
   testing->AddArgument("-V");
-  testing->AddArgument(referenceImage.toLocal8Bit().data());
+  testing->AddArgument(referenceImage.toUtf8().data());
   testing->SetRenderWindow(renderWindow);
   bool ret = testing->RegressionTest(threshold) == vtkTesting::PASSED;
   renderWindow->SetSize(originalSize);
@@ -279,9 +273,9 @@ bool pqCoreTestUtility::CompareImage(vtkImageData* testImage, const QString& Ref
 {
   vtkSmartPointer<vtkTesting> testing = vtkSmartPointer<vtkTesting>::New();
   testing->AddArgument("-T");
-  testing->AddArgument(TempDirectory.toLocal8Bit().data());
+  testing->AddArgument(TempDirectory.toUtf8().data());
   testing->AddArgument("-V");
-  testing->AddArgument(ReferenceImage.toLocal8Bit().data());
+  testing->AddArgument(ReferenceImage.toUtf8().data());
   vtkSmartPointer<vtkTrivialProducer> tp = vtkSmartPointer<vtkTrivialProducer>::New();
   tp->SetOutput(testImage);
   if (testing->RegressionTest(tp, Threshold) == vtkTesting::PASSED)
@@ -296,7 +290,7 @@ bool pqCoreTestUtility::CompareImage(QWidget* widget, const QString& referenceIm
   double threshold, ostream& vtkNotUsed(output), const QString& tempDirectory,
   const QSize& size /*=QSize(300, 300)*/)
 {
-  assert(widget != NULL);
+  assert(widget != nullptr);
 
   // try to locate a pqView, if any associated with the QWidget.
   QList<pqView*> views =
@@ -353,7 +347,7 @@ bool pqCoreTestUtility::CompareImage(QWidget* widget, const QString& referenceIm
 bool pqCoreTestUtility::CompareView(pqView* curView, const QString& referenceImage,
   double threshold, const QString& tempDirectory, const QSize& size /*=QSize()*/)
 {
-  assert(curView != NULL);
+  assert(curView != nullptr);
 
   SCOPED_UNDO_EXCLUDE();
 
@@ -408,47 +402,16 @@ bool pqCoreTestUtility::CompareView(pqView* curView, const QString& referenceIma
 }
 
 //-----------------------------------------------------------------------------
-QString pqCoreTestUtility::TestDirectory()
-{
-  QString result;
-  if (pqOptions* const options =
-        pqOptions::SafeDownCast(vtkProcessModule::GetProcessModule()->GetOptions()))
-  {
-    result = options->GetTestDirectory();
-  }
-
-  // Let the user override the defaults by setting an environment variable ...
-  if (result.isEmpty())
-  {
-    result = vtksys::SystemTools::GetEnv("PARAVIEW_TEST_DIR");
-  }
-
-  // Ensure all slashes face forward ...
-  result.replace('\\', '/');
-
-  // Remove any trailing slashes ...
-  if (result.size() && result.at(result.size() - 1) == '/')
-  {
-    result.chop(1);
-  }
-
-  // Trim excess whitespace ...
-  result = result.trimmed();
-
-  return result;
-}
-
-//-----------------------------------------------------------------------------
 bool pqCoreTestUtility::CompareImage(const QString& testPNGImage, const QString& referenceImage,
   double threshold, ostream& output, const QString& tempDirectory)
 {
   vtkNew<vtkPNGReader> reader;
-  if (!reader->CanReadFile(testPNGImage.toLocal8Bit().data()))
+  if (!reader->CanReadFile(testPNGImage.toUtf8().data()))
   {
-    output << "Cannot read file : " << testPNGImage.toLocal8Bit().data() << endl;
+    output << "Cannot read file : " << testPNGImage.toUtf8().data() << endl;
     return false;
   }
-  reader->SetFileName(testPNGImage.toLocal8Bit().data());
+  reader->SetFileName(testPNGImage.toUtf8().data());
   reader->Update();
   return pqCoreTestUtility::CompareImage(
     reader->GetOutput(), referenceImage, threshold, output, tempDirectory);
@@ -461,6 +424,7 @@ QString pqCoreTestUtility::fixPath(const QString& path)
   newpath.replace("$PARAVIEW_TEST_ROOT", pqCoreTestUtility::TestDirectory());
   newpath.replace("$PARAVIEW_TEST_BASELINE_DIR", pqCoreTestUtility::BaselineDirectory());
   newpath.replace("$PARAVIEW_DATA_ROOT", pqCoreTestUtility::DataRoot());
+  newpath.replace("$PARAVIEW_PID", QString::number(QCoreApplication::applicationPid()));
   return newpath;
 }
 
@@ -506,6 +470,6 @@ bool pqCoreTestUtility::CompareTile(pqView* view, int rank, int tdx, int tdy,
 
   const QString imagepath =
     QString("%1/tile-%2.png").arg(tempDirectory).arg(QFileInfo(baseline).baseName());
-  layout->SaveAsPNG(rank, imagepath.toLocal8Bit().data());
+  layout->SaveAsPNG(rank, imagepath.toUtf8().data());
   return pqCoreTestUtility::CompareImage(imagepath, baseline, threshold, output, tempDirectory);
 }

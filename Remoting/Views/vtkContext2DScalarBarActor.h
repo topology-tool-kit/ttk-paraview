@@ -38,13 +38,11 @@ class vtkColorLegend;
 class vtkColorTransferFunctionItem;
 class vtkContextActor;
 class vtkContext2D;
-class vtkContextItem;
 class vtkContextScene;
 class vtkDoubleArray;
 class vtkImageData;
 class vtkPoints2D;
 class vtkScalarsToColors;
-class vtkScalarBarItem;
 class vtkTextProperty;
 class vtkViewport;
 
@@ -178,14 +176,6 @@ public:
 
   //@{
   /**
-   * Use custom labels.
-   */
-  void SetUseCustomLabels(bool useLabels);
-  vtkGetMacro(UseCustomLabels, bool);
-  //@}
-
-  //@{
-  /**
    * Set number of custom labels.
    */
   void SetNumberOfCustomLabels(vtkIdType numLabels);
@@ -257,8 +247,8 @@ private:
   int ScalarBarThickness;
 
   /**
-  * Length of the color bar.
-  */
+   * Length of the color bar.
+   */
   double ScalarBarLength;
 
   int AutomaticLabelFormat;
@@ -284,17 +274,10 @@ private:
    */
   bool DrawTickMarks;
 
-  bool UseCustomLabels;
-
   /**
    * Flag that controls if the whole color legend should be reversed
    */
   bool ReverseLegend;
-
-  /**
-   * Custom label values.
-   */
-  vtkSmartPointer<vtkDoubleArray> CustomLabels;
 
   /**
    * Charts API subclass we use to redirect the Paint() request back

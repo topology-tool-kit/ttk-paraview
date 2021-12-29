@@ -33,9 +33,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "pqApplicationCore.h"
 #include "pqCoreUtilities.h"
-#include "pqOptions.h"
 #include "pqSettings.h"
 #include "vtkInitializationHelper.h"
+#include "vtkRemotingCoreConfiguration.h"
 #include "vtkSMSettings.h"
 
 #include <QAbstractButton>
@@ -50,9 +50,7 @@ pqResetDefaultSettingsReaction::pqResetDefaultSettingsReaction(QAction* parentOb
 }
 
 //-----------------------------------------------------------------------------
-pqResetDefaultSettingsReaction::~pqResetDefaultSettingsReaction()
-{
-}
+pqResetDefaultSettingsReaction::~pqResetDefaultSettingsReaction() = default;
 
 //-----------------------------------------------------------------------------
 void pqResetDefaultSettingsReaction::resetSettingsToDefault()
@@ -81,7 +79,7 @@ void pqResetDefaultSettingsReaction::resetSettingsToDefault()
     case QMessageBox::Save:
     {
       auto backups = this->backupSettings();
-      if (backups.size() == 0)
+      if (backups.empty())
       {
         if (QMessageBox::critical(pqCoreUtilities::mainWidget(), tr("Backups failed!"),
               tr("Failed to generate backup files. Do you want to continue?"),
@@ -118,13 +116,13 @@ void pqResetDefaultSettingsReaction::resetSettingsToDefault()
 //-----------------------------------------------------------------------------
 QStringList pqResetDefaultSettingsReaction::backupSettings()
 {
-  auto core = pqApplicationCore::instance();
-  if (core->getOptions()->GetDisableRegistry())
+  if (vtkRemotingCoreConfiguration::GetInstance()->GetDisableRegistry())
   {
     // if registry is disabled, don't bother backing up.
     return QStringList("(`-dr` specified, no backup generated)");
   }
 
+  auto core = pqApplicationCore::instance();
   auto settings = core->settings();
   QString fname = settings->backup();
   if (fname.isEmpty())
@@ -154,13 +152,13 @@ QStringList pqResetDefaultSettingsReaction::backupSettings()
 //-----------------------------------------------------------------------------
 void pqResetDefaultSettingsReaction::clearSettings()
 {
-  auto core = pqApplicationCore::instance();
-  if (core->getOptions()->GetDisableRegistry())
+  if (vtkRemotingCoreConfiguration::GetInstance()->GetDisableRegistry())
   {
     // if registry is disabled, there's nothing to do.
     return;
   }
 
+  auto core = pqApplicationCore::instance();
   core->clearSettings();
   vtkSMSettings::GetInstance()->ClearAllSettings();
   if (vtkInitializationHelper::GetLoadSettingsFilesDuringInitialization())

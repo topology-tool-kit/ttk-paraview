@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqServer.h"
 #include "pqSettings.h"
 #include "pqTabbedMultiViewWidget.h"
+#include "pqUndoStack.h"
 #include "pqView.h"
 #include "vtkImageData.h"
 #include "vtkNew.h"
@@ -103,14 +104,14 @@ QString pqSaveScreenshotReaction::promptFileName(
   const QString lastUsedExt = settings->value(skey, defaultExtension).toString();
 
   auto filters = prototype->GetFileFormatFilters();
-  if (filters.size() == 0)
+  if (filters.empty())
   {
     qWarning("No image writers detected.");
     return QString();
   }
 
-  pqFileDialog file_dialog(
-    NULL, pqCoreUtilities::mainWidget(), tr(prototype->GetXMLLabel()), QString(), filters.c_str());
+  pqFileDialog file_dialog(nullptr, pqCoreUtilities::mainWidget(), tr(prototype->GetXMLLabel()),
+    QString(), filters.c_str());
   file_dialog.setRecentlyUsedExtension(lastUsedExt);
   file_dialog.setObjectName(QString("%1FileDialog").arg(prototype->GetXMLName()));
   file_dialog.setFileMode(pqFileDialog::AnyFile);
@@ -126,22 +127,27 @@ QString pqSaveScreenshotReaction::promptFileName(
 }
 
 //-----------------------------------------------------------------------------
-void pqSaveScreenshotReaction::saveScreenshot(bool clipboardMode)
+bool pqSaveScreenshotReaction::saveScreenshot(bool clipboardMode)
 {
+  SCOPED_UNDO_EXCLUDE();
   pqView* view = pqActiveObjects::instance().activeView();
   if (!view)
   {
     qDebug() << "Cannot save image. No active view.";
-    return;
-  }
-
-  if (clipboardMode)
-  {
-    pqSaveScreenshotReaction::copyScreenshotToClipboard(view->getSize(), false);
-    return;
+    return false;
   }
 
   vtkSMViewProxy* viewProxy = view->getViewProxy();
+
+  if (clipboardMode)
+  {
+    // Get pixel size (not scaled pixel size) for the view.
+    // fixes #20225
+    vtkSMPropertyHelper helper(viewProxy, "ViewSize");
+    const QSize pixelSize(helper.GetAsInt(0), helper.GetAsInt(1));
+    return pqSaveScreenshotReaction::copyScreenshotToClipboard(pixelSize, false);
+  }
+
   vtkSMViewLayoutProxy* layout = vtkSMViewLayoutProxy::FindLayout(viewProxy);
   vtkSMSessionProxyManager* pxm = view->getServer()->proxyManager();
   vtkSmartPointer<vtkSMProxy> proxy;
@@ -150,14 +156,14 @@ void pqSaveScreenshotReaction::saveScreenshot(bool clipboardMode)
   if (!shProxy)
   {
     qCritical() << "Incorrect type for `SaveScreenshot` proxy.";
-    return;
+    return false;
   }
 
   // Get the filename first, this will determine some of the options shown.
   QString filename = pqSaveScreenshotReaction::promptFileName(shProxy, "*.png");
   if (filename.isEmpty())
   {
-    return;
+    return false;
   }
 
   bool restorePreviewMode = false;
@@ -203,7 +209,7 @@ void pqSaveScreenshotReaction::saveScreenshot(bool clipboardMode)
 
   vtkSMPropertyHelper(shProxy, "View").Set(viewProxy);
   vtkSMPropertyHelper(shProxy, "Layout").Set(layout);
-  shProxy->UpdateDefaultsAndVisibilities(filename.toLocal8Bit().data());
+  shProxy->UpdateDefaultsAndVisibilities(filename.toUtf8().data());
   controller->PostInitializeProxy(shProxy);
 
   pqProxyWidgetDialog dialog(shProxy, pqCoreUtilities::mainWidget());
@@ -214,7 +220,7 @@ void pqSaveScreenshotReaction::saveScreenshot(bool clipboardMode)
   dialog.setSettingsKey("SaveScreenshotDialog");
   if (dialog.exec() == QDialog::Accepted)
   {
-    shProxy->WriteImage(filename.toLocal8Bit().data());
+    shProxy->WriteImage(filename.toUtf8().data());
   }
 
   if (layout)
@@ -232,10 +238,8 @@ void pqSaveScreenshotReaction::saveScreenshot(bool clipboardMode)
     widthLink->RemoveAllLinks();
     colorLink->RemoveAllLinks();
   }
-  // This should not be needed as image capturing code only affects back buffer,
-  // however it is currently needed due to paraview/paraview#17256. Once that's
-  // fixed, we should remove this.
-  pqApplicationCore::instance()->render();
+
+  return true;
 }
 
 //-----------------------------------------------------------------------------
@@ -274,7 +278,7 @@ bool pqSaveScreenshotReaction::saveScreenshot(
   {
     return false;
   }
-  return vtkSMUtilities::SaveImage(image, filename.toLocal8Bit().data(), quality) != 0;
+  return vtkSMUtilities::SaveImage(image, filename.toUtf8().data(), quality) != 0;
 }
 
 //-----------------------------------------------------------------------------

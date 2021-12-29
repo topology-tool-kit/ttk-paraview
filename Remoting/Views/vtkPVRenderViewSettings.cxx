@@ -16,6 +16,7 @@
 
 #include "vtkMapper.h"
 #include "vtkObjectFactory.h"
+#include "vtkPVRenderView.h"
 
 #include <cassert>
 
@@ -26,7 +27,7 @@ vtkPVRenderViewSettings* vtkPVRenderViewSettings::New()
 {
   vtkPVRenderViewSettings* instance = vtkPVRenderViewSettings::GetInstance();
   assert(instance);
-  instance->Register(NULL);
+  instance->Register(nullptr);
   return instance;
 }
 
@@ -49,13 +50,14 @@ vtkPVRenderViewSettings::vtkPVRenderViewSettings()
   , PointPickingRadius(0)
   , DisableIceT(false)
   , EnableFastPreselection(false)
+  , BackgroundColor{ 0, 0, 0 }
+  , Background2Color{ 0, 0, 0 }
+  , BackgroundColorMode(vtkPVRenderView::DEFAULT)
 {
 }
 
 //----------------------------------------------------------------------------
-vtkPVRenderViewSettings::~vtkPVRenderViewSettings()
-{
-}
+vtkPVRenderViewSettings::~vtkPVRenderViewSettings() = default;
 
 //----------------------------------------------------------------------------
 void vtkPVRenderViewSettings::SetResolveCoincidentTopology(int mode)

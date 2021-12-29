@@ -82,8 +82,8 @@ public:
   bool IsInteractiveDelayActive;
   double TimeLeftBeforeFullResolution;
 
-  pqInternal() {}
-  ~pqInternal() {}
+  pqInternal() = default;
+  ~pqInternal() = default;
 
   void writeToStatusBar(const char* txt)
   {
@@ -116,7 +116,7 @@ public:
       QString txt = "Full resolution render in: ";
       txt += QString::number(this->TimeLeftBeforeFullResolution);
       txt += " s";
-      this->writeToStatusBar(txt.toLocal8Bit().data());
+      this->writeToStatusBar(txt.toUtf8().data());
       this->TimeLeftBeforeFullResolution -= 0.1;
     }
     else
@@ -128,7 +128,7 @@ public:
 
 //-----------------------------------------------------------------------------
 pqRenderViewBase::pqRenderViewBase(const QString& type, const QString& group, const QString& name,
-  vtkSMViewProxy* renViewProxy, pqServer* server, QObject* _parent /*=NULL*/)
+  vtkSMViewProxy* renViewProxy, pqServer* server, QObject* _parent /*=nullptr*/)
   : Superclass(type, group, name, renViewProxy, server, _parent)
 {
   this->Internal = new pqRenderViewBase::pqInternal();
@@ -183,7 +183,7 @@ void pqRenderViewBase::initializeAfterObjectsCreated()
   // Attach Qt Signal to VTK interactor Delay event
   vtkSMRenderViewProxy* renderViewProxy;
   renderViewProxy = vtkSMRenderViewProxy::SafeDownCast(this->getProxy());
-  if (renderViewProxy != NULL)
+  if (renderViewProxy != nullptr)
   {
     vtkSMViewProxyInteractorHelper* helper = renderViewProxy->GetInteractorHelper();
     assert(helper);
@@ -199,9 +199,9 @@ void pqRenderViewBase::initializeAfterObjectsCreated()
 }
 
 //-----------------------------------------------------------------------------
-void pqRenderViewBase::resetDisplay()
+void pqRenderViewBase::resetDisplay(bool closest)
 {
-  this->resetCamera();
+  this->resetCamera(closest);
 }
 
 //-----------------------------------------------------------------------------

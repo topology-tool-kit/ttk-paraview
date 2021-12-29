@@ -44,13 +44,13 @@ public:
   vtkTypeMacro(vtkXGMLReader, vtkUndirectedGraphAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * The XGML file name.
    */
-  vtkGetStringMacro(FileName);
-  vtkSetStringMacro(FileName);
-  //@}
+  vtkGetFilePathMacro(FileName);
+  vtkSetFilePathMacro(FileName);
+  ///@}
 
 protected:
   vtkXGMLReader();

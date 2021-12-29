@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    Filters/Core/vtkRemoveUnusedPoints.h
+  Module:    vtkRemoveUnusedPoints.h
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -18,7 +18,6 @@
  *
  * vtkRemoveUnusedPoints is a filter that removes any points that are not used by the
  * cells. Currently, this filter only supports vtkUnstructuredGrid.
- *
  */
 
 #ifndef vtkRemoveUnusedPoints_h
@@ -34,7 +33,7 @@ public:
   vtkTypeMacro(vtkRemoveUnusedPoints, vtkUnstructuredGridAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Enable adding a `vtkOriginalPointIds` array to the point data
    * which identifies the original point index. Default is true.
@@ -42,16 +41,16 @@ public:
   vtkSetMacro(GenerateOriginalPointIds, bool);
   vtkGetMacro(GenerateOriginalPointIds, bool);
   vtkBooleanMacro(GenerateOriginalPointIds, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Choose the name to use for the original point ids array. Default is `vtkOriginalPointIds`.
    * This is used only when `GenerateOriginalPointIds` is true.
    */
   vtkSetStringMacro(OriginalPointIdsArrayName);
   vtkGetStringMacro(OriginalPointIdsArrayName);
-  //@}
+  ///@}
 
 protected:
   vtkRemoveUnusedPoints();

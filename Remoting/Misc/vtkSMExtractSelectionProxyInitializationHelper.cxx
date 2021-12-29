@@ -17,7 +17,6 @@
 #include "vtkObjectFactory.h"
 #include "vtkSMInputProperty.h"
 #include "vtkSMProperty.h"
-#include "vtkSMProperty.h"
 #include "vtkSMPropertyHelper.h"
 #include "vtkSMProxy.h"
 #include "vtkSMSessionProxyManager.h"
@@ -29,20 +28,18 @@
 vtkStandardNewMacro(vtkSMExtractSelectionProxyInitializationHelper);
 
 //----------------------------------------------------------------------------
-vtkSMExtractSelectionProxyInitializationHelper::vtkSMExtractSelectionProxyInitializationHelper()
-{
-}
+vtkSMExtractSelectionProxyInitializationHelper::vtkSMExtractSelectionProxyInitializationHelper() =
+  default;
 
 //----------------------------------------------------------------------------
-vtkSMExtractSelectionProxyInitializationHelper::~vtkSMExtractSelectionProxyInitializationHelper()
-{
-}
+vtkSMExtractSelectionProxyInitializationHelper::~vtkSMExtractSelectionProxyInitializationHelper() =
+  default;
 
 //----------------------------------------------------------------------------
 void vtkSMExtractSelectionProxyInitializationHelper::PostInitializeProxy(
   vtkSMProxy* proxy, vtkPVXMLElement* vtkNotUsed(element), vtkMTimeType vtkNotUsed(ts))
 {
-  assert(proxy != NULL);
+  assert(proxy != nullptr);
 
   // See if the input proxy has a selection. If so, copy the selection.
   auto inputProperty = vtkSMInputProperty::SafeDownCast(proxy->GetProperty("Input"));

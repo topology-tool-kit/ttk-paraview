@@ -108,7 +108,7 @@
  *           </Hints>
  *       </SourceProxy>
  * \endcode
-*/
+ */
 
 #ifndef vtkSMSessionProxyManager_h
 #define vtkSMSessionProxyManager_h
@@ -172,7 +172,7 @@ public:
    * UnRegister instead.
    */
   vtkSMProxy* NewProxy(
-    const char* groupName, const char* proxyName, const char* subProxyName = NULL);
+    const char* groupName, const char* proxyName, const char* subProxyName = nullptr);
 
   /**
    * Returns a vtkSMDocumentation object with the documentation
@@ -229,7 +229,7 @@ public:
   void GetProxies(const char* groupname, const char* name, vtkCollection* collection);
   void GetProxies(const char* groupname, vtkCollection* collection)
   {
-    this->GetProxies(groupname, NULL, collection);
+    this->GetProxies(groupname, nullptr, collection);
   }
 
   /**
@@ -280,7 +280,7 @@ public:
 
   /**
    * If the proxy is in the given group, return its name, otherwise
-   * return null. NOTE: Any following call to proxy manager might make
+   * return nullptr. NOTE: Any following call to proxy manager might make
    * the returned pointer invalid.
    */
   const char* IsProxyInGroup(vtkSMProxy* proxy, const char* groupname);
@@ -351,13 +351,13 @@ public:
 
   /**
    * Get the link registered with the given name. If no such link exists,
-   * returns NULL.
+   * returns nullptr.
    */
   vtkSMLink* GetRegisteredLink(const char* linkname);
 
   /**
    * Get the name of the given registered link. If no such link exists,
-   * returns NULL.
+   * returns nullptr.
    */
   const char* GetRegisteredLinkName(vtkSMLink* link);
 
@@ -417,9 +417,9 @@ public:
    * When loading XML state, `vtkSMSessionProxyManager::GetInLoadXMLState` will
    * return true.
    */
-  void LoadXMLState(const char* filename, vtkSMStateLoader* loader = NULL);
+  void LoadXMLState(const char* filename, vtkSMStateLoader* loader = nullptr);
   void LoadXMLState(
-    vtkPVXMLElement* rootElement, vtkSMStateLoader* loader = NULL, bool keepOriginalIds = false);
+    vtkPVXMLElement* rootElement, vtkSMStateLoader* loader = nullptr, bool keepOriginalIds = false);
   //@}
 
   /**
@@ -447,13 +447,16 @@ public:
   /**
    * Returns the XML state for the proxy manager. If a non-empty set of proxies
    * is passed, then state is limited to those chosen proxies.
+   * If forceRestriction is true, then state will be limited even when the
+   * restrictionSet is non-empty.
    *
    * Unlike `SaveXMLState`, this does not fire the `vtkCommand::SaveStateEvent`.
    * This API is primarily intended for use-cases where complete application XML
    * state is not being saved.
    */
   vtkSmartPointer<vtkPVXMLElement> GetXMLState() { return this->GetXMLState({}); }
-  vtkSmartPointer<vtkPVXMLElement> GetXMLState(const std::set<vtkSMProxy*>& restrictionSet);
+  vtkSmartPointer<vtkPVXMLElement> GetXMLState(
+    const std::set<vtkSMProxy*>& restrictionSet, bool forceRestriction = false);
   //@}
 
   /**
@@ -496,7 +499,7 @@ public:
    * proxy/property. The Server Manager does not (and should not) interpret
    * the hints. Hints provide a mechanism to add GUI-pertinent information
    * to the server manager XML.  Returns the XML element for the hints
-   * associated with this proxy/property, if any, otherwise returns NULL.
+   * associated with this proxy/property, if any, otherwise returns nullptr.
    */
   vtkPVXMLElement* GetProxyHints(const char* xmlgroup, const char* xmlname);
   vtkPVXMLElement* GetPropertyHints(
@@ -529,7 +532,7 @@ public:
   //@}
 
   /**
-   * Get a registered selection model. Will return null if no such model is
+   * Get a registered selection model. Will return nullptr if no such model is
    * registered.
    * This will forward the call to the ProxyManager singleton
    */
@@ -579,7 +582,7 @@ public:
    * This method returns the full object state that can be used to create that
    * object from scratch.
    * This method will be used to fill the undo stack.
-   * If not overridden this will return NULL.
+   * If not overridden this will return nullptr.
    */
   virtual const vtkSMMessage* GetFullState();
 
@@ -608,14 +611,14 @@ protected:
    * and all of it's properties.
    */
   vtkSMProxy* NewProxy(vtkPVXMLElement* element, const char* groupname, const char* proxyname,
-    const char* subProxyName = NULL);
+    const char* subProxyName = nullptr);
 
   /**
    * Given the proxy name and group name, returns the XML element for
    * the proxy.
    */
   vtkPVXMLElement* GetProxyElement(
-    const char* groupName, const char* proxyName, const char* subProxyName = NULL);
+    const char* groupName, const char* proxyName, const char* subProxyName = nullptr);
 
   /**
    * Handles events.
@@ -652,7 +655,7 @@ private:
   bool InLoadXMLState;
 
 #ifndef __WRAP__
-  static vtkSMSessionProxyManager* New() { return NULL; }
+  static vtkSMSessionProxyManager* New() { return nullptr; }
 #endif
 
 private:

@@ -50,12 +50,12 @@
  * computation at the boundaries needs adjustment).
  *
  * - Not all of the features supported by the mapper currently work correctly.
- * This is a list of known issues:
- *   -# Blending modes such as average and additive might compute a different
+ *   This is a list of known issues:
+ *   - Blending modes such as average and additive might compute a different
  *      value near the edges.
  *
- *  - Future work will extend the API to be able to compute an ideal number of
- *  partitions and extents based on the platform capabilities.
+ * - Future work will extend the API to be able to compute an ideal number of
+ *   partitions and extents based on the platform capabilities.
  *
  * @warning This is an internal class of vtkOpenGLGPUVolumeRayCastMapper. It
  * assumes there is an active OpenGL context in methods involving GL calls
@@ -267,7 +267,7 @@ private:
    */
   void ComputeCellToPointMatrix(int extents[6]);
 
-  //@{
+  ///@{
   /**
    * @brief Helper functions to catch potential issues when doing GPU
    * texture allocations.
@@ -281,7 +281,7 @@ private:
 
   bool SafeLoadTexture(vtkTextureObject* texture, int const width, int const height,
     int const depth, int numComps, int dataType, void* dataPtr);
-  //@}
+  ///@}
 
   void UpdateInterpolationType(int const interpolation);
   void SetInterpolation(int const interpolation);

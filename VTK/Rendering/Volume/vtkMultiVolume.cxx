@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkMultiVolume.h
+  Module:    vtkMultiVolume.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -25,8 +25,7 @@
 #include "vtkVolumeProperty.h"
 
 vtkMultiVolume::vtkMultiVolume()
-  : Superclass()
-  , TexToBBox(vtkSmartPointer<vtkMatrix4x4>::New())
+  : TexToBBox(vtkSmartPointer<vtkMatrix4x4>::New())
 {
   vtkMath::UninitializeBounds(this->Bounds);
   vtkMath::UninitializeBounds(this->DataBounds.data());
@@ -222,13 +221,13 @@ std::array<double, 6> vtkMultiVolume::ComputeAABounds(double bounds[6], vtkMatri
   PointVec pointsDataCoords;
   pointsDataCoords.reserve(8);
   pointsDataCoords.push_back(minPoint);
-  pointsDataCoords.push_back(std::move(minPoint + Point(dim[0], 0., 0., 0.)));
-  pointsDataCoords.push_back(std::move(minPoint + Point(dim[0], dim[1], 0., 0.)));
-  pointsDataCoords.push_back(std::move(minPoint + Point(0., dim[1], 0., 0.)));
-  pointsDataCoords.push_back(std::move(minPoint + Point(0., 0., dim[2], 0.)));
-  pointsDataCoords.push_back(std::move(minPoint + Point(dim[0], 0., dim[2], 0.)));
+  pointsDataCoords.push_back(minPoint + Point(dim[0], 0., 0., 0.));
+  pointsDataCoords.push_back(minPoint + Point(dim[0], dim[1], 0., 0.));
+  pointsDataCoords.push_back(minPoint + Point(0., dim[1], 0., 0.));
+  pointsDataCoords.push_back(minPoint + Point(0., 0., dim[2], 0.));
+  pointsDataCoords.push_back(minPoint + Point(dim[0], 0., dim[2], 0.));
   pointsDataCoords.push_back(Point(bounds[1], bounds[3], bounds[5], 0.));
-  pointsDataCoords.push_back(std::move(minPoint + Point(0., dim[1], dim[2], 0.)));
+  pointsDataCoords.push_back(minPoint + Point(0., dim[1], dim[2], 0.));
 
   // Transform all points from data to world coordinates
   vtkBoundingBox bBoxWorld;
@@ -271,7 +270,7 @@ bool vtkMultiVolume::VolumesChanged()
 
 vtkMTimeType vtkMultiVolume::GetMTime()
 {
-  auto mTime = this->vtkObject::GetMTime();
+  auto mTime = this->Superclass::GetMTime();
 
   mTime = this->BoundsComputeTime > mTime ? this->BoundsComputeTime.GetMTime() : mTime;
 

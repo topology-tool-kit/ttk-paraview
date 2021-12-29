@@ -20,6 +20,7 @@
 =========================================================================*/
 
 #include "vtkArrayNorm.h"
+#include "vtkArrayData.h"
 #include "vtkCommand.h"
 #include "vtkDenseArray.h"
 #include "vtkInformation.h"
@@ -27,6 +28,7 @@
 #include "vtkObjectFactory.h"
 #include "vtkSmartPointer.h"
 
+#include <cmath>
 #include <limits>
 #include <sstream>
 #include <stdexcept>

@@ -94,23 +94,23 @@ public:
   /**
    * A mathematical constant. This version is atan(1.0) * 4.0
    */
-  static double Pi() { return 3.141592653589793; }
+  static constexpr double Pi() { return 3.141592653589793; }
 
-  //@{
+  ///@{
   /**
    * Convert degrees into radians
    */
   static float RadiansFromDegrees(float degrees);
   static double RadiansFromDegrees(double degrees);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Convert radians into degrees
    */
   static float DegreesFromRadians(float radians);
   static double DegreesFromRadians(double radians);
-  //@}
+  ///@}
 
   /**
    * Rounds a float to the nearest integer.
@@ -310,14 +310,21 @@ public:
   static double Gaussian(double mean, double std);
 
   /**
-   * Assign values to a 3-vector (double version). Result is stored in b according to b = a.
+   * Assign values to a 3-vector (templated version). Result is stored in b according to b = a.
+   * Each parameter must implement operator[].
    */
-  static void Assign(const double a[3], double b[3])
+  template <class VectorT1, class VectorT2>
+  static void Assign(const VectorT1& a, VectorT2&& b)
   {
     b[0] = a[0];
     b[1] = a[1];
     b[2] = a[2];
   }
+
+  /**
+   * Assign values to a 3-vector (double version). Result is stored in b according to b = a.
+   */
+  static void Assign(const double a[3], double b[3]) { vtkMath::Assign<>(a, b); }
 
   /**
    * Addition of two 3-vectors (float version). Result is stored in c according to c = a + b.
@@ -361,6 +368,19 @@ public:
     {
       c[i] = a[i] - b[i];
     }
+  }
+
+  /**
+   * Subtraction of two 3-vectors (templated version). Result is stored in c according to c = a - b.
+   *
+   * Each paramameter needs to implement `operator[]`.
+   */
+  template <class VectorT1, class VectorT2, class VectorT3>
+  static void Subtract(const VectorT1& a, const VectorT2& b, VectorT3&& c)
+  {
+    c[0] = a[0] - b[0];
+    c[1] = a[1] - b[1];
+    c[2] = a[2] - b[2];
   }
 
   /**
@@ -491,13 +511,13 @@ public:
    */
   static void Cross(const double a[3], const double b[3], double c[3]);
 
-  //@{
+  ///@{
   /**
    * Compute the norm of n-vector. x is the vector, n is its length.
    */
   static float Norm(const float* x, int n);
   static double Norm(const double* x, int n);
-  //@}
+  ///@}
 
   /**
    * Compute the norm of 3-vector (float version).
@@ -539,7 +559,7 @@ public:
    */
   static double Normalize(double v[3]);
 
-  //@{
+  ///@{
   /**
    * Given a unit vector v1, find two unit vectors v2 and v3 such that
    * v1 cross v2 = v3 (i.e. the vectors are perpendicular to each other).
@@ -549,9 +569,9 @@ public:
    */
   static void Perpendiculars(const double v1[3], double v2[3], double v3[3], double theta);
   static void Perpendiculars(const float v1[3], float v2[3], float v3[3], double theta);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Compute the projection of vector a on vector b and return it in projection[3].
    * If b is a zero vector, the function returns false and 'projection' is invalid.
@@ -559,9 +579,9 @@ public:
    */
   static bool ProjectVector(const float a[3], const float b[3], float projection[3]);
   static bool ProjectVector(const double a[3], const double b[3], double projection[3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Compute the projection of 2D vector a on 2D vector b and returns the result
    * in projection[2].
@@ -570,7 +590,7 @@ public:
    */
   static bool ProjectVector2D(const float a[2], const float b[2], float projection[2]);
   static bool ProjectVector2D(const double a[2], const double b[2], double projection[2]);
-  //@}
+  ///@}
 
   /**
    * Compute distance squared between two points p1 and p2.
@@ -609,6 +629,12 @@ public:
    * Compute angle in radians between two vectors.
    */
   static double AngleBetweenVectors(const double v1[3], const double v2[3]);
+
+  /**
+   * Compute signed angle in radians between two vectors with regard to a third orthogonal vector
+   */
+  static double SignedAngleBetweenVectors(
+    const double v1[3], const double v2[3], const double vn[3]);
 
   /**
    * Compute the amplitude of a Gaussian function with mean=0 and specified variance.
@@ -706,7 +732,7 @@ public:
     return c1[0] * c2[1] - c2[0] * c1[1];
   }
 
-  //@{
+  ///@{
   /**
    * Calculate the determinant of a 2x2 matrix: | a b | | c d |
    */
@@ -715,48 +741,48 @@ public:
   {
     return c1[0] * c2[1] - c2[0] * c1[1];
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * LU Factorization of a 3x3 matrix.
    */
   static void LUFactor3x3(float A[3][3], int index[3]);
   static void LUFactor3x3(double A[3][3], int index[3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * LU back substitution for a 3x3 matrix.
    */
   static void LUSolve3x3(const float A[3][3], const int index[3], float x[3]);
   static void LUSolve3x3(const double A[3][3], const int index[3], double x[3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Solve Ay = x for y and place the result in y.  The matrix A is
    * destroyed in the process.
    */
   static void LinearSolve3x3(const float A[3][3], const float x[3], float y[3]);
   static void LinearSolve3x3(const double A[3][3], const double x[3], double y[3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Multiply a vector by a 3x3 matrix.  The result is placed in out.
    */
   static void Multiply3x3(const float A[3][3], const float v[3], float u[3]);
   static void Multiply3x3(const double A[3][3], const double v[3], double u[3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Multiply one 3x3 matrix by another according to C = AB.
    */
   static void Multiply3x3(const float A[3][3], const float B[3][3], float C[3][3]);
   static void Multiply3x3(const double A[3][3], const double B[3][3], double C[3][3]);
-  //@}
+  ///@}
 
   /**
    * Multiply matrices such that M3 = M1 x M2.
@@ -926,39 +952,39 @@ public:
   static void MultiplyMatrix(const double* const* A, const double* const* B, unsigned int rowA,
     unsigned int colA, unsigned int rowB, unsigned int colB, double** C);
 
-  //@{
+  ///@{
   /**
    * Transpose a 3x3 matrix. The input matrix is A. The output
    * is stored in AT.
    */
   static void Transpose3x3(const float A[3][3], float AT[3][3]);
   static void Transpose3x3(const double A[3][3], double AT[3][3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Invert a 3x3 matrix. The input matrix is A. The output is
    * stored in AI.
    */
   static void Invert3x3(const float A[3][3], float AI[3][3]);
   static void Invert3x3(const double A[3][3], double AI[3][3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set A to the identity matrix.
    */
   static void Identity3x3(float A[3][3]);
   static void Identity3x3(double A[3][3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Return the determinant of a 3x3 matrix.
    */
   static double Determinant3x3(const float A[3][3]);
   static double Determinant3x3(const double A[3][3]);
-  //@}
+  ///@}
 
   /**
    * Compute determinant of 3x3 matrix. Three columns of matrix are input.
@@ -979,7 +1005,7 @@ public:
   static double Determinant3x3(double a1, double a2, double a3, double b1, double b2, double b3,
     double c1, double c2, double c3);
 
-  //@{
+  ///@{
   /**
    * Convert a quaternion to a 3x3 rotation matrix.  The quaternion
    * does not have to be normalized beforehand.
@@ -989,9 +1015,12 @@ public:
    */
   static void QuaternionToMatrix3x3(const float quat[4], float A[3][3]);
   static void QuaternionToMatrix3x3(const double quat[4], double A[3][3]);
-  //@}
+  template <class QuaternionT, class MatrixT,
+    class EnableT = typename std::enable_if<!vtkMatrixUtilities::MatrixIs2DArray<MatrixT>()>::type>
+  static void QuaternionToMatrix3x3(const QuaternionT& q, MatrixT&& A);
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Convert a 3x3 matrix into a quaternion.  This will provide the
    * best possible answer even if the matrix is not a pure rotation matrix.
@@ -1003,9 +1032,12 @@ public:
    */
   static void Matrix3x3ToQuaternion(const float A[3][3], float quat[4]);
   static void Matrix3x3ToQuaternion(const double A[3][3], double quat[4]);
-  //@}
+  template <class MatrixT, class QuaternionT,
+    class EnableT = typename std::enable_if<!vtkMatrixUtilities::MatrixIs2DArray<MatrixT>()>::type>
+  static void Matrix3x3ToQuaternion(const MatrixT& A, QuaternionT&& q);
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Multiply two quaternions. This is used to concatenate rotations.
    * Quaternions are in the form [w, x, y, z].
@@ -1014,27 +1046,27 @@ public:
    */
   static void MultiplyQuaternion(const float q1[4], const float q2[4], float q[4]);
   static void MultiplyQuaternion(const double q1[4], const double q2[4], double q[4]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * rotate a vector by a normalized quaternion
    * using // https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula
    */
   static void RotateVectorByNormalizedQuaternion(const float v[3], const float q[4], float r[3]);
   static void RotateVectorByNormalizedQuaternion(const double v[3], const double q[4], double r[3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * rotate a vector by WXYZ
    * using // https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula
    */
   static void RotateVectorByWXYZ(const float v[3], const float q[4], float r[3]);
   static void RotateVectorByWXYZ(const double v[3], const double q[4], double r[3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Orthogonalize a 3x3 matrix and put the result in B.  If matrix A
    * has a negative determinant, then B will be a rotation plus a flip
@@ -1042,9 +1074,9 @@ public:
    */
   static void Orthogonalize3x3(const float A[3][3], float B[3][3]);
   static void Orthogonalize3x3(const double A[3][3], double B[3][3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Diagonalize a symmetric 3x3 matrix and return the eigenvalues in
    * w and the eigenvectors in the columns of V.  The matrix V will
@@ -1053,9 +1085,9 @@ public:
    */
   static void Diagonalize3x3(const float A[3][3], float w[3], float V[3][3]);
   static void Diagonalize3x3(const double A[3][3], double w[3], double V[3][3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Perform singular value decomposition on a 3x3 matrix.  This is not
    * done using a conventional SVD algorithm, instead it is done using
@@ -1069,13 +1101,25 @@ public:
     const float A[3][3], float U[3][3], float w[3], float VT[3][3]);
   static void SingularValueDecomposition3x3(
     const double A[3][3], double U[3][3], double w[3], double VT[3][3]);
-  //@}
+  ///@}
+
+  /**
+   * Solve linear equation Ax = b using Gaussian Elimination with Partial Pivoting
+   * for a 2x2 system. If the matrix is found to be singular within a small numerical
+   * tolerance close to machine precision then 0 is returned.
+   * Note: Even if method succeeded the matrix A could be close to singular.
+   *       The solution should be checked against relevant tolerance criteria.
+   */
+  static vtkTypeBool SolveLinearSystemGEPP2x2(
+    double a00, double a01, double a10, double a11, double b0, double b1, double& x0, double& x1);
 
   /**
    * Solve linear equations Ax = b using Crout's method. Input is square
-   * matrix A and load vector x. Solution x is written over load vector. The
+   * matrix A and load vector b. Solution x is written over load vector. The
    * dimension of the matrix is specified in size. If error is found, method
    * returns a 0.
+   * Note: Even if method succeeded the matrix A could be close to singular.
+   *       The solution should be checked against relevant tolerance criteria.
    */
   static vtkTypeBool SolveLinearSystem(double** A, double* x, int size);
 
@@ -1146,7 +1190,7 @@ public:
    */
   static double EstimateMatrixCondition(const double* const* A, int size);
 
-  //@{
+  ///@{
   /**
    * Jacobi iteration for the solution of eigenvectors/eigenvalues of a 3x3
    * real symmetric matrix. Square 3x3 matrix a; output eigenvalues in w;
@@ -1157,9 +1201,9 @@ public:
    */
   static vtkTypeBool Jacobi(float** a, float* w, float** v);
   static vtkTypeBool Jacobi(double** a, double* w, double** v);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * JacobiN iteration for the solution of eigenvectors/eigenvalues of a nxn
    * real symmetric matrix. Square nxn matrix a; size of matrix in n; output
@@ -1171,7 +1215,7 @@ public:
    */
   static vtkTypeBool JacobiN(float** a, int n, float* w, float** v);
   static vtkTypeBool JacobiN(double** a, int n, double* w, double** v);
-  //@}
+  ///@}
 
   /**
    * Solves for the least squares best fit matrix for the homogeneous equation X'M' = 0'.
@@ -1206,7 +1250,7 @@ public:
   static vtkTypeBool SolveLeastSquares(int numberOfSamples, double** xt, int xOrder, double** yt,
     int yOrder, double** mt, int checkHomogeneous = 1);
 
-  //@{
+  ///@{
   /**
    * Convert color in RGB format (Red, Green, Blue) to HSV format
    * (Hue, Saturation, Value). The input color is not modified.
@@ -1224,9 +1268,9 @@ public:
     RGBToHSV(rgb[0], rgb[1], rgb[2], hsv, hsv + 1, hsv + 2);
   }
   static void RGBToHSV(double r, double g, double b, double* h, double* s, double* v);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Convert color in HSV format (Hue, Saturation, Value) to RGB
    * format (Red, Green, Blue). The input color is not modified.
@@ -1244,9 +1288,9 @@ public:
     HSVToRGB(hsv[0], hsv[1], hsv[2], rgb, rgb + 1, rgb + 2);
   }
   static void HSVToRGB(double h, double s, double v, double* r, double* g, double* b);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Convert color from the CIE-L*ab system to CIE XYZ.
    */
@@ -1255,9 +1299,9 @@ public:
     LabToXYZ(lab[0], lab[1], lab[2], xyz + 0, xyz + 1, xyz + 2);
   }
   static void LabToXYZ(double L, double a, double b, double* x, double* y, double* z);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Convert Color from the CIE XYZ system to CIE-L*ab.
    */
@@ -1266,9 +1310,9 @@ public:
     XYZToLab(xyz[0], xyz[1], xyz[2], lab + 0, lab + 1, lab + 2);
   }
   static void XYZToLab(double x, double y, double z, double* L, double* a, double* b);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Convert color from the CIE XYZ system to RGB.
    */
@@ -1277,9 +1321,9 @@ public:
     XYZToRGB(xyz[0], xyz[1], xyz[2], rgb + 0, rgb + 1, rgb + 2);
   }
   static void XYZToRGB(double x, double y, double z, double* r, double* g, double* b);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Convert color from the RGB system to CIE XYZ.
    */
@@ -1288,9 +1332,9 @@ public:
     RGBToXYZ(rgb[0], rgb[1], rgb[2], xyz + 0, xyz + 1, xyz + 2);
   }
   static void RGBToXYZ(double r, double g, double b, double* x, double* y, double* z);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Convert color from the RGB system to CIE-L*ab.
    * The input RGB must be values in the range [0, 1].
@@ -1302,9 +1346,9 @@ public:
     RGBToLab(rgb[0], rgb[1], rgb[2], lab + 0, lab + 1, lab + 2);
   }
   static void RGBToLab(double red, double green, double blue, double* L, double* a, double* b);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Convert color from the CIE-L*ab system to RGB.
    */
@@ -1313,9 +1357,9 @@ public:
     LabToRGB(lab[0], lab[1], lab[2], rgb + 0, rgb + 1, rgb + 2);
   }
   static void LabToRGB(double L, double a, double b, double* red, double* green, double* blue);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set the bounds to an uninitialized state
    */
@@ -1328,9 +1372,9 @@ public:
     bounds[4] = 1.0;
     bounds[5] = -1.0;
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Are the bounds initialized?
    */
@@ -1342,7 +1386,7 @@ public:
     }
     return 1;
   }
-  //@}
+  ///@}
 
   /**
    * Clamp some value against a range, return the result.
@@ -1351,7 +1395,7 @@ public:
   template <class T>
   static T ClampValue(const T& value, const T& min, const T& max);
 
-  //@{
+  ///@{
   /**
    * Clamp some values against a range
    * The method without 'clamped_values' will perform in-place clamping.
@@ -1361,7 +1405,7 @@ public:
   static void ClampValues(double* values, int nb_values, const double range[2]);
   static void ClampValues(
     const double* values, int nb_values, const double range[2], double* clamped_values);
-  //@}
+  ///@}
 
   /**
    * Clamp a value against a range and then normalize it between 0 and 1.
@@ -1605,7 +1649,7 @@ inline double vtkMath::Normalize(double v[3])
 }
 
 //----------------------------------------------------------------------------
-inline float vtkMath::Normalize2D(float v[3])
+inline float vtkMath::Normalize2D(float v[2])
 {
   float den = vtkMath::Norm2D(v);
   if (den != 0.0)
@@ -1619,7 +1663,7 @@ inline float vtkMath::Normalize2D(float v[3])
 }
 
 //----------------------------------------------------------------------------
-inline double vtkMath::Normalize2D(double v[3])
+inline double vtkMath::Normalize2D(double v[2])
 {
   double den = vtkMath::Norm2D(v);
   if (den != 0.0)
@@ -1808,6 +1852,141 @@ inline void vtkMath::TensorFromSymmetricTensor(T tensor[9])
   tensor[1] = tensor[3]; // XY
 }
 
+namespace
+{
+template <class QuaternionT, class MatrixT>
+inline void vtkQuaternionToMatrix3x3(const QuaternionT& quat, MatrixT& A)
+{
+  typedef typename vtkMatrixUtilities::ScalarTypeExtractor<MatrixT>::value_type Scalar;
+
+  Scalar ww = quat[0] * quat[0];
+  Scalar wx = quat[0] * quat[1];
+  Scalar wy = quat[0] * quat[2];
+  Scalar wz = quat[0] * quat[3];
+
+  Scalar xx = quat[1] * quat[1];
+  Scalar yy = quat[2] * quat[2];
+  Scalar zz = quat[3] * quat[3];
+
+  Scalar xy = quat[1] * quat[2];
+  Scalar xz = quat[1] * quat[3];
+  Scalar yz = quat[2] * quat[3];
+
+  Scalar rr = xx + yy + zz;
+  // normalization factor, just in case quaternion was not normalized
+  Scalar f = 1 / (ww + rr);
+  Scalar s = (ww - rr) * f;
+  f *= 2;
+
+  typedef vtkMatrixUtilities::Wrapper<3, 3, MatrixT> Wrapper;
+
+  Wrapper::template Get<0, 0>(A) = xx * f + s;
+  Wrapper::template Get<1, 0>(A) = (xy + wz) * f;
+  Wrapper::template Get<2, 0>(A) = (xz - wy) * f;
+
+  Wrapper::template Get<0, 1>(A) = (xy - wz) * f;
+  Wrapper::template Get<1, 1>(A) = yy * f + s;
+  Wrapper::template Get<2, 1>(A) = (yz + wx) * f;
+
+  Wrapper::template Get<0, 2>(A) = (xz + wy) * f;
+  Wrapper::template Get<1, 2>(A) = (yz - wx) * f;
+  Wrapper::template Get<2, 2>(A) = zz * f + s;
+}
+} // anonymous namespace
+
+//------------------------------------------------------------------------------
+inline void vtkMath::QuaternionToMatrix3x3(const float quat[4], float A[3][3])
+{
+  vtkQuaternionToMatrix3x3(quat, A);
+}
+
+//------------------------------------------------------------------------------
+inline void vtkMath::QuaternionToMatrix3x3(const double quat[4], double A[3][3])
+{
+  vtkQuaternionToMatrix3x3(quat, A);
+}
+
+//-----------------------------------------------------------------------------
+template <class QuaternionT, class MatrixT, class EnableT>
+inline void vtkMath::QuaternionToMatrix3x3(const QuaternionT& q, MatrixT&& A)
+{
+  vtkQuaternionToMatrix3x3(q, A);
+}
+
+namespace
+{
+//------------------------------------------------------------------------------
+//  The solution is based on
+//  Berthold K. P. Horn (1987),
+//  "Closed-form solution of absolute orientation using unit quaternions,"
+//  Journal of the Optical Society of America A, 4:629-642
+template <class MatrixT, class QuaternionT>
+inline void vtkMatrix3x3ToQuaternion(const MatrixT& A, QuaternionT& quat)
+{
+  typedef typename vtkMatrixUtilities::ScalarTypeExtractor<QuaternionT>::value_type Scalar;
+
+  Scalar N[4][4];
+
+  typedef vtkMatrixUtilities::Wrapper<3, 3, MatrixT> Wrapper;
+
+  // on-diagonal elements
+  N[0][0] = Wrapper::template Get<0, 0>(A) + Wrapper::template Get<1, 1>(A) +
+    Wrapper::template Get<2, 2>(A);
+  N[1][1] = Wrapper::template Get<0, 0>(A) - Wrapper::template Get<1, 1>(A) -
+    Wrapper::template Get<2, 2>(A);
+  N[2][2] = -Wrapper::template Get<0, 0>(A) + Wrapper::template Get<1, 1>(A) -
+    Wrapper::template Get<2, 2>(A);
+  N[3][3] = -Wrapper::template Get<0, 0>(A) - Wrapper::template Get<1, 1>(A) +
+    Wrapper::template Get<2, 2>(A);
+
+  // off-diagonal elements
+  N[0][1] = N[1][0] = Wrapper::template Get<2, 1>(A) - Wrapper::template Get<1, 2>(A);
+  N[0][2] = N[2][0] = Wrapper::template Get<0, 2>(A) - Wrapper::template Get<2, 0>(A);
+  N[0][3] = N[3][0] = Wrapper::template Get<1, 0>(A) - Wrapper::template Get<0, 1>(A);
+
+  N[1][2] = N[2][1] = Wrapper::template Get<1, 0>(A) + Wrapper::template Get<0, 1>(A);
+  N[1][3] = N[3][1] = Wrapper::template Get<0, 2>(A) + Wrapper::template Get<2, 0>(A);
+  N[2][3] = N[3][2] = Wrapper::template Get<2, 1>(A) + Wrapper::template Get<1, 2>(A);
+
+  Scalar eigenvectors[4][4], eigenvalues[4];
+
+  // convert into format that JacobiN can use,
+  // then use Jacobi to find eigenvalues and eigenvectors
+  Scalar *NTemp[4], *eigenvectorsTemp[4];
+  for (int i = 0; i < 4; ++i)
+  {
+    NTemp[i] = N[i];
+    eigenvectorsTemp[i] = eigenvectors[i];
+  }
+  vtkMath::JacobiN(NTemp, 4, eigenvalues, eigenvectorsTemp);
+
+  // the first eigenvector is the one we want
+  quat[0] = eigenvectors[0][0];
+  quat[1] = eigenvectors[1][0];
+  quat[2] = eigenvectors[2][0];
+  quat[3] = eigenvectors[3][0];
+}
+} // anonymous namespace
+
+//------------------------------------------------------------------------------
+inline void vtkMath::Matrix3x3ToQuaternion(const float A[3][3], float quat[4])
+{
+  vtkMatrix3x3ToQuaternion(A, quat);
+}
+
+//------------------------------------------------------------------------------
+inline void vtkMath::Matrix3x3ToQuaternion(const double A[3][3], double quat[4])
+{
+  vtkMatrix3x3ToQuaternion(A, quat);
+}
+
+//-----------------------------------------------------------------------------
+template <class MatrixT, class QuaternionT, class EnableT>
+inline void vtkMath::Matrix3x3ToQuaternion(const MatrixT& A, QuaternionT&& q)
+{
+  vtkMatrix3x3ToQuaternion(A, q);
+}
+
 namespace vtk_detail
 {
 // Can't specialize templates inside a template class, so we move the impl here.
@@ -1837,10 +2016,9 @@ inline void RoundDoubleToIntegralIfNecessary(double val, float* retVal)
     double min = static_cast<double>(vtkTypeTraits<float>::Min());
     double max = static_cast<double>(vtkTypeTraits<float>::Max());
     val = vtkMath::ClampValue(val, min, max);
-    *retVal = static_cast<float>(val);
   }
-  else
-    *retVal = val;
+
+  *retVal = static_cast<float>(val);
 }
 } // end namespace vtk_detail
 

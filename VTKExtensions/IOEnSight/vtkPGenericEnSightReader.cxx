@@ -31,8 +31,8 @@
 #include "vtkPEnSightGoldBinaryReader.h"
 #include "vtkPEnSightGoldReader.h"
 
-#include <assert.h>
-#include <ctype.h> /* isspace */
+#include <cassert>
+#include <cctype> /* isspace */
 #include <map>
 #include <string>
 
@@ -47,9 +47,7 @@ vtkPGenericEnSightReader::vtkPGenericEnSightReader()
 }
 
 //----------------------------------------------------------------------------
-vtkPGenericEnSightReader::~vtkPGenericEnSightReader()
-{
-}
+vtkPGenericEnSightReader::~vtkPGenericEnSightReader() = default;
 
 //----------------------------------------------------------------------------
 int vtkPGenericEnSightReader::RequestInformation(
@@ -167,7 +165,7 @@ int vtkPGenericEnSightReader::GetMultiProcessNumberOfProcesses()
   if (this->MultiProcessNumberOfProcesses == -2)
   {
     // Initialize
-    if (vtkMultiProcessController::GetGlobalController() == NULL)
+    if (vtkMultiProcessController::GetGlobalController() == nullptr)
       this->MultiProcessNumberOfProcesses = 0;
     else
       this->MultiProcessNumberOfProcesses =
@@ -187,7 +185,7 @@ int vtkPGenericEnSightReader::GetMultiProcessLocalProcessId()
   if (this->MultiProcessLocalProcessId == -2)
   {
     // Initialize
-    if (vtkMultiProcessController::GetGlobalController() == NULL)
+    if (vtkMultiProcessController::GetGlobalController() == nullptr)
       this->MultiProcessLocalProcessId = -1;
     else
       this->MultiProcessLocalProcessId =

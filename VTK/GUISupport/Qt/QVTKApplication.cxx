@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkActor.h
+  Module:    QVTKApplication.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -32,12 +32,14 @@ QVTKApplication::QVTKApplication(int& Argc, char** Argv)
 }
 
 //------------------------------------------------------------------------------
+#if defined(VTK_USE_TDX) && (defined(Q_WS_X11) || defined(Q_OS_LINUX))
 QVTKApplication::~QVTKApplication()
 {
-#if defined(VTK_USE_TDX) && (defined(Q_WS_X11) || defined(Q_OS_LINUX))
   delete this->Devices;
-#endif
 }
+#else
+QVTKApplication::~QVTKApplication() = default;
+#endif
 
 //------------------------------------------------------------------------------
 #if defined(VTK_USE_TDX) && (defined(Q_WS_X11) || defined(Q_OS_LINUX))

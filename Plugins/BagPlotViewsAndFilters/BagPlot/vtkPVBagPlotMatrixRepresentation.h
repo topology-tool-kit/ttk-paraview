@@ -36,13 +36,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * vtkPVBagPlotMatrixRepresentation uses vtkPVPlotMatrixRepresentation
  * to draw the plot matrix and extract the explained variance from the data.
-*/
+ */
 
 #ifndef vtkPVBagPlotMatrixRepresentation_h
 #define vtkPVBagPlotMatrixRepresentation_h
 
-#include <vtkBagPlotViewsAndFiltersBagPlotModule.h>
-#include <vtkPVPlotMatrixRepresentation.h>
+#include "vtkBagPlotViewsAndFiltersBagPlotModule.h" // for export macro
+#include "vtkPVPlotMatrixRepresentation.h"
 
 class VTKBAGPLOTVIEWSANDFILTERSBAGPLOT_EXPORT vtkPVBagPlotMatrixRepresentation
   : public vtkPVPlotMatrixRepresentation

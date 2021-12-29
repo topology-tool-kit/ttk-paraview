@@ -1,34 +1,8 @@
-// Copyright(C) 1999-2017 National Technology & Engineering Solutions
+// Copyright(C) 1999-2021 National Technology & Engineering Solutions
 // of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
 // NTESS, the U.S. Government retains certain rights in this software.
 //
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-//     * Redistributions of source code must retain the above copyright
-//       notice, this list of conditions and the following disclaimer.
-//
-//     * Redistributions in binary form must reproduce the above
-//       copyright notice, this list of conditions and the following
-//       disclaimer in the documentation and/or other materials provided
-//       with the distribution.
-//
-//     * Neither the name of NTESS nor the names of its
-//       contributors may be used to endorse or promote products derived
-//       from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// See packages/seacas/LICENSE for details
 
 #include <Ioss_Field.h>
 #include <Ioss_Transform.h>
@@ -47,27 +21,14 @@ namespace {
   size_t internal_get_size(Ioss::Field::BasicType type, size_t count,
                            const Ioss::VariableType *storage);
 
-  std::string type_string(Ioss::Field::BasicType type)
-  {
-    switch (type) {
-    case Ioss::Field::REAL: return std::string("real");
-    case Ioss::Field::INTEGER: return std::string("integer");
-    case Ioss::Field::INT64: return std::string("64-bit integer");
-    case Ioss::Field::COMPLEX: return std::string("complex");
-    case Ioss::Field::STRING: return std::string("string");
-    case Ioss::Field::CHARACTER: return std::string("char");
-    case Ioss::Field::INVALID: return std::string("invalid");
-    default: return std::string("internal error");
-    }
-  }
-
   void error_message(const Ioss::Field &field, Ioss::Field::BasicType requested_type)
   {
     std::ostringstream errmsg;
     fmt::print(errmsg,
                "ERROR: For field named '{}', code requested value of type '{}', but field type is "
                "'{}'. Types must match\n",
-               field.get_name(), type_string(requested_type), type_string(field.get_type()));
+               field.get_name(), Ioss::Field::type_string(requested_type),
+               Ioss::Field::type_string(field.get_type()));
     IOSS_ERROR(errmsg);
   }
 } // namespace
@@ -90,8 +51,8 @@ Ioss::Field::Field() { rawStorage_ = transStorage_ = Ioss::VariableType::factory
  */
 Ioss::Field::Field(std::string name, const Ioss::Field::BasicType type, const std::string &storage,
                    const Ioss::Field::RoleType role, size_t value_count, size_t index)
-    : name_(std::move(name)), rawCount_(value_count), transCount_(value_count), size_(0),
-      index_(index), type_(type), role_(role)
+    : name_(std::move(name)), rawCount_(value_count), transCount_(value_count), index_(index),
+      type_(type), role_(role)
 {
   rawStorage_ = transStorage_ = Ioss::VariableType::factory(storage);
   size_                       = internal_get_size(type_, rawCount_, rawStorage_);
@@ -180,7 +141,7 @@ void Ioss::Field::check_type(BasicType the_type) const
       // If Ioss created the field by reading the database, it may
       // think the field is a real but it is really an integer.  Make
       // sure that the field type is correct here...
-      Ioss::Field *new_this = const_cast<Ioss::Field *>(this);
+      auto *new_this = const_cast<Ioss::Field *>(this);
       new_this->reset_type(the_type);
     }
     else {
@@ -208,12 +169,12 @@ void Ioss::Field::reset_type(Ioss::Field::BasicType new_type)
 size_t Ioss::Field::get_size() const
 {
   if (size_ == 0) {
-    Ioss::Field *new_this = const_cast<Ioss::Field *>(this);
-    new_this->size_       = internal_get_size(type_, rawCount_, rawStorage_);
+    auto *new_this  = const_cast<Ioss::Field *>(this);
+    new_this->size_ = internal_get_size(type_, rawCount_, rawStorage_);
 
     new_this->transCount_   = rawCount_;
     new_this->transStorage_ = rawStorage_;
-    for (auto my_transform : transforms_) {
+    for (auto &my_transform : transforms_) {
       new_this->transCount_   = my_transform->output_count(transCount_);
       new_this->transStorage_ = my_transform->output_storage(transStorage_);
       size_t size             = internal_get_size(type_, transCount_, transStorage_);
@@ -256,13 +217,85 @@ bool Ioss::Field::transform(void *data)
   transStorage_ = rawStorage_;
   transCount_   = rawCount_;
 
-  for (auto my_transform : transforms_) {
+  for (auto &my_transform : transforms_) {
     my_transform->execute(*this, data);
 
     transStorage_ = my_transform->output_storage(transStorage_);
     transCount_   = my_transform->output_count(transCount_);
   }
   return true;
+}
+
+bool Ioss::Field::equal_(const Ioss::Field &rhs, bool quiet) const
+{
+  if (Ioss::Utils::str_equal(this->name_, rhs.name_) == false) {
+    if (!quiet) {
+      fmt::print(Ioss::OUTPUT(), "\n\tFIELD name mismatch ({} v. {})", this->name_, rhs.name_);
+    }
+    return false;
+  }
+
+  if (this->type_ != rhs.type_) {
+    if (!quiet) {
+      fmt::print(Ioss::OUTPUT(), "\n\tFIELD type mismatch ({} v. {})", this->type_, rhs.type_);
+    }
+    return false;
+  }
+
+  if (this->role_ != rhs.role_) {
+    if (!quiet) {
+      fmt::print(Ioss::OUTPUT(), "\n\tFIELD role mismatch ({} v. {})", this->role_, rhs.role_);
+    }
+    return false;
+  }
+
+  if (this->rawCount_ != rhs.rawCount_) {
+    if (!quiet) {
+      fmt::print(Ioss::OUTPUT(), "\n\tFIELD rawCount mismatch ({} v. {})", this->rawCount_,
+                 rhs.rawCount_);
+    }
+    return false;
+  }
+
+  if (this->transCount_ != rhs.transCount_) {
+    if (!quiet) {
+      fmt::print(Ioss::OUTPUT(), "\n\tFIELD transCount mismatch ({} v. {})", this->transCount_,
+                 rhs.transCount_);
+    }
+    return false;
+  }
+
+  if (this->get_size() != rhs.get_size()) {
+    if (!quiet) {
+      fmt::print(Ioss::OUTPUT(), "\n\tFIELD size mismatch ({} v. {})", this->get_size(),
+                 rhs.get_size());
+    }
+    return false;
+  }
+
+  return true;
+}
+
+bool Ioss::Field::operator==(const Ioss::Field &rhs) const { return equal_(rhs, true); }
+
+bool Ioss::Field::operator!=(const Ioss::Field &rhs) const { return !(*this == rhs); }
+
+bool Ioss::Field::equal(const Ioss::Field &rhs) const { return equal_(rhs, false); }
+
+std::string Ioss::Field::type_string() const { return type_string(get_type()); }
+
+std::string Ioss::Field::type_string(Ioss::Field::BasicType type)
+{
+  switch (type) {
+  case Ioss::Field::REAL: return std::string("real");
+  case Ioss::Field::INTEGER: return std::string("integer");
+  case Ioss::Field::INT64: return std::string("64-bit integer");
+  case Ioss::Field::COMPLEX: return std::string("complex");
+  case Ioss::Field::STRING: return std::string("string");
+  case Ioss::Field::CHARACTER: return std::string("char");
+  case Ioss::Field::INVALID: return std::string("invalid");
+  default: return std::string("internal error");
+  }
 }
 
 namespace {

@@ -21,6 +21,7 @@
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
 #include "vtkPointData.h"
+#include "vtksys/FStream.hxx"
 #include "vtksys/SystemTools.hxx"
 
 #include <sstream>
@@ -110,7 +111,7 @@ void vtkHDRReader::ExecuteInformation()
 int vtkHDRReader::CanReadFile(const char* fname)
 {
   // get the magic number by reading in a file
-  std::ifstream ifs(fname, std::ifstream::in);
+  vtksys::ifstream ifs(fname, vtksys::ifstream::in);
 
   if (ifs.fail())
   {
@@ -213,7 +214,7 @@ void vtkHDRReader::ConvertAllDataFromRGBToXYZ(float* outPtr, int size)
 {
   for (int i = 0; i < size; i += HDR_DATA_SIZE)
   {
-    this->XYZ2RGB(matrixXYZ2RGB, outPtr[i], outPtr[i + 1], outPtr[i + 2]);
+    vtkHDRReader::XYZ2RGB(matrixXYZ2RGB, outPtr[i], outPtr[i + 1], outPtr[i + 2]);
   }
 }
 

@@ -14,56 +14,49 @@
 =========================================================================*/
 #include "vtkPVDataAssemblyInformation.h"
 
-#include "vtkAlgorithm.h"
-#include "vtkAlgorithmOutput.h"
+#include "vtkClientServerInterpreter.h"
+#include "vtkClientServerInterpreterInitializer.h"
 #include "vtkClientServerStream.h"
-#include "vtkClientServerStreamInstantiator.h"
 #include "vtkDataAssembly.h"
-#include "vtkExecutive.h"
-#include "vtkInformation.h"
 #include "vtkMultiProcessStream.h"
+#include "vtkNew.h"
 #include "vtkObjectFactory.h"
-#include "vtkPartitionedDataSetCollection.h"
 
 vtkStandardNewMacro(vtkPVDataAssemblyInformation);
+vtkCxxSetObjectMacro(vtkPVDataAssemblyInformation, DataAssembly, vtkDataAssembly);
 //----------------------------------------------------------------------------
 vtkPVDataAssemblyInformation::vtkPVDataAssemblyInformation()
   : DataAssembly(nullptr)
-  , PortNumber(0)
+  , MethodName(nullptr)
 {
-  this->RootOnly = 1;
+  this->SetRootOnly(1);
+  this->SetMethodName("GetAssembly");
 }
 
 //----------------------------------------------------------------------------
-vtkPVDataAssemblyInformation::~vtkPVDataAssemblyInformation() = default;
-
-//----------------------------------------------------------------------------
-void vtkPVDataAssemblyInformation::Initialize()
+vtkPVDataAssemblyInformation::~vtkPVDataAssemblyInformation()
 {
-  this->DataAssembly = nullptr;
+  this->SetDataAssembly(nullptr);
+  this->SetMethodName(nullptr);
 }
 
 //----------------------------------------------------------------------------
-void vtkPVDataAssemblyInformation::CopyFromObject(vtkObject* obj)
+void vtkPVDataAssemblyInformation::CopyParametersToStream(vtkMultiProcessStream& stream)
 {
-  this->DataAssembly = nullptr;
-  if (auto algorithm = vtkAlgorithm::SafeDownCast(obj))
-  {
-    // since we don't want to cause `RequestDataObject` to be triggered
-    // here (see #paraview/paraview#20016), we explicitly check if the data
-    // object exists rather than using vtkAlgorithm::GetOutputDataObject().
-    auto info = (this->PortNumber < algorithm->GetNumberOfOutputPorts())
-      ? algorithm->GetOutputInformation(this->PortNumber)
-      : nullptr;
-    if (auto data = vtkPartitionedDataSetCollection::GetData(info))
-    {
-      this->DataAssembly = data->GetDataAssembly();
-    }
-  }
-  else
-  {
-    vtkErrorMacro("Information can only be gathered from a 'vtkAlgorithm'.");
-  }
+  this->Superclass::CopyParametersToStream(stream);
+
+  std::string name(this->MethodName ? this->MethodName : "");
+  stream << name;
+}
+
+//----------------------------------------------------------------------------
+void vtkPVDataAssemblyInformation::CopyParametersFromStream(vtkMultiProcessStream& stream)
+{
+  this->Superclass::CopyParametersFromStream(stream);
+
+  std::string name;
+  stream >> name;
+  this->SetMethodName(name.empty() ? nullptr : name.c_str());
 }
 
 //----------------------------------------------------------------------------
@@ -71,14 +64,9 @@ void vtkPVDataAssemblyInformation::CopyToStream(vtkClientServerStream* css)
 {
   css->Reset();
   *css << vtkClientServerStream::Reply;
-
   if (this->DataAssembly)
   {
-    *css << this->DataAssembly->SerializeToXML(vtkIndent{}).c_str();
-  }
-  else
-  {
-    *css << ""; // empty string.
+    *css << this->DataAssembly->SerializeToXML(vtkIndent());
   }
   *css << vtkClientServerStream::End;
 }
@@ -86,57 +74,50 @@ void vtkPVDataAssemblyInformation::CopyToStream(vtkClientServerStream* css)
 //----------------------------------------------------------------------------
 void vtkPVDataAssemblyInformation::CopyFromStream(const vtkClientServerStream* css)
 {
-  const char* xml = nullptr;
-  if (css->GetArgument(0, 0, &xml))
+  this->SetDataAssembly(nullptr);
+  if (css->GetNumberOfArguments(0) == 1)
   {
-    if (xml != nullptr && xml[0] != '\0')
-    {
-      vtkNew<vtkDataAssembly> assembly;
-      assembly->InitializeFromXML(xml);
-      this->DataAssembly = assembly;
-    }
-    else
-    {
-      this->DataAssembly = nullptr;
-    }
+    std::string xml;
+    css->GetArgument(0, 0, &xml);
+
+    vtkNew<vtkDataAssembly> info;
+    info->InitializeFromXML(xml.c_str());
+    this->SetDataAssembly(info);
   }
 }
 
 //----------------------------------------------------------------------------
-void vtkPVDataAssemblyInformation::CopyParametersToStream(vtkMultiProcessStream& str)
+void vtkPVDataAssemblyInformation::CopyFromObject(vtkObject* obj)
 {
-  str << 828793 << this->PortNumber;
-}
+  this->SetDataAssembly(nullptr);
 
-//----------------------------------------------------------------------------
-void vtkPVDataAssemblyInformation::CopyParametersFromStream(vtkMultiProcessStream& str)
-{
-  int magic_number;
-  str >> magic_number >> this->PortNumber;
-  if (magic_number != 828793)
+  auto interp = vtkClientServerInterpreterInitializer::GetGlobalInterpreter();
+  vtkClientServerStream command;
+  command << vtkClientServerStream::Invoke << obj << this->GetMethodName()
+          << vtkClientServerStream::End;
+  if (interp && interp->ProcessStream(command))
   {
-    vtkErrorMacro("Magic number mismatch.");
+    auto& result = interp->GetLastResult();
+    if (result.GetNumberOfMessages() == 1 && result.GetNumberOfArguments(0) == 1)
+    {
+      vtkObjectBase* ptr = nullptr;
+      result.GetArgument(0, 0, &ptr);
+      if (auto assembly = vtkDataAssembly::SafeDownCast(ptr))
+      {
+        // we store a clone just to avoid the scenario where the `obj` modifies
+        // the vtkDataAssembly under the covers.
+        vtkNew<vtkDataAssembly> clone;
+        clone->DeepCopy(assembly);
+        this->SetDataAssembly(clone);
+      }
+    }
   }
-}
-
-//----------------------------------------------------------------------------
-vtkDataAssembly* vtkPVDataAssemblyInformation::GetDataAssembly()
-{
-  return this->DataAssembly;
 }
 
 //----------------------------------------------------------------------------
 void vtkPVDataAssemblyInformation::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
-  os << indent << "PortNumber: " << this->PortNumber << endl;
-  if (this->DataAssembly)
-  {
-    os << indent << "DataAssembly: " << endl;
-    this->DataAssembly->PrintSelf(os, indent.GetNextIndent());
-  }
-  else
-  {
-    os << indent << "DataAssembly: (none)" << endl;
-  }
+  os << indent << "DataAssembly: " << this->DataAssembly << endl;
+  os << indent << "MethodName: " << (this->MethodName ? this->MethodName : "(nullptr)") << endl;
 }

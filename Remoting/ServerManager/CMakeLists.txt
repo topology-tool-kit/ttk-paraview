@@ -33,7 +33,9 @@ set(classes
   vtkRemoteWriterHelper
   vtkPVCatalystChannelInformation
   vtkPVCatalystSessionCore
+  vtkPVDataMover
   vtkPVFilePathEncodingHelper
+  vtkPVMultiClientsInformation
   vtkPVProxyDefinitionIterator
   vtkPVSessionBase
   vtkPVSessionCore
@@ -58,7 +60,6 @@ set(classes
   vtkSIProxy
   vtkSIProxyDefinitionManager
   vtkSIProxyProperty
-  vtkSISILProperty
   vtkSISourceProxy
   vtkSIStringVectorProperty
   vtkSITimeLabelProperty
@@ -79,6 +80,7 @@ set(classes
   vtkSMCompoundSourceProxyDefinitionBuilder
   vtkSMCoreUtilities
   vtkSMDataAssemblyDomain
+  vtkSMDataAssemblyListDomain
   vtkSMDataExtractWriterProxy
   vtkSMDataSourceProxy
   vtkSMDataTypeDomain
@@ -150,8 +152,10 @@ set(classes
   vtkSMPWriterProxy
   vtkSMReaderFactory
   vtkSMReaderReloadHelper
+  vtkSMRegistrationNamesDomain
   vtkSMRemoteObject
   vtkSMRemoteObjectUpdateUndoElement
+  vtkSMSelectionQueryDomain
   vtkSMSelfGeneratingSourceProxy
   vtkSMServerStateLocator
   vtkSMSession
@@ -160,15 +164,12 @@ set(classes
   vtkSMSessionProxyManager
   vtkSMSettings
   vtkSMSettingsProxy
-  vtkSMSILDomain
-  vtkSMSILModel
   vtkSMSourceProxy
   vtkSMStateLoader
   vtkSMStateLocator
   vtkSMStateVersionController
   vtkSMStringListDomain
   vtkSMStringVectorProperty
-  vtkSMSubsetInclusionLatticeDomain
   vtkSMTimeKeeper
   vtkSMTimeKeeperProxy
   vtkSMTimeStepIndexDomain

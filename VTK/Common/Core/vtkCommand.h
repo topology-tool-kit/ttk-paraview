@@ -372,7 +372,14 @@
     _vtk_add_event(MiddleButtonDoubleClickEvent)                                                   \
     _vtk_add_event(RightButtonDoubleClickEvent)                                                    \
     _vtk_add_event(MouseWheelLeftEvent)                                                            \
-    _vtk_add_event(MouseWheelRightEvent)
+    _vtk_add_event(MouseWheelRightEvent)                                                           \
+    _vtk_add_event(ViewerMovement3DEvent)                                                          \
+    _vtk_add_event(Menu3DEvent)                                                                    \
+    _vtk_add_event(NextPose3DEvent)                                                                \
+    _vtk_add_event(Clip3DEvent)                                                                    \
+    _vtk_add_event(PositionProp3DEvent)                                                            \
+    _vtk_add_event(Pick3DEvent)                                                                    \
+    _vtk_add_event(Select3DEvent)
 // clang-format on
 
 #define vtkEventDeclarationMacro(_enum_name)                                                       \
@@ -410,14 +417,14 @@ public:
    */
   virtual void Execute(vtkObject* caller, unsigned long eventId, void* callData) = 0;
 
-  //@{
+  ///@{
   /**
    * Convenience methods for translating between event names and event
    * ids.
    */
   static const char* GetStringFromEventId(unsigned long event);
   static unsigned long GetEventIdFromString(const char* event);
-  //@}
+  ///@}
 
   /**
    * Does this event type contain vtkEventData

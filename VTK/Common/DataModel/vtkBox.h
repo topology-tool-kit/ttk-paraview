@@ -57,7 +57,7 @@ public:
    */
   void EvaluateGradient(double x[3], double n[3]) override;
 
-  //@{
+  ///@{
   /**
    * Set / get the bounding box using various methods.
    */
@@ -65,7 +65,7 @@ public:
   void SetXMin(double x, double y, double z);
   void GetXMin(double p[3]);
   void GetXMin(double& x, double& y, double& z);
-  //@}
+  ///@}
 
   void SetXMax(double p[3]);
   void SetXMax(double x, double y, double z);
@@ -97,7 +97,7 @@ public:
    * 0<=t<=1.)
    */
   static char IntersectBox(const double bounds[6], const double origin[3], const double dir[3],
-    double coord[3], double& t);
+    double coord[3], double& t, const double tolerance = 0.0);
 
   /**
    * Intersect a line with the box.  Give the endpoints of the line in

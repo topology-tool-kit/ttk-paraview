@@ -1,34 +1,8 @@
-// Copyright(C) 1999-2017, 2020 National Technology & Engineering Solutions
+// Copyright(C) 1999-2021 National Technology & Engineering Solutions
 // of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
 // NTESS, the U.S. Government retains certain rights in this software.
 //
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-//     * Redistributions of source code must retain the above copyright
-//       notice, this list of conditions and the following disclaimer.
-//
-//     * Redistributions in binary form must reproduce the above
-//       copyright notice, this list of conditions and the following
-//       disclaimer in the documentation and/or other materials provided
-//       with the distribution.
-//
-//     * Neither the name of NTESS nor the names of its
-//       contributors may be used to endorse or promote products derived
-//       from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// See packages/seacas/LICENSE for details
 
 #include <Ioss_CodeTypes.h>
 #include <Ioss_ParallelUtils.h>
@@ -36,7 +10,6 @@
 #include <Ioss_Utils.h>
 #include <algorithm>
 #include <cassert>
-#include <chrono>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
@@ -51,8 +24,6 @@
 #endif
 
 namespace {
-  auto initial_time = std::chrono::high_resolution_clock::now();
-
 #ifdef SEACAS_HAVE_MPI
   MPI_Op which_reduction(Ioss::ParallelUtils::MinMax which)
   {
@@ -126,7 +97,7 @@ bool Ioss::ParallelUtils::get_environment(const std::string &name, std::string &
 {
   PAR_UNUSED(sync_parallel);
 #ifdef SEACAS_HAVE_MPI
-  char *            result_string = nullptr;
+  char             *result_string = nullptr;
   std::vector<char> broadcast_string;
 
   int string_length = 0;
@@ -329,7 +300,7 @@ void Ioss::ParallelUtils::barrier() const
 }
 
 void Ioss::ParallelUtils::global_count(const IntVector &local_counts,
-                                       IntVector &      global_counts) const
+                                       IntVector       &global_counts) const
 {
   // Vector 'local_counts' contains the number of objects
   // local to this processor.  On exit, global_counts
@@ -363,7 +334,7 @@ void Ioss::ParallelUtils::global_count(const IntVector &local_counts,
 }
 
 void Ioss::ParallelUtils::global_count(const Int64Vector &local_counts,
-                                       Int64Vector &      global_counts) const
+                                       Int64Vector       &global_counts) const
 {
   // Vector 'local_counts' contains the number of objects
   // local to this processor.  On exit, global_counts
@@ -400,7 +371,7 @@ template int Ioss::ParallelUtils::global_minmax(int, Ioss::ParallelUtils::MinMax
 template unsigned int Ioss::ParallelUtils::global_minmax(unsigned int,
                                                          Ioss::ParallelUtils::MinMax which) const;
 template int64_t      Ioss::ParallelUtils::global_minmax(int64_t,
-                                                    Ioss::ParallelUtils::MinMax which) const;
+                                                         Ioss::ParallelUtils::MinMax which) const;
 template double Ioss::ParallelUtils::global_minmax(double, Ioss::ParallelUtils::MinMax which) const;
 
 template <typename T>

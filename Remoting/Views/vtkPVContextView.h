@@ -17,7 +17,7 @@
  *
  * vtkPVContextView adopts vtkContextView so that it can be used in ParaView
  * configurations.
-*/
+ */
 
 #ifndef vtkPVContextView_h
 #define vtkPVContextView_h
@@ -177,9 +177,8 @@ protected:
   virtual bool MapSelectionToInput(vtkSelection*);
 
   /**
-   * Method to get the Formatted title after replacing some key strings
-   * eg: ${TIME}
-   * Child class should inherit this to add their own key strings
+   * Method to get the Formatted title after formatting it using the pushed arguments
+   * provided by vtkPVStringFormatter.
    */
   virtual std::string GetFormattedTitle();
 

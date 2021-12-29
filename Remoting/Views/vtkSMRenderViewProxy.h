@@ -19,7 +19,7 @@
  *
  * vtkSMRenderViewProxy is a 3D view consisting for a render window and two
  * renderers: 1 for 3D geometry and 1 for overlaid 2D geometry.
-*/
+ */
 
 #ifndef vtkSMRenderViewProxy_h
 #define vtkSMRenderViewProxy_h
@@ -85,8 +85,12 @@ public:
    * Convenience method to pick a block in a multi-block data set. Will return
    * the selected representation. Furthermore, if it is a multi-block data set
    * the flat index of the selected block will be returned in flatIndex.
+   *
+   * With introduction of vtkPartitionedDataSet and
+   * vtkPartitionedDataSetCollection, flatIndex is no longer consistent across
+   * ranks and hence this method was changed to return the rank number as well.
    */
-  vtkSMRepresentationProxy* PickBlock(int x, int y, unsigned int& flatIndex);
+  vtkSMRepresentationProxy* PickBlock(int x, int y, unsigned int& flatIndex, int& rank);
 
   /**
    * Given a location is display coordinates (pixels), tries to compute and
@@ -108,15 +112,16 @@ public:
   /**
    * For backwards compatibility in Python scripts.
    */
-  void ResetCamera();
-  void ResetCamera(double bounds[6]);
-  void ResetCamera(double xmin, double xmax, double ymin, double ymax, double zmin, double zmax);
+  void ResetCamera(bool closest = false);
+  void ResetCamera(double bounds[6], bool closest = false);
+  void ResetCamera(double xmin, double xmax, double ymin, double ymax, double zmin, double zmax,
+    bool closest = false);
   //@}
 
   /**
    * Convenience method for zooming to a representation.
    */
-  virtual void ZoomTo(vtkSMProxy* representation);
+  virtual void ZoomTo(vtkSMProxy* representation, bool closest = false);
 
   //@{
   /**
@@ -205,27 +210,6 @@ public:
    */
   vtkFloatArray* CaptureDepthBuffer();
 
-  /**
-   * Access to value-rendered array. Used for deferred color mapping during
-   * in-situ visualization (Cinema).
-   */
-  vtkFloatArray* GetValuesFloat();
-
-  //@{
-
-  /**
-   * Value raster capture controls.
-   */
-  void StartCaptureValues();
-  void StopCaptureValues();
-
-  /**
-   * Access to the current vtkValuePass rendering mode.
-   */
-  int GetValueRenderingMode();
-  void SetValueRenderingMode(int mode);
-  //@}
-
 protected:
   vtkSMRenderViewProxy();
   ~vtkSMRenderViewProxy() override;
@@ -276,7 +260,12 @@ protected:
   bool IsInSelectionMode();
 
   bool IsSelectionCached;
-  void ClearSelectionCache(bool force = false);
+
+  /**
+   * Returns true if the cache clear request was sent to vtkPVRenderView. The
+   * return value is primarily intended for debugging/logging purposes.
+   */
+  bool ClearSelectionCache(bool force = false);
 
   // Internal fields for the observer mechanism that is used to invalidate
   // the cache of selection when the current user became master

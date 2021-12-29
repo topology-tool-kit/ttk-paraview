@@ -11,8 +11,10 @@
 #ifndef fides_FidesTypes_H_
 #define fides_FidesTypes_H_
 
-#include <unordered_map>
+#include <fides/Deprecated.h>
+
 #include <string>
+#include <unordered_map>
 
 #include <vtkm/cont/Field.h>
 
@@ -24,21 +26,21 @@
 // Kind of annoying, but it is really helpful for dealing
 // with the fact that ADIOS stores types in strings and keeps us from having
 // to duplicate code by hand for each type
-#define FIDES_FOREACH_ATTRIBUTE_PRIMITIVE_STDTYPE_1ARG(MACRO)                   \
-    MACRO(int8_t)                                                              \
-    MACRO(int16_t)                                                             \
-    MACRO(int32_t)                                                             \
-    MACRO(int64_t)                                                             \
-    MACRO(uint8_t)                                                             \
-    MACRO(uint16_t)                                                            \
-    MACRO(uint32_t)                                                            \
-    MACRO(uint64_t)                                                            \
-    MACRO(float)                                                               \
-    MACRO(double)
+#define FIDES_FOREACH_ATTRIBUTE_PRIMITIVE_STDTYPE_1ARG(MACRO) \
+  MACRO(int8_t)                                               \
+  MACRO(int16_t)                                              \
+  MACRO(int32_t)                                              \
+  MACRO(int64_t)                                              \
+  MACRO(uint8_t)                                              \
+  MACRO(uint16_t)                                             \
+  MACRO(uint32_t)                                             \
+  MACRO(uint64_t)                                             \
+  MACRO(float)                                                \
+  MACRO(double)
 
-#define FIDES_FOREACH_STDTYPE_1ARG(MACRO)                                       \
-    MACRO(std::string)                                                         \
-    FIDES_FOREACH_PRIMITIVE_STDTYPE_1ARG(MACRO)
+#define FIDES_FOREACH_STDTYPE_1ARG(MACRO) \
+  MACRO(std::string)                      \
+  FIDES_FOREACH_PRIMITIVE_STDTYPE_1ARG(MACRO)
 
 namespace fides
 {
@@ -61,7 +63,9 @@ enum class StepStatus
 
 /// Association for fields, based on VTK-m's association enum, but
 /// also includes a value for representing field data.
-enum class Association
+enum class FIDES_DEPRECATED(
+  1.1,
+  "fides::Association is no longer used. Use vtkm::cont::Field::Association directly.") Association
 {
   POINTS,
   CELL_SET,
@@ -70,11 +74,29 @@ enum class Association
 
 /// Converts an fides::Association to a vtkm::cont::Field::Association.
 /// Throws a runtime error if trying to convert fides::Association::FIELD_DATA
+FIDES_DEPRECATED_SUPPRESS_BEGIN
+FIDES_DEPRECATED(
+  1.1,
+  "fides::Association is no longer used. Use vtkm::cont::Field::Association directly.")
 vtkm::cont::Field::Association FIDES_EXPORT ConvertToVTKmAssociation(fides::Association assoc);
+FIDES_DEPRECATED_SUPPRESS_END
 
 /// Converts vtkm::cont::Field::Association to fides::Association.
 /// Throws an error if assoc is not either POINTS or CELL_SET
+FIDES_DEPRECATED_SUPPRESS_BEGIN
+FIDES_DEPRECATED(
+  1.1,
+  "fides::Association is no longer used. Use vtkm::cont::Field::Association directly.")
 fides::Association FIDES_EXPORT ConvertVTKmAssociationToFides(vtkm::cont::Field::Association assoc);
+FIDES_DEPRECATED_SUPPRESS_END
+
+/// Converts a VTKm cell shape type to the fides string.
+/// Throws a runtime error for unsupported cell types.
+std::string FIDES_EXPORT ConvertVTKmCellTypeToFides(vtkm::UInt8 cellShapeType);
+
+/// Converts a fides cell name to VTKm cell shape type.
+/// Throws a runtime error for unsupported cell types.
+vtkm::UInt8 FIDES_EXPORT ConvertFidesCellTypeToVTKm(const std::string& cellShapeName);
 
 // used with the type macros above
 template <class T>
@@ -83,58 +105,58 @@ std::string GetType();
 template <>
 inline std::string GetType<std::string>()
 {
-    return "string";
+  return "string";
 }
 
 template <>
 inline std::string GetType<int8_t>()
 {
-    return "int8_t";
+  return "int8_t";
 }
 template <>
 inline std::string GetType<uint8_t>()
 {
-    return "uint8_t";
+  return "uint8_t";
 }
 template <>
 inline std::string GetType<int16_t>()
 {
-    return "int16_t";
+  return "int16_t";
 }
 template <>
 inline std::string GetType<uint16_t>()
 {
-    return "uint16_t";
+  return "uint16_t";
 }
 template <>
 inline std::string GetType<int32_t>()
 {
-    return "int32_t";
+  return "int32_t";
 }
 template <>
 inline std::string GetType<uint32_t>()
 {
-    return "uint32_t";
+  return "uint32_t";
 }
 template <>
 inline std::string GetType<int64_t>()
 {
-    return "int64_t";
+  return "int64_t";
 }
 template <>
 inline std::string GetType<uint64_t>()
 {
-    return "uint64_t";
+  return "uint64_t";
 }
 template <>
 inline std::string GetType<float>()
 {
-    return "float";
+  return "float";
 }
 template <>
 inline std::string GetType<double>()
 {
-    return "double";
+  return "double";
 }
 
 }

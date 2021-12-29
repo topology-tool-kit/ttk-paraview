@@ -35,7 +35,7 @@ class pqCustomViewpointButtonDialogUI : public Ui::pqCustomViewpointButtonDialog
     QPointer<QToolButton> DeleteButton;
   };
 
-  QPointer< ::pqCustomViewpointButtonDialog> Parent;
+  QPointer<::pqCustomViewpointButtonDialog> Parent;
   QList<RowData> Rows;
 
 public:
@@ -220,7 +220,7 @@ pqCustomViewpointButtonDialog::pqCustomViewpointButtonDialog(QWidget* Parent, Qt
 pqCustomViewpointButtonDialog::~pqCustomViewpointButtonDialog()
 {
   delete this->ui;
-  this->ui = NULL;
+  this->ui = nullptr;
 }
 
 //------------------------------------------------------------------------------
@@ -312,7 +312,7 @@ void pqCustomViewpointButtonDialog::importConfigurations()
   QString filters =
     QString("%1 (*%2);;All Files (*.*)").arg(fileInfo.FileDescription).arg(fileInfo.FileExtension);
 
-  pqFileDialog dialog(0, this, "Load Custom Viewpoints Configuration", "", filters);
+  pqFileDialog dialog(nullptr, this, "Load Custom Viewpoints Configuration", "", filters);
   dialog.setFileMode(pqFileDialog::ExistingFile);
 
   if (dialog.exec() == QDialog::Accepted)
@@ -321,7 +321,7 @@ void pqCustomViewpointButtonDialog::importConfigurations()
     filename = dialog.getSelectedFiles()[0];
 
     pugi::xml_document doc;
-    auto result = doc.load_file(filename.toLocal8Bit().data());
+    auto result = doc.load_file(filename.toUtf8().data());
     if (!result)
     {
       qCritical() << "XML Parsing errors (" << filename << ")\n\n"
@@ -426,7 +426,7 @@ void pqCustomViewpointButtonDialog::exportConfigurations()
   QString filters =
     QString("%1 (*%2);;All Files (*.*)").arg(fileInfo.FileDescription).arg(fileInfo.FileExtension);
 
-  pqFileDialog dialog(0, this, "Save Custom Viewpoints Configuration", "", filters);
+  pqFileDialog dialog(nullptr, this, "Save Custom Viewpoints Configuration", "", filters);
   dialog.setFileMode(pqFileDialog::AnyFile);
 
   if (dialog.exec() == QDialog::Accepted)
@@ -460,7 +460,7 @@ void pqCustomViewpointButtonDialog::exportConfigurations()
         config.append_copy(camConfigDoc.first_child());
       }
     }
-    if (!doc.save_file(filename.toLocal8Bit().data(), /*indent =*/"  "))
+    if (!doc.save_file(filename.toUtf8().data(), /*indent =*/"  "))
     {
       qCritical() << "Failed to save '" << filename << "'.";
     }

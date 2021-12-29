@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkPostgreSQLToTableReader.h
+  Module:    vtkPostgreSQLToTableReader.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -30,10 +30,10 @@
 vtkStandardNewMacro(vtkPostgreSQLToTableReader);
 
 //------------------------------------------------------------------------------
-vtkPostgreSQLToTableReader::vtkPostgreSQLToTableReader() {}
+vtkPostgreSQLToTableReader::vtkPostgreSQLToTableReader() = default;
 
 //------------------------------------------------------------------------------
-vtkPostgreSQLToTableReader::~vtkPostgreSQLToTableReader() {}
+vtkPostgreSQLToTableReader::~vtkPostgreSQLToTableReader() = default;
 
 //------------------------------------------------------------------------------
 int vtkPostgreSQLToTableReader::RequestData(
@@ -50,7 +50,7 @@ int vtkPostgreSQLToTableReader::RequestData(
     vtkErrorMacro(<< "Wrong type of database for this reader");
     return 1;
   }
-  if (this->TableName == "")
+  if (this->TableName.empty())
   {
     vtkErrorMacro(<< "No table selected");
     return 1;
@@ -92,7 +92,7 @@ int vtkPostgreSQLToTableReader::RequestData(
       vtkSmartPointer<vtkIntArray> column = vtkSmartPointer<vtkIntArray>::New();
       column->SetName(columnName.c_str());
       output->AddColumn(column);
-      columnTypes.push_back("int");
+      columnTypes.emplace_back("int");
     }
     else if ((columnType.find("double") != std::string::npos) ||
       (columnType.find("DOUBLE") != std::string::npos) ||
@@ -106,14 +106,14 @@ int vtkPostgreSQLToTableReader::RequestData(
       vtkSmartPointer<vtkDoubleArray> column = vtkSmartPointer<vtkDoubleArray>::New();
       column->SetName(columnName.c_str());
       output->AddColumn(column);
-      columnTypes.push_back("double");
+      columnTypes.emplace_back("double");
     }
     else
     {
       vtkSmartPointer<vtkStringArray> column = vtkSmartPointer<vtkStringArray>::New();
       column->SetName(columnName.c_str());
       output->AddColumn(column);
-      columnTypes.push_back("string");
+      columnTypes.emplace_back("string");
     }
   }
 

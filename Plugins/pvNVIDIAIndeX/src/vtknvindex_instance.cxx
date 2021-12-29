@@ -54,11 +54,16 @@
 #include "vtknvindex_colormap_utility.h"
 #include "vtknvindex_config_settings.h"
 #include "vtknvindex_forwarding_logger.h"
+#include "vtknvindex_global_settings.h"
 #include "vtknvindex_host_properties.h"
 #include "vtknvindex_irregular_volume_importer.h"
 #include "vtknvindex_receiving_logger.h"
 #include "vtknvindex_sparse_volume_importer.h"
 #include "vtknvindex_volume_compute.h"
+
+#ifdef __APPLE__
+#define VTKNVINDEX_REMOTE_RENDERING_ONLY
+#endif
 
 namespace
 {
@@ -74,7 +79,7 @@ static std::string get_last_error_as_str()
     LPVOID lpMsgBuf;
     DWORD bufLen = FormatMessage(
       FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-      NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
+      nullptr, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, nullptr);
 
     if (bufLen)
     {
@@ -99,15 +104,16 @@ std::string get_interface_address(const std::string interface_name, bool ipv6 = 
   {
     for (ifaddrs* i = if_list; i; i = i->ifa_next)
     {
-      if (i->ifa_addr != 0 && i->ifa_name != 0 && ((i->ifa_addr->sa_family == AF_INET && !ipv6) ||
-                                                    (i->ifa_addr->sa_family == AF_INET6 && ipv6)) &&
+      if (i->ifa_addr != nullptr && i->ifa_name != nullptr &&
+        ((i->ifa_addr->sa_family == AF_INET && !ipv6) ||
+          (i->ifa_addr->sa_family == AF_INET6 && ipv6)) &&
         std::string(i->ifa_name) == interface_name)
       {
         char buf[1025];
         int s = getnameinfo(i->ifa_addr,
           (i->ifa_addr->sa_family == AF_INET) ? sizeof(struct sockaddr_in)
                                               : sizeof(struct sockaddr_in6),
-          buf, 1025, 0, 0, NI_NUMERICHOST);
+          buf, 1025, nullptr, 0, NI_NUMERICHOST);
         if (s == 0)
         {
           result = buf;
@@ -197,7 +203,7 @@ mi::Sint32 vtknvindex_instance::get_cur_local_rank_id() const
   vtksys::SystemInformation sys_info;
   std::string cur_host = sys_info.GetHostname();
 
-  std::map<std::string, std::vector<mi::Sint32> >::const_iterator it =
+  std::map<std::string, std::vector<mi::Sint32>>::const_iterator it =
     m_hostname_to_rankids.find(cur_host);
   if (it == m_hostname_to_rankids.end())
     return -1;
@@ -214,15 +220,17 @@ mi::Sint32 vtknvindex_instance::get_cur_local_rank_id() const
 //-------------------------------------------------------------------------------------------------
 vtknvindex_instance* vtknvindex_instance::get()
 {
-  static vtknvindex_instance instance; // Meyers' singleton
-  return &instance;
+  // As a workaround for undefined shutdown order of static variables in dependency libs, this
+  // pointer is leaked on shutdown.
+  static vtknvindex_instance* instance = new vtknvindex_instance;
+  return instance;
 }
 
 //-------------------------------------------------------------------------------------------------
 void vtknvindex_instance::init_index()
 {
   // Start one IndeX instance per host (running on the local rank 0)
-  if (m_nvindex_interface && !is_index_initialized() && is_index_rank())
+  if (m_nvindex_interface && !m_is_index_initialized && is_index_rank())
   {
     // Setup NVIDIA IndeX
     if (!setup_nvindex())
@@ -242,8 +250,31 @@ void vtknvindex_instance::init_index()
 }
 
 //-------------------------------------------------------------------------------------------------
-bool vtknvindex_instance::is_index_initialized() const
+bool vtknvindex_instance::ensure_index_initialized() const
 {
+  static bool first = true;
+  if (!m_is_index_initialized && first)
+  {
+    first = false;
+#ifdef VTKNVINDEX_REMOTE_RENDERING_ONLY
+
+#ifdef __APPLE__
+    const char* platform = "macOS";
+#else
+    const char* platform = "this platform";
+#endif
+
+    ERROR_LOG
+      << "The NVIDIA IndeX plugin does not support local rendering on " << platform << ". "
+      << "You can however connect to a remote pvserver running NVIDIA IndeX on another host.";
+
+#else // VTKNVINDEX_REMOTE_RENDERING_ONLY
+
+    ERROR_LOG << "The NVIDIA IndeX plugin was not initialized! See the log output for details.";
+
+#endif // VTKNVINDEX_REMOTE_RENDERING_ONLY
+  }
+
   return m_is_index_initialized;
 }
 
@@ -329,7 +360,7 @@ void vtknvindex_instance::build_cluster_info()
   {
     m_is_index_viewer = false;
     cur_host_name = sys_info.GetHostname();
-    std::map<std::string, std::vector<mi::Sint32> >::const_iterator it =
+    std::map<std::string, std::vector<mi::Sint32>>::const_iterator it =
       m_hostname_to_rankids.find(cur_host_name);
     m_is_index_rank = (it != m_hostname_to_rankids.cend() && it->second[0] == cur_rank_id);
   }
@@ -348,6 +379,12 @@ void vtknvindex_instance::build_cluster_info()
 //-------------------------------------------------------------------------------------------------
 bool vtknvindex_instance::load_nvindex()
 {
+#ifdef VTKNVINDEX_REMOTE_RENDERING_ONLY
+
+  return false;
+
+#else // VTKNVINDEX_REMOTE_RENDERING_ONLY
+
   // Load shared libraries.
   const char* lib_name = "libnvindex" MI_BASE_DLL_FILE_EXT;
   const char* entry_point_name = "nv_index_factory";
@@ -486,13 +523,31 @@ bool vtknvindex_instance::load_nvindex()
   {
     mi::base::Handle<mi::neuraylib::ILogging_configuration> logging_configuration(
       m_nvindex_interface->get_api_component<mi::neuraylib::ILogging_configuration>());
-    assert(logging_configuration.is_valid_interface());
 
     logging_configuration->set_log_locally(true); // local logging
 
+    // Create verbose log output, even when it will not be shown with the default log level
+    // configured of the receiving logger.
+    const mi::base::Message_severity log_level = mi::base::MESSAGE_SEVERITY_VERBOSE;
+    logging_configuration->set_log_level(log_level);
+    logging_configuration->set_log_level_by_category("MAIN", log_level);
+
+    vtknvindex_global_settings* settings = vtknvindex_global_settings::GetInstance();
+    mi::Uint32 log_prefix = logging_configuration->get_log_prefix();
+    if (settings->GetLogTimestamp())
+    {
+      log_prefix |= mi::neuraylib::LOG_PREFIX_TIME;
+    }
+
+    if (settings->GetLogHostname())
+    {
+      log_prefix |= mi::neuraylib::LOG_PREFIX_HOST_NAME;
+    }
+
+    logging_configuration->set_log_prefix(log_prefix);
+
     // Install the receiving logger.
     mi::base::Handle<mi::base::ILogger> receiving_logger(new vtknvindex_receiving_logger());
-    assert(receiving_logger.is_valid_interface());
     logging_configuration->set_receiving_logger(receiving_logger.get());
   }
 
@@ -503,11 +558,19 @@ bool vtknvindex_instance::load_nvindex()
            << library_revision_full_str << ").";
 
   return true;
+
+#endif // VTKNVINDEX_REMOTE_RENDERING_ONLY
 }
 
 //-------------------------------------------------------------------------------------------------
 bool vtknvindex_instance::unload_nvindex()
 {
+#ifdef VTKNVINDEX_REMOTE_RENDERING_ONLY
+
+  return false;
+
+#else // VTKNVINDEX_REMOTE_RENDERING_ONLY
+
   assert(m_p_handle != 0);
 
 #ifdef _WIN32
@@ -527,6 +590,8 @@ bool vtknvindex_instance::unload_nvindex()
 #endif // _WIN32
 
   return true;
+
+#endif // VTKNVINDEX_REMOTE_RENDERING_ONLY
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -549,6 +614,21 @@ mi::Sint32 vtknvindex_instance::authenticate_nvindex()
     {
       INFO_LOG << "Using NVIDIA IndeX license from environment variables NVINDEX_VENDOR_KEY and "
                << "NVINDEX_SECRET_KEY.";
+    }
+  }
+
+  if (!found_license)
+  {
+    vtknvindex_global_settings* settings = vtknvindex_global_settings::GetInstance();
+    if (settings->GetVendorKey() && settings->GetSecretKey())
+    {
+      index_vendor_key = settings->GetVendorKey();
+      index_secret_key = settings->GetSecretKey();
+      found_license = (!index_vendor_key.empty() && !index_secret_key.empty());
+      if (found_license)
+      {
+        INFO_LOG << "Using NVIDIA IndeX license specified in the 'Settings' dialog.";
+      }
     }
   }
 
@@ -583,29 +663,260 @@ mi::Sint32 vtknvindex_instance::authenticate_nvindex()
     return 0;
   }
 
-  // Retrieve Flex license path.
-  std::string flexnet_lic_path;
+  return m_nvindex_interface->authenticate(index_vendor_key.c_str(),
+    static_cast<mi::Sint32>(index_vendor_key.length()), index_secret_key.c_str(),
+    static_cast<mi::Sint32>(index_secret_key.length()), nullptr, 0);
+}
 
-  // Try reading Flex license path from environment.
-  const char* env_flexnet_lic_path = vtksys::SystemTools::GetEnv("NVINDEX_FLEXNET_PATH");
-  if (env_flexnet_lic_path != nullptr)
+namespace
+{
+
+void setup_nvindex_network_from_settings(
+  mi::base::Handle<mi::neuraylib::INetwork_configuration>& inetwork_configuration,
+  bool& use_default_cluster_configuration, const std::string& default_discovery_host)
+{
+  vtknvindex_global_settings* settings = vtknvindex_global_settings::GetInstance();
+
+  const int cluster_mode = settings->GetClusterMode();
+
+  use_default_cluster_configuration = false;
+  if (cluster_mode == vtknvindex_global_settings::CLUSTER_OFF)
   {
-    flexnet_lic_path = env_flexnet_lic_path;
+    inetwork_configuration->set_mode(mi::neuraylib::INetwork_configuration::MODE_OFF);
   }
-  else // Try reading Flex license path from config file.
+  else if (cluster_mode == vtknvindex_global_settings::CLUSTER_TCP)
   {
-    vtknvindex_xml_config_parser xml_parser;
-    if (xml_parser.open_config_file(s_config_filename))
+    // This is the default configuration
+    use_default_cluster_configuration = true;
+  }
+  else if (cluster_mode == vtknvindex_global_settings::CLUSTER_UDP)
+  {
+    inetwork_configuration->set_mode(mi::neuraylib::INetwork_configuration::MODE_UDP);
+
+    // Multicast address.
+    if (settings->GetMulticastAddress())
     {
-      xml_parser.get_flex_license_path(flexnet_lic_path);
+      const std::string multicast_address(settings->GetMulticastAddress());
+      if (inetwork_configuration->set_multicast_address(multicast_address.c_str()) != 0)
+      {
+        ERROR_LOG << "Could not set the multicast address to value '" << multicast_address
+                  << "' specified in the 'Settings' dialog.";
+      }
+    }
+    else
+    {
+      // Use default multicast address.
+      const std::string multicast_address = "224.1.3.2";
+      WARN_LOG << "Using default multicast address " << multicast_address << ".";
+      inetwork_configuration->set_multicast_address(multicast_address.c_str());
+    }
+  }
+  else if (cluster_mode == vtknvindex_global_settings::CLUSTER_TCP_WITH_DISCOVERY)
+  {
+    inetwork_configuration->set_mode(
+      mi::neuraylib::INetwork_configuration::MODE_TCP_WITH_DISCOVERY);
+
+    // Discovery address (required when cluster_mode is "TCP_WITH_DISCOVERY").
+    if (settings->GetDiscoveryAddress())
+    {
+      const std::string discovery_address(settings->GetDiscoveryAddress());
+      if (inetwork_configuration->set_discovery_address(discovery_address.c_str()) != 0)
+      {
+        ERROR_LOG << "Could not set the discovery address to value '" << discovery_address
+                  << "' specified in the 'Settings' dialog.";
+      }
+    }
+    else
+    {
+      // Use default discovery address: first host in the host list
+      const std::string discovery_address = default_discovery_host + ":5555";
+      inetwork_configuration->set_discovery_address(discovery_address.c_str());
+    }
+  }
+  else
+  {
+    ERROR_LOG << "Unsupported value " << cluster_mode << " for ClusterMode in 'Settings' dialog.";
+  }
+
+  // Cluster interface address.
+  if (settings->GetClusterInterfaceAddress())
+  {
+    const std::string cluster_interface_address(settings->GetClusterInterfaceAddress());
+    if (inetwork_configuration->set_cluster_interface(cluster_interface_address.c_str()) != 0)
+    {
+      ERROR_LOG << "Could not set the cluster interface address to value '"
+                << cluster_interface_address << "' specified in the 'Settings' dialog. "
+                << "Please ensure to specify a network interface that is valid on all hosts.";
     }
   }
 
-  return m_nvindex_interface->authenticate(index_vendor_key.c_str(),
-    static_cast<mi::Sint32>(index_vendor_key.length()), index_secret_key.c_str(),
-    static_cast<mi::Sint32>(index_secret_key.length()), flexnet_lic_path.c_str(),
-    static_cast<mi::Sint32>(flexnet_lic_path.length()));
+  // RDMA.
+  inetwork_configuration->set_use_rdma(settings->GetUseRDMA());
+
+  if (inetwork_configuration->get_use_rdma())
+  {
+    // Set RDMA interface
+    if (settings->GetRDMAInterface())
+    {
+      const std::string rdma_interface(settings->GetRDMAInterface());
+      if (inetwork_configuration->set_rdma_interface(rdma_interface.c_str()) != 0)
+      {
+        ERROR_LOG << "Could not set the RDMA interface to value '" << rdma_interface
+                  << "' specified in the 'Settings' dialog.";
+      }
+    }
+
+#ifndef _WIN32
+    // Set alternative RDMA interface by name
+    if (settings->GetRDMAInterfaceByName())
+    {
+      const std::string rdma_interface_name(settings->GetRDMAInterfaceByName());
+      const std::string rdma_interface_address = get_interface_address(rdma_interface_name);
+      if (inetwork_configuration->set_rdma_interface(rdma_interface_address.c_str()) != 0)
+      {
+        ERROR_LOG << "Could not set the RDMA interface name to value '" << rdma_interface_name
+                  << "' specified in the 'Settings' dialog.";
+      }
+    }
+#endif // _WIN32
+  }
 }
+
+void setup_nvindex_network_from_config_file(vtknvindex_xml_config_parser& xml_parser,
+  mi::base::Handle<mi::neuraylib::INetwork_configuration>& inetwork_configuration,
+  bool& use_default_cluster_configuration, const std::string& default_discovery_host,
+  const std::string& config_filename)
+{
+  std::map<std::string, std::string> network_params;
+  if (xml_parser.get_section_settings(network_params, "network"))
+  {
+    std::map<std::string, std::string>::iterator it;
+
+    // Cluster network mode (protocol).
+    it = network_params.find("cluster_mode");
+    if (it != network_params.end())
+    {
+      use_default_cluster_configuration = false;
+
+      const std::string cluster_mode(it->second);
+      if (cluster_mode == "OFF")
+      {
+        inetwork_configuration->set_mode(mi::neuraylib::INetwork_configuration::MODE_OFF);
+      }
+      else if (cluster_mode == "TCP")
+      {
+        // This is the default configuration
+        use_default_cluster_configuration = true;
+      }
+      else if (cluster_mode == "UDP")
+      {
+        inetwork_configuration->set_mode(mi::neuraylib::INetwork_configuration::MODE_UDP);
+
+        // Multicast address.
+        it = network_params.find("multicast_address");
+        if (it != network_params.end())
+        {
+          const std::string multicast_address(it->second);
+          if (inetwork_configuration->set_multicast_address(multicast_address.c_str()) != 0)
+          {
+            ERROR_LOG << "Could not set the multicast address to value '" << multicast_address
+                      << "' specified in configuration file '" << config_filename << "'.";
+          }
+        }
+        else
+        {
+          // Use default multicast address.
+          const std::string multicast_address = "224.1.3.2";
+          WARN_LOG << "Using default multicast address " << multicast_address << ".";
+          inetwork_configuration->set_multicast_address(multicast_address.c_str());
+        }
+      }
+      else if (cluster_mode == "TCP_WITH_DISCOVERY")
+      {
+        inetwork_configuration->set_mode(
+          mi::neuraylib::INetwork_configuration::MODE_TCP_WITH_DISCOVERY);
+
+        // Discovery address (required when cluster_mode is "TCP_WITH_DISCOVERY").
+        it = network_params.find("discovery_address");
+        if (it != network_params.end())
+        {
+          const std::string discovery_address(it->second);
+          if (inetwork_configuration->set_discovery_address(discovery_address.c_str()) != 0)
+          {
+            ERROR_LOG << "Could not set the discovery address to value '" << discovery_address
+                      << "' specified in configuration file '" << config_filename << "'.";
+          }
+        }
+        else
+        {
+          // Use default discovery address: first host in the host list
+          const std::string discovery_address = default_discovery_host + ":5555";
+          inetwork_configuration->set_discovery_address(discovery_address.c_str());
+        }
+      }
+      else
+      {
+        ERROR_LOG << "Unsupported value '" << cluster_mode
+                  << "' for 'cluster_mode' specified in configuration file '" << config_filename
+                  << "'.";
+      }
+    }
+
+    // Cluster interface address.
+    it = network_params.find("cluster_interface_address");
+    if (it != network_params.end())
+    {
+      const std::string cluster_interface_address(it->second);
+      if (inetwork_configuration->set_cluster_interface(cluster_interface_address.c_str()) != 0)
+      {
+        ERROR_LOG << "Could not set the cluster interface address to value '"
+                  << cluster_interface_address << "' specified in configuration file '"
+                  << config_filename << "'. "
+                  << "Please ensure to specify a network interface that is valid on all hosts.";
+      }
+    }
+
+    // RDMA.
+    it = network_params.find("use_rdma");
+    if (it != network_params.end())
+    {
+      const std::string use_rdma(it->second);
+      inetwork_configuration->set_use_rdma(use_rdma == "1" || use_rdma == "yes");
+    }
+
+    if (inetwork_configuration->get_use_rdma())
+    {
+      // Set RDMA interface
+      it = network_params.find("rdma_interface");
+      if (it != network_params.end())
+      {
+        const std::string rdma_interface(it->second);
+        if (inetwork_configuration->set_rdma_interface(rdma_interface.c_str()) != 0)
+        {
+          ERROR_LOG << "Could not set the RDMA interface to value '" << rdma_interface
+                    << "' specified in configuration file '" << config_filename << "'.";
+        }
+      }
+
+#ifndef _WIN32
+      // Set alternative RDMA interface by name
+      it = network_params.find("rdma_interface_by_name");
+      if (it != network_params.end())
+      {
+        const std::string rdma_interface_name(it->second);
+        const std::string rdma_interface_address = get_interface_address(rdma_interface_name);
+        if (inetwork_configuration->set_rdma_interface(rdma_interface_address.c_str()) != 0)
+        {
+          ERROR_LOG << "Could not set the RDMA interface name to value '" << rdma_interface_name
+                    << "' specified in configuration file '" << config_filename << "'.";
+        }
+      }
+#endif // _WIN32
+    }
+  }
+}
+
+} // namespace
 
 //-------------------------------------------------------------------------------------------------
 bool vtknvindex_instance::setup_nvindex()
@@ -625,135 +936,13 @@ bool vtknvindex_instance::setup_nvindex()
   {
     bool use_default_cluster_configuration = true;
 
+    setup_nvindex_network_from_settings(
+      inetwork_configuration, use_default_cluster_configuration, m_host_list[0]);
+
     if (use_config_file)
     {
-      std::map<std::string, std::string> network_params;
-      if (xml_parser.get_section_settings(network_params, "network"))
-      {
-        std::map<std::string, std::string>::iterator it;
-
-        // Cluster network mode (protocol).
-        it = network_params.find("cluster_mode");
-        if (it != network_params.end())
-        {
-          use_default_cluster_configuration = false;
-
-          const std::string cluster_mode(it->second);
-          if (cluster_mode == "OFF")
-          {
-            inetwork_configuration->set_mode(mi::neuraylib::INetwork_configuration::MODE_OFF);
-          }
-          else if (cluster_mode == "TCP")
-          {
-            // This is the default configuration
-            use_default_cluster_configuration = true;
-          }
-          else if (cluster_mode == "UDP")
-          {
-            inetwork_configuration->set_mode(mi::neuraylib::INetwork_configuration::MODE_UDP);
-
-            // Multicast address.
-            it = network_params.find("multicast_address");
-            if (it != network_params.end())
-            {
-              const std::string multicast_address(it->second);
-              if (inetwork_configuration->set_multicast_address(multicast_address.c_str()) != 0)
-              {
-                ERROR_LOG << "Could not set the multicast address to value '" << multicast_address
-                          << "' specified in configuration file '" << s_config_filename << "'.";
-              }
-            }
-            else
-            {
-              // Use default multicast address.
-              const std::string multicast_address = "224.1.3.2";
-              WARN_LOG << "Using default multicast address " << multicast_address << ".";
-              inetwork_configuration->set_multicast_address(multicast_address.c_str());
-            }
-          }
-          else if (cluster_mode == "TCP_WITH_DISCOVERY")
-          {
-            inetwork_configuration->set_mode(
-              mi::neuraylib::INetwork_configuration::MODE_TCP_WITH_DISCOVERY);
-
-            // Discovery address (required when cluster_mode is "TCP_WITH_DISCOVERY").
-            it = network_params.find("discovery_address");
-            if (it != network_params.end())
-            {
-              const std::string discovery_address(it->second);
-              if (inetwork_configuration->set_discovery_address(discovery_address.c_str()) != 0)
-              {
-                ERROR_LOG << "Could not set the discovery address to value '" << discovery_address
-                          << "' specified in configuration file '" << s_config_filename << "'.";
-              }
-            }
-            else
-            {
-              // Use default discovery address: first host in the host list
-              const std::string discovery_address = std::string(m_host_list[0].c_str()) + ":5555";
-              inetwork_configuration->set_discovery_address(discovery_address.c_str());
-            }
-          }
-          else
-          {
-            ERROR_LOG << "Unsupported value '" << cluster_mode
-                      << "' for 'cluster_mode' specified in configuration file '"
-                      << s_config_filename << "'.";
-          }
-        }
-
-        // Cluster interface address.
-        it = network_params.find("cluster_interface_address");
-        if (it != network_params.end())
-        {
-          const std::string cluster_interface_address(it->second);
-          if (inetwork_configuration->set_cluster_interface(cluster_interface_address.c_str()) != 0)
-          {
-            ERROR_LOG << "Could not set the cluster interface address to value '"
-                      << cluster_interface_address << "' specified in configuration file '"
-                      << s_config_filename << "'. "
-                      << "Please ensure to specify a network interface that is valid on all hosts.";
-          }
-        }
-
-        // RDMA.
-        it = network_params.find("use_rdma");
-        if (it != network_params.end())
-        {
-          const std::string use_rdma(it->second);
-          inetwork_configuration->set_use_rdma(use_rdma == "1" || use_rdma == "yes");
-        }
-
-        // Set RDMA interface
-        if (inetwork_configuration->get_use_rdma())
-        {
-          it = network_params.find("rdma_interface");
-          if (it != network_params.end())
-          {
-            const std::string rdma_interface(it->second);
-            if (inetwork_configuration->set_rdma_interface(rdma_interface.c_str()) != 0)
-            {
-              ERROR_LOG << "Could not set the RDMA interface to value '" << rdma_interface
-                        << "' specified in configuration file '" << s_config_filename << "'.";
-            }
-          }
-
-#ifndef _WIN32
-          // Set alternative RDMA interface by name
-          it = network_params.find("rdma_interface_by_name");
-          if (it != network_params.end())
-          {
-            const std::string rdma_interface_name(it->second);
-            const std::string rdma_interface_address = get_interface_address(rdma_interface_name);
-            if (inetwork_configuration->set_rdma_interface(rdma_interface_address.c_str()) != 0)
-            {
-              ERROR_LOG << "Could not set the RDMA interface name to value '" << rdma_interface_name
-                        << "' specified in configuration file '" << s_config_filename << "'.";
-            }
-          }
-#endif // _WIN32
-        }
-      }
+      setup_nvindex_network_from_config_file(xml_parser, inetwork_configuration,
+        use_default_cluster_configuration, m_host_list[0], s_config_filename);
     }
 
     if (use_default_cluster_configuration)
@@ -867,7 +1056,7 @@ bool vtknvindex_instance::setup_nvindex()
 
 #if (NVIDIA_INDEX_LIBRARY_REVISION_MAJOR > 329100 ||                                               \
   (NVIDIA_INDEX_LIBRARY_REVISION_MAJOR == 329100 && NVIDIA_INDEX_LIBRARY_REVISION_MINOR == 8100 && \
-       NVIDIA_INDEX_LIBRARY_REVISION_SUBMINOR > 3009))
+    NVIDIA_INDEX_LIBRARY_REVISION_SUBMINOR > 3009))
 
     // Skip when running with the old library version, as that would trigger a runtime warning
     if (std::string(m_nvindex_interface->get_revision()).find("329100.8100.3009,") != 0)
@@ -927,6 +1116,36 @@ bool vtknvindex_instance::setup_nvindex()
 
           idebug_configuration->set_option(use_pinned_staging_buffer.c_str());
         }
+      }
+    }
+
+    // Extra configuration from "Settings" dialog.
+    vtknvindex_global_settings* settings = vtknvindex_global_settings::GetInstance();
+    mi::base::Handle<mi::neuraylib::IDebug_configuration> dice_debug_configuration(
+      m_nvindex_interface->get_api_component<mi::neuraylib::IDebug_configuration>());
+    for (int i = 0; i < settings->GetNumberOfExtraConfigurations(); ++i)
+    {
+      const std::string cfg = settings->GetExtraConfiguration(i);
+      if (cfg.empty())
+      {
+        continue;
+      }
+
+      bool success = true;
+      if (cfg.rfind("dice.", 0) == 0)
+      {
+        // Handle options starting with "dice."
+        success = (dice_debug_configuration->set_option(cfg.substr(5).c_str()) == 0);
+      }
+      else
+      {
+        success = (idebug_configuration->set_option(cfg.c_str()) == 0);
+      }
+
+      if (!success)
+      {
+        ERROR_LOG << "Failed to set NVIDIA IndeX extra configuration option '" << cfg
+                  << "', specified in the 'Settings' dialog.";
       }
     }
   }
@@ -1011,19 +1230,19 @@ void vtknvindex_instance::shutdown_nvindex()
     // Unregister receiving logger.
     mi::base::Handle<mi::neuraylib::ILogging_configuration> logging_configuration(
       m_nvindex_interface->get_api_component<mi::neuraylib::ILogging_configuration>());
-    logging_configuration->set_receiving_logger(0);
+    logging_configuration->set_receiving_logger(nullptr);
   }
 
-  m_database = 0;
-  m_global_scope = 0;
-  m_iindex_session = 0;
-  m_iindex_rendering = 0;
-  m_icluster_configuration = 0;
-  m_iindex_debug_configuration = 0;
+  m_database = nullptr;
+  m_global_scope = nullptr;
+  m_iindex_session = nullptr;
+  m_iindex_rendering = nullptr;
+  m_icluster_configuration = nullptr;
+  m_iindex_debug_configuration = nullptr;
   m_session_tag = mi::neuraylib::NULL_TAG;
 
   m_nvindex_interface->shutdown();
-  m_nvindex_interface = 0;
+  m_nvindex_interface = nullptr;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -1159,5 +1378,5 @@ void vtknvindex_instance::init_scene_graph()
 //-------------------------------------------------------------------------------------------------
 const char* vtknvindex_instance::get_version() const
 {
-  return "5.9.1";
+  return "5.10";
 }

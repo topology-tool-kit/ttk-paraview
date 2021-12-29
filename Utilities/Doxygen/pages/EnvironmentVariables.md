@@ -19,8 +19,8 @@ Variable | Description
 `PV_PLUGIN_PATH` | Directories containing plugins to be loaded on startup.
 `PV_SHARED_WINDOW_SIZE`  | Similar to `PV_ICET_WINDOW_BORDERS` except that the value is specified as `WxH` where `W` and `H` is the width and height for the render window.
 `QT_MAC_NO_NATIVE_MENUBAR` | Qt flag to force the Qt menu bar rather than the native mac menu bar.
-`VTK_DEBUG_SKIP_OSPRAY_CHECK` | Skip test to validate OSPRay rendering support.
-`VTK_DEBUG_SKIP_VISRTX_CHECK` | Skip test to validate VisRTX rendering support.
+`VTK_DISABLE_OSPRAY` | Skip rendering support tests to enable OSPRay.
+`VTK_DISABLE_VISRTX` | Skip rendering support tests to enable VisRTX.
 
 Obsolete Variable | Description
 ---------|---------------------------------------------------------
@@ -43,3 +43,4 @@ Variable | Description
 `PARAVIEW_LOG_DATA_MOVEMENT_VERBOSITY` | Log messages related to data movement for rendering and other tasks (see vtkPVLogger::GetDataMovementVerbosity())
 `PARAVIEW_LOG_PIPELINE_VERBOSITY`  | Log messages related to Pipeline execution (see vtkPVLogger::GetPipelineVerbosity())
 `PARAVIEW_LOG_PLUGIN_VERBOSITY` | Log messages related to ParaView plugins (see vtkPVLogger::GetPluginVerbosity())
+`PARAVIEW_LOG_EXECUTION_VERBOSITY` | Log messages related to ParaView algorithms executions (see vtkPVLogger::GetExecutionVerbosity())

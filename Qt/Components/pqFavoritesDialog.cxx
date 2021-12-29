@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // self
 #include "pqFavoritesDialog.h"
+#include "pqQtDeprecated.h"
 #include "ui_pqFavoritesDialog.h"
 
 // Qt
@@ -190,9 +191,7 @@ pqFavoritesDialog::pqFavoritesDialog(const QVariant& filtersList, QWidget* p)
 }
 
 //----------------------------------------------------------------------------
-pqFavoritesDialog::~pqFavoritesDialog()
-{
-}
+pqFavoritesDialog::~pqFavoritesDialog() = default;
 
 //----------------------------------------------------------------------------
 void pqFavoritesDialog::onSearchTextChanged(QString pattern)
@@ -271,10 +270,10 @@ void pqFavoritesDialog::populateFavoritesTree()
   if (settings->contains(key))
   {
     QString settingValue = settings->value(key).toString();
-    QStringList bmList = settingValue.split("|", QString::SkipEmptyParts);
-    for (QString bm : bmList)
+    QStringList bmList = settingValue.split("|", PV_QT_SKIP_EMPTY_PARTS);
+    for (const QString& bm : bmList)
     {
-      QStringList bmPath = bm.split(";", QString::SkipEmptyParts);
+      QStringList bmPath = bm.split(";", PV_QT_SKIP_EMPTY_PARTS);
       if (bmPath.size() >= 2)
       {
         QString group = bmPath.takeFirst();
@@ -371,9 +370,9 @@ void pqFavoritesDialog::createCategory()
 //----------------------------------------------------------------------------
 void pqFavoritesDialog::onRemoveFavoritePressed()
 {
-  QSet<QTreeWidgetItem *> deletedItems, aboveItems, belowItems;
+  QSet<QTreeWidgetItem*> deletedItems, aboveItems, belowItems;
   QList<QTreeWidgetItem*> selected = this->Ui->favorites->selectedItems();
-  if (selected.size() == 0)
+  if (selected.empty())
   {
     return;
   }

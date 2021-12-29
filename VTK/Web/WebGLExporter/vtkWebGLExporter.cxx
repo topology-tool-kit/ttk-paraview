@@ -228,7 +228,7 @@ void vtkWebGLExporter::parseActor2D(
     ss << (vtkMTimeType)actor;
     for (size_t i = 0; i < this->Internal->tempObj.size(); i++)
     {
-      if (this->Internal->tempObj[i]->GetId().compare(ss.str()) == 0)
+      if (this->Internal->tempObj[i]->GetId() == ss.str())
       {
         vtkWebGLObject* obj = this->Internal->tempObj[i];
         this->Internal->tempObj.erase(this->Internal->tempObj.begin() + i);
@@ -278,7 +278,7 @@ void vtkWebGLExporter::parseActor(
       ss << (size_t)actor;
       for (size_t i = 0; i < this->Internal->tempObj.size(); i++)
       {
-        if (this->Internal->tempObj[i]->GetId().compare(ss.str()) == 0)
+        if (this->Internal->tempObj[i]->GetId() == ss.str())
         {
           obj = this->Internal->tempObj[i];
           this->Internal->tempObj.erase(this->Internal->tempObj.begin() + i);
@@ -404,7 +404,7 @@ void vtkWebGLExporter::parseActor(
       ss << (size_t)actor;
       for (size_t i = 0; i < this->Internal->tempObj.size(); i++)
       {
-        if (this->Internal->tempObj[i]->GetId().compare(ss.str()) == 0)
+        if (this->Internal->tempObj[i]->GetId() == ss.str())
         {
           vtkWebGLObject* obj = this->Internal->tempObj[i];
           this->Internal->tempObj.erase(this->Internal->tempObj.begin() + i);
@@ -746,8 +746,6 @@ void vtkWebGLExporter::exportStaticScene(
   resultHTML += "} else { done = true; } }";
   resultHTML += "return result; }";
 
-  vtkBase64Utilities* base64 = vtkBase64Utilities::New();
-
   this->parseScene(renderers, "1234567890", VTK_PARSEALL);
   const char* metadata = this->GenerateExportMetadata();
   resultHTML += "var metadata = '" + std::string(metadata) + "';";
@@ -763,7 +761,8 @@ void vtkWebGLExporter::exportStaticScene(
       for (int j = 0; j < obj->GetNumberOfParts(); j++)
       {
         unsigned char* output = new unsigned char[obj->GetBinarySize(j) * 2];
-        size = base64->Encode(obj->GetBinaryData(j), obj->GetBinarySize(j), output, false);
+        size =
+          vtkBase64Utilities::Encode(obj->GetBinaryData(j), obj->GetBinarySize(j), output, false);
         test = std::string((const char*)output, size);
         resultHTML += "'" + test + "',\n";
         delete[] output;
@@ -781,8 +780,6 @@ void vtkWebGLExporter::exportStaticScene(
   file.open(path.c_str());
   file << resultHTML;
   file.close();
-
-  base64->Delete();
 }
 
 //------------------------------------------------------------------------------

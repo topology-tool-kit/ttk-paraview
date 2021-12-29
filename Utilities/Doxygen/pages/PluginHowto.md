@@ -212,6 +212,23 @@ tasks:
     category. For readers and writers, this is required since ParaView GUI
     needs to know what extensions your reader/writer supports etc.
 
+## Plugin Resources
+
+Plugins may access resources relative to themselves by using the
+`paraview_plugin_add_location` interface to get the location of the plugin at
+runtime. Note that this only works when built as a shared plugin. For static
+plugins, the path will come in as a `nullptr`. If a plugin with resources
+intends to support resources, it is recommended to use a `.qrc` file to embed
+the resources into the plugin.
+
+For installation of resources, the `_paraview_build_plugin_directory` variable
+contains the location of the plugin under the build and install prefixes. Build
+resources may be placed under
+`"${CMAKE_BINARY_DIR}/${_paraview_build_plugin_directory}"` and installed with
+`DESTINATION "${_paraview_build_plugin_directory}"`. The plugin itself belongs
+to the `${_paraview_build_PLUGINS_COMPONENT}` component, so resources should
+generally use a component with a related name.
+
 ## Examples
 
 ### XML Plugins
@@ -934,6 +951,40 @@ plugin is loaded, as shown below.
 
 ![](images/Paraview_doc_plugin.png)
 
+It is also possible to customize further the documentation with 3 additional
+options:
+
+ * `DOCUMENTATION_ADD_PATTERNS`: If specified, add patterns to search for the
+   documentation files within `DOCUMENTATION_DIR` other than the default ones
+   (i.e. `*.html`, `*.css`, `*.png`, `*.js` and `*.jpg`). This can be used to
+   add new file extension (ex: `*.txt`) or even subdirectories (ex:
+   `subDir/*.*`). Subdirectory hierarchy is kept so if you store all of your
+   images in a `img/` sub directory and if your html file is at the root level
+   of your documentation directory, then you should reference them using
+   `<img src="img/my_image.png"/>` in the html file.
+ * `DOCUMENTATION_TOC`: If specified, the function will use the given string to
+   describe the table of content for the documentation. A TOC is divided into
+   sections. Every section points to a specific file (`ref` keyword) that is
+   accessed when selected in the UI. A section that contains other
+   sections can be folded into the UI. An example of such a string is:
+
+```html
+<toc>
+  <section title="Top level section title" ref="page1.html">
+    <section title="Page Title 1" ref="page1.html"/>
+    <section title="Sub section Title" ref="page2.html">
+      <section title="Page Title 2" ref="page2.html"/>
+      <section title="Page Title 3" ref="page3.html"/>
+    </section>
+  </section>
+</toc>
+```
+
+ * `DOCUMENTATION_DEPENDENCIES`: Targets that are needed to be built before
+   actually building the documentation. This can be useful when the plugin
+   developer relies on a third party documentation generator like Doxygen for
+   example.
+
 #### Adding a Toolbar
 
 Filters, reader, and writers are by far the most common ways for extending
@@ -999,6 +1050,32 @@ If you give the name of an existing menu, then the commands will be added to
 that menu rather than create a new one.  So, for example, if the `GROUP_NAME`
 is `MenuBar/File`, the commands will be added to the bottom of the *File* menu.
 
+#### Adding a Context Menu
+
+Context menus are popup menus created when a user right-clicks inside a view
+(typically a render-view, but possible with any view). You can register a plugin
+that will create a context menu with items specific to the object underneath the
+cursor at the time the user right-clicks. The first instance of
+`pqContextMenuInterface` that returns a non-null menu is used; returning a
+null menu indicates the object(s) selected when the user right clicks are not
+relevant to your interface. For this reason, your subclass should avoid creating
+menus unrelated to a specific application or object type.
+
+To add a `pqContextMenuInterface` subclass to ParaView, simply pass your class
+name to the `UI_INTERFACES` argument of `paraview_add_plugin()` and the source,
+as usual, to the `SOURCES` argument:
+
+```cmake
+paraview_add_plugin(FancyMenu
+  ...
+  UI_INTERFACES FancyMenu
+  SOURCES FancyMenu.h FancyMenu.cxx
+  ...
+)
+```
+
+See the `Examples/Plugins/ContextMenu` directory for a simple example.
+
 #### Autostart Plugins
 
 This refers to a plugin which needs to be notified when ParaView starts up or
@@ -1042,6 +1119,39 @@ paraview_add_plugin(Autostart
   VERSION "1.0"
   UI_INTERFACES ${interfaces}
   SOURCES pqMyApplicationStarter.cxx ${interfaces})
+```
+
+#### Getting the Location of a Dynamically-Loaded Plugin
+
+Some dynamically-loaded plugins include data or text files in the same
+directory as the plugin binary object (DLL or shared object). To locate
+these files at runtime, plugins can register a callback that is notified
+with the file system location of the plugin when it is loaded. To do this,
+we need to provide a `QObject` subclass (`pqMyLocationPlugin`) with a
+method to store the plugin location.
+
+```cpp
+class pqMyPluginLocation : public QObject
+{
+Q_OBJECT
+public:
+  // Callback when plugin is loaded.
+  void StoreLocation(const char* location);
+};
+```
+
+The `CMakeLists.txt` looks as follows:
+
+```cmake
+# Macro for adding the location callback. We specify the class name and the
+# method to call with the filesystem location as `CLASS_NAME` and `STORE`
+# arguments. It returns the interface and sources created in the variables
+# passed to the `INTERFACES` and `SOURCES` arguments.
+paraview_plugin_add_location(
+  CLASS_NAME pqMyPluginLocation  # the class name for our class
+  STORE  StoreLocation           # the method to call when the plugin is loaded
+  INTERFACES interfaces
+  SOURCES sources)
 ```
 
 #### Adding new Representations for 3D View using Plugins

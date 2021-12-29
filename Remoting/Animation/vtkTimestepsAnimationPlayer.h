@@ -19,7 +19,7 @@
  *
  * Player to play an animation scene through a discrete set of time values.
  * FramesPerTimestep controls how many frames are generated for each time value.
-*/
+ */
 
 #ifndef vtkTimestepsAnimationPlayer_h
 #define vtkTimestepsAnimationPlayer_h
@@ -105,6 +105,8 @@ protected:
 private:
   vtkTimestepsAnimationPlayer(const vtkTimestepsAnimationPlayer&) = delete;
   void operator=(const vtkTimestepsAnimationPlayer&) = delete;
+
+  double GetNextInternal(double time, double defaultVal);
 
   vtkTimestepsAnimationPlayerSetOfDouble* TimeSteps;
 };

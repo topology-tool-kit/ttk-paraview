@@ -42,7 +42,7 @@
 class pqOpacityTableModel::pqInternals
 {
 public:
-  std::vector<std::array<double, 4> > XVMSPoints;
+  std::vector<std::array<double, 4>> XVMSPoints;
 };
 
 //-----------------------------------------------------------------------------
@@ -57,6 +57,13 @@ pqOpacityTableModel::pqOpacityTableModel(pqColorOpacityEditorWidget* widget, QOb
 
   QObject::connect(this, SIGNAL(dataChanged(const QModelIndex&, const QModelIndex&)),
     SLOT(updatePoint(const QModelIndex&)));
+}
+
+//-----------------------------------------------------------------------------
+pqOpacityTableModel::~pqOpacityTableModel()
+{
+  delete this->Internals;
+  this->Internals = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -174,7 +181,7 @@ void pqOpacityTableModel::controlPointsChanged()
   int newSize = 0;
   if (stc)
   {
-    pwf = stc ? stc->GetScalarOpacityFunction() : NULL;
+    pwf = stc ? stc->GetScalarOpacityFunction() : nullptr;
     if (pwf)
     {
       newSize = pwf->GetSize();

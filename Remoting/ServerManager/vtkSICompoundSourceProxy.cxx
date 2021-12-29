@@ -25,7 +25,7 @@
 #include <sstream>
 #include <vector>
 
-#include <assert.h>
+#include <cassert>
 
 //*****************************************************************************
 class vtkSICompoundSourceProxy::vtkInternals
@@ -68,7 +68,7 @@ public:
 
   typedef std::vector<PortInfo> VectorOfPortInfo;
   VectorOfPortInfo ExposedPorts;
-  std::vector<vtkSmartPointer<vtkAlgorithmOutput> > OutputPorts;
+  std::vector<vtkSmartPointer<vtkAlgorithmOutput>> OutputPorts;
   bool NeedOutputPortCreation;
 };
 //*****************************************************************************
@@ -98,7 +98,7 @@ vtkAlgorithmOutput* vtkSICompoundSourceProxy::GetOutputPort(int port)
     return this->Internals->OutputPorts[port];
   }
 
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------

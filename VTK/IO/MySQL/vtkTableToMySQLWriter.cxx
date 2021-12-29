@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkTableToMySQLWriter.h
+  Module:    vtkTableToMySQLWriter.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -29,11 +29,11 @@ vtkStandardNewMacro(vtkTableToMySQLWriter);
 //------------------------------------------------------------------------------
 vtkTableToMySQLWriter::vtkTableToMySQLWriter()
 {
-  this->Database = 0;
+  this->Database = nullptr;
 }
 
 //------------------------------------------------------------------------------
-vtkTableToMySQLWriter::~vtkTableToMySQLWriter() {}
+vtkTableToMySQLWriter::~vtkTableToMySQLWriter() = default;
 
 //------------------------------------------------------------------------------
 void vtkTableToMySQLWriter::WriteData()
@@ -49,7 +49,7 @@ void vtkTableToMySQLWriter::WriteData()
     vtkErrorMacro(<< "Wrong type of database for this writer");
     return;
   }
-  if (this->TableName == "")
+  if (this->TableName.empty())
   {
     vtkErrorMacro(<< "No table name specified!");
     return;
@@ -137,7 +137,6 @@ void vtkTableToMySQLWriter::WriteData()
 
   // cleanup and return
   query->Delete();
-  return;
 }
 
 //------------------------------------------------------------------------------

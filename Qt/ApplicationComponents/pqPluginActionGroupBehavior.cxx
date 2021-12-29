@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqActionGroupInterface.h"
 #include "pqApplicationCore.h"
 #include "pqInterfaceTracker.h"
+#include "pqQtDeprecated.h"
 
 #include <QMainWindow>
 #include <QMenu>
@@ -53,7 +54,7 @@ QAction* findExitAction(QMenu* menu)
       return action;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 QAction* findHelpMenuAction(QMenuBar* menubar)
@@ -68,7 +69,7 @@ QAction* findHelpMenuAction(QMenuBar* menubar)
       return existingMenuAction;
     }
   }
-  return NULL;
+  return nullptr;
 }
 }
 
@@ -102,7 +103,7 @@ void pqPluginActionGroupBehavior::addPluginInterface(QObject* iface)
   }
 
   QString name = agi->groupName();
-  QStringList splitName = name.split('/', QString::SkipEmptyParts);
+  QStringList splitName = name.split('/', PV_QT_SKIP_EMPTY_PARTS);
 
   if (splitName.size() == 2 && splitName[0] == "ToolBar")
   {
@@ -113,7 +114,7 @@ void pqPluginActionGroupBehavior::addPluginInterface(QObject* iface)
   }
   else if (splitName.size() == 2 && splitName[0] == "MenuBar")
   {
-    QMenu* menu = NULL;
+    QMenu* menu = nullptr;
     QList<QAction*> menuBarActions = mainWindow->menuBar()->actions();
     foreach (QAction* existingMenuAction, menuBarActions)
     {
@@ -131,7 +132,7 @@ void pqPluginActionGroupBehavior::addPluginInterface(QObject* iface)
 
       // Add to existing menu (before exit action, if exists).
       QAction* a;
-      if (exitAction == NULL)
+      if (exitAction == nullptr)
       {
         menu->addSeparator();
       }
@@ -139,7 +140,7 @@ void pqPluginActionGroupBehavior::addPluginInterface(QObject* iface)
       {
         menu->insertAction(exitAction, a);
       }
-      if (exitAction != NULL)
+      if (exitAction != nullptr)
       {
         menu->insertSeparator(exitAction);
       }
@@ -154,10 +155,10 @@ void pqPluginActionGroupBehavior::addPluginInterface(QObject* iface)
       mainWindow->menuBar()->insertMenu(::findHelpMenuAction(mainWindow->menuBar()), menu);
     }
   }
-  else if (splitName.size())
+  else if (!splitName.empty())
   {
     QString msg = QString("Do not know what action group \"%1\" is").arg(splitName[0]);
-    qWarning("%s", msg.toLocal8Bit().data());
+    qWarning("%s", msg.toUtf8().data());
   }
   else
   {

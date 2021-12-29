@@ -17,19 +17,13 @@
 #include "vtkObjectFactory.h"
 
 //----------------------------------------------------------------------------
-vtkSMProxyInitializationHelper::vtkSMProxyInitializationHelper()
-{
-}
+vtkSMProxyInitializationHelper::vtkSMProxyInitializationHelper() = default;
 
 //----------------------------------------------------------------------------
-vtkSMProxyInitializationHelper::~vtkSMProxyInitializationHelper()
-{
-}
+vtkSMProxyInitializationHelper::~vtkSMProxyInitializationHelper() = default;
 
 //----------------------------------------------------------------------------
-void vtkSMProxyInitializationHelper::RegisterProxy(vtkSMProxy*, vtkPVXMLElement*)
-{
-}
+void vtkSMProxyInitializationHelper::RegisterProxy(vtkSMProxy*, vtkPVXMLElement*) {}
 
 //----------------------------------------------------------------------------
 void vtkSMProxyInitializationHelper::PrintSelf(ostream& os, vtkIndent indent)

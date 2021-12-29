@@ -11,7 +11,7 @@
                      name="Input"
                      panel_widget="input_selector"
                      null_on_empty="1"
-                     panel_visibility="always">
+                     panel_visibility="default">
         <ProxyGroupDomain name="groups">
           <Group name="sources" />
           <Group name="filters" />
@@ -382,7 +382,7 @@
                             label="Faces Array Name"
                             default_values="Face Count"
                             number_of_elements="1"
-                            panel_visibility="always">
+                            panel_visibility="default">
         <Documentation>
           This is the name of the array in the output containing the face counts.
         </Documentation>
@@ -415,7 +415,7 @@
                             label="Vertices Array Name"
                             default_values="Vertex Count"
                             number_of_elements="1"
-                            panel_visibility="always">
+                            panel_visibility="default">
         <Documentation>
           This is the name of the array in the output containing the vertex counts.
         </Documentation>
@@ -526,7 +526,7 @@
                             default_values="%Y-%m-%d %H:%M:%S"
                             name="DateFormat"
                             number_of_elements="1"
-                            panel_visibility="always">
+                            panel_visibility="default">
         <Documentation>
           This property specifies the first format to try using to parse dates. It
           follows the standards of std::get_time.
@@ -537,15 +537,19 @@
     <!-- ==================================================================== -->
     <SourceProxy class="vtkGradientFilter"
                  label="Gradient Of Unstructured DataSet"
-                 name="UnstructuredGradient">
+                 name="UnstructuredGradientLegacy">
+      <Deprecated deprecated_in="5.10" to_remove_in="5.11">
+        This filter has been replaced by 'Gradient'.
+        Please consider using that instead.
+      </Deprecated>
       <Documentation long_help="Estimate the gradient for each point or cell in any type of dataset."
                      short_help="Compute gradients for any type of dataset.">
                      The Gradient (Unstructured) filter estimates the gradient
                      vector at each point or cell. It operates on any type of
                      vtkDataSet, and the output is the same type as the input.
                      If the dataset is a vtkImageData, use the Gradient filter
-                     instead; it will be more efficient for this type of
-                     dataset.</Documentation>
+                     instead; it will be more efficient for this type of dataset.
+      </Documentation>
       <InputProperty command="SetInputConnection"
                      name="Input">
         <ProxyGroupDomain name="groups">
@@ -556,8 +560,9 @@
           <DataType value="vtkDataSet" />
         </DataTypeDomain>
         <InputArrayDomain name="input_array" />
-        <Documentation>This property specifies the input to the Gradient
-        (Unstructured) filter.</Documentation>
+        <Documentation>
+          This property specifies the input to the Gradient (Unstructured) filter.
+        </Documentation>
       </InputProperty>
       <StringVectorProperty command="SetInputArrayToProcess"
                             element_types="0 0 0 0 2"
@@ -571,8 +576,9 @@
                       name="Input" />
           </RequiredProperties>
         </ArrayListDomain>
-        <Documentation>This property lists the name of the scalar array from
-        which to compute the gradient.</Documentation>
+        <Documentation>
+          This property lists the name of the scalar array from which to compute the gradient.
+        </Documentation>
       </StringVectorProperty>
       <IntVectorProperty command="SetComputeGradient"
                          default_values="1"
@@ -580,15 +586,17 @@
                          number_of_elements="1"
                          panel_visibility="advanced">
         <BooleanDomain name="bool" />
-        <Documentation>When this flag is on, the gradient filter will compute
-        the gradient of the input array.</Documentation>
+        <Documentation>
+          When this flag is on, the gradient filter will compute the gradient of the input array.
+        </Documentation>
       </IntVectorProperty>
       <StringVectorProperty command="SetResultArrayName"
                             default_values="Gradients"
                             name="ResultArrayName"
                             number_of_elements="1">
-        <Documentation>This property provides a name for the output array
-        containing the gradient vectors.</Documentation>
+        <Documentation>
+          This property provides a name for the output array containing the gradient vectors.
+        </Documentation>
       </StringVectorProperty>
       <IntVectorProperty command="SetFasterApproximation"
                          default_values="0"
@@ -596,12 +604,14 @@
                          number_of_elements="1"
                          panel_visibility="advanced">
         <BooleanDomain name="bool" />
-        <Documentation>When this flag is on, the gradient filter will provide a
-        less accurate (but close) algorithm that performs fewer derivative
-        calculations (and is therefore faster). The error contains some
-        smoothing of the output data and some possible errors on the boundary.
-        This parameter has no effect when performing the gradient of cell
-        data or when the input grid is not a vtkUnstructuredGrid.</Documentation>
+        <Documentation>
+          When this flag is on, the gradient filter will provide a
+          less accurate (but close) algorithm that performs fewer derivative
+          calculations (and is therefore faster). The error contains some
+          smoothing of the output data and some possible errors on the boundary.
+          This parameter has no effect when performing the gradient of cell
+          data or when the input grid is not a vtkUnstructuredGrid.
+        </Documentation>
       </IntVectorProperty>
       <IntVectorProperty command="SetComputeDivergence"
                          default_values="0"
@@ -609,16 +619,18 @@
                          number_of_elements="1"
                          panel_visibility="advanced">
         <BooleanDomain name="bool" />
-        <Documentation>When this flag is on, the gradient filter will compute
-        the divergence of a 3 component array.</Documentation>
+        <Documentation>
+          When this flag is on, the gradient filter will compute the divergence of a 3 component array.
+        </Documentation>
       </IntVectorProperty>
       <StringVectorProperty command="SetDivergenceArrayName"
                             default_values="Divergence"
                             name="DivergenceArrayName"
                             number_of_elements="1"
                             panel_visibility="advanced">
-        <Documentation>This property provides a name for the output array
-        containing the divergence vector.</Documentation>
+        <Documentation>
+          This property provides a name for the output array containing the divergence vector.
+        </Documentation>
       </StringVectorProperty>
       <IntVectorProperty command="SetComputeVorticity"
                          default_values="0"
@@ -626,16 +638,18 @@
                          number_of_elements="1"
                          panel_visibility="advanced">
         <BooleanDomain name="bool" />
-        <Documentation>When this flag is on, the gradient filter will compute
-        the vorticity/curl of a 3 component array.</Documentation>
+        <Documentation>
+          When this flag is on, the gradient filter will compute the vorticity/curl of a 3 component array.
+        </Documentation>
       </IntVectorProperty>
       <StringVectorProperty command="SetVorticityArrayName"
                             default_values="Vorticity"
                             name="VorticityArrayName"
                             number_of_elements="1"
                             panel_visibility="advanced">
-        <Documentation>This property provides a name for the output array
-        containing the vorticity vector.</Documentation>
+        <Documentation>
+          This property provides a name for the output array containing the vorticity vector.
+        </Documentation>
       </StringVectorProperty>
       <IntVectorProperty command="SetComputeQCriterion"
                          default_values="0"
@@ -643,16 +657,18 @@
                          number_of_elements="1"
                          panel_visibility="advanced">
         <BooleanDomain name="bool" />
-        <Documentation>When this flag is on, the gradient filter will compute
-        the Q-criterion of a 3 component array.</Documentation>
+        <Documentation>
+          When this flag is on, the gradient filter will compute the Q-criterion of a 3 component array.
+        </Documentation>
       </IntVectorProperty>
       <StringVectorProperty command="SetQCriterionArrayName"
                             default_values="Q-criterion"
                             name="QCriterionArrayName"
                             number_of_elements="1"
                             panel_visibility="advanced">
-        <Documentation>This property provides a name for the output array
-        containing Q criterion.</Documentation>
+        <Documentation>
+          This property provides a name for the output array containing Q criterion.
+        </Documentation>
       </StringVectorProperty>
       <IntVectorProperty command="SetContributingCellOption"
                          default_values="2"
@@ -667,9 +683,10 @@
           <Entry text="Dataset Max"
                  value="2" />
         </EnumerationDomain>
-        <Documentation>Specify which dimensions of cells should be used
-        when computing gradient quantities. Default is to use
-        the dataset's maximum cell dimension.</Documentation>
+        <Documentation>
+          Specify which dimensions of cells should be used when computing gradient
+          quantities. Default is to use the dataset's maximum cell dimension.
+        </Documentation>
       </IntVectorProperty>
       <IntVectorProperty command="SetReplacementValueOption"
                          default_values="1"
@@ -684,12 +701,14 @@
           <Entry text="Data Type Min"
                  value="2" />
           <Entry text="Data Type Max"
-                 value="2" />
+                 value="3" />
         </EnumerationDomain>
-        <Documentation>Specify what value to use for when the gradient quantities at a
-        point can't be computed with the selected **ContributingCellOption**.</Documentation>
+        <Documentation>
+          Specify what value to use for when the gradient quantities at a
+          point can't be computed with the selected **ContributingCellOption**.
+        </Documentation>
       </IntVectorProperty>
-      <!-- End UnstructuredGradient -->
+      <!-- End UnstructuredGradientLegacy -->
     </SourceProxy>
 
     <!-- ==================================================================== -->
@@ -717,7 +736,7 @@
     </SourceProxy>
 
     <!-- ==================================================================== -->
-    <SourceProxy class="vtkMultiBlockDataGroupFilter"
+    <SourceProxy class="vtkGroupDataSetsFilter"
                  label="Group Datasets"
                  name="GroupDataSets">
       <Documentation long_help="Group data sets."
@@ -740,6 +759,47 @@
         <Documentation>This property indicates the the inputs to the Group
         Datasets filter.</Documentation>
       </InputProperty>
+
+      <IntVectorProperty name="OutputType"
+        command="SetOutputType"
+        number_of_elements="1"
+        default_values="13">
+        <EnumerationDomain name="enum">
+          <Entry text="vtkMultiBlockDataSet" value="13" />
+          <Entry text="vtkPartitionedDataSet" value="37" />
+          <Entry text="vtkPartitionedDataSetCollection" value="38" />
+        </EnumerationDomain>
+        <Documentation>
+          Specify the output type in which to group the inputs.
+        </Documentation>
+      </IntVectorProperty>
+
+      <StringVectorProperty name="BlockNames"
+        command="SetInputName"
+        number_of_elements_per_command="1"
+        repeat_command="1"
+        use_index="1"
+        clean_command="ClearInputNames">
+        <Documentation>
+          Specify names to use for each input.
+        </Documentation>
+        <RegistrationNamesDomain name="names_list" registration_group="sources">
+          <RequiredProperties>
+            <Property name="Input" function="Proxies" />
+          </RequiredProperties>
+        </RegistrationNamesDomain>
+      </StringVectorProperty>
+
+      <PropertyGroup label="Block Names">
+        <Property name="BlockNames" />
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+            mode="visibility"
+            property="OutputType"
+            value="37"
+            inverse="1" />
+        </Hints>
+      </PropertyGroup>
       <Hints>
         <Visibility replace_input="1" />
       </Hints>
@@ -747,7 +807,7 @@
     </SourceProxy>
 
     <!-- ==================================================================== -->
-    <SourceProxy class="vtkMultiBlockFromTimeSeriesFilter"
+    <SourceProxy class="vtkGroupTimeStepsFilter"
                  label="Group Time Steps"
                  name="GroupTimeSteps">
       <Documentation long_help="Group data set over time."
@@ -1300,6 +1360,59 @@
     </SourceProxy>
 
     <!-- ==================================================================== -->
+    <SourceProxy class="vtkMergeTimeFilter"
+                 label="Merge Time"
+                 name="MergeTime">
+    <Documentation short_help="Union or intersection of inputs timesteps, without duplicate">
+        Merge all inputs timestep list. Remove duplicate using a Tolerance,
+        either absolute or relative. The resulting timesteps list can be an union or an
+    intersection of the inputs ones.</Documentation>
+      <InputProperty clean_command="RemoveAllInputs"
+                     command="AddInputConnection"
+                     multiple_input="1"
+                     name="Input">
+        <ProxyGroupDomain name="groups">
+          <Group name="sources" />
+          <Group name="filters" />
+        </ProxyGroupDomain>
+        <DataTypeDomain composite_data_supported="1"
+                        name="input_type">
+          <DataType value="vtkDataObject" />
+        </DataTypeDomain>
+        <Documentation>This property indicates the the inputs to the Group
+        Datasets filter.</Documentation>
+      </InputProperty>
+      <IntVectorProperty
+          name="RelativeTolerance"
+          command="SetUseRelativeTolerance"
+          number_of_elements="1"
+          default_values="0">
+        <Documentation>Use Relative (resp. absolute) tolerance to determine if timesteps are duplicate.</Documentation>
+        <BooleanDomain name="bool" />
+      </IntVectorProperty>
+      <DoubleVectorProperty
+          name="Tolerance"
+          command="SetTolerance"
+          number_of_elements="1"
+          default_values="0.00001">
+        <Documentation>Tolerance used to determine if timesteps are duplicate.</Documentation>
+      </DoubleVectorProperty>
+      <IntVectorProperty
+          name="Intersection"
+          command="SetUseIntersection"
+          number_of_elements="1"
+          default_values="0">
+        <Documentation>Keep the intersection instead of the union of timesteps from each input.</Documentation>
+        <BooleanDomain name="bool" />
+      </IntVectorProperty>
+      <DoubleVectorProperty information_only="1"
+                            name="TimestepValues">
+        <TimeStepsInformationHelper />
+      </DoubleVectorProperty>
+      <!-- End vtkSynchronizeTimeFilter -->
+    </SourceProxy>
+
+    <!-- ==================================================================== -->
     <SourceProxy class="vtkSynchronizeTimeFilter"
                  label="Synchronize Time"
                  name="SynchronizeTime">
@@ -1849,6 +1962,8 @@
         <ProxyListDomain name="proxy_list">
           <Proxy group="extended_sources"
                  name="Transform3" />
+          <Proxy group="extended_sources"
+                 name="RotateAroundOriginTransform" />
         </ProxyListDomain>
         <Documentation>The values in this property allow you to specify the
         transform (translation, rotation, and scaling) to apply to the input
@@ -1864,6 +1979,61 @@
         All other arrays won't be flipped and will only be copied.</Documentation>
       </IntVectorProperty>
       <!-- End TransformFilter -->
+    </SourceProxy>
+
+    <!-- ==================================================================== -->
+    <SourceProxy
+        name="PerlinNoise"
+        class="vtkSampleImplicitFunctionFilter"
+        label="Perlin Noise">
+      <Documentation
+          long_help="Generate a Perlin noise point data array evaluated at points in a dataset."
+          short_help="Generate Perlin noise on a dataset.">
+          Generates a Perlin noise point data array according to a deterministic
+          pseudo-random noise function based on the location of each point in the dataset.
+      </Documentation>
+      <InputProperty
+          name="Input"
+          command="SetInputConnection">
+        <ProxyGroupDomain name="groups">
+          <Group name="sources"/>
+          <Group name="filters"/>
+        </ProxyGroupDomain>
+        <DataTypeDomain name="input_type">
+          <DataType value="vtkDataSet"/>
+        </DataTypeDomain>
+      </InputProperty>
+      <ProxyProperty
+          name="ImplicitFunction"
+          command="SetImplicitFunction">
+        <ProxyGroupDomain name="groups">
+          <Group name="implicit_functions" />
+        </ProxyGroupDomain>
+        <ProxyListDomain name="proxy_list">
+          <Proxy group="implicit_functions"
+                 name="PerlinNoise" />
+        </ProxyListDomain>
+      </ProxyProperty>
+      <StringVectorProperty
+          name="ScalarArrayName"
+          command="SetScalarArrayName"
+          number_of_elements="1"
+          default_values="PerlinNoise">
+        <Documentation>
+          Sets the name of the output noise array.
+        </Documentation>
+      </StringVectorProperty>
+      <IntVectorProperty
+          name="ComputeGradients"
+          command="SetComputeGradients"
+          number_of_elements="1"
+          default_values="0"
+          panel_visibility="never">
+        <Documentation>
+          The gradient is not implemented for Perlin noise.
+        </Documentation>
+        <BooleanDomain name="bool" />
+      </IntVectorProperty>
     </SourceProxy>
 
     <!-- ==================================================================== -->
@@ -2232,5 +2402,230 @@
       <!-- End WarpVector -->
     </SourceProxy>
 
+    <!-- ==================================================================== -->
+    <SourceProxy class="vtkAnimateModes" name="AnimateModes" label="Animate Modes">
+      <Documentation short_help="Animate mode shapes">
+         For certain file formats, like Exodus, simulation codes may use the timesteps
+         and time values to represent quantities other than time. For example, for
+         modal analysis, the natural frequency for each mode may be used as the time
+         value. vtkAnimateModes can be used to reinterpret time as mode shapes.
+         The filter can also animate vibrations for each mode shape (when
+         AnimateVibrations is set to true). In that case, the time requested by the
+         downstream pipeline is used to scale the displacement magnitude
+         for a mode shape in a sinusoidal pattern, `cos(2*pi * requested-time)`.
+      </Documentation>
+      <InputProperty command="SetInputConnection"
+                     name="Input">
+        <ProxyGroupDomain name="groups">
+          <Group name="sources" />
+          <Group name="filters" />
+        </ProxyGroupDomain>
+        <DataTypeDomain name="input_type">
+          <DataType value="vtkDataSet" />
+        </DataTypeDomain>
+        <InputArrayDomain attribute_type="point"
+                          name="input_array"
+                          number_of_components="3" />
+        <Documentation>This property specifies the input to the filter.</Documentation>
+      </InputProperty>
+
+      <StringVectorProperty command="SetInputArrayToProcess"
+                            element_types="0 0 0 0 2"
+                            label="Vectors"
+                            name="SelectInputVectors"
+                            number_of_elements="5"
+                            panel_visibility="default">
+        <ArrayListDomain attribute_type="DisplacementVectors" name="array_list">
+          <RequiredProperties>
+            <Property function="Input" name="Input" />
+          </RequiredProperties>
+        </ArrayListDomain>
+        <Documentation>Specify the displacement vectors array</Documentation>
+      </StringVectorProperty>
+
+
+      <IntVectorProperty command="GetModeShapesRange"
+                         information_only="1"
+                         name="ModeShapesRangeInfo" />
+
+      <IntVectorProperty command="SetModeShape"
+                         name="ModeShape"
+                         number_of_elements="1"
+                         default_values="1">
+        <IntRangeDomain name="range" default_mode="min">
+          <RequiredProperties>
+            <Property function="Range" name="ModeShapesRangeInfo" />
+          </RequiredProperties>
+        </IntRangeDomain>
+        <Documentation>Specify which mode shape to animate.</Documentation>
+      </IntVectorProperty>
+
+      <DoubleVectorProperty name="DisplacementMagnitude"
+                            command="SetDisplacementMagnitude"
+                            number_of_elements="1"
+                            default_values="1.0">
+        <DoubleRangeDomain name="range" />
+        <Documentation>
+          Specify a scale factor to apply the displacements.
+        </Documentation>
+      </DoubleVectorProperty>
+
+      <IntVectorProperty name="AnimateVibrations"
+        command="SetAnimateVibrations"
+        number_of_elements="1"
+        default_values="1">
+        <BooleanDomain name="bool" />
+        <Documentation>
+          Specify whether the filter should animate the vibrations.
+          When set, the requested time is used compute
+          displacements for the chosen mode shape.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="DisplacementPreapplied"
+                         command="SetDisplacementPreapplied"
+                         number_of_elements="1"
+                         default_values="1">
+        <BooleanDomain name="bool" />
+        <Documentation>
+          Specify whether displacements are pre-applied.
+        </Documentation>
+      </IntVectorProperty>
+
+      <DoubleVectorProperty information_only="1"
+                            name="TimeRange"
+                            command="GetTimeRange" />
+      <!-- end of "AnimateModes" -->
+    </SourceProxy>
+
+    <!-- ================================================================== -->
+    <SourceProxy class="vtkTableFFT" name="TableFFT" label="Table FFT" >
+      <Documentation>
+        Performs the Fast Fourier Transform on the columns of a table.
+      </Documentation>
+
+      <InputProperty command="SetInputConnection"
+                     name="Input">
+        <ProxyGroupDomain name="groups">
+          <Group name="sources" />
+          <Group name="filters" />
+        </ProxyGroupDomain>
+        <DataTypeDomain name="input_type">
+          <DataType value="vtkTable" />
+        </DataTypeDomain>
+        <InputArrayDomain attribute_type="row"
+                          name="input_array"
+                          number_of_components="1" />
+        <Documentation>This property specifies the input to the filter.</Documentation>
+      </InputProperty>
+
+      <IntVectorProperty name="CreateFrequencyColumn"
+                         command="SetCreateFrequencyColumn"
+                         number_of_elements="1"
+                         default_values="1">
+        <BooleanDomain name="bool" />
+        <Documentation>
+          Specify if the filter should create a frequency column based on a column
+          named "time" (not case sensitive). An evenly-spaced time array is expected.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="WindowingFunction"
+                         command="SetWindowingFunction"
+                         number_of_elements="1"
+                         default_values="4">
+        <EnumerationDomain name="enum">
+          <Entry value="4" text="Rectangular (passthrough)"/>
+          <Entry value="0" text="Hanning"/>
+          <Entry value="1" text="Bartlett"/>
+          <Entry value="2" text="Sine"/>
+          <Entry value="3" text="Blackman"/>
+        </EnumerationDomain>
+        <Documentation>
+          Specify the windowing function to apply on the input. This allows to better process
+          data that is not periodic. When NumberOfBlocks > 1, the windowing function is applied
+          to each block.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="OptimizeForRealInput"
+                         command="SetOptimizeForRealInput"
+                         panel_visibility="advanced"
+                         number_of_elements="1"
+                         default_values="0">
+        <BooleanDomain name="bool" />
+        <Documentation>
+          Specify if the filter should use the optimized discrete fourier transform for
+          real values. This will cause output columns to have from n to ((n / 2) + 1) rows.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="Normalize"
+                         command="SetNormalize"
+                         panel_visibility="advanced"
+                         number_of_elements="1"
+                         default_values="0">
+        <BooleanDomain name="bool" />
+        <Documentation>
+          Specify if the output should be normalized.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="AverageFft"
+                         command="SetAverageFft"
+                         label="Average FFT per block"
+                         panel_visibility="advanced"
+                         number_of_elements="1"
+                         default_values="0">
+        <BooleanDomain name="bool" />
+        <Documentation>
+          Specify if the input should be split in multiple blocks to compute
+          an average fft across all blocks.
+        </Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="NumberOfBlock"
+                         command="SetNumberOfBlock"
+                         panel_visibility="advanced"
+                         number_of_elements="1"
+                         default_values="2">
+        <Documentation>
+          Specify the number of blocks to use when computing the average fft over
+          the whole input sample array. If NumberOfBlock == 1, no average is done
+          and we only compute the fft on the first BlockSize samples of the input data.
+        </Documentation>
+
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   mode="visibility"
+                                   property="AverageFft"
+                                   value="1" />
+        </Hints>
+      </IntVectorProperty>
+
+      <IntVectorProperty name="BlockSize"
+                         command="SetBlockSize"
+                         panel_visibility="advanced"
+                         number_of_elements="1"
+                         default_values="1024">
+        <Documentation>
+          Specify the number of samples to use for each block. This should be a power of 2.
+          If not, the closest power of two will be used anyway.
+        </Documentation>
+
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   mode="visibility"
+                                   property="AverageFft"
+                                   value="1" />
+        </Hints>
+      </IntVectorProperty>
+
+      <Hints>
+        <PipelineIcon name="XYChartView" />
+        <View type="XYChartView" />
+      </Hints>
+
+    </SourceProxy>
   </ProxyGroup>
 </ServerManagerConfiguration>

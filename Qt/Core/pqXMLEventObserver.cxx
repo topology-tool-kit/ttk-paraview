@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QTextStream>
 
 /// Escapes strings so they can be embedded in an XML document
-static const QString textToXML(const QString& string)
+static QString textToXML(const QString& string)
 {
   QString result = string;
   result.replace("&", "&amp;"); // keep first
@@ -57,9 +57,7 @@ pqXMLEventObserver::pqXMLEventObserver(QObject* p)
 {
 }
 
-pqXMLEventObserver::~pqXMLEventObserver()
-{
-}
+pqXMLEventObserver::~pqXMLEventObserver() = default;
 
 void pqXMLEventObserver::setStream(QTextStream* stream)
 {
@@ -88,17 +86,17 @@ void pqXMLEventObserver::onRecordEvent(
       if (command == pqCoreTestUtility::PQ_COMPAREVIEW_PROPERTY_NAME)
       {
         *this->Stream << "  <pqcompareview "
-                      << "object=\"" << textToXML(widget).toLocal8Bit().data() << "\" "
-                      << "baseline=\"" << textToXML(arguments).toLocal8Bit().data() << "\" "
+                      << "object=\"" << textToXML(widget).toUtf8().data() << "\" "
+                      << "baseline=\"" << textToXML(arguments).toUtf8().data() << "\" "
                       << "threshold=\"5\" "
                       << "/>\n";
       }
       else
       {
         *this->Stream << "  <pqcheck "
-                      << "object=\"" << textToXML(widget).toLocal8Bit().data() << "\" "
-                      << "property=\"" << textToXML(command).toLocal8Bit().data() << "\" "
-                      << "arguments=\"" << textToXML(arguments).toLocal8Bit().data() << "\" "
+                      << "object=\"" << textToXML(widget).toUtf8().data() << "\" "
+                      << "property=\"" << textToXML(command).toUtf8().data() << "\" "
+                      << "arguments=\"" << textToXML(arguments).toUtf8().data() << "\" "
                       << "/>\n";
       }
     }
@@ -109,9 +107,9 @@ void pqXMLEventObserver::onRecordEvent(
     if (this->Stream)
     {
       *this->Stream << "  <pqevent "
-                    << "object=\"" << textToXML(widget).toLocal8Bit().data() << "\" "
-                    << "command=\"" << textToXML(command).toLocal8Bit().data() << "\" "
-                    << "arguments=\"" << textToXML(arguments).toLocal8Bit().data() << "\" "
+                    << "object=\"" << textToXML(widget).toUtf8().data() << "\" "
+                    << "command=\"" << textToXML(command).toUtf8().data() << "\" "
+                    << "arguments=\"" << textToXML(arguments).toUtf8().data() << "\" "
                     << "/>\n";
     }
   }

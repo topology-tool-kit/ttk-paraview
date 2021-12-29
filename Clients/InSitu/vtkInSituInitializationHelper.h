@@ -48,9 +48,11 @@
 
 class vtkCPCxxHelper;
 class vtkInSituPipeline;
+class vtkSMProxy;
 class vtkSMSourceProxy;
 
 #include <string> // for std::string
+#include <vector> // for std::vector
 
 class VTKPVINSITU_EXPORT vtkInSituInitializationHelper : public vtkObject
 {
@@ -85,7 +87,7 @@ public:
    * can point to a Python script, a directory containing a Python package or a
    * zip-file which containing a Python package.
    */
-  static void AddPipeline(const std::string& path);
+  static vtkInSituPipeline* AddPipeline(const std::string& path);
 
   /**
    * Add a vtkInSituPipeline instance.
@@ -123,7 +125,8 @@ public:
   /**
    * Executes pipelines.
    */
-  static bool ExecutePipelines(int timestep, double time);
+  static bool ExecutePipelines(
+    int timestep, double time, const std::vector<std::string>& parameters = {});
 
   //@{
   /**
@@ -145,6 +148,10 @@ public:
    */
   static bool IsPythonSupported();
 
+  static void GetSteerableProxies(std::vector<std::pair<std::string, vtkSMProxy*>>& proxies);
+  static void UpdateSteerableParameters(
+    vtkSMProxy* steerableProxy, const char* steerableSourceName);
+
 protected:
   vtkInSituInitializationHelper();
   ~vtkInSituInitializationHelper();
@@ -152,6 +159,9 @@ protected:
 private:
   vtkInSituInitializationHelper(const vtkInSituInitializationHelper&) = delete;
   void operator=(const vtkInSituInitializationHelper&) = delete;
+
+  static void UpdateSteerableProxies();
+  static int GetAttributeTypeFromString(const std::string& associationString);
 
   static int WasInitializedOnce;
   static int WasFinalizedOnce;

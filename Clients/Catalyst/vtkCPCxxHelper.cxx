@@ -20,9 +20,9 @@
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
 #include "vtkPVConfig.h" // Required to get build options for paraview
-#include "vtkPVOptions.h"
 #include "vtkPVPluginTracker.h"
 #include "vtkProcessModule.h"
+#include "vtkProcessModuleConfiguration.h"
 #include "vtkSMObject.h"
 #include "vtkSMParaViewPipelineController.h"
 #include "vtkSMProperty.h"
@@ -34,7 +34,7 @@
 
 #include "ParaView_paraview_plugins.h"
 
-#include <assert.h>
+#include <cassert>
 #include <sstream>
 #include <string>
 #include <vtksys/SystemTools.hxx>
@@ -43,10 +43,7 @@ vtkWeakPointer<vtkCPCxxHelper> vtkCPCxxHelper::Instance;
 bool vtkCPCxxHelper::ParaViewExternallyInitialized = false;
 
 //----------------------------------------------------------------------------
-vtkCPCxxHelper::vtkCPCxxHelper()
-  : Options(nullptr)
-{
-}
+vtkCPCxxHelper::vtkCPCxxHelper() = default;
 
 //----------------------------------------------------------------------------
 vtkCPCxxHelper::~vtkCPCxxHelper()
@@ -62,7 +59,7 @@ vtkCPCxxHelper* vtkCPCxxHelper::New()
 {
   if (vtkCPCxxHelper::Instance.GetPointer() != nullptr)
   {
-    vtkCPCxxHelper::Instance->Register(NULL);
+    vtkCPCxxHelper::Instance->Register(nullptr);
     return vtkCPCxxHelper::Instance;
   }
 
@@ -93,7 +90,6 @@ vtkCPCxxHelper* vtkCPCxxHelper::New()
   if (auto pm = vtkProcessModule::GetProcessModule())
   {
     vtkCPCxxHelper::ParaViewExternallyInitialized = true;
-    vtkCPCxxHelper::Instance->Options = pm->GetOptions();
   }
   else
   {
@@ -113,14 +109,11 @@ vtkCPCxxHelper* vtkCPCxxHelper::New()
     argv[0] = vtksys::SystemTools::DuplicateString(programname.c_str());
     argv[1] = nullptr;
 
-    vtkCPCxxHelper::Instance->Options.TakeReference(vtkPVOptions::New());
-    vtkCPCxxHelper::Instance->Options->SetSymmetricMPIMode(1);
-
     // Disable vtkSMSettings processing for Catalyst applications.
     vtkInitializationHelper::SetLoadSettingsFilesDuringInitialization(false);
 
-    vtkInitializationHelper::Initialize(
-      argc, argv, vtkProcessModule::PROCESS_BATCH, vtkCPCxxHelper::Instance->Options);
+    vtkProcessModuleConfiguration::GetInstance()->SetSymmetricMPIMode(true);
+    vtkInitializationHelper::Initialize(argc, argv, vtkProcessModule::PROCESS_BATCH);
 
     delete[] argv[0];
     delete[] argv;

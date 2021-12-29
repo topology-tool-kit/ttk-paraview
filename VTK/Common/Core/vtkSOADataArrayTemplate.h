@@ -56,7 +56,7 @@ public:
 
   static vtkSOADataArrayTemplate* New();
 
-  //@{
+  ///@{
   /**
    * Get the value at @a valueIdx. @a valueIdx assumes AOS ordering.
    */
@@ -67,9 +67,9 @@ public:
     this->GetTupleIndexFromValueIndex(valueIdx, tupleIdx, comp);
     return this->GetTypedComponent(tupleIdx, comp);
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set the value at @a valueIdx to @a value. @a valueIdx assumes AOS ordering.
    */
@@ -80,7 +80,7 @@ public:
     this->GetTupleIndexFromValueIndex(valueIdx, tupleIdx, comp);
     this->SetTypedComponent(tupleIdx, comp, value);
   }
-  //@}
+  ///@}
 
   /**
    * Copy the tuple at @a tupleIdx into @a tuple.
@@ -177,30 +177,15 @@ public:
   void ExportToVoidPointer(void* ptr) override;
 
 #ifndef __VTK_WRAP__
-  //@{
+  ///@{
   /**
    * Perform a fast, safe cast from a vtkAbstractArray to a vtkDataArray.
    * This method checks if source->GetArrayType() returns DataArray
    * or a more derived type, and performs a static_cast to return
    * source as a vtkDataArray pointer. Otherwise, nullptr is returned.
    */
-  static vtkSOADataArrayTemplate<ValueType>* FastDownCast(vtkAbstractArray* source)
-  {
-    if (source)
-    {
-      switch (source->GetArrayType())
-      {
-        case vtkAbstractArray::SoADataArrayTemplate:
-          if (vtkDataTypesCompare(source->GetDataType(), vtkTypeTraits<ValueType>::VTK_TYPE_ID))
-          {
-            return static_cast<vtkSOADataArrayTemplate<ValueType>*>(source);
-          }
-          break;
-      }
-    }
-    return nullptr;
-  }
-  //@}
+  static vtkSOADataArrayTemplate<ValueType>* FastDownCast(vtkAbstractArray* source);
+  ///@}
 #endif
 
   int GetArrayType() const override { return vtkAbstractArray::SoADataArrayTemplate; }
@@ -261,7 +246,12 @@ vtkArrayDownCast_TemplateFastCastMacro(vtkSOADataArrayTemplate);
 // from instantiating these on their own.
 #ifdef VTK_SOA_DATA_ARRAY_TEMPLATE_INSTANTIATING
 #define VTK_SOA_DATA_ARRAY_TEMPLATE_INSTANTIATE(T)                                                 \
+  namespace vtkDataArrayPrivate                                                                    \
+  {                                                                                                \
+  VTK_INSTANTIATE_VALUERANGE_ARRAYTYPE(vtkSOADataArrayTemplate<T>, double);                        \
+  }                                                                                                \
   template class VTKCOMMONCORE_EXPORT vtkSOADataArrayTemplate<T>
+
 #elif defined(VTK_USE_EXTERN_TEMPLATE)
 #ifndef VTK_SOA_DATA_ARRAY_TEMPLATE_EXTERN
 #define VTK_SOA_DATA_ARRAY_TEMPLATE_EXTERN

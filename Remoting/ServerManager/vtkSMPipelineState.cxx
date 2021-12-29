@@ -25,7 +25,7 @@
 
 #include "vtkPVSession.h"
 
-#include <assert.h>
+#include <cassert>
 #include <sstream>
 #include <vtksys/SystemTools.hxx>
 
@@ -38,9 +38,7 @@ vtkSMPipelineState::vtkSMPipelineState()
 }
 
 //----------------------------------------------------------------------------
-vtkSMPipelineState::~vtkSMPipelineState()
-{
-}
+vtkSMPipelineState::~vtkSMPipelineState() = default;
 
 //----------------------------------------------------------------------------
 const vtkSMMessage* vtkSMPipelineState::GetFullState()

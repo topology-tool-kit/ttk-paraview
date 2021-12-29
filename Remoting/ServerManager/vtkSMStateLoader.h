@@ -20,7 +20,7 @@
  * vtkPVXMLElement. This element is usually populated by a vtkPVXMLParser.
  * @sa
  * vtkPVXMLParser vtkPVXMLElement
-*/
+ */
 
 #ifndef vtkSMStateLoader_h
 #define vtkSMStateLoader_h
@@ -108,7 +108,7 @@ protected:
    * suitable for the connection.
    */
   vtkSMProxy* CreateProxy(
-    const char* xmlgroup, const char* xmlname, const char* subProxyName = NULL) override;
+    const char* xmlgroup, const char* xmlname, const char* subProxyName = nullptr) override;
 
   virtual int HandleProxyCollection(vtkPVXMLElement* collectionElement);
   virtual void HandleCustomProxyDefinitions(vtkPVXMLElement* element);

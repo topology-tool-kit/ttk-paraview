@@ -37,7 +37,7 @@ vtkStandardNewMacro(vtkWedge);
 
 namespace
 {
-static const double VTK_DIVERGED = 1.e6;
+const double VTK_DIVERGED = 1.e6;
 //------------------------------------------------------------------------------
 // Wedge topology:
 //
@@ -51,7 +51,7 @@ static const double VTK_DIVERGED = 1.e6;
 //    |/_______\|
 //    0         1
 //
-static vtkIdType edges[vtkWedge::NumberOfEdges][2] = {
+vtkIdType edges[vtkWedge::NumberOfEdges][2] = {
   { 0, 1 }, // 0
   { 1, 2 }, // 1
   { 2, 0 }, // 2
@@ -62,14 +62,14 @@ static vtkIdType edges[vtkWedge::NumberOfEdges][2] = {
   { 1, 4 }, // 7
   { 2, 5 }, // 8
 };
-static vtkIdType faces[vtkWedge::NumberOfFaces][vtkWedge::MaximumFaceSize + 1] = {
+vtkIdType faces[vtkWedge::NumberOfFaces][vtkWedge::MaximumFaceSize + 1] = {
   { 0, 1, 2, -1, -1 }, // 0
   { 3, 5, 4, -1, -1 }, // 1
   { 0, 3, 4, 1, -1 },  // 2
   { 1, 4, 5, 2, -1 },  // 3
   { 2, 5, 3, 0, -1 },  // 4
 };
-static constexpr vtkIdType edgeToAdjacentFaces[vtkWedge::NumberOfEdges][2] = {
+constexpr vtkIdType edgeToAdjacentFaces[vtkWedge::NumberOfEdges][2] = {
   { 0, 2 }, // 0
   { 0, 3 }, // 1
   { 0, 3 }, // 2
@@ -80,42 +80,38 @@ static constexpr vtkIdType edgeToAdjacentFaces[vtkWedge::NumberOfEdges][2] = {
   { 2, 3 }, // 7
   { 3, 4 }, // 8
 };
-static constexpr vtkIdType faceToAdjacentFaces[vtkWedge::NumberOfFaces]
-                                              [vtkWedge::MaximumFaceSize] = {
-                                                { 4, 3, 2, -1 }, // 0
-                                                { 2, 3, 4, -1 }, // 1
-                                                { 0, 3, 1, 4 },  // 2
-                                                { 0, 4, 1, 2 },  // 3
-                                                { 0, 2, 1, 3 },  // 4
-                                              };
-static constexpr vtkIdType pointToIncidentEdges[vtkWedge::NumberOfPoints]
-                                               [vtkWedge::MaximumValence] = {
-                                                 { 0, 6, 2 }, // 0
-                                                 { 0, 1, 7 }, // 1
-                                                 { 1, 2, 8 }, // 2
-                                                 { 3, 5, 6 }, // 3
-                                                 { 3, 7, 4 }, // 4
-                                                 { 4, 8, 5 }, // 5
-                                               };
-static constexpr vtkIdType pointToIncidentFaces[vtkWedge::NumberOfPoints]
-                                               [vtkWedge::MaximumValence] = {
-                                                 { 2, 4, 0 }, // 0
-                                                 { 0, 3, 2 }, // 1
-                                                 { 0, 4, 3 }, // 2
-                                                 { 1, 4, 2 }, // 3
-                                                 { 2, 3, 1 }, // 4
-                                                 { 3, 4, 1 }, // 5
-                                               };
-static constexpr vtkIdType pointToOneRingPoints[vtkWedge::NumberOfPoints]
-                                               [vtkWedge::MaximumValence] = {
-                                                 { 1, 3, 2 }, // 0
-                                                 { 0, 2, 4 }, // 1
-                                                 { 1, 0, 5 }, // 2
-                                                 { 4, 5, 0 }, // 3
-                                                 { 3, 1, 5 }, // 4
-                                                 { 4, 2, 3 }, // 5
-                                               };
-static constexpr vtkIdType numberOfPointsInFace[vtkWedge::NumberOfFaces] = {
+constexpr vtkIdType faceToAdjacentFaces[vtkWedge::NumberOfFaces][vtkWedge::MaximumFaceSize] = {
+  { 4, 3, 2, -1 }, // 0
+  { 2, 3, 4, -1 }, // 1
+  { 0, 3, 1, 4 },  // 2
+  { 0, 4, 1, 2 },  // 3
+  { 0, 2, 1, 3 },  // 4
+};
+constexpr vtkIdType pointToIncidentEdges[vtkWedge::NumberOfPoints][vtkWedge::MaximumValence] = {
+  { 0, 6, 2 }, // 0
+  { 0, 1, 7 }, // 1
+  { 1, 2, 8 }, // 2
+  { 3, 5, 6 }, // 3
+  { 3, 7, 4 }, // 4
+  { 4, 8, 5 }, // 5
+};
+constexpr vtkIdType pointToIncidentFaces[vtkWedge::NumberOfPoints][vtkWedge::MaximumValence] = {
+  { 2, 4, 0 }, // 0
+  { 0, 3, 2 }, // 1
+  { 0, 4, 3 }, // 2
+  { 1, 4, 2 }, // 3
+  { 2, 3, 1 }, // 4
+  { 3, 4, 1 }, // 5
+};
+constexpr vtkIdType pointToOneRingPoints[vtkWedge::NumberOfPoints][vtkWedge::MaximumValence] = {
+  { 1, 3, 2 }, // 0
+  { 0, 2, 4 }, // 1
+  { 1, 0, 5 }, // 2
+  { 4, 5, 0 }, // 3
+  { 3, 1, 5 }, // 4
+  { 4, 2, 3 }, // 5
+};
+constexpr vtkIdType numberOfPointsInFace[vtkWedge::NumberOfFaces] = {
   3, // 0
   3, // 1
   4, // 2
@@ -252,8 +248,8 @@ int vtkWedge::EvaluatePosition(const double x[3], double closestPoint[3], int& s
   for (int iteration = 0; !converged && (iteration < VTK_WEDGE_MAX_ITERATION); iteration++)
   {
     //  calculate element interpolation functions and derivatives
-    this->InterpolationFunctions(pcoords, weights);
-    this->InterpolationDerivs(pcoords, derivs);
+    vtkWedge::InterpolationFunctions(pcoords, weights);
+    vtkWedge::InterpolationDerivs(pcoords, derivs);
 
     //  calculate newton functions
     double fcol[3] = { 0, 0, 0 }, rcol[3] = { 0, 0, 0 }, scol[3] = { 0, 0, 0 },
@@ -316,7 +312,7 @@ int vtkWedge::EvaluatePosition(const double x[3], double closestPoint[3], int& s
     return -1;
   }
 
-  this->InterpolationFunctions(pcoords, weights);
+  vtkWedge::InterpolationFunctions(pcoords, weights);
 
   if (pcoords[0] >= -0.001 && pcoords[0] <= 1.001 && pcoords[1] >= -0.001 && pcoords[1] <= 1.001 &&
     pcoords[2] >= -0.001 && pcoords[2] <= 1.001 && pcoords[0] + pcoords[1] <= 1.001)
@@ -364,7 +360,7 @@ void vtkWedge::EvaluateLocation(
   int i, j;
   double pt[3];
 
-  this->InterpolationFunctions(pcoords, weights);
+  vtkWedge::InterpolationFunctions(pcoords, weights);
 
   x[0] = x[1] = x[2] = 0.0;
   for (i = 0; i < 6; i++)
@@ -464,7 +460,7 @@ struct TRIANGLE_CASES_t
 };
 using TRIANGLE_CASES = struct TRIANGLE_CASES_t;
 
-static TRIANGLE_CASES triCases[] = {
+TRIANGLE_CASES triCases[] = {
   { { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 } }, // 0
   { { 0, 6, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 } },    // 1
   { { 0, 1, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 } },    // 2

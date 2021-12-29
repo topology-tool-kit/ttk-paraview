@@ -34,6 +34,7 @@ class VTKIOXMLPARSER_EXPORT vtkXMLUtilities : public vtkObject
 public:
   static vtkXMLUtilities* New();
   vtkTypeMacro(vtkXMLUtilities, vtkObject);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /**
    * Encode a string from one format to another
@@ -72,9 +73,9 @@ public:
    * Return 1 on success, 0 otherwise.
    */
   static int WriteElementToFile(
-    vtkXMLDataElement*, const char* filename, vtkIndent* indent = nullptr);
+    vtkXMLDataElement*, VTK_FILEPATH const char* filename, vtkIndent* indent = nullptr);
 
-  //@{
+  ///@{
   /**
    * Read a vtkXMLDataElement from a stream, string or file.
    * The 'encoding' parameter will be used to set the internal encoding of the
@@ -90,8 +91,8 @@ public:
   static vtkXMLDataElement* ReadElementFromString(
     const char* str, int encoding = VTK_ENCODING_NONE);
   static vtkXMLDataElement* ReadElementFromFile(
-    const char* filename, int encoding = VTK_ENCODING_NONE);
-  //@}
+    VTK_FILEPATH const char* filename, int encoding = VTK_ENCODING_NONE);
+  ///@}
 
   /**
    * Sets attributes of an element from an array of encoded attributes.
@@ -115,7 +116,7 @@ public:
   static int FindSimilarElements(
     vtkXMLDataElement* elem, vtkXMLDataElement* tree, vtkXMLDataElement*** results);
 
-  //@{
+  ///@{
   /**
    * Factor and unfactor a tree. This operation looks for duplicate elements
    * in the tree, and replace them with references to a pool of elements.
@@ -123,7 +124,7 @@ public:
    */
   static void FactorElements(vtkXMLDataElement* tree);
   static void UnFactorElements(vtkXMLDataElement* tree);
-  //@}
+  ///@}
 
 protected:
   vtkXMLUtilities() = default;
@@ -139,5 +140,3 @@ private:
 };
 
 #endif
-
-// VTK-HeaderTest-Exclude: vtkXMLUtilities.h

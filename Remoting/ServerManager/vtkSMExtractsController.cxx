@@ -21,6 +21,7 @@
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
 #include "vtkPVProxyDefinitionIterator.h"
+#include "vtkPVStringFormatter.h"
 #include "vtkProcessModule.h"
 #include "vtkRemoteWriterHelper.h"
 #include "vtkSMExtractTriggerProxy.h"
@@ -87,7 +88,7 @@ std::string DefaultFilenamePrefix(vtkSMProxy* input)
 std::string DefaultFilename(vtkSMProxy* input, std::string pattern)
 {
   const auto prefix = DefaultFilenamePrefix(input);
-  vtksys::SystemTools::ReplaceString(pattern, "%p", prefix);
+  vtksys::SystemTools::ReplaceString(pattern, "{prefix}", prefix);
   return pattern;
 }
 }
@@ -100,7 +101,6 @@ vtkSMExtractsController::vtkSMExtractsController()
   , ExtractsOutputDirectory(nullptr)
   , EnvironmentExtractsOutputDirectory(nullptr)
   , SummaryTable(nullptr)
-  , LastExtractsOutputDirectory{}
   , ExtractsOutputDirectoryValid(false)
 {
   if (vtksys::SystemTools::HasEnv("PARAVIEW_OVERRIDE_EXTRACTS_OUTPUT_DIRECTORY"))
@@ -174,7 +174,13 @@ bool vtkSMExtractsController::Extract(vtkSMProxy* extractor)
   if (auto writer = vtkSMExtractWriterProxy::SafeDownCast(
         vtkSMPropertyHelper(extractor, "Writer").GetAsProxy(0)))
   {
-    if (!writer->Write(this))
+    // define scope of arguments of extract controller
+    PV_STRING_FORMATTER_NAMED_SCOPE(
+      "EXTRACT", fmt::arg("timestep", this->GetTimeStep()), fmt::arg("time", this->GetTime()));
+
+    bool extractResult = writer->Write(this);
+
+    if (!extractResult)
     {
       vtkErrorMacro("Write failed! Extracts may not be generated correctly!");
       return false;
@@ -308,7 +314,7 @@ std::vector<vtkSMProxy*> vtkSMExtractsController::GetSupportedExtractorPrototype
 bool vtkSMExtractsController::CanExtract(
   vtkSMProxy* extractor, const std::vector<vtkSMProxy*>& inputs) const
 {
-  if (!extractor || inputs.size() == 0)
+  if (!extractor || inputs.empty())
   {
     return false;
   }
@@ -450,7 +456,7 @@ bool vtkSMExtractsController::CreateExtractsOutputDirectory(vtkSMSessionProxyMan
 
   if (this->LastExtractsOutputDirectory != output_directory)
   {
-    this->ExtractsOutputDirectoryValid = this->CreateDirectory(output_directory, pxm);
+    this->ExtractsOutputDirectoryValid = this->CreateDir(output_directory, pxm);
     this->LastExtractsOutputDirectory = output_directory;
   }
 
@@ -458,7 +464,7 @@ bool vtkSMExtractsController::CreateExtractsOutputDirectory(vtkSMSessionProxyMan
 }
 
 //----------------------------------------------------------------------------
-bool vtkSMExtractsController::CreateDirectory(
+bool vtkSMExtractsController::CreateDir(
   const std::string& dname, vtkSMSessionProxyManager* pxm) const
 {
   if (dname.empty())

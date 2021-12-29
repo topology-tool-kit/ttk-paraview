@@ -47,14 +47,14 @@ public:
   vtkTypeMacro(vtkDataObjectAlgorithm, vtkAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Get the output data object for a port on this algorithm.
    */
   vtkDataObject* GetOutput();
   vtkDataObject* GetOutput(int);
   virtual void SetOutput(vtkDataObject* d);
-  //@}
+  ///@}
 
   /**
    * see vtkAlgorithm for details
@@ -67,7 +67,7 @@ public:
   vtkDataObject* GetInput();
   vtkDataObject* GetInput(int port);
 
-  //@{
+  ///@{
   /**
    * Assign a data object as input. Note that this method does not
    * establish a pipeline connection. Use SetInputConnection() to
@@ -75,9 +75,9 @@ public:
    */
   void SetInputData(vtkDataObject*);
   void SetInputData(int, vtkDataObject*);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Assign a data object as input. Note that this method does not
    * establish a pipeline connection. Use AddInputConnection() to
@@ -85,7 +85,7 @@ public:
    */
   void AddInputData(vtkDataObject*);
   void AddInputData(int, vtkDataObject*);
-  //@}
+  ///@}
 
 protected:
   vtkDataObjectAlgorithm();
@@ -121,6 +121,17 @@ protected:
   // see algorithm for more info
   int FillOutputPortInformation(int port, vtkInformation* info) override;
   int FillInputPortInformation(int port, vtkInformation* info) override;
+
+  /**
+   * A helper method that can be used by subclasses in
+   * `RequestDataObject` to create an output data object of the given type if
+   * not already present.
+   *
+   * Note, this uses `vtkDataObjectTypes::TypeIdIsA` to test types. For exact
+   * match, set `exact` to true.
+   */
+  static bool SetOutputDataObject(
+    int dataType, vtkInformation* outputInformation, bool exact = false);
 
 private:
   vtkDataObjectAlgorithm(const vtkDataObjectAlgorithm&) = delete;

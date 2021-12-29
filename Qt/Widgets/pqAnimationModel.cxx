@@ -32,8 +32,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "pqAnimationModel.h"
 
-#include "assert.h"
-
 #include <QEvent>
 #include <QGraphicsSceneMouseEvent>
 #include <QGraphicsView>
@@ -47,22 +45,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cassert>
 #include <iostream>
 
+constexpr int MouseWheelStepsFactor = 120;
+
+//-----------------------------------------------------------------------------
 pqAnimationModel::pqAnimationModel(QGraphicsView* p)
   : QGraphicsScene(QRectF(0, 0, 400, 16 * 6), p)
-  , Mode(Real)
-  , Ticks(10)
-  , CurrentTime(0)
-  , StartTime(0)
-  , EndTime(1)
-  , Interactive(false)
-  , CurrentTimeGrabbed(false)
-  , NewCurrentTime(0)
-  , CurrentTrackGrabbed(NULL)
-  , CurrentKeyFrameGrabbed(NULL)
-  , CurrentKeyFrameEdge(0)
-  , EnabledHeaderToolTip("Enable/Disable Track")
-  , TimePrecision(6)
-  , TimeNotation('g')
 {
   QObject::connect(this, SIGNAL(sceneRectChanged(QRectF)), this, SLOT(resizeTracks()));
   p->installEventFilter(this);
@@ -75,39 +62,46 @@ pqAnimationModel::pqAnimationModel(QGraphicsView* p)
   this->CheckBoxPixMaps = new pqCheckBoxPixMaps(p);
 }
 
+//-----------------------------------------------------------------------------
 pqAnimationModel::~pqAnimationModel()
 {
-  while (this->Tracks.size())
+  while (!this->Tracks.empty())
   {
     this->removeTrack(this->Tracks[0]);
   }
   delete this->CheckBoxPixMaps;
-  this->CheckBoxPixMaps = 0;
+  this->CheckBoxPixMaps = nullptr;
 }
 
+//-----------------------------------------------------------------------------
 QAbstractItemModel* pqAnimationModel::header()
 {
   return &this->Header;
 }
 
+//-----------------------------------------------------------------------------
 QAbstractItemModel* pqAnimationModel::enabledHeader()
 {
   return &this->EnabledHeader;
 }
 
+//-----------------------------------------------------------------------------
 int pqAnimationModel::count()
 {
   return this->Tracks.size();
 }
+
+//-----------------------------------------------------------------------------
 pqAnimationTrack* pqAnimationModel::track(int i)
 {
   if (i >= 0 && i < this->Tracks.size())
   {
     return this->Tracks[i];
   }
-  return NULL;
+  return nullptr;
 }
 
+//-----------------------------------------------------------------------------
 pqAnimationTrack* pqAnimationModel::addTrack(pqAnimationTrack* trackToAdd)
 {
   pqAnimationTrack* t = trackToAdd ? trackToAdd : new pqAnimationTrack(this);
@@ -123,6 +117,7 @@ pqAnimationTrack* pqAnimationModel::addTrack(pqAnimationTrack* trackToAdd)
   return t;
 }
 
+//-----------------------------------------------------------------------------
 void pqAnimationModel::removeTrack(pqAnimationTrack* t)
 {
   int idx = this->Tracks.indexOf(t);
@@ -137,6 +132,7 @@ void pqAnimationModel::removeTrack(pqAnimationTrack* t)
   }
 }
 
+//-----------------------------------------------------------------------------
 void pqAnimationModel::resizeTracks()
 {
   // give each track some height more than text height
@@ -155,45 +151,79 @@ void pqAnimationModel::resizeTracks()
 
   rh = (requiredHeight - 1) / double(num + 1);
   double h = rh;
+
+  double trackLeft = this->positionFromTime(this->ZoomStartTime);
+  double trackRight = this->positionFromTime(this->ZoomEndTime);
+
   for (i = 0; i < num; i++)
   {
-    this->Tracks[i]->setBoundingRect(QRectF(rect.left(), h, rect.width() - 1, rh));
+    this->Tracks[i]->setBoundingRect(QRectF(trackLeft, h, trackRight, rh));
+    this->zoomTrack(this->Tracks[i]);
     h += rh;
   }
 }
 
+//-----------------------------------------------------------------------------
 pqAnimationModel::ModeType pqAnimationModel::mode() const
 {
   return this->Mode;
 }
+
+//-----------------------------------------------------------------------------
 int pqAnimationModel::ticks() const
 {
   return this->Ticks;
 }
 
+//-----------------------------------------------------------------------------
 int pqAnimationModel::currentTicks() const
 {
   return this->Mode == Custom ? this->CustomTicks.size() : this->ticks();
 }
 
+//-----------------------------------------------------------------------------
 double pqAnimationModel::currentTime() const
 {
   return this->CurrentTime;
 }
+
+//-----------------------------------------------------------------------------
 double pqAnimationModel::startTime() const
 {
   return this->StartTime;
 }
+
+//-----------------------------------------------------------------------------
 double pqAnimationModel::endTime() const
 {
   return this->EndTime;
 }
 
+//-----------------------------------------------------------------------------
+double pqAnimationModel::zoomStartTime() const
+{
+  return this->ZoomStartTime;
+}
+
+//-----------------------------------------------------------------------------
+double pqAnimationModel::zoomEndTime() const
+{
+  return this->ZoomEndTime;
+}
+
+//-----------------------------------------------------------------------------
+double pqAnimationModel::zoomFactor() const
+{
+  return this->ZoomFactor;
+}
+
+//-----------------------------------------------------------------------------
 bool pqAnimationModel::interactive() const
 {
   return this->Interactive;
 }
 
+//-----------------------------------------------------------------------------
 void pqAnimationModel::setEnabledHeaderToolTip(const QString& val)
 {
   if (this->EnabledHeaderToolTip != val)
@@ -203,28 +233,34 @@ void pqAnimationModel::setEnabledHeaderToolTip(const QString& val)
   }
 }
 
+//-----------------------------------------------------------------------------
 void pqAnimationModel::setRowHeight(int rh)
 {
   this->RowHeight = rh;
   this->resizeTracks();
 }
 
+//-----------------------------------------------------------------------------
 int pqAnimationModel::rowHeight() const
 {
   return this->RowHeight;
 }
 
+//-----------------------------------------------------------------------------
 void pqAnimationModel::setMode(pqAnimationModel::ModeType m)
 {
   this->Mode = m;
   this->update();
 }
+
+//-----------------------------------------------------------------------------
 void pqAnimationModel::setTicks(int f)
 {
   this->Ticks = f;
   this->update();
 }
 
+//-----------------------------------------------------------------------------
 void pqAnimationModel::setTickMarks(int cnt, double* times)
 {
   this->CustomTicks.clear();
@@ -235,44 +271,59 @@ void pqAnimationModel::setTickMarks(int cnt, double* times)
   this->update();
 }
 
+//-----------------------------------------------------------------------------
 void pqAnimationModel::setCurrentTime(double t)
 {
   this->CurrentTime = t;
   this->NewCurrentTime = t;
   this->update();
 }
+
+//-----------------------------------------------------------------------------
 void pqAnimationModel::setStartTime(double t)
 {
   this->StartTime = t;
+  this->ZoomStartTime = this->StartTime;
+  this->ZoomFactor = 1;
   this->resizeTracks();
   this->update();
+  emit this->zoomChanged();
 }
+
+//-----------------------------------------------------------------------------
 void pqAnimationModel::setEndTime(double t)
 {
   this->EndTime = t;
+  this->ZoomEndTime = this->EndTime;
+  this->ZoomFactor = 1;
   this->resizeTracks();
   this->update();
+  emit this->zoomChanged();
 }
 
+//-----------------------------------------------------------------------------
 void pqAnimationModel::setInteractive(bool b)
 {
   this->Interactive = b;
 }
 
+//-----------------------------------------------------------------------------
 double pqAnimationModel::positionFromTime(double time)
 {
   QRectF sr = this->sceneRect();
-  double fraction = (time - this->StartTime) / (this->EndTime - this->StartTime);
+  double fraction = (time - this->ZoomStartTime) / (this->ZoomEndTime - this->ZoomStartTime);
   return fraction * (sr.width() - 1) + sr.left();
 }
 
+//-----------------------------------------------------------------------------
 double pqAnimationModel::timeFromPosition(double pos)
 {
   QRectF sr = this->sceneRect();
   double fraction = (pos - sr.left()) / (sr.width() - 1);
-  return fraction * (this->EndTime - this->StartTime) + this->StartTime;
+  return fraction * (this->ZoomEndTime - this->ZoomStartTime) + this->ZoomStartTime;
 }
 
+//-----------------------------------------------------------------------------
 double pqAnimationModel::timeFromTick(int tick)
 {
   if (this->Mode == Custom)
@@ -285,6 +336,7 @@ double pqAnimationModel::timeFromTick(int tick)
   return fraction * (this->EndTime - this->StartTime) + this->StartTime;
 }
 
+//-----------------------------------------------------------------------------
 int pqAnimationModel::tickFromTime(double time)
 {
   if (this->Mode == Custom)
@@ -311,6 +363,7 @@ int pqAnimationModel::tickFromTime(double time)
   return qRound(fraction * (this->Ticks - 1.0));
 }
 
+//-----------------------------------------------------------------------------
 QPolygonF pqAnimationModel::timeBarPoly(double time)
 {
   int rh = this->rowHeight();
@@ -329,6 +382,7 @@ QPolygonF pqAnimationModel::timeBarPoly(double time)
   return QPolygonF(polyPoints);
 }
 
+//-----------------------------------------------------------------------------
 void pqAnimationModel::drawForeground(QPainter* painter, const QRectF&)
 {
   painter->save();
@@ -353,67 +407,38 @@ void pqAnimationModel::drawForeground(QPainter* painter, const QRectF&)
   QFontMetrics metrics(view->font());
   int num = qRound(labelRect.width() / (9 * metrics.maxWidth()));
   num = num == 0 ? 1 : num;
-  double w = labelRect.width() / num;
 
   painter->save();
   painter->setPen(this->palette().color(QPalette::Text));
 
+  QList<const QRectF*> priorities;
+
+  // draw the new current time label if needed
+  QRectF newCurrentTimeLabRect;
+  if (this->NewCurrentTime != this->CurrentTime && this->CurrentKeyFrameGrabbed)
+  {
+    newCurrentTimeLabRect =
+      this->drawTimeLabel(this->NewCurrentTime, labelRect, painter, metrics, priorities);
+  }
+
   // draw the current time label
-  QString timeLabString =
-    QString::number(this->CurrentTime, this->TimeNotation.toLatin1(), this->TimePrecision);
-  double timeLabSize = metrics.horizontalAdvance(timeLabString);
-  double currentTimePos = this->positionFromTime(this->CurrentTime);
-  double timeLabPos;
-
-  if (currentTimePos - timeLabSize / 2.0 < labelRect.left())
-  {
-    timeLabPos = labelRect.left();
-  }
-  else if (currentTimePos + timeLabSize / 2.0 > labelRect.right())
-  {
-    timeLabPos = labelRect.right() - timeLabSize;
-  }
-  else
-  {
-    timeLabPos = currentTimePos - timeLabSize / 2.0;
-  }
-
-  QRectF timeLabRect(timeLabPos, labelRect.top(), timeLabSize, rh);
-  painter->drawText(timeLabRect, Qt::AlignCenter, timeLabString);
+  priorities.append(&newCurrentTimeLabRect);
+  QRectF currentTimeLabRect =
+    this->drawTimeLabel(this->CurrentTime, labelRect, painter, metrics, priorities);
 
   // draw the other labels
-  QString curLabString =
-    QString::number(this->StartTime, this->TimeNotation.toLatin1(), this->TimePrecision);
-  double curLabSize = metrics.horizontalAdvance(curLabString);
-  QRectF curLabRect(labelRect.left(), labelRect.top(), curLabSize, rh);
+  priorities.append(&currentTimeLabRect);
 
-  if (!curLabRect.intersects(timeLabRect))
-  {
-    painter->drawText(curLabRect, Qt::AlignLeft | Qt::AlignVCenter, curLabString);
-  }
+  this->drawTimeLabel(this->ZoomStartTime, labelRect, painter, metrics, priorities);
 
   for (int i = 1; i < num; i++)
   {
-    double time = this->StartTime + (this->EndTime - this->StartTime) * (double)i / (double)num;
-    curLabString = QString::number(time, this->TimeNotation.toLatin1(), this->TimePrecision);
-    curLabSize = metrics.horizontalAdvance(curLabString);
-    double left = labelRect.left() + w * i - curLabSize / 2.0;
-    curLabRect = QRectF(left, labelRect.top(), curLabSize, rh);
+    double time = this->ZoomStartTime + ((this->ZoomEndTime - this->ZoomStartTime) * i) / num;
 
-    if (!curLabRect.intersects(timeLabRect))
-    {
-      painter->drawText(curLabRect, Qt::AlignCenter, curLabString);
-    }
+    this->drawTimeLabel(time, labelRect, painter, metrics, priorities);
   }
 
-  curLabString = QString::number(this->EndTime, this->TimeNotation.toLatin1(), this->TimePrecision);
-  curLabSize = metrics.horizontalAdvance(curLabString);
-  curLabRect = QRectF(labelRect.right() - curLabSize, labelRect.top(), curLabSize, rh);
-
-  if (!curLabRect.intersects(timeLabRect))
-  {
-    painter->drawText(curLabRect, Qt::AlignRight | Qt::AlignVCenter, curLabString);
-  }
+  this->drawTimeLabel(this->ZoomEndTime, labelRect, painter, metrics, priorities);
 
   painter->restore();
 
@@ -423,9 +448,16 @@ void pqAnimationModel::drawForeground(QPainter* painter, const QRectF&)
     for (int i = 0, max = this->currentTicks(); i < max; i++)
     {
       double tickTime = this->timeFromTick(i);
-      double tickPos = this->positionFromTime(tickTime);
-      QLineF line(tickPos, labelRect.height(), tickPos, labelRect.height() - 3.0);
-      painter->drawLine(line);
+      if (tickTime > ZoomStartTime)
+      {
+        if (tickTime > ZoomEndTime)
+        {
+          break;
+        }
+        double tickPos = this->positionFromTime(tickTime);
+        QLineF line(tickPos, labelRect.height(), tickPos, labelRect.height() - 3.0);
+        painter->drawLine(line);
+      }
     }
   }
 
@@ -438,7 +470,7 @@ void pqAnimationModel::drawForeground(QPainter* painter, const QRectF&)
   QPolygonF poly = this->timeBarPoly(this->CurrentTime);
   painter->drawPolygon(poly);
 
-  if (this->NewCurrentTime != this->CurrentTime)
+  if (this->CurrentKeyFrameGrabbed)
   {
     double pos = this->positionFromTime(this->NewCurrentTime);
     QVector<QPointF> pts;
@@ -453,6 +485,95 @@ void pqAnimationModel::drawForeground(QPainter* painter, const QRectF&)
   painter->restore();
 }
 
+//-----------------------------------------------------------------------------
+QRectF pqAnimationModel::drawTimeLabel(double time, const QRectF& row, QPainter* painter,
+  const QFontMetrics& metrics, QList<const QRectF*> const& priorities)
+{
+  QString timeLabString = QString::number(time, this->TimeNotation.toLatin1(), this->TimePrecision);
+  double timeLabSize = metrics.horizontalAdvance(timeLabString);
+  double currentTimePos = this->positionFromTime(time);
+  double halfLabWidth = timeLabSize / 2.0;
+  double timeLabPos;
+
+  // if the label is outside of the current zoom frame
+  if (currentTimePos - halfLabWidth < row.left() - halfLabWidth ||
+    currentTimePos + halfLabWidth > row.right() + halfLabWidth)
+  {
+    return QRectF();
+  }
+
+  if (currentTimePos - halfLabWidth < row.left())
+  {
+    timeLabPos = row.left();
+  }
+  else if (currentTimePos + halfLabWidth > row.right())
+  {
+    timeLabPos = row.right() - timeLabSize;
+  }
+  else
+  {
+    timeLabPos = currentTimePos - halfLabWidth;
+  }
+
+  QRectF timeLabRect(timeLabPos, row.top(), timeLabSize, row.height());
+
+  // check the priorities to avoid drawing labels on top of others
+  const QRectF* priority;
+  foreach (priority, priorities)
+  {
+    if (timeLabRect.intersects(*priority))
+    {
+      return timeLabRect;
+    }
+  }
+
+  painter->drawText(timeLabRect, Qt::AlignCenter, timeLabString);
+
+  return timeLabRect;
+}
+
+//-----------------------------------------------------------------------------
+void pqAnimationModel::updateNewTime(QGraphicsSceneMouseEvent* mouseEvent)
+{
+  QPointF pos = mouseEvent->scenePos();
+
+  double time = this->timeFromPosition(pos.x());
+
+  // snap to ticks in sequence mode
+  if (this->mode() == Sequence || this->mode() == Custom)
+  {
+    int tick = this->tickFromTime(time);
+    time = this->timeFromTick(tick);
+  }
+  else
+  {
+    // snap to nearby snap hints (if any)
+    for (int i = 0; i < this->SnapHints.size(); i++)
+    {
+      if (qAbs(this->positionFromTime(this->SnapHints[i]) - this->positionFromTime(time)) < 3)
+      {
+        time = this->SnapHints[i];
+        break;
+      }
+    }
+  }
+
+  // clamp to start/end time
+  time = qMax(time, this->InteractiveRange.first);
+  time = qMin(time, this->InteractiveRange.second);
+
+  this->NewCurrentTime = time;
+
+  if (this->NewCurrentTime != this->CurrentTime && this->CurrentTimeGrabbed)
+  {
+    // update the current time
+    emit this->currentTimeSet(this->NewCurrentTime);
+    return;
+  }
+  this->update();
+}
+
+//-----------------------------------------------------------------------------
 bool pqAnimationModel::eventFilter(QObject* w, QEvent* e)
 {
   if (e->type() == QEvent::Resize)
@@ -465,6 +586,7 @@ bool pqAnimationModel::eventFilter(QObject* w, QEvent* e)
   return false;
 }
 
+//-----------------------------------------------------------------------------
 void pqAnimationModel::trackNameChanged()
 {
   QGraphicsView* view = qobject_cast<QGraphicsView*>(this->parent());
@@ -476,6 +598,7 @@ void pqAnimationModel::trackNameChanged()
   }
 }
 
+//-----------------------------------------------------------------------------
 void pqAnimationModel::enabledChanged()
 {
   for (int i = 0; i < this->Tracks.size(); i++)
@@ -489,13 +612,15 @@ void pqAnimationModel::enabledChanged()
   }
 }
 
+//-----------------------------------------------------------------------------
 bool pqAnimationModel::hitTestCurrentTimePoly(const QPointF& pos)
 {
   QPolygonF poly = this->timeBarPoly(this->CurrentTime);
-  QRectF rect = poly.boundingRect().adjusted(-1, -1, 1, 1);
+  QRectF rect = poly.boundingRect().adjusted(-4, -1, 4, 1);
   return rect.contains(pos);
 }
 
+//-----------------------------------------------------------------------------
 pqAnimationTrack* pqAnimationModel::hitTestTracks(const QPointF& pos)
 {
   QList<QGraphicsItem*> hitItems = this->items(pos);
@@ -506,9 +631,10 @@ pqAnimationTrack* pqAnimationModel::hitTestTracks(const QPointF& pos)
       return static_cast<pqAnimationTrack*>(i);
     }
   }
-  return NULL;
+  return nullptr;
 }
 
+//-----------------------------------------------------------------------------
 pqAnimationKeyFrame* pqAnimationModel::hitTestKeyFrame(pqAnimationTrack* t, const QPointF& pos)
 {
   if (t)
@@ -526,9 +652,10 @@ pqAnimationKeyFrame* pqAnimationModel::hitTestKeyFrame(pqAnimationTrack* t, cons
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
+//-----------------------------------------------------------------------------
 void pqAnimationModel::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* mouseEvent)
 {
   if (mouseEvent->button() == Qt::LeftButton)
@@ -537,33 +664,53 @@ void pqAnimationModel::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* mouseEven
     pqAnimationTrack* t = hitTestTracks(pos);
     if (t)
     {
-      Q_EMIT trackSelected(t);
+      emit trackSelected(t);
       return;
     }
   }
 }
 
+//-----------------------------------------------------------------------------
 void pqAnimationModel::mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent)
 {
-  if (!this->Interactive || mouseEvent->button() != Qt::LeftButton)
+  if (!this->Interactive ||
+    (mouseEvent->button() != Qt::LeftButton && mouseEvent->button() != Qt::MiddleButton) ||
+    this->TimeLineGrabbed)
   {
     return;
   }
 
-  // see if current time is grabbed or if the time header is clicked
-  QPointF pos = mouseEvent->scenePos();
-  if (this->hitTestCurrentTimePoly(pos) || !this->hitTestTracks(pos))
+  if (mouseEvent->button() == Qt::MiddleButton ||
+    mouseEvent->modifiers().testFlag(Qt::ControlModifier))
   {
-    this->CurrentTimeGrabbed = true;
-    this->InteractiveRange.first = this->StartTime;
-    this->InteractiveRange.second = this->EndTime;
-
-    // if the time header is clicked, update the current time
-    if (!this->hitTestTracks(pos))
+    if (!this->CurrentKeyFrameGrabbed && !this->CurrentTimeGrabbed)
     {
-      this->mouseMoveEvent(mouseEvent);
+      QGraphicsView* view = qobject_cast<QGraphicsView*>(this->parent());
+      view->setCursor(QCursor(Qt::ClosedHandCursor));
+      this->TimeLineGrabbedPosition = mouseEvent->scenePos().x();
+      this->OldZoomStartTime = this->ZoomStartTime;
+      this->TimeLineGrabbed = true;
+      return;
     }
   }
+
+  // see if current time is grabbed or if the time header is clicked
+  QPointF pos = mouseEvent->scenePos();
+
+  // get the header rectangle
+  QRectF sr = this->sceneRect();
+  int rh = this->rowHeight();
+  const QRectF labelRect = QRectF(sr.left(), sr.top(), sr.width() - 1, rh);
+
+  if (this->hitTestCurrentTimePoly(pos) || labelRect.contains(pos))
+  {
+    this->CurrentTimeGrabbed = true;
+    this->InteractiveRange.first = this->ZoomStartTime;
+    this->InteractiveRange.second = this->ZoomEndTime;
+  }
+
+  // update the new current time
+  this->updateNewTime(mouseEvent);
 
   // see if any keyframe is grabbed
   if (!this->CurrentTimeGrabbed)
@@ -588,20 +735,20 @@ void pqAnimationModel::mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent)
           this->positionFromTime(this->normalizedTimeToTime(kf->normalizedStartTime()));
         double keyPos2 =
           this->positionFromTime(this->normalizedTimeToTime(kf->normalizedEndTime()));
-        if (qAbs(keyPos1 - pos.x()) < 3)
+        if (qAbs(keyPos1 - pos.x()) < 10)
         {
           this->CurrentTrackGrabbed = t;
           this->CurrentKeyFrameGrabbed = kf;
           this->CurrentKeyFrameEdge = 0;
         }
-        else if (qAbs(keyPos2 - pos.x()) < 3)
+        else if (qAbs(keyPos2 - pos.x()) < 10)
         {
           whichkf++;
           this->CurrentTrackGrabbed = t;
           this->CurrentKeyFrameGrabbed = kf;
           this->CurrentKeyFrameEdge = 1;
-          this->InteractiveRange.first = this->StartTime;
-          this->InteractiveRange.second = this->EndTime;
+          this->InteractiveRange.first = this->ZoomStartTime;
+          this->InteractiveRange.second = this->ZoomEndTime;
         }
 
         if (whichkf > 0)
@@ -611,7 +758,7 @@ void pqAnimationModel::mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent)
         }
         else
         {
-          this->InteractiveRange.first = this->StartTime;
+          this->InteractiveRange.first = this->ZoomStartTime;
         }
 
         if (whichkf < t->count())
@@ -621,7 +768,7 @@ void pqAnimationModel::mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent)
         }
         else
         {
-          this->InteractiveRange.second = this->EndTime;
+          this->InteractiveRange.second = this->ZoomEndTime;
         }
       }
     }
@@ -646,6 +793,7 @@ void pqAnimationModel::mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent)
   }
 }
 
+//-----------------------------------------------------------------------------
 void pqAnimationModel::mouseMoveEvent(QGraphicsSceneMouseEvent* mouseEvent)
 {
   if (!this->Interactive)
@@ -657,114 +805,175 @@ void pqAnimationModel::mouseMoveEvent(QGraphicsSceneMouseEvent* mouseEvent)
 
   if (this->CurrentTimeGrabbed || this->CurrentKeyFrameGrabbed)
   {
-    double time = this->timeFromPosition(pos.x());
-
-    // snap to ticks in sequence mode
-    // (should snap to hints if we find one closer? )
-    if (this->mode() == Sequence || this->mode() == Custom)
-    {
-      int tick = this->tickFromTime(time);
-      time = this->timeFromTick(tick);
-    }
-    else
-    {
-      // snap to nearby snap hints (if any)
-      for (int i = 0; i < this->SnapHints.size(); i++)
-      {
-        if (qAbs(this->positionFromTime(this->SnapHints[i]) - this->positionFromTime(time)) < 3)
-        {
-          time = this->SnapHints[i];
-          break;
-        }
-      }
-    }
-
-    // clamp to start/end time
-    time = qMax(time, this->InteractiveRange.first);
-    time = qMin(time, this->InteractiveRange.second);
-
-    this->NewCurrentTime = time;
-
-    if (this->NewCurrentTime != this->CurrentTime)
-    {
-      if (this->CurrentTimeGrabbed)
-      {
-        Q_EMIT this->currentTimeSet(this->NewCurrentTime);
-      }
-      else
-      {
-        this->update();
-      }
-    }
+    this->updateNewTime(mouseEvent);
     return;
   }
 
-  // we haven't gone in any interaction mode yet,
-  // so lets adjust the cursor to give indication of being
-  // able to interact if the mouse was pressed at this location
-  QGraphicsView* view = qobject_cast<QGraphicsView*>(this->parent());
-
-  if (this->hitTestCurrentTimePoly(pos))
+  if (mouseEvent->buttons() == Qt::NoButton)
   {
-    view->setCursor(QCursor(Qt::SizeHorCursor));
-    return;
-  }
+    // we haven't gone in any interaction mode yet,
+    // so lets adjust the cursor to give indication of being
+    // able to interact if the mouse was pressed at this location
+    QGraphicsView* view = qobject_cast<QGraphicsView*>(this->parent());
 
-  // see if we're at the edge of any keyframe
-  pqAnimationTrack* t = hitTestTracks(pos);
-  pqAnimationKeyFrame* kf = hitTestKeyFrame(t, pos);
-  if (kf)
-  {
-    double keyPos1 = this->positionFromTime(this->normalizedTimeToTime(kf->normalizedStartTime()));
-    double keyPos2 = this->positionFromTime(this->normalizedTimeToTime(kf->normalizedEndTime()));
-    if (qAbs(keyPos1 - pos.x()) < 3 || qAbs(keyPos2 - pos.x()) < 3)
+    if (this->hitTestCurrentTimePoly(pos))
     {
       view->setCursor(QCursor(Qt::SizeHorCursor));
       return;
     }
-  }
 
-  // in case cursor was changed elsewhere
-  view->setCursor(QCursor());
+    // see if we're at the edge of any keyframe
+    pqAnimationTrack* t = hitTestTracks(pos);
+    pqAnimationKeyFrame* kf = hitTestKeyFrame(t, pos);
+    if (kf)
+    {
+      double keyPos1 =
+        this->positionFromTime(this->normalizedTimeToTime(kf->normalizedStartTime()));
+      double keyPos2 = this->positionFromTime(this->normalizedTimeToTime(kf->normalizedEndTime()));
+      if (qAbs(keyPos1 - pos.x()) < 10 || qAbs(keyPos2 - pos.x()) < 10)
+      {
+        view->setCursor(QCursor(Qt::SizeHorCursor));
+        return;
+      }
+    }
+    // in case cursor was changed elsewhere
+    view->setCursor(QCursor());
+  }
+  else if (this->TimeLineGrabbed)
+  {
+    // Move the start and the end of the Zoom
+    double timeDiff = this->timeFromPosition(mouseEvent->scenePos().x()) -
+      this->timeFromPosition(this->TimeLineGrabbedPosition);
+
+    this->positionZoom(this->OldZoomStartTime - timeDiff);
+
+    emit this->zoomChanged();
+  }
 }
 
-void pqAnimationModel::mouseReleaseEvent(QGraphicsSceneMouseEvent*)
+//-----------------------------------------------------------------------------
+void pqAnimationModel::mouseReleaseEvent(QGraphicsSceneMouseEvent* mouseEvent)
 {
-  if (this->CurrentTimeGrabbed)
+  if (TimeLineGrabbed)
   {
-    this->CurrentTimeGrabbed = false;
+    TimeLineGrabbed = false;
+
+    QGraphicsView* view = qobject_cast<QGraphicsView*>(this->parent());
+    // in case cursor was changed elsewhere
+    view->setCursor(QCursor());
+    return;
   }
 
-  if (this->CurrentKeyFrameGrabbed)
+  if (mouseEvent->button() == Qt::LeftButton)
   {
-    Q_EMIT this->keyFrameTimeChanged(this->CurrentTrackGrabbed, this->CurrentKeyFrameGrabbed,
-      this->CurrentKeyFrameEdge, this->NewCurrentTime);
+    if (this->CurrentTimeGrabbed)
+    {
+      this->CurrentTimeGrabbed = false;
+    }
 
-    this->CurrentTrackGrabbed = NULL;
-    this->CurrentKeyFrameGrabbed = NULL;
-    this->NewCurrentTime = this->CurrentTime;
-    this->update();
+    if (this->CurrentKeyFrameGrabbed)
+    {
+      emit this->keyFrameTimeChanged(this->CurrentTrackGrabbed, this->CurrentKeyFrameGrabbed,
+        this->CurrentKeyFrameEdge, this->NewCurrentTime);
+
+      this->CurrentTrackGrabbed = nullptr;
+      this->CurrentKeyFrameGrabbed = nullptr;
+      this->NewCurrentTime = this->CurrentTime;
+      this->update();
+    }
+
+    this->SnapHints.clear();
+
+    QGraphicsView* view = qobject_cast<QGraphicsView*>(this->parent());
+    // in case cursor was changed elsewhere
+    view->setCursor(QCursor());
   }
-
-  this->SnapHints.clear();
 }
 
+//-----------------------------------------------------------------------------
+void pqAnimationModel::positionZoom(double zoomStartTime)
+{
+  double timeDistance = (this->EndTime - this->StartTime) / this->ZoomFactor;
+
+  this->ZoomStartTime = zoomStartTime;
+  this->ZoomEndTime = this->ZoomStartTime + timeDistance;
+
+  if (this->ZoomStartTime < this->StartTime)
+  {
+    this->ZoomStartTime = this->StartTime;
+    this->ZoomEndTime = this->ZoomStartTime + timeDistance;
+  }
+  else if (this->ZoomEndTime > this->EndTime)
+  {
+    this->ZoomEndTime = this->EndTime;
+    this->ZoomStartTime = this->ZoomEndTime - timeDistance;
+  }
+
+  for (int i = 0; i < this->count(); i++)
+  {
+    pqAnimationTrack* t = this->track(i);
+    this->zoomTrack(t);
+  }
+
+  this->update();
+}
+
+//-----------------------------------------------------------------------------
+void pqAnimationModel::wheelEvent(QGraphicsSceneWheelEvent* wheelEvent)
+{
+  if (!this->Interactive || !wheelEvent->modifiers().testFlag(Qt::ControlModifier) ||
+    wheelEvent->buttons() != Qt::NoButton)
+  {
+    return;
+  }
+
+  double steps = static_cast<double>(wheelEvent->delta()) / MouseWheelStepsFactor;
+  double newZoomStart;
+
+  this->ZoomFactor += steps / 2;
+
+  if (this->ZoomFactor <= 1)
+  {
+    this->ZoomFactor = 1;
+    newZoomStart = this->StartTime;
+  }
+  else
+  {
+    double timeTarget = timeFromPosition(wheelEvent->scenePos().x());
+
+    double fraction =
+      (timeTarget - this->ZoomStartTime) / (this->ZoomEndTime - this->ZoomStartTime);
+
+    double timeDistance = (this->EndTime - this->StartTime) / this->ZoomFactor;
+
+    newZoomStart = timeTarget - (fraction * timeDistance);
+  }
+
+  this->positionZoom(newZoomStart);
+
+  emit this->zoomChanged();
+}
+
+//-----------------------------------------------------------------------------
 double pqAnimationModel::timeToNormalizedTime(double t) const
 {
   return (t - this->startTime()) / (this->endTime() - this->startTime());
 }
 
+//-----------------------------------------------------------------------------
 double pqAnimationModel::normalizedTimeToTime(double t) const
 {
   return t * (this->endTime() - this->startTime()) + this->startTime();
 }
 
+//-----------------------------------------------------------------------------
 void pqAnimationModel::setTimePrecision(int precision)
 {
   this->TimePrecision = precision;
   this->update();
 }
 
+//-----------------------------------------------------------------------------
 void pqAnimationModel::setTimeNotation(const QChar& notation)
 {
   QString possibilities = QString("eEfgG");
@@ -772,5 +981,17 @@ void pqAnimationModel::setTimeNotation(const QChar& notation)
   {
     this->TimeNotation = notation;
     this->update();
+  }
+}
+
+//-----------------------------------------------------------------------------
+void pqAnimationModel::zoomTrack(pqAnimationTrack* track)
+{
+  for (int j = 0; j < track->count(); j++)
+  {
+    pqAnimationKeyFrame* kf = track->keyFrame(j);
+    double startPos = this->positionFromTime(this->normalizedTimeToTime(kf->normalizedStartTime()));
+    double endPos = this->positionFromTime(this->normalizedTimeToTime(kf->normalizedEndTime()));
+    kf->adjustRect(startPos, endPos);
   }
 }

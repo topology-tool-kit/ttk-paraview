@@ -12,9 +12,9 @@
 #define fides_predefined_SupportedDataModels_H_
 
 #include <iostream>
+#include <map>
 #include <string>
 #include <unordered_map>
-#include <map>
 #include <vector>
 
 namespace fides
@@ -30,6 +30,7 @@ enum class DataModelTypes
   UNSTRUCTURED,
   UNSTRUCTURED_SINGLE,
   XGC,
+  GTC,
   UNSUPPORTED
 };
 

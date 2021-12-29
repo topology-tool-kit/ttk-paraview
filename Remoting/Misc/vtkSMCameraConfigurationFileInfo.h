@@ -25,12 +25,10 @@
  *
  * @par Thanks:
  * This class was contributed by SciberQuest Inc.
-*/
+ */
 
 #ifndef vtkSMCameraConfigurationFileInfo_h
 #define vtkSMCameraConfigurationFileInfo_h
-
-#include "vtkObject.h"
 
 class vtkSMCameraConfigurationFileInfo
 {

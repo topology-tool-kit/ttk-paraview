@@ -36,7 +36,7 @@ vtkPVDataDeliveryManager::vtkPVDataDeliveryManager()
 vtkPVDataDeliveryManager::~vtkPVDataDeliveryManager()
 {
   delete this->Internals;
-  this->Internals = 0;
+  this->Internals = nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -92,7 +92,7 @@ vtkPVDataRepresentation* vtkPVDataDeliveryManager::GetRepresentation(unsigned in
 {
   vtkInternals::RepresentationsMapType::const_iterator iter =
     this->Internals->RepresentationsMap.find(index);
-  return iter != this->Internals->RepresentationsMap.end() ? iter->second.GetPointer() : NULL;
+  return iter != this->Internals->RepresentationsMap.end() ? iter->second.GetPointer() : nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -176,7 +176,7 @@ vtkAlgorithmOutput* vtkPVDataDeliveryManager::GetProducer(
   if (!item)
   {
     vtkErrorMacro("Invalid arguments.");
-    return NULL;
+    return nullptr;
   }
 
   const int dataKey = this->GetDeliveredDataKey(low_res);
@@ -221,8 +221,8 @@ bool vtkPVDataDeliveryManager::NeedsDelivery(
       }
     }
   }
-  vtkVLogIfF(PARAVIEW_LOG_DATA_MOVEMENT_VERBOSITY(), keys_to_deliver.size() == 0, "none");
-  return keys_to_deliver.size() > 0;
+  vtkVLogIfF(PARAVIEW_LOG_DATA_MOVEMENT_VERBOSITY(), keys_to_deliver.empty(), "none");
+  return !keys_to_deliver.empty();
 }
 
 //----------------------------------------------------------------------------

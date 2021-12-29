@@ -100,7 +100,7 @@ public:
     this->InitializedAfterObjectsCreated = false;
     this->SelectionAction = vtkChart::SELECT_RECTANGLE;
   }
-  ~pqInternal() {}
+  ~pqInternal() = default;
 
   vtkNew<vtkEventQtSlotConnect> VTKConnect;
 };
@@ -174,7 +174,7 @@ bool pqContextView::supportsSelection() const
 
 //-----------------------------------------------------------------------------
 /// Resets the zoom level to 100%.
-void pqContextView::resetDisplay()
+void pqContextView::resetDisplay(bool vtkNotUsed(closest))
 {
   vtkSMContextViewProxy* proxy = this->getContextViewProxy();
   if (proxy)
@@ -199,7 +199,7 @@ void pqContextView::selectionChanged()
 void pqContextView::setSelection(vtkSelection* sel)
 {
   // Get the representation's source
-  pqDataRepresentation* pqRepr = 0;
+  pqDataRepresentation* pqRepr = nullptr;
 
   for (int i = 0; i < this->getNumberOfRepresentations(); ++i)
   {

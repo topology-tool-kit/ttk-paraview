@@ -87,7 +87,6 @@ FileStreamReader::FileStreamReader()
   , Eof(true)
   , Pos(BUFF_SIZE)
   , BuffEnd(BUFF_SIZE)
-  , FileName()
 {
 }
 
@@ -139,7 +138,7 @@ int FileStreamReader::get()
   {
     this->Pos = 0;
     // read the first buffer
-    this->BuffEnd = gzread(this->file, this->buff, this->BUFF_SIZE);
+    this->BuffEnd = gzread(this->file, this->buff, FileStreamReader::BUFF_SIZE);
     // assign EOF to what gzread returned
     this->Eof = (this->BuffEnd <= 0);
     if (this->Eof)
@@ -171,8 +170,8 @@ void FileStreamReader::close()
   {
     this->Open = false;
     this->Eof = false;
-    this->Pos = this->BUFF_SIZE;
-    this->BuffEnd = this->BUFF_SIZE;
+    this->Pos = FileStreamReader::BUFF_SIZE;
+    this->BuffEnd = FileStreamReader::BUFF_SIZE;
     this->FileName = std::string();
 
     gzclose(this->file);
@@ -207,7 +206,6 @@ public:
   FileStreamReader ASCIIStream;
   std::string TokenBackup;
 
-public:
   void Init()
   {
     this->Completed = 0;

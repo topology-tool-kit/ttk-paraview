@@ -1,7 +1,7 @@
 /*=========================================================================
 
    Program: ParaView
-   Module:    pqVRStarter.cxx
+   Module:  pqVRStarter.cxx
 
    Copyright (c) 2005,2006 Sandia Corporation, Kitware Inc.
    All rights reserved.
@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkProcessModule.h"
 #include "vtkVRInteractorStyleFactory.h"
 #include "vtkVRQueue.h"
+
 #include <QTimer>
 #include <QtDebug>
 
@@ -51,8 +52,8 @@ class pqVREventPlayer : public pqWidgetEventPlayer
   typedef pqWidgetEventPlayer Superclass;
 
 public:
-  pqVREventPlayer(QObject* p)
-    : Superclass(p)
+  pqVREventPlayer(QObject* _parent)
+    : Superclass(_parent)
   {
   }
   virtual bool playEvent(QObject*, const QString& command, const QString& arguments, bool& error)
@@ -74,7 +75,7 @@ public:
                         "([\\d.-]+)," // quat_x
                         "([\\d.-]+)," // quat_y
                         "([\\d.-]+)$" // quat_z
-          );
+        );
         int ind = capture.indexIn(arguments);
         if (ind < 0)
         {
@@ -129,16 +130,16 @@ public:
 };
 
 //-----------------------------------------------------------------------------
-pqVRStarter::pqVRStarter(QObject* p /*=0*/)
-  : QObject(p)
+pqVRStarter::pqVRStarter(QObject* _parent /*=0*/)
+  : QObject(_parent)
 {
   this->Internals = new pqInternals;
-  this->Internals->EventQueue = NULL;
-  this->Internals->Handler = NULL;
-  this->Internals->StyleFactory = NULL;
+  this->Internals->EventQueue = nullptr;
+  this->Internals->Handler = nullptr;
+  this->Internals->StyleFactory = nullptr;
 
 #if PARAVIEW_PLUGIN_VRPlugin_USE_VRPN
-  pqVREventPlayer* player = new pqVREventPlayer(NULL);
+  pqVREventPlayer* player = new pqVREventPlayer(nullptr);
   pqApplicationCore::instance()->testUtility()->eventPlayer()->addWidgetEventPlayer(player);
 #endif // PARAVIEW_PLUGIN_VRPlugin_USE_VRPN
 
@@ -181,9 +182,9 @@ void pqVRStarter::onShutdown()
     return;
   }
   this->IsShutdown = true;
-  pqVRConnectionManager::setInstance(NULL);
-  pqVRQueueHandler::setInstance(NULL);
-  vtkVRInteractorStyleFactory::SetInstance(NULL);
+  pqVRConnectionManager::setInstance(nullptr);
+  pqVRQueueHandler::setInstance(nullptr);
+  vtkVRInteractorStyleFactory::SetInstance(nullptr);
   delete this->Internals->Handler;
   delete this->Internals->ConnectionManager;
   this->Internals->EventQueue->Delete();

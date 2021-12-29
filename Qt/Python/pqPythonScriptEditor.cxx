@@ -32,62 +32,86 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqPythonScriptEditor.h"
 
 #include "pqApplicationCore.h"
-#include "pqCoreUtilities.h"
-#include "pqFileDialog.h"
 #include "pqPythonManager.h"
 #include "pqPythonSyntaxHighlighter.h"
+#include "pqPythonTabWidget.h"
+#include "pqPythonTextArea.h"
 #include "pqSettings.h"
 
 #include <QAction>
-#include <QApplication>
-#include <QCloseEvent>
-#include <QDebug>
-#include <QFile>
-#include <QFileDialog>
 #include <QFileInfo>
-#include <QFontMetrics>
-#include <QMenu>
+#include <QHBoxLayout>
+#include <QLabel>
 #include <QMenuBar>
-#include <QMessageBox>
 #include <QScrollBar>
 #include <QStatusBar>
+#include <QTabBar>
+#include <QTabWidget>
 #include <QTextEdit>
-#include <QTextStream>
+#include <QToolButton>
 
 #include <vtkPythonInterpreter.h>
 
+namespace details
+{
+void FillMenu(QMenu* menu, std::vector<QAction*>& actions)
+{
+  menu->clear();
+  for (auto const& action : actions)
+  {
+    menu->addAction(action);
+  }
+}
+}
+
+pqPythonScriptEditor* pqPythonScriptEditor::UniqueInstance = nullptr;
+
 //-----------------------------------------------------------------------------
 pqPythonScriptEditor::pqPythonScriptEditor(QWidget* p)
-  : Superclass(p)
+  : QMainWindow(p)
+  , TabWidget(new pqPythonTabWidget(this))
+  , PythonManager(nullptr)
 {
-  this->pythonManager = NULL;
-  this->TextEdit = new QTextEdit;
-  // tab is 4 spaces
-  this->TextEdit->setTabStopDistance(this->fontMetrics().horizontalAdvance("    "));
-  this->setCentralWidget(this->TextEdit);
-  this->createActions();
+  this->setCentralWidget(TabWidget);
+
   this->createMenus();
-  this->createStatusBar();
-  this->DefaultSaveDirectory = QDir::homePath();
-  this->setCurrentFile("");
-  this->connect(
-    this->TextEdit->document(), SIGNAL(contentsChanged()), this, SLOT(documentWasModified()));
+
   this->resize(300, 450);
+
   pqApplicationCore::instance()->settings()->restoreState("PythonScriptEditor", *this);
   vtkPythonInterpreter::Initialize();
-  this->SyntaxHighlighter = new pqPythonSyntaxHighlighter(this->TextEdit, this);
+
+  this->setWindowTitle(tr("ParaView Python Script Editor"));
+
+  this->connect(this->TabWidget, &pqPythonTabWidget::fileSaved, [this](const QString& filename) {
+    this->setWindowTitle(
+      tr("%1[*] - %2").arg(details::stripFilename(filename)).arg(tr("Script Editor")));
+    this->statusBar()->showMessage(tr("File %1 saved").arg(filename), 4000);
+  });
+
+  this->connect(this->TabWidget, &pqPythonTabWidget::fileOpened, [this](const QString& filename) {
+    this->setWindowTitle(
+      tr("%1[*] - %2").arg(details::stripFilename(filename)).arg(tr("Script Editor")));
+    this->statusBar()->showMessage(tr("File %1 opened").arg(filename), 4000);
+  });
+
+  connect(this->TabWidget, &QTabWidget::currentChanged,
+    [this]() { this->TabWidget->updateActions(this->Actions); });
+
+  this->TabWidget->connectActions(this->Actions);
+  this->TabWidget->updateActions(this->Actions);
+  pqPythonEditorActions::connect(this->Actions, this);
+
+  this->createStatusBar();
 }
 
 //-----------------------------------------------------------------------------
 void pqPythonScriptEditor::closeEvent(QCloseEvent* e)
 {
-  if (this->maybeSave())
+  if (this->TabWidget->saveOnClose())
   {
-    this->TextEdit->clear();
-    this->TextEdit->document()->setModified(false);
-    this->setWindowModified(false);
-    e->accept();
     pqApplicationCore::instance()->settings()->saveState(*this, "PythonScriptEditor");
+    e->accept();
   }
   else
   {
@@ -96,191 +120,82 @@ void pqPythonScriptEditor::closeEvent(QCloseEvent* e)
 }
 
 //-----------------------------------------------------------------------------
-bool pqPythonScriptEditor::newFile()
+void pqPythonScriptEditor::open(const QString& filename)
 {
-  if (this->maybeSave())
-  {
-    this->TextEdit->clear();
-    this->setCurrentFile("");
-    return true;
-  }
-  return false;
+  this->TabWidget->addNewTextArea(filename);
 }
 
 //-----------------------------------------------------------------------------
-void pqPythonScriptEditor::open()
+void pqPythonScriptEditor::load(const QString& filename)
 {
-  if (this->maybeSave())
-  {
-    QString fileName = QFileDialog::getOpenFileName(this);
-    if (!fileName.isEmpty())
-    {
-      this->loadFile(fileName);
-    }
-  }
-}
-
-//-----------------------------------------------------------------------------
-void pqPythonScriptEditor::open(const QString& fileName)
-{
-  if (this->maybeSave())
-  {
-    if (!fileName.isEmpty())
-    {
-      this->loadFile(fileName);
-    }
-  }
+  this->TabWidget->loadFile(filename);
 }
 
 //-----------------------------------------------------------------------------
 void pqPythonScriptEditor::setSaveDialogDefaultDirectory(const QString& dir)
 {
-  this->DefaultSaveDirectory = dir;
+  this->TabWidget->getCurrentTextArea()->setDefaultSaveDirectory(dir);
 }
 
 //-----------------------------------------------------------------------------
 void pqPythonScriptEditor::setPythonManager(pqPythonManager* manager)
 {
-  this->pythonManager = manager;
-  this->saveAsMacroAct->setEnabled(manager);
-}
-
-//-----------------------------------------------------------------------------
-bool pqPythonScriptEditor::save()
-{
-  if (this->CurrentFile.isEmpty())
-  {
-    return this->saveAs();
-  }
-  else
-  {
-    return this->saveFile(this->CurrentFile);
-  }
-}
-
-//-----------------------------------------------------------------------------
-bool pqPythonScriptEditor::saveAsMacro()
-{
-  QString userMacroDir = pqCoreUtilities::getParaViewUserDirectory() + "/Macros";
-  QDir existCheck(userMacroDir);
-  if (!existCheck.exists() && !existCheck.mkpath(userMacroDir))
-  {
-    qWarning() << "Could not create user Macro directory:" << userMacroDir;
-    return false;
-  }
-
-  QString fileName = pqFileDialog::getSaveFileName(
-    NULL, this, tr("Save Macro"), userMacroDir, tr("Python script (*.py)"));
-  if (!fileName.isEmpty() && this->saveFile(fileName))
-  {
-    if (pythonManager)
-    {
-      pythonManager->updateMacroList();
-    }
-    return true;
-  }
-  return false;
-}
-
-//-----------------------------------------------------------------------------
-bool pqPythonScriptEditor::saveAs()
-{
-  QString fileName = pqFileDialog::getSaveFileName(
-    NULL, this, tr("Save File"), this->DefaultSaveDirectory, tr("Python script (*.py)"));
-  if (fileName.isEmpty())
-  {
-    return false;
-  }
-  if (!fileName.endsWith(".py"))
-  {
-    fileName.append(".py");
-  }
-  return this->saveFile(fileName);
-}
-
-//-----------------------------------------------------------------------------
-void pqPythonScriptEditor::documentWasModified()
-{
-  this->setWindowModified(this->TextEdit->document()->isModified());
-}
-
-//-----------------------------------------------------------------------------
-void pqPythonScriptEditor::createActions()
-{
-  this->newAct = new QAction(tr("&New"), this);
-  this->newAct->setShortcut(tr("Ctrl+N"));
-  this->newAct->setStatusTip(tr("Create a new file"));
-  this->connect(this->newAct, SIGNAL(triggered()), this, SLOT(newFile()));
-
-  this->openAct = new QAction(tr("&Open..."), this);
-  this->openAct->setShortcut(tr("Ctrl+O"));
-  this->openAct->setStatusTip(tr("Open an existing file"));
-  this->connect(this->openAct, SIGNAL(triggered()), this, SLOT(open()));
-
-  this->saveAct = new QAction(tr("&Save"), this);
-  this->saveAct->setShortcut(tr("Ctrl+S"));
-  this->saveAct->setStatusTip(tr("Save the document to disk"));
-  this->connect(this->saveAct, SIGNAL(triggered()), this, SLOT(save()));
-
-  this->saveAsAct = new QAction(tr("Save &As..."), this);
-  this->saveAsAct->setStatusTip(tr("Save the document under a new name"));
-  this->connect(this->saveAsAct, SIGNAL(triggered()), this, SLOT(saveAs()));
-
-  this->saveAsMacroAct = new QAction(tr("Save As &Macro..."), this);
-  this->saveAsMacroAct->setStatusTip(tr("Save the document as a Macro"));
-  this->connect(this->saveAsMacroAct, SIGNAL(triggered()), this, SLOT(saveAsMacro()));
-
-  this->exitAct = new QAction(tr("C&lose"), this);
-  this->exitAct->setShortcut(tr("Ctrl+W"));
-  this->exitAct->setStatusTip(tr("Close the script editor"));
-  this->connect(this->exitAct, SIGNAL(triggered()), this, SLOT(close()));
-
-  this->cutAct = new QAction(tr("Cu&t"), this);
-  this->cutAct->setShortcut(tr("Ctrl+X"));
-  this->cutAct->setStatusTip(tr("Cut the current selection's contents to the "
-                                "clipboard"));
-  this->connect(this->cutAct, SIGNAL(triggered()), this->TextEdit, SLOT(cut()));
-
-  this->copyAct = new QAction(tr("&Copy"), this);
-  this->copyAct->setShortcut(tr("Ctrl+C"));
-  this->copyAct->setStatusTip(tr("Copy the current selection's contents to the "
-                                 "clipboard"));
-  this->connect(this->copyAct, SIGNAL(triggered()), this->TextEdit, SLOT(copy()));
-
-  this->pasteAct = new QAction(tr("&Paste"), this);
-  this->pasteAct->setShortcut(tr("Ctrl+V"));
-  this->pasteAct->setStatusTip(tr("Paste the clipboard's contents into the current "
-                                  "selection"));
-  this->connect(this->pasteAct, SIGNAL(triggered()), this->TextEdit, SLOT(paste()));
-
-  this->saveAsMacroAct->setEnabled(false);
-  this->cutAct->setEnabled(false);
-  this->copyAct->setEnabled(false);
-  this->connect(this->TextEdit, SIGNAL(copyAvailable(bool)), this->cutAct, SLOT(setEnabled(bool)));
-  this->connect(this->TextEdit, SIGNAL(copyAvailable(bool)), this->copyAct, SLOT(setEnabled(bool)));
+  this->PythonManager = manager;
+  this->Actions[pqPythonEditorActions::GeneralActionType::SaveFileAsMacro].setEnabled(
+    manager != nullptr);
 }
 
 //-----------------------------------------------------------------------------
 void pqPythonScriptEditor::createMenus()
 {
+  using Action = pqPythonEditorActions::GeneralActionType;
+
   this->menuBar()->setObjectName("PythonScriptEditorMenuBar");
+
   this->fileMenu = menuBar()->addMenu(tr("&File"));
   this->fileMenu->setObjectName("File");
-  this->fileMenu->addAction(this->newAct);
-  this->fileMenu->addAction(this->openAct);
-  this->fileMenu->addAction(this->saveAct);
-  this->fileMenu->addAction(this->saveAsAct);
-  this->fileMenu->addAction(this->saveAsMacroAct);
+  this->fileMenu->setToolTipsVisible(true);
+  this->fileMenu->addAction(&this->Actions[Action::NewFile]);
+  this->fileMenu->addAction(&this->Actions[Action::OpenFile]);
+  this->fileMenu->addAction(&this->Actions[Action::SaveFile]);
+  this->fileMenu->addAction(&this->Actions[Action::SaveFileAs]);
+  this->fileMenu->addAction(&this->Actions[Action::SaveFileAsMacro]);
+  this->fileMenu->addAction(&this->Actions[Action::SaveFileAsScript]);
   this->fileMenu->addSeparator();
-  this->fileMenu->addAction(this->exitAct);
+  this->fileMenu->addAction(&this->Actions[Action::CloseCurrentTab]);
+  this->fileMenu->addAction(&this->Actions[Action::Exit]);
 
   this->editMenu = menuBar()->addMenu(tr("&Edit"));
   this->editMenu->setObjectName("Edit");
-  this->editMenu->addAction(this->cutAct);
-  this->editMenu->addAction(this->copyAct);
-  this->editMenu->addAction(this->pasteAct);
+  this->editMenu->setToolTipsVisible(true);
+  this->editMenu->addAction(&this->Actions[Action::Cut]);
+  this->editMenu->addAction(&this->Actions[Action::Copy]);
+  this->editMenu->addAction(&this->Actions[Action::Paste]);
+  this->editMenu->addSeparator();
+  this->editMenu->addAction(&this->Actions[Action::Undo]);
+  this->editMenu->addAction(&this->Actions[Action::Redo]);
 
-  this->menuBar()->addSeparator();
+  this->Actions.updateScriptsList();
+  auto menu = menuBar()->addMenu(this->tr("&Scripts"));
+  menu->setToolTipsVisible(true);
+  menu->addAction(&this->Actions[Action::SaveFileAsScript]);
+  menu->addSeparator();
+
+  this->scriptMenus[ScriptActionType::Open] = menu->addMenu(this->tr("Open..."));
+  this->scriptMenus[ScriptActionType::Open]->setStatusTip(
+    this->tr("Open a python script in a new tab"));
+  this->scriptMenus[ScriptActionType::Open]->setToolTipsVisible(true);
+
+  this->scriptMenus[ScriptActionType::Load] = menu->addMenu(this->tr("Use as current script..."));
+  this->scriptMenus[ScriptActionType::Load]->setStatusTip(
+    this->tr("Load a python script in the current opened tab and override its content"));
+  this->scriptMenus[ScriptActionType::Load]->setToolTipsVisible(true);
+
+  this->scriptMenus[ScriptActionType::Delete] = menu->addMenu(this->tr("Delete..."));
+  this->scriptMenus[ScriptActionType::Delete]->setStatusTip(this->tr("Delete the script"));
+  this->scriptMenus[ScriptActionType::Delete]->setToolTipsVisible(true);
+
+  this->Actions.FillQMenu(this->scriptMenus);
 }
 
 //-----------------------------------------------------------------------------
@@ -290,102 +205,75 @@ void pqPythonScriptEditor::createStatusBar()
 }
 
 //-----------------------------------------------------------------------------
-bool pqPythonScriptEditor::maybeSave()
-{
-  if (this->TextEdit->document()->isModified())
-  {
-    QMessageBox::StandardButton ret;
-    ret = QMessageBox::warning(this, tr("Script Editor"), tr("The document has been modified.\n"
-                                                             "Do you want to save your changes?"),
-      QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
-    if (ret == QMessageBox::Save)
-    {
-      return this->save();
-    }
-    else if (ret == QMessageBox::Cancel)
-    {
-      return false;
-    }
-  }
-  return true;
-}
-
-//-----------------------------------------------------------------------------
-void pqPythonScriptEditor::setText(const QString& text)
-{
-  this->TextEdit->setPlainText(text);
-}
-
-//-----------------------------------------------------------------------------
-void pqPythonScriptEditor::loadFile(const QString& fileName)
-{
-  QFile file(fileName);
-  if (!file.open(QFile::ReadOnly | QFile::Text))
-  {
-    QMessageBox::warning(this, tr("Script Editor"),
-      tr("Cannot read file %1:\n%2.").arg(fileName).arg(file.errorString()));
-    return;
-  }
-
-  QTextStream in(&file);
-  QApplication::setOverrideCursor(Qt::WaitCursor);
-  this->TextEdit->setPlainText(in.readAll());
-  QApplication::restoreOverrideCursor();
-
-  this->setCurrentFile(fileName);
-  this->statusBar()->showMessage(tr("File loaded"), 2000);
-}
-
-//-----------------------------------------------------------------------------
-bool pqPythonScriptEditor::saveFile(const QString& fileName)
-{
-  QFile file(fileName);
-  if (!file.open(QFile::WriteOnly | QFile::Text))
-  {
-    QMessageBox::warning(
-      this, tr("Sorry!"), tr("Cannot write file %1:\n%2.").arg(fileName).arg(file.errorString()));
-    return false;
-  }
-
-  QTextStream out(&file);
-  QApplication::setOverrideCursor(Qt::WaitCursor);
-  out << this->TextEdit->toPlainText();
-  QApplication::restoreOverrideCursor();
-
-  this->setCurrentFile(fileName);
-  this->statusBar()->showMessage(tr("File saved"), 2000);
-  Q_EMIT this->fileSaved();
-  return true;
-}
-
-//-----------------------------------------------------------------------------
-void pqPythonScriptEditor::setCurrentFile(const QString& fileName)
-{
-  this->CurrentFile = fileName;
-  this->TextEdit->document()->setModified(false);
-  this->setWindowModified(false);
-
-  QString shownName;
-  if (this->CurrentFile.isEmpty())
-  {
-    shownName = "untitled.py";
-  }
-  else
-  {
-    shownName = strippedName(this->CurrentFile);
-  }
-
-  this->setWindowTitle(tr("%1[*] - %2").arg(shownName).arg(tr("Script Editor")));
-}
-
-//-----------------------------------------------------------------------------
-QString pqPythonScriptEditor::strippedName(const QString& fullFileName)
-{
-  return QFileInfo(fullFileName).fileName();
-}
-
-//-----------------------------------------------------------------------------
 void pqPythonScriptEditor::scrollToBottom()
 {
-  this->TextEdit->verticalScrollBar()->setValue(this->TextEdit->verticalScrollBar()->maximum());
+  this->TabWidget->getCurrentTextArea()->getTextEdit()->verticalScrollBar()->setValue(
+    this->TabWidget->getCurrentTextArea()->getTextEdit()->verticalScrollBar()->maximum());
+}
+
+//-----------------------------------------------------------------------------
+void pqPythonScriptEditor::updateMacroList()
+{
+  auto editor = pqPythonScriptEditor::getUniqueInstance();
+  if (editor->PythonManager)
+  {
+    editor->PythonManager->updateMacroList();
+  }
+}
+
+//-----------------------------------------------------------------------------
+void pqPythonScriptEditor::updateScriptList()
+{
+  auto editor = pqPythonScriptEditor::getUniqueInstance();
+  editor->Actions.updateScriptsList();
+  editor->Actions.FillQMenu(editor->scriptMenus);
+}
+
+//-----------------------------------------------------------------------------
+void pqPythonScriptEditor::updateTrace(const QString& str)
+{
+  this->TabWidget->updateTrace(str);
+}
+
+//-----------------------------------------------------------------------------
+void pqPythonScriptEditor::stopTrace(const QString& str)
+{
+  this->TabWidget->stopTrace(str);
+}
+
+//-----------------------------------------------------------------------------
+void pqPythonScriptEditor::linkTo(QTextEdit* obj)
+{
+  auto instance = pqPythonScriptEditor::getUniqueInstance();
+  instance->TabWidget->linkTo(obj);
+}
+
+//-----------------------------------------------------------------------------
+pqPythonScriptEditor* pqPythonScriptEditor::getUniqueInstance()
+{
+  if (!pqPythonScriptEditor::UniqueInstance)
+  {
+    pqPythonScriptEditor::UniqueInstance = new pqPythonScriptEditor(pqCoreUtilities::mainWidget());
+  }
+  return pqPythonScriptEditor::UniqueInstance;
+}
+
+//-----------------------------------------------------------------------------
+void pqPythonScriptEditor::bringFront()
+{
+  pqPythonScriptEditor* instance = pqPythonScriptEditor::getUniqueInstance();
+  instance->show();
+  instance->raise();
+}
+
+//-----------------------------------------------------------------------------
+QString pqPythonScriptEditor::getMacrosDir()
+{
+  return pqCoreUtilities::getParaViewUserDirectory() + "/Macros";
+}
+
+//-----------------------------------------------------------------------------
+QString pqPythonScriptEditor::getScriptsDir()
+{
+  return pqCoreUtilities::getParaViewUserDirectory() + "/Scripts";
 }

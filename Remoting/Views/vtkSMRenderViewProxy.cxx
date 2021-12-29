@@ -26,28 +26,27 @@
 #include "vtkIdTypeArray.h"
 #include "vtkInformation.h"
 #include "vtkIntArray.h"
+#include "vtkLogger.h"
 #include "vtkMath.h"
 #include "vtkMultiProcessController.h"
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
 #include "vtkPVArrayInformation.h"
-#include "vtkPVCompositeDataInformation.h"
 #include "vtkPVDataInformation.h"
 #include "vtkPVEncodeSelectionForServer.h"
 #include "vtkPVLastSelectionInformation.h"
-#include "vtkPVOptions.h"
 #include "vtkPVRenderView.h"
 #include "vtkPVRenderingCapabilitiesInformation.h"
 #include "vtkPVServerInformation.h"
 #include "vtkPVXMLElement.h"
 #include "vtkPointData.h"
 #include "vtkProcessModule.h"
+#include "vtkRemotingCoreConfiguration.h"
 #include "vtkRenderWindow.h"
 #include "vtkRenderWindowInteractor.h"
 #include "vtkRenderer.h"
 #include "vtkSMCollaborationManager.h"
 #include "vtkSMDataDeliveryManagerProxy.h"
-#include "vtkSMEnumerationDomain.h"
 #include "vtkSMInputProperty.h"
 #include "vtkSMMaterialLibraryProxy.h"
 #include "vtkSMOutputPort.h"
@@ -74,7 +73,6 @@
 vtkStandardNewMacro(vtkSMRenderViewProxy);
 //----------------------------------------------------------------------------
 vtkSMRenderViewProxy::vtkSMRenderViewProxy()
-  : InteractorHelper()
 {
   this->IsSelectionCached = false;
   this->NewMasterObserverId = 0;
@@ -85,7 +83,7 @@ vtkSMRenderViewProxy::vtkSMRenderViewProxy()
 //----------------------------------------------------------------------------
 vtkSMRenderViewProxy::~vtkSMRenderViewProxy()
 {
-  this->InteractorHelper->SetViewProxy(NULL);
+  this->InteractorHelper->SetViewProxy(nullptr);
   this->InteractorHelper->CleanupInteractor();
 
   if (this->NewMasterObserverId != 0 && this->Session && this->Session->GetCollaborationManager())
@@ -134,7 +132,7 @@ const char* vtkSMRenderViewProxy::IsSelectVisibleCellsAvailable()
   }
 
   vtkPVServerInformation* server_info = session->GetServerInformation();
-  if (server_info && server_info->GetNumberOfMachines() > 0)
+  if (server_info && server_info->GetIsInCave())
   {
     return "Cannot support selection in CAVE mode.";
   }
@@ -154,7 +152,7 @@ const char* vtkSMRenderViewProxy::IsSelectVisibleCellsAvailable()
     return "Selection not supported due to insufficient color depth.";
   }
 
-  return NULL;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -235,7 +233,7 @@ vtkTypeUInt32 vtkSMRenderViewProxy::PreRender(bool interactive)
   this->Superclass::PreRender(interactive);
 
   vtkPVRenderView* rv = vtkPVRenderView::SafeDownCast(this->GetClientSideObject());
-  assert(rv != NULL);
+  assert(rv != nullptr);
   if (interactive && rv->GetUseLODForInteractiveRender())
   {
     // for interactive renders, we need to determine if we are going to use LOD.
@@ -285,7 +283,7 @@ vtkRenderer* vtkSMRenderViewProxy::GetRenderer()
 {
   this->CreateVTKObjects();
   vtkPVRenderView* rv = vtkPVRenderView::SafeDownCast(this->GetClientSideObject());
-  return rv ? rv->GetRenderer() : NULL;
+  return rv ? rv->GetRenderer() : nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -293,7 +291,7 @@ vtkCamera* vtkSMRenderViewProxy::GetActiveCamera()
 {
   this->CreateVTKObjects();
   vtkPVRenderView* rv = vtkPVRenderView::SafeDownCast(this->GetClientSideObject());
-  return rv ? rv->GetActiveCamera() : NULL;
+  return rv ? rv->GetActiveCamera() : nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -315,7 +313,7 @@ vtkRenderWindowInteractor* vtkSMRenderViewProxy::GetInteractor()
 {
   this->CreateVTKObjects();
   vtkPVRenderView* rv = vtkPVRenderView::SafeDownCast(this->GetClientSideObject());
-  return rv ? rv->GetInteractor() : NULL;
+  return rv ? rv->GetInteractor() : nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -329,7 +327,7 @@ vtkRenderWindow* vtkSMRenderViewProxy::GetRenderWindow()
 {
   this->CreateVTKObjects();
   vtkPVRenderView* rv = vtkPVRenderView::SafeDownCast(this->GetClientSideObject());
-  return rv ? rv->GetRenderWindow() : NULL;
+  return rv ? rv->GetRenderWindow() : nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -368,38 +366,22 @@ void vtkSMRenderViewProxy::CreateVTKObjects()
   // We'll do this for now. But we need to not do this here. I am leaning
   // towards not making stereo a command line option as mentioned by a very
   // not-too-pleased user on the mailing list a while ago.
-  vtkProcessModule* pm = vtkProcessModule::GetProcessModule();
-  vtkPVOptions* pvoptions = pm->GetOptions();
-  if (pvoptions->GetUseStereoRendering())
+  auto config = vtkRemotingCoreConfiguration::GetInstance();
+  if (config->GetUseStereoRendering())
   {
     vtkSMPropertyHelper(this, "StereoCapableWindow").Set(1);
     vtkSMPropertyHelper(this, "StereoRender").Set(1);
-    auto domain = this->GetProperty("StereoType")->FindDomain<vtkSMEnumerationDomain>();
-    if (domain && domain->HasEntryText(pvoptions->GetStereoType()))
-    {
-      vtkSMPropertyHelper(this, "StereoType")
-        .Set(domain->GetEntryValueForText(pvoptions->GetStereoType()));
-    }
+    vtkSMPropertyHelper(this, "StereoType").Set(config->GetStereoType());
   }
 
   bool remote_rendering_available = true;
-  if (this->GetSession()->GetIsAutoMPI())
+  // Update whether render servers can open display i.e. remote rendering is
+  // possible on all processes.
+  vtkNew<vtkPVRenderingCapabilitiesInformation> info;
+  this->GetSession()->GatherInformation(vtkPVSession::RENDER_SERVER, info.Get(), 0);
+  if (!info->Supports(vtkPVRenderingCapabilitiesInformation::OPENGL))
   {
-    // When the session is an auto-mpi session, we don't support remote
-    // rendering.
     remote_rendering_available = false;
-  }
-
-  if (remote_rendering_available)
-  {
-    // Update whether render servers can open display i.e. remote rendering is
-    // possible on all processes.
-    vtkNew<vtkPVRenderingCapabilitiesInformation> info;
-    this->GetSession()->GatherInformation(vtkPVSession::RENDER_SERVER, info.Get(), 0);
-    if (!info->Supports(vtkPVRenderingCapabilitiesInformation::OPENGL))
-    {
-      remote_rendering_available = false;
-    }
   }
 
   // Disable remote rendering on all processes, if not available.
@@ -481,8 +463,8 @@ const char* vtkSMRenderViewProxy::GetRepresentationType(vtkSMSourceProxy* produc
   vtkSMSessionProxyManager* pxm = this->GetSessionProxyManager();
   const char* representationsToTry[] = { "UnstructuredGridRepresentation",
     "StructuredGridRepresentation", "AMRRepresentation", "UniformGridRepresentation",
-    "PVMoleculeRepresentation", "GeometryRepresentation", NULL };
-  for (int cc = 0; representationsToTry[cc] != NULL; ++cc)
+    "PVMoleculeRepresentation", "GeometryRepresentation", nullptr };
+  for (int cc = 0; representationsToTry[cc] != nullptr; ++cc)
   {
     vtkSMProxy* prototype = pxm->GetPrototypeProxy("representations", representationsToTry[cc]);
     if (prototype)
@@ -519,11 +501,11 @@ const char* vtkSMRenderViewProxy::GetRepresentationType(vtkSMSourceProxy* produc
       }
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
-void vtkSMRenderViewProxy::ZoomTo(vtkSMProxy* representation)
+void vtkSMRenderViewProxy::ZoomTo(vtkSMProxy* representation, bool closest)
 {
   vtkSMPropertyHelper helper(representation, "Input");
   vtkSMSourceProxy* input = vtkSMSourceProxy::SafeDownCast(helper.GetAsProxy());
@@ -581,32 +563,44 @@ void vtkSMRenderViewProxy::ZoomTo(vtkSMProxy* representation)
       transform->Delete();
     }
   }
-  this->ResetCamera(bounds);
+  this->ResetCamera(bounds, closest);
 }
 
 //----------------------------------------------------------------------------
-void vtkSMRenderViewProxy::ResetCamera()
+void vtkSMRenderViewProxy::ResetCamera(bool closest)
 {
-  SM_SCOPED_TRACE(CallMethod).arg(this).arg("ResetCamera").arg("comment", "reset view to fit data");
+  SM_SCOPED_TRACE(CallMethod)
+    .arg(this)
+    .arg("ResetCamera")
+    .arg(closest)
+    .arg("comment", "reset view to fit data");
 
   this->GetSession()->PrepareProgress();
   vtkClientServerStream stream;
-  stream << vtkClientServerStream::Invoke << VTKOBJECT(this) << "ResetCamera"
-         << vtkClientServerStream::End;
+  stream << vtkClientServerStream::Invoke << VTKOBJECT(this);
+  if (closest)
+  {
+    stream << "ResetCameraScreenSpace";
+  }
+  else
+  {
+    stream << "ResetCamera";
+  }
+  stream << vtkClientServerStream::End;
   this->ExecuteStream(stream);
   this->GetSession()->CleanupPendingProgress();
 }
 
 //----------------------------------------------------------------------------
 void vtkSMRenderViewProxy::ResetCamera(
-  double xmin, double xmax, double ymin, double ymax, double zmin, double zmax)
+  double xmin, double xmax, double ymin, double ymax, double zmin, double zmax, bool closest)
 {
   double bds[6] = { xmin, xmax, ymin, ymax, zmin, zmax };
-  this->ResetCamera(bds);
+  this->ResetCamera(bds, closest);
 }
 
 //----------------------------------------------------------------------------
-void vtkSMRenderViewProxy::ResetCamera(double bounds[6])
+void vtkSMRenderViewProxy::ResetCamera(double bounds[6], bool closest)
 {
   SM_SCOPED_TRACE(CallMethod)
     .arg(this)
@@ -617,12 +611,21 @@ void vtkSMRenderViewProxy::ResetCamera(double bounds[6])
     .arg(bounds[3])
     .arg(bounds[4])
     .arg(bounds[5])
+    .arg(closest)
     .arg("comment", "reset view to fit data bounds");
   this->CreateVTKObjects();
 
   vtkClientServerStream stream;
-  stream << vtkClientServerStream::Invoke << VTKOBJECT(this) << "ResetCamera"
-         << vtkClientServerStream::InsertArray(bounds, 6) << vtkClientServerStream::End;
+  stream << vtkClientServerStream::Invoke << VTKOBJECT(this);
+  if (closest)
+  {
+    stream << "ResetCameraScreenSpace";
+  }
+  else
+  {
+    stream << "ResetCamera";
+  }
+  stream << vtkClientServerStream::InsertArray(bounds, 6) << vtkClientServerStream::End;
   this->ExecuteStream(stream);
 }
 
@@ -631,9 +634,27 @@ void vtkSMRenderViewProxy::MarkDirty(vtkSMProxy* modifiedProxy)
 {
   vtkSMProxy* cameraProxy = this->GetSubProxy("ActiveCamera");
 
-  // If modified proxy is the camera, we must clear the cache even if we're
+  // if modified proxy is the camera, we must clear the cache even if we're
   // currently in selection mode.
-  this->ClearSelectionCache(/*force=*/modifiedProxy == cameraProxy);
+  bool forceClearCache = (modifiedProxy == cameraProxy);
+
+  // if modified proxy is a source-proxy not part of the selection sub-pipeline,
+  // we have to force clear selection buffers (see #20560).
+  if (!forceClearCache && (vtkSMSourceProxy::SafeDownCast(modifiedProxy) != nullptr))
+  {
+    const bool isPVExtractSelectionFilter = strcmp(modifiedProxy->GetXMLGroup(), "filters") == 0 &&
+      strcmp(modifiedProxy->GetXMLName(), "PVExtractSelection") == 0;
+    const bool isSelectionRepresentation =
+      strcmp(modifiedProxy->GetXMLGroup(), "representations") == 0 &&
+      strcmp(modifiedProxy->GetXMLName(), "SelectionRepresentation") == 0;
+    forceClearCache = !(isPVExtractSelectionFilter || isSelectionRepresentation);
+  }
+
+  const bool cacheCleared = this->ClearSelectionCache(forceClearCache);
+
+  // log for debugging purposes.
+  vtkLogIfF(TRACE, cacheCleared && forceClearCache, "%s: force-cleared selection cache due to %s",
+    this->GetLogNameOrDefault(), modifiedProxy ? modifiedProxy->GetLogNameOrDefault() : nullptr);
 
   // skip modified properties on camera subproxy.
   if (modifiedProxy != cameraProxy)
@@ -648,7 +669,7 @@ vtkSMRepresentationProxy* vtkSMRenderViewProxy::Pick(int x, int y)
   // 1) Create surface selection.
   //   Will returns a surface selection in terms of cells selected on the
   //   visible props from all representations.
-  vtkSMRepresentationProxy* repr = NULL;
+  vtkSMRepresentationProxy* repr = nullptr;
   vtkCollection* reprs = vtkCollection::New();
   vtkCollection* sources = vtkCollection::New();
   int region[4] = { x, y, x, y };
@@ -665,9 +686,13 @@ vtkSMRepresentationProxy* vtkSMRenderViewProxy::Pick(int x, int y)
 }
 
 //-----------------------------------------------------------------------------
-vtkSMRepresentationProxy* vtkSMRenderViewProxy::PickBlock(int x, int y, unsigned int& flatIndex)
+vtkSMRepresentationProxy* vtkSMRenderViewProxy::PickBlock(
+  int x, int y, unsigned int& flatIndex, int& rank)
 {
-  vtkSMRepresentationProxy* repr = NULL;
+  flatIndex = 0;
+  rank = 0;
+
+  vtkSMRepresentationProxy* repr = nullptr;
   vtkSmartPointer<vtkCollection> reprs = vtkSmartPointer<vtkCollection>::New();
   vtkSmartPointer<vtkCollection> sources = vtkSmartPointer<vtkCollection>::New();
   int region[4] = { x, y, x, y };
@@ -682,31 +707,50 @@ vtkSMRepresentationProxy* vtkSMRenderViewProxy::PickBlock(int x, int y, unsigned
   if (!repr)
   {
     // nothing selected
-    return 0;
+    return nullptr;
   }
 
   // get data information
-  vtkPVDataInformation* info = repr->GetRepresentedDataInformation();
-  vtkPVCompositeDataInformation* compositeInfo = info->GetCompositeDataInformation();
+  auto input = vtkSMPropertyHelper(repr, "Input", /*quiet*/ true).GetAsOutputPort();
+  auto info = input ? input->GetDataInformation() : nullptr;
 
   // get selection in order to determine which block of the data set
   // set was selected (if it is a composite data set)
-  if (compositeInfo && compositeInfo->GetDataIsComposite())
+  if (info && info->IsCompositeDataSet())
   {
-    vtkSMProxy* selectionSource = vtkSMProxy::SafeDownCast(sources->GetItemAsObject(0));
+    auto selectionSource = vtkSMProxy::SafeDownCast(sources->GetItemAsObject(0));
 
-    vtkSMPropertyHelper inputHelper(repr, "Input");
-    // get representation input data
-    vtkSMSourceProxy* reprInput = vtkSMSourceProxy::SafeDownCast(inputHelper.GetAsProxy());
+    // since SelectSurfaceCells can ever only return a
+    // `CompositeDataIDSelectionSource` or `HierarchicalDataIDSelectionSource`
+    // for composite datasets, we use the following trick to extract the
+    // block/rank information quickly.
+    if (strcmp(selectionSource->GetXMLName(), "CompositeDataIDSelectionSource") == 0)
+    {
+      vtkSMPropertyHelper ids(selectionSource, "IDs");
+      if (ids.GetNumberOfElements() >= 3) // we expect 3-tuples
+      {
+        flatIndex = ids.GetAsInt(0);
+        rank = ids.GetAsInt(1);
+      }
+    }
+    else if (strcmp(selectionSource->GetXMLName(), "HierarchicalDataIDSelectionSource") == 0)
+    {
+      vtkSMPropertyHelper ids(selectionSource, "IDs");
+      if (ids.GetNumberOfElements() >= 3) // we expect 3-tuples
+      {
+        unsigned int level = ids.GetAsInt(0);
+        unsigned int index = ids.GetAsInt(1);
 
-    // convert cell selection to block selection
-    vtkSMProxy* blockSelection = vtkSMSelectionHelper::ConvertSelection(
-      vtkSelectionNode::BLOCKS, selectionSource, reprInput, inputHelper.GetOutputPort());
-
-    // set block index
-    vtkSMPropertyHelper helper(blockSelection, "Blocks");
-    flatIndex = (helper.GetNumberOfElements() > 0) ? helper.GetAsInt() : 0;
-    blockSelection->Delete();
+        // convert level,index to flat index.
+        flatIndex = info->ComputeCompositeIndexForAMR(level, index);
+        rank = 0; // doesn't matter since flatIndex is consistent on all ranks for AMR.
+      }
+    }
+    else
+    {
+      vtkErrorMacro("Unexpected selection source: " << selectionSource->GetXMLName());
+      return nullptr;
+    }
   }
 
   // return selected representation
@@ -1154,45 +1198,11 @@ vtkFloatArray* vtkSMRenderViewProxy::CaptureDepthBuffer()
 }
 
 //----------------------------------------------------------------------------
-vtkFloatArray* vtkSMRenderViewProxy::GetValuesFloat()
-{
-  this->InvokeCommand("CaptureValuesFloat");
-  vtkPVRenderView* view = vtkPVRenderView::SafeDownCast(this->GetClientSideObject());
-  vtkFloatArray* capture = view->GetCapturedValuesFloat();
-  return capture;
-}
-
-//------------------------------------------------------------------------------
-void vtkSMRenderViewProxy::StartCaptureValues()
-{
-  this->InvokeCommand("BeginValueCapture");
-}
-
-//------------------------------------------------------------------------------
-void vtkSMRenderViewProxy::StopCaptureValues()
-{
-  this->InvokeCommand("EndValueCapture");
-}
-
-//------------------------------------------------------------------------------
-int vtkSMRenderViewProxy::GetValueRenderingMode()
-{
-  vtkSMPropertyHelper helper(this, "ValueRenderingModeGet");
-  helper.UpdateValueFromServer();
-  return helper.GetAsInt();
-}
-
-//------------------------------------------------------------------------------
-void vtkSMRenderViewProxy::SetValueRenderingMode(int mode)
-{
-  vtkSMPropertyHelper(this, "ValueRenderingMode").Set(mode);
-}
-
-//----------------------------------------------------------------------------
 void vtkSMRenderViewProxy::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
 }
+
 //----------------------------------------------------------------------------
 void vtkSMRenderViewProxy::NewMasterCallback(vtkObject*, unsigned long, void*)
 {
@@ -1206,7 +1216,7 @@ void vtkSMRenderViewProxy::NewMasterCallback(vtkObject*, unsigned long, void*)
 }
 
 //----------------------------------------------------------------------------
-void vtkSMRenderViewProxy::ClearSelectionCache(bool force /*=false*/)
+bool vtkSMRenderViewProxy::ClearSelectionCache(bool force /*=false*/)
 {
   // We check if we're currently selecting. If that's the case, any non-forced
   // modifications (i.e. those coming through because of proxy-modifications)
@@ -1214,14 +1224,16 @@ void vtkSMRenderViewProxy::ClearSelectionCache(bool force /*=false*/)
   // don't clear the selection cache. While this doesn't help us preserve the
   // cache between separate surface selection invocations, it does help us with
   // reusing the case when in interactive selection mode.
-  if ((this->IsSelectionCached && !this->IsInSelectionMode()) || force)
+  if (this->IsSelectionCached && (!this->IsInSelectionMode() || force))
   {
     this->IsSelectionCached = false;
     vtkClientServerStream stream;
     stream << vtkClientServerStream::Invoke << VTKOBJECT(this) << "InvalidateCachedSelection"
            << vtkClientServerStream::End;
     this->ExecuteStream(stream);
+    return true;
   }
+  return false;
 }
 
 //----------------------------------------------------------------------------

@@ -169,14 +169,20 @@ protected:
    */
   int ReadLine(char result[80]);
 
-  //@{
+  ///@{
   /**
    * Internal function to read in a single integer.
    * Returns zero if there was an error.
    */
   int ReadInt(int* result);
   int ReadPartId(int* result);
-  //@}
+  ///@}
+
+  /**
+   * Internal function to read a single float.
+   * Returns zero if there was an error.
+   */
+  int ReadFloat(float* result);
 
   /**
    * Internal function to read in an integer array.
@@ -204,7 +210,7 @@ protected:
    */
   int CountTimeSteps();
 
-  //@{
+  ///@{
   /**
    * Read to the next time step in the geometry file.
    */
@@ -213,7 +219,7 @@ protected:
   int SkipUnstructuredGrid(char line[256]);
   int SkipRectilinearGrid(char line[256]);
   int SkipImageData(char line[256]);
-  //@}
+  ///@}
 
   /**
    * Seeks the IFile to the nearest time step that is <= the target time step
@@ -233,6 +239,7 @@ protected:
   int NodeIdsListed;
   int ElementIdsListed;
   int Fortran;
+  int FortranSkipBytes; // Number of bytes to skip when seeking within a fortran-written file
 
   istream* GoldIFile;
   // The size of the file could be used to choose byte order.
@@ -245,6 +252,31 @@ private:
   int SizeOfInt;
   vtkEnSightGoldBinaryReader(const vtkEnSightGoldBinaryReader&) = delete;
   void operator=(const vtkEnSightGoldBinaryReader&) = delete;
+
+  /**
+   * Opens a variable file name. This will compute the full path and then open
+   * it. `variableType` is simply used to report helpful error messages.
+   */
+  bool OpenVariableFile(const char* fname, const char* variableType);
+
+  /**
+   * Jump forward to a particular timestep in the variable file, if
+   * applicable.
+   */
+  bool SkipToTimeStep(const char* fileName, int timeStep, vtkMultiBlockDataSet* compositeOutput,
+    int attributeType, int numComponents, bool measured);
+
+  /**
+   * Reads measured data from a variable file.
+   */
+  bool ReadMeasureVariableArray(
+    const char* description, vtkMultiBlockDataSet* compositeOutput, int numComponents);
+
+  bool ReadVariableArray(const char* description, vtkMultiBlockDataSet* compositeOutput,
+    int attributeType, int numComponents, int component = -1);
+
+  class vtkUtilities;
+  friend class vtkUtilities;
 };
 
 #endif

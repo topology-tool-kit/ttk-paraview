@@ -128,15 +128,14 @@ void vtkAbstractArrayMeasurement::Initialize()
 }
 
 //----------------------------------------------------------------------------
-void vtkAbstractArrayMeasurement::ShallowCopy(vtkDataObject* o)
+void vtkAbstractArrayMeasurement::ShallowCopy(vtkObject* o)
 {
-  this->Superclass::ShallowCopy(o);
   vtkAbstractArrayMeasurement* arrayMeasurement = vtkAbstractArrayMeasurement::SafeDownCast(o);
   if (arrayMeasurement &&
     this->GetNumberOfAccumulators() == arrayMeasurement->GetNumberOfAccumulators())
   {
     auto& accumulators = arrayMeasurement->GetAccumulators();
-    if (!this->Accumulators.size() && accumulators.size())
+    if (this->Accumulators.empty() && !accumulators.empty())
     {
       this->Accumulators.resize(accumulators.size());
     }
@@ -156,15 +155,14 @@ void vtkAbstractArrayMeasurement::ShallowCopy(vtkDataObject* o)
 }
 
 //----------------------------------------------------------------------------
-void vtkAbstractArrayMeasurement::DeepCopy(vtkDataObject* o)
+void vtkAbstractArrayMeasurement::DeepCopy(vtkObject* o)
 {
-  this->Superclass::DeepCopy(o);
   vtkAbstractArrayMeasurement* arrayMeasurement = vtkAbstractArrayMeasurement::SafeDownCast(o);
   if (arrayMeasurement &&
     this->GetNumberOfAccumulators() == arrayMeasurement->GetNumberOfAccumulators())
   {
     auto& accumulators = arrayMeasurement->GetAccumulators();
-    if (!this->Accumulators.size() && accumulators.size())
+    if (this->Accumulators.empty() && !accumulators.empty())
     {
       this->Accumulators.resize(accumulators.size());
     }

@@ -157,7 +157,7 @@ vtkGDALRasterReader::vtkGDALRasterReaderInternal::~vtkGDALRasterReaderInternal()
 //------------------------------------------------------------------------------
 void vtkGDALRasterReader::vtkGDALRasterReaderInternal::ReadMetaData(const std::string& fileName)
 {
-  if (fileName.compare(this->PrevReadFileName) == 0)
+  if (fileName == this->PrevReadFileName)
   {
     return;
   }
@@ -198,7 +198,7 @@ void vtkGDALRasterReader::vtkGDALRasterReaderInternal::ReadMetaData(const std::s
     {
       for (int i = 0; papszMetaData[i] != nullptr; ++i)
       {
-        this->Reader->MetaData.push_back(papszMetaData[i]);
+        this->Reader->MetaData.emplace_back(papszMetaData[i]);
       }
     }
   }
@@ -819,7 +819,6 @@ void vtkGDALRasterReader::PrintSelf(std::ostream& os, vtkIndent indent)
 
 //------------------------------------------------------------------------------
 vtkGDALRasterReader::vtkGDALRasterReader()
-  : vtkImageReader2()
 {
   this->Impl = new vtkGDALRasterReaderInternal(this);
 
@@ -854,7 +853,7 @@ vtkGDALRasterReader::~vtkGDALRasterReader()
 
   if (this->FileName)
   {
-    this->SetFileName(0);
+    this->SetFileName(nullptr);
   }
 }
 
@@ -896,7 +895,7 @@ std::vector<std::string> vtkGDALRasterReader::GetDomainMetaData(const std::strin
   {
     for (int i = 0; papszMetadata[i] != nullptr; ++i)
     {
-      domainMetaData.push_back(papszMetadata[i]);
+      domainMetaData.emplace_back(papszMetadata[i]);
     }
   }
 

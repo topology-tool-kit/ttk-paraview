@@ -91,10 +91,10 @@ pqArrayListDomain::~pqArrayListDomain()
 void pqArrayListDomain::domainChanged()
 {
   // reset the widget's value using the domain.
-  QList<QList<QVariant> > newVal =
+  QList<QList<QVariant>> newVal =
     pqSMAdaptor::getSelectionProperty(this->Internals->SMProperty, pqSMAdaptor::UNCHECKED);
   QVariant variantVal;
   variantVal.setValue(newVal);
 
-  this->parent()->setProperty(this->Internals->QProperty.toLocal8Bit().data(), variantVal);
+  this->parent()->setProperty(this->Internals->QProperty.toUtf8().data(), variantVal);
 }

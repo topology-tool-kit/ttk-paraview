@@ -13,37 +13,33 @@
 
 =========================================================================*/
 
-#ifndef vtkSMProxyManagerInternals_h
-#define vtkSMProxyManagerInternals_h
+#ifndef vtkSMSessionProxyManagerInternals_h
+#define vtkSMSessionProxyManagerInternals_h
 
-#include "vtkCollection.h"
-#include "vtkCommand.h"
-#include "vtkDebugLeaks.h"
-#include "vtkNew.h"
-#include "vtkSMCollaborationManager.h"
-#include "vtkSMLink.h"
-#include "vtkSMMessage.h"
-#include "vtkSMOutputPort.h"
-#include "vtkSMProxyLocator.h"
-#include "vtkSMProxyManager.h"
-#include "vtkSMProxySelectionModel.h"
-#include "vtkSMSession.h"
-#include "vtkSMSessionClient.h"
-#include "vtkSMSessionProxyManager.h"
-#include "vtkSMSourceProxy.h"
-#include "vtkSmartPointer.h"
+#include "vtkObjectBase.h"
+#include "vtkSMLink.h"                // for vtkSMLink
+#include "vtkSMMessage.h"             // for vtkSMMessage
+#include "vtkSMProxyLocator.h"        // for vtkSMProxyLocator
+#include "vtkSMProxySelectionModel.h" // for vtkSMProxySelectionModel
+#include "vtkSmartPointer.h"          // for vtkSmartPointer
 
-#include <map>
-#include <set>
-#include <sstream>
-#include <vector>
-#include <vtksys/RegularExpression.hxx>
+#include <map>                          // for std::map
+#include <set>                          // for std::set
+#include <vector>                       // for std::vector
+#include <vtksys/RegularExpression.hxx> // for regexes
+
+class vtkSMProxyLocator;
+class vtkSMSessionProxyManager;
 
 // Sub-classed to avoid symbol length explosion.
 class vtkSMProxyManagerProxyInfo : public vtkObjectBase
 {
 public:
   vtkBaseTypeMacro(vtkSMProxyManagerProxyInfo, vtkObjectBase);
+  void PrintSelf(ostream& os, vtkIndent indent) override
+  {
+    this->Superclass::PrintSelf(os, indent);
+  }
 
   vtkSmartPointer<vtkSMProxy> Proxy;
   unsigned long ModifiedObserverTag;
@@ -59,6 +55,9 @@ public:
     ret->InitializeObjectBase();
     return ret;
   }
+
+  vtkSMProxyManagerProxyInfo(const vtkSMProxyManagerProxyInfo&) = delete;
+  void operator=(const vtkSMProxyManagerProxyInfo&) = delete;
 
 private:
   vtkSMProxyManagerProxyInfo()
@@ -96,7 +95,7 @@ private:
 
 //-----------------------------------------------------------------------------
 class vtkSMProxyManagerProxyListType
-  : public std::vector<vtkSmartPointer<vtkSMProxyManagerProxyInfo> >
+  : public std::vector<vtkSmartPointer<vtkSMProxyManagerProxyInfo>>
 {
 public:
   // Returns if the proxy exists in  this vector.
@@ -202,11 +201,11 @@ struct vtkSMSessionProxyManagerInternals
   SetOfProxies ModifiedProxies;
 
   // Data structure to save registered links.
-  typedef std::map<std::string, vtkSmartPointer<vtkSMLink> > LinkType;
+  typedef std::map<std::string, vtkSmartPointer<vtkSMLink>> LinkType;
   LinkType RegisteredLinkMap;
 
   // Data structure for selection models.
-  typedef std::map<std::string, vtkSmartPointer<vtkSMProxySelectionModel> > SelectionModelsType;
+  typedef std::map<std::string, vtkSmartPointer<vtkSMProxySelectionModel>> SelectionModelsType;
   SelectionModelsType SelectionModels;
 
   // Data structure for storing the fullState
@@ -462,7 +461,7 @@ struct vtkSMSessionProxyManagerInternals
   void UpdateProxySelectionModelState()
   {
     this->State.ClearExtension(PXMRegistrationState::registered_selection_model);
-    std::map<std::string, vtkSmartPointer<vtkSMProxySelectionModel> >::iterator iter;
+    std::map<std::string, vtkSmartPointer<vtkSMProxySelectionModel>>::iterator iter;
     for (iter = this->SelectionModels.begin(); iter != this->SelectionModels.end(); iter++)
     {
       PXMRegistrationState_Entry* selModel =

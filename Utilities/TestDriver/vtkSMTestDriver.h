@@ -20,9 +20,9 @@
 #ifndef vtkSMTestDriver_h
 #define vtkSMTestDriver_h
 
-#include <string>
-#include <vector>
-#include <vtksys/Process.h>
+#include <string>           // for std::string
+#include <vector>           // for std::vector
+#include <vtksys/Process.h> // for process implementation
 
 class vtkSMTestDriver
 {
@@ -60,8 +60,8 @@ protected:
   void PrintLine(const char* pname, const char* line);
   int WaitForAndPrintLine(const char* pname, vtksysProcess* process, std::string& line,
     double timeout, std::vector<char>& out, std::vector<char>& err,
-    const char* string_to_wait_for = NULL, int* foundWaiting = NULL,
-    std::string* matched_line = NULL);
+    const char* string_to_wait_for = nullptr, int* foundWaiting = nullptr,
+    std::string* matched_line = nullptr);
 
   std::string GetDirectory(std::string location);
 
@@ -136,3 +136,5 @@ private:
 };
 
 #endif
+
+// VTK-HeaderTest-Exclude: vtkSMTestDriver.h

@@ -17,12 +17,12 @@
  *
  *
  * This filter generates data needed to display bag and functional bag plots.
-*/
+ */
 
 #ifndef vtkPVExtractBagPlots_h
 #define vtkPVExtractBagPlots_h
 
-#include "vtkBagPlotViewsAndFiltersBagPlotModule.h"
+#include "vtkBagPlotViewsAndFiltersBagPlotModule.h" // for export macro
 #include "vtkMultiBlockDataSetAlgorithm.h"
 
 class vtkDoubleArray;

@@ -36,14 +36,15 @@ class VTKGUISUPPORTQT_EXPORT vtkQWidgetTexture : public vtkTextureObject
 public:
   static vtkQWidgetTexture* New();
   vtkTypeMacro(vtkQWidgetTexture, vtkTextureObject);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Set/Get the QWidget that this TextureObject will render/use
    */
   void SetWidget(QWidget* w);
   QWidget* GetWidget() { return this->Widget; }
-  //@}
+  ///@}
 
   /**
    * get the QScene used for rendering, this is where events will

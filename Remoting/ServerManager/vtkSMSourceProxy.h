@@ -28,7 +28,7 @@
  * about the output(s) of the VTK sources (obtained from the server)
  * @sa
  * vtkSMProxy vtkSMOutputPort vtkSMInputProperty
-*/
+ */
 
 #ifndef vtkSMSourceProxy_h
 #define vtkSMSourceProxy_h
@@ -141,6 +141,42 @@ public:
   vtkPVDataInformation* GetDataInformation() { return this->GetDataInformation(0); }
   vtkPVDataInformation* GetDataInformation(unsigned int outputIdx);
   //@}
+
+  //@{
+  /**
+   * For composite datasets, `GetDataInformation` returns summary data information for
+   * all blocks combined. However, applications may require information about
+   * specific subset of blocks. In that case, one can use this API. Internally,
+   * the data information is cached per selector / assembly-name pair. That way,
+   * if the data information is not re-gathered unless changed.
+   *
+   * @arg \c selector the selector expression
+   * @arg \c assemblyName name of the assembly to use to apply the selector
+   *         to to determine the subset. If none specified, then default data-assembly
+   *         is used. For hierarchy, use
+   *         `vtkDataAssemblyUtilities::HierarchyName()`.
+   */
+  vtkPVDataInformation* GetSubsetDataInformation(
+    unsigned int outputIdx, const char* selector, const char* assemblyName = nullptr);
+  //@}
+
+  /**
+   * A `GetSubsetDataInformation` overload that uses composite index. It is only
+   * supported for multiblock datasets.
+   */
+  vtkPVDataInformation* GetSubsetDataInformation(
+    unsigned int outputIdx, unsigned int compositeIndex);
+
+  ///@{
+  /**
+   * Get rank-specific data information.
+   */
+  vtkPVDataInformation* GetRankDataInformation(int rank)
+  {
+    return this->GetRankDataInformation(0u, rank);
+  }
+  vtkPVDataInformation* GetRankDataInformation(unsigned int outputIdx, int rank);
+  ///@}
 
   /**
    * Creates extract selection proxies for each output port if not already

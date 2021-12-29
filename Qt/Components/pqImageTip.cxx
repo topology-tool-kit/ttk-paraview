@@ -50,16 +50,25 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 void pqImageTip::showTip(const QPixmap& image, const QPoint& pos)
 {
-  static pqImageTip* instance = 0;
+  static pqImageTip* instance = nullptr;
 
-  if (instance && instance->isVisible() && instance->pixmap() &&
-    instance->pixmap()->cacheKey() == image.cacheKey())
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+  const QPixmap* pixmap = instance ? instance->pixmap() : nullptr;
+  bool pixmapIsNull = pixmap == nullptr;
+  qint64 pixmapCacheKey = pixmap ? pixmap->cacheKey() : 0;
+#else
+  QPixmap pixmap = instance ? instance->pixmap(Qt::ReturnByValue) : QPixmap();
+  bool pixmapIsNull = pixmap.isNull();
+  qint64 pixmapCacheKey = pixmap.cacheKey();
+#endif
+
+  if (instance && instance->isVisible() && !pixmapIsNull && pixmapCacheKey == image.cacheKey())
     return;
 
   QToolTip::showText(QPoint(), "");
 
   delete instance;
-  instance = new pqImageTip(image, 0);
+  instance = new pqImageTip(image, nullptr);
   instance->move(pos + QPoint(2, 24));
   instance->show();
 }
@@ -70,7 +79,7 @@ pqImageTip::pqImageTip(const QPixmap& image, QWidget* p)
 {
   this->setPixmap(image);
 
-  setMargin(1 + style()->pixelMetric(QStyle::PM_ToolTipLabelFrameWidth, 0, this));
+  setMargin(1 + style()->pixelMetric(QStyle::PM_ToolTipLabelFrameWidth, nullptr, this));
   setFrameStyle(QFrame::NoFrame);
   setAlignment(Qt::AlignLeft);
   setIndent(1);
@@ -85,7 +94,7 @@ pqImageTip::pqImageTip(const QPixmap& image, QWidget* p)
   resize(sizeHint() + extra);
   qApp->installEventFilter(this);
   hideTimer->start(10000, this);
-  setWindowOpacity(style()->styleHint(QStyle::SH_ToolTipLabel_Opacity, 0, this) / 255.0);
+  setWindowOpacity(style()->styleHint(QStyle::SH_ToolTipLabel_Opacity, nullptr, this) / 255.0);
   // No resources for this yet (unlike on Windows).
   QPalette pal(Qt::black, QColor(255, 255, 220), QColor(96, 96, 96), Qt::black, Qt::black,
     Qt::black, QColor(255, 255, 220));
@@ -107,8 +116,9 @@ bool pqImageTip::eventFilter(QObject*, QEvent* e)
       int key = static_cast<QKeyEvent*>(e)->key();
       Qt::KeyboardModifiers mody = static_cast<QKeyEvent*>(e)->modifiers();
 
-      if ((mody & Qt::KeyboardModifierMask) || (key == Qt::Key_Shift || key == Qt::Key_Control ||
-                                                 key == Qt::Key_Alt || key == Qt::Key_Meta))
+      if ((mody & Qt::KeyboardModifierMask) ||
+        (key == Qt::Key_Shift || key == Qt::Key_Control || key == Qt::Key_Alt ||
+          key == Qt::Key_Meta))
       {
         break;
       }

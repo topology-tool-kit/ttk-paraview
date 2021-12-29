@@ -1,13 +1,6 @@
 #ifndef VTK_HDF5_HL_MANGLE_H
 #define VTK_HDF5_HL_MANGLE_H
 
-#define arr_stack vtkhdf5_hl_arr_stack
-#define asindex vtkhdf5_hl_asindex
-#define cmpd_stack vtkhdf5_hl_cmpd_stack
-#define csindex vtkhdf5_hl_csindex
-#define enum_id vtkhdf5_hl_enum_id
-#define enum_memb_symbol vtkhdf5_hl_enum_memb_symbol
-#define first_quote vtkhdf5_hl_first_quote
 #define H5DOappend vtkhdf5_hl_H5DOappend
 #define H5DOread_chunk vtkhdf5_hl_H5DOread_chunk
 #define H5DOwrite_chunk vtkhdf5_hl_H5DOwrite_chunk
@@ -171,16 +164,6 @@
 #define H5TBwrite_records vtkhdf5_hl_H5TBwrite_records
 #define indent vtkhdf5_hl_indent
 #define input_len vtkhdf5_hl_input_len
-#define is_enum_memb vtkhdf5_hl_is_enum_memb
-#define is_opq_size vtkhdf5_hl_is_opq_size
-#define is_opq_tag vtkhdf5_hl_is_opq_tag
-#define is_str_pad vtkhdf5_hl_is_str_pad
-#define is_str_size vtkhdf5_hl_is_str_size
-#define is_variable vtkhdf5_hl_is_variable
 #define myinput vtkhdf5_hl_myinput
-#define my_yyinput vtkhdf5_hl_my_yyinput
-#define str_cset vtkhdf5_hl_str_cset
-#define str_pad vtkhdf5_hl_str_pad
-#define str_size vtkhdf5_hl_str_size
 
 #endif

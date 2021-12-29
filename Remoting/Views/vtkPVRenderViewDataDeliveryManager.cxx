@@ -29,6 +29,7 @@
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
 #include "vtkOrderedCompositeDistributor.h"
+#include "vtkPVLogger.h"
 #include "vtkPVRenderView.h"
 #include "vtkPVStreamingMacros.h"
 #include "vtkStreamingDemandDrivenPipeline.h"
@@ -91,14 +92,10 @@ vtkInformationKeyRestrictedMacro(vtkPVRVDMKeys, TRANSFORMED_GEOMETRY_BOUNDS, Dou
 //*****************************************************************************
 vtkStandardNewMacro(vtkPVRenderViewDataDeliveryManager);
 //----------------------------------------------------------------------------
-vtkPVRenderViewDataDeliveryManager::vtkPVRenderViewDataDeliveryManager()
-{
-}
+vtkPVRenderViewDataDeliveryManager::vtkPVRenderViewDataDeliveryManager() = default;
 
 //----------------------------------------------------------------------------
-vtkPVRenderViewDataDeliveryManager::~vtkPVRenderViewDataDeliveryManager()
-{
-}
+vtkPVRenderViewDataDeliveryManager::~vtkPVRenderViewDataDeliveryManager() = default;
 
 //----------------------------------------------------------------------------
 void vtkPVRenderViewDataDeliveryManager::SetDeliverToAllProcesses(
@@ -367,7 +364,7 @@ void vtkPVRenderViewDataDeliveryManager::RedistributeDataForOrderedCompositing(b
     }
   }
 
-  if (this->Cuts.size() == 0)
+  if (this->Cuts.empty())
   {
     return;
   }
@@ -445,7 +442,7 @@ void vtkPVRenderViewDataDeliveryManager::RedistributeDataForOrderedCompositing(b
 void vtkPVRenderViewDataDeliveryManager::ClearRedistributedData(bool low_res)
 {
   // It seems like we should be able to set each item's RedistributedDataObject
-  // to NULL in this loop but that doesn't work. For now we're leaving this as
+  // to nullptr in this loop but that doesn't work. For now we're leaving this as
   // is to make sure we don't break functionality but this should be revisited
   // later.
   vtkInternals::ItemsMapType::iterator iter;
@@ -468,7 +465,7 @@ void vtkPVRenderViewDataDeliveryManager::SetNextStreamedPiece(
 {
   vtkInternals::vtkItem* item = this->Internals->GetItem(repr,
     /*low_res=*/false, port, true);
-  if (item == NULL)
+  if (item == nullptr)
   {
     vtkErrorMacro("Invalid argument.");
     return;
@@ -486,10 +483,10 @@ vtkDataObject* vtkPVRenderViewDataDeliveryManager::GetCurrentStreamedPiece(
 {
   vtkInternals::vtkItem* item = this->Internals->GetItem(repr,
     /*low_res=*/false, port);
-  if (item == NULL)
+  if (item == nullptr)
   {
     vtkErrorMacro("Invalid argument.");
-    return NULL;
+    return nullptr;
   }
   const auto cacheKey = this->GetCacheKey(repr);
   return item->GetDeliveredDataObject(STREAMING_DATA_KEY, cacheKey);
@@ -535,7 +532,7 @@ bool vtkPVRenderViewDataDeliveryManager::GetRepresentationsReadyToStreamPieces(
       }
     }
   }
-  return (keys.size() > 0);
+  return !keys.empty();
 }
 
 //----------------------------------------------------------------------------

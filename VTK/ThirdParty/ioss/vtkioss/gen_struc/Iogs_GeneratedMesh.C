@@ -1,34 +1,8 @@
-// Copyright(C) 1999-2017, 2020 National Technology & Engineering Solutions
+// Copyright(C) 1999-2021 National Technology & Engineering Solutions
 // of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
 // NTESS, the U.S. Government retains certain rights in this software.
 //
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-//     * Redistributions of source code must retain the above copyright
-//       notice, this list of conditions and the following disclaimer.
-//
-//     * Redistributions in binary form must reproduce the above
-//       copyright notice, this list of conditions and the following
-//       disclaimer in the documentation and/or other materials provided
-//       with the distribution.
-//
-//     * Neither the name of NTESS nor the names of its
-//       contributors may be used to endorse or promote products derived
-//       from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// See packages/seacas/LICENSE for details
 
 #include <Ioss_EntityType.h> // for EntityType, etc
 #include <Ioss_Hex8.h>
@@ -41,7 +15,6 @@
 #include <gen_struc/Iogs_GeneratedMesh.h>
 #include <numeric>
 #include <string>
-#include <sys/types.h> // for ssize_t
 #include <tokenize.h>  // for tokenize
 #include <vector>      // for vector
 
@@ -324,11 +297,11 @@ namespace Iogs {
                  "\tX = {} * (0..{}) + {}\tRange: {} <= X <= {}\n"
                  "\tY = {} * (0..{}) + {}\tRange: {} <= Y <= {}\n"
                  "\tZ = {} * (0..{}) + {}\tRange: {} <= Z <= {}\n\n"
-                 "\tNode Count (total) = {:12n}\n"
-                 "\tCell Count (total) = {:12n}\n"
-                 "\tBlock Count        = {:12n}\n"
-                 "\tSideSet Count      = {:12n}\n"
-                 "\tTimestep Count     = {:12n}\n\n",
+                 "\tNode Count (total) = {:12L}\n"
+                 "\tCell Count (total) = {:12L}\n"
+                 "\tBlock Count        = {:12L}\n"
+                 "\tSideSet Count      = {:12L}\n"
+                 "\tTimestep Count     = {:12L}\n\n",
                  numX, numY, numZ, sclX, numX, offX, offX, offX + numX * sclX, sclY, numY, offY,
                  offY, offY + numY * sclY, sclZ, numZ, offZ, offZ, offZ + numZ * sclZ, node_count(),
                  element_count(), structured_block_count(), sideset_count(), timestep_count());
@@ -699,37 +672,29 @@ namespace Iogs {
     size_t count = node_count_proc();
     xyz.reserve(count);
 
-    double offset = 0;
-    double scale  = 1;
     if (component == 1) {
-      offset = offX;
-      scale  = sclX;
       for (size_t m = myStartZ; m < myStartZ + myNumZ + 1; m++) {
         for (size_t i = 0; i < numY + 1; i++) {
           for (size_t j = 0; j < numX + 1; j++) {
-            xyz.push_back(scale * static_cast<double>(j) + offset);
+            xyz.push_back(sclX * static_cast<double>(j) + offX);
           }
         }
       }
     }
     else if (component == 2) {
-      offset = offY;
-      scale  = sclY;
       for (size_t m = myStartZ; m < myStartZ + myNumZ + 1; m++) {
         for (size_t i = 0; i < numY + 1; i++) {
           for (size_t j = 0; j < numX + 1; j++) {
-            xyz.push_back(scale * static_cast<double>(i) + offset);
+            xyz.push_back(sclY * static_cast<double>(i) + offY);
           }
         }
       }
     }
     else if (component == 3) {
-      offset = offZ;
-      scale  = sclZ;
       for (size_t m = myStartZ; m < myStartZ + myNumZ + 1; m++) {
         for (size_t i = 0; i < numY + 1; i++) {
           for (size_t j = 0; j < numX + 1; j++) {
-            xyz.push_back(scale * static_cast<double>(m) + offset);
+            xyz.push_back(sclZ * static_cast<double>(m) + offZ);
           }
         }
       }

@@ -127,7 +127,6 @@ int vtkAMReXGridReader::FillMetaData()
   }
 
   this->SetUpDataArraySelections();
-  this->InitializeArraySelections();
 
   int dimension = this->GetDimension();
   int numberOfLevels = this->GetNumberOfLevels() + 1;
@@ -343,9 +342,9 @@ void vtkAMReXGridReader::SetUpDataArraySelections()
   {
     return;
   }
-  int numberOfVariables = this->Internal->Header->variableNamesSize;
-  for (int i = 0; i < numberOfVariables; ++i)
+  for (const auto& variable : this->Internal->Header->parsedVariableNames)
   {
-    this->CellDataArraySelection->AddArray(this->Internal->Header->variableNames[i].c_str());
+    // all arrays are added as disabled.
+    this->CellDataArraySelection->AddArray(variable.first.c_str(), false);
   }
 }

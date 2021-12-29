@@ -61,11 +61,11 @@ struct OrderByNames : std::binary_function<vtkAbstractArray*, vtkAbstractArray*,
   {
     const char* order[] = { "vtkBlockNameIndices", "vtkOriginalProcessIds",
       "vtkCompositeIndexArray", "vtkOriginalIndices", "vtkOriginalCellIds", "vtkOriginalPointIds",
-      "vtkOriginalRowIds", "Structured Coordinates", NULL };
+      "vtkOriginalRowIds", "Structured Coordinates", nullptr };
     std::string a1Name = a1->GetName() ? a1->GetName() : "";
     std::string a2Name = a2->GetName() ? a2->GetName() : "";
     int a1Index = VTK_INT_MAX, a2Index = VTK_INT_MAX;
-    for (int cc = 0; order[cc] != NULL; cc++)
+    for (int cc = 0; order[cc] != nullptr; cc++)
     {
       if (a1Index == VTK_INT_MAX && a1Name == order[cc])
       {
@@ -200,7 +200,7 @@ protected:
     auto inputs = vtkPVMergeTables::GetTables(inputVector[0]);
 
     const bool has_block_names =
-      (inputs.size() && inputs[0]->GetFieldData()->GetAbstractArray("vtkBlockNames"));
+      (!inputs.empty() && inputs[0]->GetFieldData()->GetAbstractArray("vtkBlockNames"));
     if (!has_block_names)
     {
       return this->Superclass::RequestData(req, inputVector, outputVector);
@@ -278,7 +278,7 @@ vtkStandardNewMacro(SpreadSheetViewMergeTables);
 
 class vtkSpreadSheetView::vtkInternals
 {
-  std::vector<std::tuple<std::string, std::string, int> > ColumnMetaData;
+  std::vector<std::tuple<std::string, std::string, int>> ColumnMetaData;
   std::map<std::string, size_t> ColumnIndexMap;
 
   void UpdateColumnMetaData(vtkTable* table)
@@ -345,7 +345,7 @@ public:
 
   vtkIdType GetNumberOfColumns(vtkSpreadSheetView* self)
   {
-    if (this->ActiveRepresentation != nullptr && this->ColumnMetaData.size() == 0)
+    if (this->ActiveRepresentation != nullptr && this->ColumnMetaData.empty())
     {
       this->GetSomeBlock(self);
     }
@@ -392,7 +392,7 @@ public:
       this->MostRecentlyAccessedBlock = blockId;
       return iter->second.Dataobject.GetPointer();
     }
-    return NULL;
+    return nullptr;
   }
 
   vtkTable* AddToCache(vtkIdType blockId, vtkTable* data, vtkIdType max)
@@ -422,7 +422,7 @@ public:
     vtkTable* clone = vtkTable::New();
 
     // sort columns for better usability.
-    std::vector<vtkSmartPointer<vtkAbstractArray> > arrays;
+    std::vector<vtkSmartPointer<vtkAbstractArray>> arrays;
     for (vtkIdType cc = 0; cc < data->GetNumberOfColumns(); cc++)
     {
       if (auto column = data->GetColumn(cc))
@@ -537,7 +537,7 @@ vtkAlgorithmOutput* vtkGetDataProducer(vtkSpreadSheetView* self, vtkSpreadSheetR
       return repr->GetDataProducer();
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 #if 0 // Its usage is commented out below.
@@ -548,11 +548,11 @@ vtkAlgorithmOutput* vtkGetDataProducer(vtkSpreadSheetView* self, vtkSpreadSheetR
       {
       if (self->GetShowExtractedSelection())
         {
-        return NULL;
+        return nullptr;
         }
       return repr->GetSelectionProducer();
       }
-    return NULL;
+    return nullptr;
     }
 #endif
 }
@@ -561,30 +561,28 @@ vtkStandardNewMacro(vtkSpreadSheetView);
 //----------------------------------------------------------------------------
 vtkSpreadSheetView::vtkSpreadSheetView()
   : Superclass(/*create_render_window=*/false)
+  , ShowExtractedSelection(false)
+  , GenerateCellConnectivity(false)
+  , TableStreamer(vtkSortedTableStreamer::New())
+  , TableSelectionMarker(vtkMarkSelectedRows::New())
+  , ReductionFilter(vtkReductionFilter::New())
+  , DeliveryFilter(vtkClientServerMoveData::New())
+  , NumberOfRows(0)
   , CRMICallbackTag(0)
   , PRMICallbackTag(0)
   , Identifier(0)
+  , Internals(new vtkSpreadSheetView::vtkInternals())
+  , SomethingUpdated(false)
+  , FieldAssociation(vtkDataObject::FIELD_ASSOCIATION_POINTS)
 {
-  this->NumberOfRows = 0;
-  this->ShowExtractedSelection = false;
-  this->TableStreamer = vtkSortedTableStreamer::New();
-  this->TableSelectionMarker = vtkMarkSelectedRows::New();
-
-  this->ReductionFilter = vtkReductionFilter::New();
   this->ReductionFilter->SetController(vtkMultiProcessController::GetGlobalController());
   this->ReductionFilter->SetPostGatherHelper(vtkNew<SpreadSheetViewMergeTables>().GetPointer());
-
-  this->DeliveryFilter = vtkClientServerMoveData::New();
   this->DeliveryFilter->SetOutputDataType(VTK_TABLE);
-
   this->ReductionFilter->SetInputConnection(this->TableStreamer->GetOutputPort());
 
-  this->Internals = new vtkInternals();
   this->Internals->MostRecentlyAccessedBlock = -1;
-
   this->Internals->Observer =
     vtkMakeMemberFunctionCommand(*this, &vtkSpreadSheetView::OnRepresentationUpdated);
-  this->SomethingUpdated = false;
 
   auto session = this->GetSession();
   assert(session);
@@ -596,7 +594,6 @@ vtkSpreadSheetView::vtkSpreadSheetView()
   {
     this->PRMICallbackTag = pController->AddRMICallback(::FetchRMI, this, FETCH_BLOCK_TAG);
   }
-  this->FieldAssociation = vtkDataObject::FIELD_ASSOCIATION_POINTS;
 }
 
 //----------------------------------------------------------------------------
@@ -621,7 +618,7 @@ vtkSpreadSheetView::~vtkSpreadSheetView()
 
   this->Internals->Observer->Delete();
   delete this->Internals;
-  this->Internals = 0;
+  this->Internals = nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -681,8 +678,9 @@ void vtkSpreadSheetView::ClearHiddenColumnsByLabel()
 bool vtkSpreadSheetView::IsColumnHiddenByLabel(const std::string& columnLabel)
 {
   const auto& internals = *this->Internals;
-  return columnLabel.empty() ? true : internals.HiddenColumnsByLabel.find(columnLabel) !=
-      internals.HiddenColumnsByLabel.end();
+  return columnLabel.empty()
+    ? true
+    : internals.HiddenColumnsByLabel.find(columnLabel) != internals.HiddenColumnsByLabel.end();
 }
 
 //----------------------------------------------------------------------------
@@ -709,7 +707,6 @@ bool vtkSpreadSheetView::IsColumnInternal(vtkIdType index)
 //----------------------------------------------------------------------------
 bool vtkSpreadSheetView::IsColumnInternal(const char* columnName)
 {
-  const char* result{ nullptr };
   return (columnName == nullptr || strcmp(columnName, "__vtkIsSelected__") == 0) ||
       (std::strstr(columnName, "__vtkValidMask__") == columnName)
     ? true
@@ -726,7 +723,7 @@ void vtkSpreadSheetView::PrintSelf(ostream& os, vtkIndent indent)
 void vtkSpreadSheetView::Update()
 {
   vtkSpreadSheetRepresentation* prev = this->Internals->ActiveRepresentation;
-  vtkSpreadSheetRepresentation* cur = NULL;
+  vtkSpreadSheetRepresentation* cur = nullptr;
   for (int cc = 0; cc < this->GetNumberOfRepresentations(); cc++)
   {
     vtkSpreadSheetRepresentation* repr =
@@ -760,7 +757,7 @@ void vtkSpreadSheetView::Update()
 int vtkSpreadSheetView::StreamToClient()
 {
   vtkSpreadSheetRepresentation* cur = this->Internals->ActiveRepresentation;
-  if (cur == NULL)
+  if (cur == nullptr)
   {
     if (this->NumberOfRows > 0)
     {
@@ -838,7 +835,7 @@ vtkTable* vtkSpreadSheetView::FetchBlockCallback(vtkIdType blockindex)
   // Sanity Check
   if (!this->Internals->ActiveRepresentation)
   {
-    return NULL;
+    return nullptr;
   }
 
   // cout << "FetchBlockCallback" << endl;
@@ -952,7 +949,7 @@ bool vtkSpreadSheetView::IsAvailable(vtkIdType row)
 {
   vtkIdType blockSize = this->TableStreamer->GetBlockSize();
   vtkIdType blockIndex = row / blockSize;
-  return this->Internals->GetDataObject(blockIndex) != NULL;
+  return this->Internals->GetDataObject(blockIndex) != nullptr;
 }
 
 //----------------------------------------------------------------------------

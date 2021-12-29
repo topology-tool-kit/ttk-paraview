@@ -46,7 +46,7 @@
 
 vtkStandardNewMacro(vtkODBCQuery);
 
-static vtkStdString GetErrorMessage(SQLSMALLINT handleType, SQLHANDLE handle, int* code = 0);
+static vtkStdString GetErrorMessage(SQLSMALLINT handleType, SQLHANDLE handle, int* code = nullptr);
 
 /*
  * Bound Parameters and ODBC
@@ -100,7 +100,6 @@ public:
     memcpy(this->Data, data, size);
   }
 
-public:
   char* Data; // Buffer holding actual data
   unsigned long DataLength;
   SQLLEN BufferSize; // will be at least as large as DataLength
@@ -144,7 +143,6 @@ public:
   bool SetBoundParameter(int index, vtkODBCBoundParameter* param);
   bool BindParametersToStatement();
 
-public:
   SQLHANDLE Statement;
   vtkStdString Name;
 
@@ -182,7 +180,7 @@ void vtkODBCQueryInternals::FreeStatement()
                << GetErrorMessage(SQL_HANDLE_STMT, this->Statement);
       cerr << errorBuf.str() << "\n";
     }
-    this->Statement = 0;
+    this->Statement = nullptr;
   }
 }
 
@@ -615,7 +613,7 @@ bool vtkODBCQuery::Execute()
         }
 
         status = SQLColAttribute(
-          this->Internals->Statement, i + 1, SQL_DESC_UNSIGNED, 0, 0, 0, &unsignedFlag);
+          this->Internals->Statement, i + 1, SQL_DESC_UNSIGNED, nullptr, 0, nullptr, &unsignedFlag);
 
         if (status != SQL_SUCCESS && status != SQL_SUCCESS_WITH_INFO)
         {

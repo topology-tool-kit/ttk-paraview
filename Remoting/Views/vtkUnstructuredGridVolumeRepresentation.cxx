@@ -50,7 +50,7 @@
 class vtkUnstructuredGridVolumeRepresentation::vtkInternals
 {
 public:
-  typedef std::map<std::string, vtkSmartPointer<vtkAbstractVolumeMapper> > MapOfMappers;
+  typedef std::map<std::string, vtkSmartPointer<vtkAbstractVolumeMapper>> MapOfMappers;
   MapOfMappers Mappers;
   std::string ActiveVolumeMapper;
 };
@@ -58,7 +58,6 @@ public:
 vtkStandardNewMacro(vtkUnstructuredGridVolumeRepresentation);
 //----------------------------------------------------------------------------
 vtkUnstructuredGridVolumeRepresentation::vtkUnstructuredGridVolumeRepresentation()
-  : Superclass()
 {
   this->Internals = new vtkInternals();
 
@@ -96,7 +95,7 @@ void vtkUnstructuredGridVolumeRepresentation::SetActiveVolumeMapper(const char* 
 //----------------------------------------------------------------------------
 vtkAbstractVolumeMapper* vtkUnstructuredGridVolumeRepresentation::GetActiveVolumeMapper()
 {
-  if (this->Internals->ActiveVolumeMapper != "")
+  if (!this->Internals->ActiveVolumeMapper.empty())
   {
     vtkInternals::MapOfMappers::iterator iter =
       this->Internals->Mappers.find(this->Internals->ActiveVolumeMapper);
@@ -399,13 +398,24 @@ void vtkUnstructuredGridVolumeRepresentation::PrintSelf(ostream& os, vtkIndent i
 // Forwarded to vtkVolumeRepresentationPreprocessor
 
 //----------------------------------------------------------------------------
-void vtkUnstructuredGridVolumeRepresentation::SetExtractedBlockIndex(unsigned int index)
+void vtkUnstructuredGridVolumeRepresentation::SetActiveAssembly(const char* name)
 {
-  if (this->Preprocessor->GetExtractedBlockIndex() != index)
-  {
-    this->Preprocessor->SetExtractedBlockIndex(index);
-    this->MarkModified();
-  }
+  this->Preprocessor->SetAssemblyName(name);
+  this->MarkModified();
+}
+
+//----------------------------------------------------------------------------
+void vtkUnstructuredGridVolumeRepresentation::AddBlockSelector(const char* selector)
+{
+  this->Preprocessor->AddSelector(selector);
+  this->MarkModified();
+}
+
+//----------------------------------------------------------------------------
+void vtkUnstructuredGridVolumeRepresentation::RemoveAllBlockSelectors()
+{
+  this->Preprocessor->ClearSelectors();
+  this->MarkModified();
 }
 
 //***************************************************************************

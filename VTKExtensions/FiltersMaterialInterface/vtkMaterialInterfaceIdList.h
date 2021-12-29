@@ -20,7 +20,7 @@
  * deal with the fact that local to global id search
  * is a constant time operation, while its inverse
  * glooabl to local id search is not.
-*/
+ */
 
 #ifndef vtkMaterialInterfaceIdList_h
 #define vtkMaterialInterfaceIdList_h
@@ -58,5 +58,3 @@ private:
 };
 #endif
 //@}
-
-// VTK-HeaderTest-Exclude: vtkMaterialInterfaceIdList.h

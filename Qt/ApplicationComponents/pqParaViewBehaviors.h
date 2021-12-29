@@ -42,28 +42,28 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class QMainWindow;
 
 /**
-* @defgroup Behaviors ParaView Behaviors
-* Behaviors are classes that manage certain behaviors in the application.
-* Developers should simply instantiate behaviors if the expect that
-* behavior in their client.
-*/
+ * @defgroup Behaviors ParaView Behaviors
+ * Behaviors are classes that manage certain behaviors in the application.
+ * Developers should simply instantiate behaviors if the expect that
+ * behavior in their client.
+ */
 
 /**
-* @class pqParaViewBehaviors
-* @brief creates all standard ParaView behaviours
-* @ingroup Behaviors
-*
-* pqParaViewBehaviors creates all the behaviors used by ParaView. If your
-* client is merely a branded version of ParaView, then you may want to simply
-* use this behavior. You can also enable/disable behaviors created by
-* pqParaViewBehaviors before instantiating the pqParaViewBehaviors instance by
-* using static methods of the form pqParaViewBehaviors::setEnable<behavior name>(bool)
-* e.g. pqParaViewBehaviors::setEnableStandardPropertyWidgets(false).
-*
-* Since ParaView 5.1, ObjectPickingBehavior is disabled by default in
-* ParaView.
-*
-*/
+ * @class pqParaViewBehaviors
+ * @brief creates all standard ParaView behaviours
+ * @ingroup Behaviors
+ *
+ * pqParaViewBehaviors creates all the behaviors used by ParaView. If your
+ * client is merely a branded version of ParaView, then you may want to simply
+ * use this behavior. You can also enable/disable behaviors created by
+ * pqParaViewBehaviors before instantiating the pqParaViewBehaviors instance by
+ * using static methods of the form pqParaViewBehaviors::setEnable<behavior name>(bool)
+ * e.g. pqParaViewBehaviors::setEnableStandardPropertyWidgets(false).
+ *
+ * Since ParaView 5.1, ObjectPickingBehavior is disabled by default in
+ * ParaView.
+ *
+ */
 
 #define PQ_BEHAVIOR_DEFINE_METHODS(_name)                                                          \
   static void setEnable##_name(bool val) { pqParaViewBehaviors::_name = val; }                     \
@@ -87,6 +87,7 @@ public:
   PQ_BEHAVIOR_DEFINE_METHODS(DataTimeStepBehavior);
   PQ_BEHAVIOR_DEFINE_METHODS(SpreadSheetVisibilityBehavior);
   PQ_BEHAVIOR_DEFINE_METHODS(PipelineContextMenuBehavior);
+  PQ_BEHAVIOR_DEFINE_METHODS(BlockContentMenu);
   PQ_BEHAVIOR_DEFINE_METHODS(ObjectPickingBehavior);
   PQ_BEHAVIOR_DEFINE_METHODS(DefaultViewBehavior);
   PQ_BEHAVIOR_DEFINE_METHODS(UndoRedoBehavior);
@@ -138,7 +139,7 @@ public:
   PQ_BEHAVIOR_DEFINE_METHODS(WheelNeedsFocusBehavior);
   //@}
 
-  pqParaViewBehaviors(QMainWindow* window, QObject* parent = NULL);
+  pqParaViewBehaviors(QMainWindow* window, QObject* parent = nullptr);
   ~pqParaViewBehaviors() override;
 
 private:
@@ -150,6 +151,7 @@ private:
   PQ_BEHAVIOR_DECLARE_FLAG(DataTimeStepBehavior);
   PQ_BEHAVIOR_DECLARE_FLAG(SpreadSheetVisibilityBehavior);
   PQ_BEHAVIOR_DECLARE_FLAG(PipelineContextMenuBehavior);
+  PQ_BEHAVIOR_DECLARE_FLAG(BlockContentMenu);
   PQ_BEHAVIOR_DECLARE_FLAG(ObjectPickingBehavior);
   PQ_BEHAVIOR_DECLARE_FLAG(DefaultViewBehavior);
   PQ_BEHAVIOR_DECLARE_FLAG(UndoRedoBehavior);

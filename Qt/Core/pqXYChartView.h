@@ -38,9 +38,9 @@ class vtkSMSourceProxy;
 class pqDataRepresentation;
 
 /**
-* pqContextView subclass for "Line Chart View". Doesn't do much expect adds
-* the API to get the chartview type and name.
-*/
+ * pqContextView subclass for "Line Chart View". Doesn't do much expect adds
+ * the API to get the chartview type and name.
+ */
 class PQCORE_EXPORT pqXYChartView : public pqContextView
 {
   Q_OBJECT
@@ -51,7 +51,7 @@ public:
 
 public:
   pqXYChartView(const QString& group, const QString& name, vtkSMContextViewProxy* viewModule,
-    pqServer* server, QObject* parent = NULL);
+    pqServer* server, QObject* parent = nullptr);
 
   ~pqXYChartView() override;
 

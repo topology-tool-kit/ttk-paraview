@@ -24,12 +24,12 @@
 #include "vtkObjectFactory.h"
 #include "vtkSmartPointer.h"
 
+#include <cstring>
 #include <list>
-#include <string.h>
 
 //=============================================================================
 // The static structure holding all of the registered modules.
-typedef std::list<vtkSmartPointer<vtkPVPythonModule> > vtkPVPythonModuleContainerType;
+typedef std::list<vtkSmartPointer<vtkPVPythonModule>> vtkPVPythonModuleContainerType;
 static vtkPVPythonModuleContainerType vtkPVPythonModuleRegisteredModules;
 
 void vtkPVPythonModule::RegisterModule(vtkPVPythonModule* module)
@@ -48,7 +48,7 @@ vtkPVPythonModule* vtkPVPythonModule::GetModule(const char* fullname)
       return *iter;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 //=============================================================================
@@ -57,15 +57,15 @@ vtkStandardNewMacro(vtkPVPythonModule);
 //-----------------------------------------------------------------------------
 vtkPVPythonModule::vtkPVPythonModule()
 {
-  this->Source = NULL;
-  this->FullName = NULL;
+  this->Source = nullptr;
+  this->FullName = nullptr;
   this->IsPackage = 0;
 }
 
 vtkPVPythonModule::~vtkPVPythonModule()
 {
-  this->SetSource(NULL);
-  this->SetFullName(NULL);
+  this->SetSource(nullptr);
+  this->SetFullName(nullptr);
 }
 
 void vtkPVPythonModule::PrintSelf(ostream& os, vtkIndent indent)

@@ -63,6 +63,14 @@ analysis.
   node with child nodes that provides paths to the Python scripts to load for
   in situ analysis.
 
+* catalyst/scripts/[name]: (optional) if present can be a 'string' or 'object'.
+  If string, it is interpreted as path to the Python script. If 'object', can
+  have following attributes.
+
+  * catalyst/scripts/[name]/filename: path to the Python script
+  * catalyst/scripts/[name]/args: (optional) if present must be of type
+  'list' with each child node of type 'string'.
+
 Additionally, one can provide a list of pre-compiled pipelines to use.
 
 * catalyst/pipelines: (optional) if present must be a 'list' or 'object' node
@@ -91,6 +99,8 @@ invocation.
   specified, 0 is assumed.
 * catalyst/state/time: (optional) float64 value for current time, if not specified,
   0.0 is assumed.
+* catalyst/state/parameters: (optional) list of optional runtime parameters. If present,
+  they must be of type 'list' with each child node of type 'string'.
 
 **channels**: channels are used to communicate simulation data. The **channels**
 node can have one or more children, each corresponding to a named channel. A
@@ -104,13 +114,25 @@ data being produced by the simulation code.
 The 'channel' protocol is as follows:
 
 * channel/type: (required) a string representing the channel type. Currently,
-  the only supported value is "mesh". It is used to indicate that this channel
-  is specified in accordance to the
-  [Conduit Mesh](https://llnl-conduit.readthedocs.io/en/latest/blueprint_mesh.html#) protocol.
+  the only supported values are "mesh" and "multimesh".
+
+  "mesh" is used to indicate that this channel is specified in accordance to the
+  [Conduit Mesh](https://llnl-conduit.readthedocs.io/en/latest/blueprint_mesh.html#)
+  protocol.
+
+  "multimesh" is an extension for multi-domain meshes (also called multiblocks)
+  and is described later.
 
 * channel/data: (required) an object node used to communicate the simulation
   data on this channel. This node must match the protocol requirements
   identified by the 'channel/type'.
+
+* channel/state: (optional) fields to optionally override the catalyst/state temporal information
+  channel/state/timestep: (optional) if present, overrides catalyst/state/timestep for this channel
+  channel/state/cycle: (optional) if present, overrides catalyst/state/cycle for this channel
+  channel/state/time: (optional) if present, overrides catalyst/state/time for this channel
+  a channel will default to using the catalyst/state/ values for these parameters for each
+  channel/state parameter not specified.
 
 ### protocol: 'finalize'
 
@@ -125,9 +147,38 @@ Defines type and parameters for a hard-coded pipeline.
 
 When 'type' is 'io', the following attributes are supported.
 
-* filename: (required) a string representing a filename. `%ts` may be used to
-  replace with timestep or `%t` may be used to replace with time value. You can
-  use `printf` style format specifiers e.g. `%03t` etc. The filename may be used
+* filename: (required) a string representing a filename. `{timestep}` may be used to
+  replace with timestep or `{time}` may be used to replace with time value. You can
+  use `fmt` style format specifiers e.g. `{time:03f}` etc. The filename may be used
   to determine which supported writer to use for saving the data.
 
 * channel: (required) a string identifying the channel by its name.
+
+
+### protocol: 'multimesh'
+
+This is the protocol used for the 'channel/data' when the 'channel/type' is set
+to "multimesh".
+
+* channel/data/[block-name]: (protocol: 'mesh'): (optional) if present, represents an
+  individual mesh/block described using the
+  [Conduit Mesh](https://llnl-conduit.readthedocs.io/en/latest/blueprint_mesh.html#)
+  protocol. This can be repeated for multiple blocks. 'block-name' must be unique for
+  each blocks.
+
+* channel/assembly: (optional) if present, can be used to define arbitrary
+  hierarchical relationships between individual meshes/blocks in the mutlimesh.
+  For example, for two blocks named `blockA` and `blockB`, following is a
+  possible hierarchy. Thus all nodes are either object, list or string, and if
+  string, must refer to a valid block name.
+
+@verbatim
+
+  channel/assembly/
+                   AllBlocks: ["blockA", "blockB"]
+                   BlockA: "blockA"
+                   BlockB: "blockB"
+                   SubGroup/
+                          AnotherChild: "blockA"
+
+@endverbatim

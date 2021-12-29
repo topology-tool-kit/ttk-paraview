@@ -12,6 +12,10 @@
      PURPOSE.  See the above copyright notice for more information.
 
 =========================================================================*/
+
+// Hide VTK_DEPRECATED_IN_9_1_0() warning for this class
+#define VTK_DEPRECATION_LEVEL 0
+
 #include "vtkDIYKdTreeUtilities.h"
 
 #include "vtkAppendFilter.h"
@@ -117,7 +121,7 @@ std::vector<vtkBoundingBox> vtkDIYKdTreeUtilities::GenerateCuts(vtkDataObject* d
   {
     std::copy(local_bounds, local_bounds + 6, bds);
   }
-  const auto datasets = vtkDIYUtilities::GetDataSets(dobj);
+  const auto datasets = vtkCompositeDataSet::GetDataSets(dobj);
   const auto pts = vtkDIYUtilities::ExtractPoints(datasets, use_cell_centers);
   return vtkDIYKdTreeUtilities::GenerateCuts(pts, number_of_partitions, controller, bds);
 }
@@ -140,7 +144,7 @@ std::vector<vtkBoundingBox> vtkDIYKdTreeUtilities::GenerateCuts(
     {
       bbox.AddBox(vtkDIYUtilities::GetLocalBounds(dobj));
     }
-    const auto datasets = vtkDIYUtilities::GetDataSets(dobj);
+    const auto datasets = vtkCompositeDataSet::GetDataSets(dobj);
     const auto pts = vtkDIYUtilities::ExtractPoints(datasets, use_cell_centers);
     points.insert(points.end(), pts.begin(), pts.end());
   }
@@ -449,6 +453,12 @@ bool vtkDIYKdTreeUtilities::GenerateGlobalCellIds(vtkPartitionedDataSet* parts,
     vtkIdType total_global_cells = 0;
     diy::mpi::all_reduce(comm, total_local_cells, total_global_cells, std::plus<vtkIdType>());
     (*mb_offset) += total_global_cells;
+  }
+
+  if (nblocks == 0)
+  {
+    // no local blocks, no ids to generate.
+    return true;
   }
 
   // compute exclusive scan to determine the global id offsets for each local partition.

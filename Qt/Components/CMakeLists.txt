@@ -49,15 +49,15 @@ set(classes
   pqChangeInputDialog
   pqCollaborationPanel
   pqColorChooserButtonWithPalettes
+  pqColorOverlay
   pqComboBoxDomain
   pqCommandPropertyWidget
   pqComparativeCueWidget
   pqComparativeVisPanel
   pqComponentsInit
   pqComponentsTestUtility
-  pqCompositeDataInformationTreeModel
   pqCompositePropertyWidgetDecorator
-  pqCompositeTreePropertyWidget
+  pqContextMenuInterface
   pqCustomFilterDefinitionModel
   pqCustomFilterDefinitionWizard
   pqCustomFilterManager
@@ -77,9 +77,7 @@ set(classes
   pqFavoritesDialog
   pqFavoritesTreeWidget
   pqFileChooserWidget
-  pqFindDataCreateSelectionFrame
   pqFindDataCurrentSelectionFrame
-  pqFindDataDialog
   pqFindDataSelectionDisplayFrame
   pqHighlightItemDelegate
   pqImageTip
@@ -104,13 +102,11 @@ set(classes
   pqLogViewerDialog
   pqMemoryInspectorPanel
   pqMultiBlockInspectorWidget
-  pqMultiQueryClauseWidget
   pqMultiViewWidget
   pqOrbitCreatorDialog
   pqOutputPortComboBox
   pqPipelineAnnotationFilterModel
   pqPipelineBrowserWidget
-  pqPipelineInputComboBox
   pqPipelineModel
   pqPipelineModelSelectionAdaptor
   pqPipelineTimeKeyFrameEditor
@@ -130,17 +126,13 @@ set(classes
   pqProxyEditorPropertyWidget
   pqProxyInformationWidget
   pqProxyPropertyWidget
-  pqProxySILModel
   pqProxySelectionWidget
   pqProxyWidget
   pqProxyWidgetDialog
-  pqQueryClauseWidget
   pqRecentFilesMenu
   pqRemoteCommandDialog
   pqRemoteCommandTemplateDialog
   pqRescaleRange
-  pqSILModel
-  pqSILWidget
   pqSingleLogViewerWidget
   pqSMSignalAdaptors
   pqScalarSetModel
@@ -162,8 +154,6 @@ set(classes
   pqSignalAdaptorSelectionTreeWidget
   pqSignalAdaptorTreeWidget
   pqStringVectorPropertyWidget
-  pqSubsetInclusionLatticeTreeModel
-  pqSubsetInclusionLatticeWidget
   pqTabbedMultiViewWidget
   pqTextureComboBox
   pqTextureSelectorPropertyWidget
@@ -179,13 +169,15 @@ set(classes
   pqViewManager
   pqWidgetRangeDomain)
 
-set(built_shared 0)
-if (BUILD_SHARED_LIBS)
-  set(built_shared 1)
-endif ()
 set_property(SOURCE pqComponentsInit.cxx APPEND
   PROPERTY
-    COMPILE_DEFINITIONS "BUILD_SHARED_LIBS=${built_shared}")
+    COMPILE_DEFINITIONS "BUILD_SHARED_LIBS=$<BOOL:${BUILD_SHARED_LIBS}>")
+
+if (PARAVIEW_BUILD_ID)
+  set_property(SOURCE pqAboutDialog.cxx APPEND
+    PROPERTY
+      COMPILE_DEFINITIONS "PARAVIEW_BUILD_ID=\"${PARAVIEW_BUILD_ID}\"")
+endif ()
 
 set(headers
   pqPluginTreeWidget.h)
@@ -208,9 +200,7 @@ set(ui_files
   Resources/UI/pqCustomFilterManager.ui
   Resources/UI/pqCustomViewpointButtonDialog.ui
   Resources/UI/pqDisplayRepresentationWidget.ui
-  Resources/UI/pqFindDataCreateSelectionFrame.ui
   Resources/UI/pqFindDataCurrentSelectionFrame.ui
-  Resources/UI/pqFindDataDialog.ui
   Resources/UI/pqFindDataSelectionDisplayFrame.ui
   Resources/UI/pqItemViewSearchWidget.ui
   Resources/UI/pqKeyFrameEditor.ui
@@ -233,8 +223,6 @@ set(ui_files
   Resources/UI/pqProxySelectionWidget.ui
   Resources/UI/pqProxyWidgetDialog.ui
   Resources/UI/pqPythonAnimationCue.ui
-  Resources/UI/pqQueryClauseWidget.ui
-  Resources/UI/pqQueryCompositeTreeDialog.ui
   Resources/UI/pqRemoteCommandDialogForm.ui
   Resources/UI/pqRemoteCommandTemplateDialogForm.ui
   Resources/UI/pqRescaleRangeDialog.ui

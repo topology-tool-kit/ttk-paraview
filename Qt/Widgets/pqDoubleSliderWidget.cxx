@@ -53,9 +53,7 @@ pqDoubleSliderWidget::pqDoubleSliderWidget(QWidget* parent)
 }
 
 //-----------------------------------------------------------------------------
-pqDoubleSliderWidget::~pqDoubleSliderWidget()
-{
-}
+pqDoubleSliderWidget::~pqDoubleSliderWidget() = default;
 
 //-----------------------------------------------------------------------------
 double pqDoubleSliderWidget::value() const
@@ -136,6 +134,10 @@ void pqDoubleSliderWidget::editingFinished()
 //-----------------------------------------------------------------------------
 void pqDoubleSliderWidget::setValidator(QDoubleValidator* validator)
 {
+  if (validator && !validator->parent())
+  {
+    validator->setParent(this); // adopt the validator to avoid leaking it
+  }
   this->DoubleLineEdit->setValidator(validator);
 }
 

@@ -1,29 +1,29 @@
 /* Copyright 2021 NVIDIA Corporation. All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions
-* are met:
-*  * Redistributions of source code must retain the above copyright
-*    notice, this list of conditions and the following disclaimer.
-*  * Redistributions in binary form must reproduce the above copyright
-*    notice, this list of conditions and the following disclaimer in the
-*    documentation and/or other materials provided with the distribution.
-*  * Neither the name of NVIDIA CORPORATION nor the names of its
-*    contributors may be used to endorse or promote products derived
-*    from this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-* EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-* PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-* CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-* EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-* PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-* PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-* OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include <vector>
 
@@ -54,10 +54,7 @@ vtknvindex_colormap::vtknvindex_colormap(
 }
 
 //-------------------------------------------------------------------------------------------------
-vtknvindex_colormap::~vtknvindex_colormap()
-{
-  // empty
-}
+vtknvindex_colormap::~vtknvindex_colormap() = default;
 
 //-------------------------------------------------------------------------------------------------
 void vtknvindex_colormap::dump_colormap(mi::base::Handle<const nv::index::IColormap> const& cmap)
@@ -109,8 +106,7 @@ void vtknvindex_colormap::get_paraview_colormaps(vtkVolume* vol,
 
   // Normalize the range only if it is not floating point data.
   // If float, set the domain values as-is from ParaView.
-  std::string scalar_type;
-  regular_volume_properties->get_scalar_type(scalar_type);
+  const std::string scalar_type = regular_volume_properties->get_scalar_type();
 
   // Colormap size used by ParaView
   // see vtkOpenGLVolumeRGBTable
@@ -120,8 +116,10 @@ void vtknvindex_colormap::get_paraview_colormaps(vtkVolume* vol,
   std::vector<mi::Float32> opacity_array;
 
   mi::math::Vector<mi::Float32, 2> domain_range;
-  if (scalar_type != "float" && scalar_type != "double")
+  if (scalar_type != "float" && scalar_type != "double" && scalar_type != "int" &&
+    scalar_type != "unsigned int")
   {
+    // The scalar type is float or is internally converted to float (e.g. for "int")
     mi::math::Vector<mi::Float32, 2> scalar_range;
     regular_volume_properties->get_scalar_range(scalar_range);
 
@@ -137,8 +135,8 @@ void vtknvindex_colormap::get_paraview_colormaps(vtkVolume* vol,
   // Read color values from ParaView.
   color_array.resize(3 * array_size);
 
-  // using Logarithmic scale?
-  if (app_color_transfer_function->GetScale())
+  // Using logarithmic scale?
+  if (app_color_transfer_function->UsingLogScale())
   {
     double color[3];
     for (mi::Uint32 i = 0; i < array_size; i++)

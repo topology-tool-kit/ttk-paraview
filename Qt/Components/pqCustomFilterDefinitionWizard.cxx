@@ -72,7 +72,7 @@ public:
   // Maps a proxy name with a map of <propertyLabel, propertyName>
   // pairs for each of its properties. This assumes that labels of
   // a proxy's properties are unique.
-  QMap<QString, QMap<QString, QString> > LabelToNamePropertyMap;
+  QMap<QString, QMap<QString, QString>> LabelToNamePropertyMap;
 };
 
 //-----------------------------------------------------------------------------
@@ -82,7 +82,7 @@ pqCustomFilterDefinitionWizard::pqCustomFilterDefinitionWizard(
 {
   this->CurrentPage = 0;
   this->OverwriteOK = false;
-  this->Filter = 0;
+  this->Filter = nullptr;
   this->Model = model;
   this->Form = new pqCustomFilterDefinitionWizardForm();
   this->Form->setupUi(this);
@@ -166,10 +166,7 @@ pqCustomFilterDefinitionWizard::pqCustomFilterDefinitionWizard(
 //-----------------------------------------------------------------------------
 pqCustomFilterDefinitionWizard::~pqCustomFilterDefinitionWizard()
 {
-  if (this->Form)
-  {
-    delete this->Form;
-  }
+  delete this->Form;
 
   if (this->Filter)
   {
@@ -192,13 +189,13 @@ QString pqCustomFilterDefinitionWizard::getCustomFilterName() const
 //-----------------------------------------------------------------------------
 void pqCustomFilterDefinitionWizard::createCustomFilter()
 {
-  if (this->Filter != 0 || this->Form->CustomFilterName->text().isEmpty())
+  if (this->Filter != nullptr || this->Form->CustomFilterName->text().isEmpty())
   {
     return;
   }
 
   // Create the compound proxy. Add all the proxies to it.
-  pqPipelineSource* source = 0;
+  pqPipelineSource* source = nullptr;
   this->Filter = vtkSMCompoundSourceProxy::New();
   bool first = true;
   QModelIndex index = this->Model->getNextIndex(QModelIndex());
@@ -213,7 +210,7 @@ void pqCustomFilterDefinitionWizard::createCustomFilter()
         this->Filter->SetLocation(source->getProxy()->GetLocation());
         first = false;
       }
-      this->Filter->AddProxy(source->getSMName().toLocal8Bit().data(), source->getProxy());
+      this->Filter->AddProxy(source->getSMName().toUtf8().data(), source->getProxy());
     }
 
     index = this->Model->getNextIndex(index);
@@ -221,14 +218,14 @@ void pqCustomFilterDefinitionWizard::createCustomFilter()
 
   // Expose the input properties.
   int i = 0;
-  QTreeWidgetItem* item = 0;
+  QTreeWidgetItem* item = nullptr;
   int numInputs = this->Form->InputPorts->topLevelItemCount();
   for (; i < numInputs; i++)
   {
     item = this->Form->InputPorts->topLevelItem(i);
-    this->Filter->ExposeProperty(item->text(0).toLocal8Bit().data(),
-      this->Form->LabelToNamePropertyMap[item->text(0)][item->text(1)].toLocal8Bit().data(),
-      item->text(2).toLocal8Bit().data());
+    this->Filter->ExposeProperty(item->text(0).toUtf8().data(),
+      this->Form->LabelToNamePropertyMap[item->text(0)][item->text(1)].toUtf8().data(),
+      item->text(2).toUtf8().data());
   }
 
   // Set the output proxies.
@@ -239,8 +236,8 @@ void pqCustomFilterDefinitionWizard::createCustomFilter()
     pqOutputPort* port = qobject_cast<pqOutputPort*>(item->data(0, Qt::UserRole).value<QObject*>());
     if (port)
     {
-      this->Filter->ExposeOutputPort(port->getSource()->getSMName().toLocal8Bit().data(),
-        port->getPortNumber(), item->text(1).toLocal8Bit().data());
+      this->Filter->ExposeOutputPort(port->getSource()->getSMName().toUtf8().data(),
+        port->getPortNumber(), item->text(1).toUtf8().data());
     }
   }
 
@@ -249,26 +246,26 @@ void pqCustomFilterDefinitionWizard::createCustomFilter()
   for (i = 0; i < total; i++)
   {
     item = this->Form->PropertyList->topLevelItem(i);
-    this->Filter->ExposeProperty(item->text(0).toLocal8Bit().data(),
-      this->Form->LabelToNamePropertyMap[item->text(0)][item->text(1)].toLocal8Bit().data(),
-      item->text(2).toLocal8Bit().data());
+    this->Filter->ExposeProperty(item->text(0).toUtf8().data(),
+      this->Form->LabelToNamePropertyMap[item->text(0)][item->text(1)].toUtf8().data(),
+      item->text(2).toUtf8().data());
   }
 
   // Include any internal proxies.
   this->addAutoIncludedProxies();
 
   // Register the compound proxy definition with the server manager.
-  vtkPVXMLElement* root = this->Filter->SaveDefinition(0);
+  vtkPVXMLElement* root = this->Filter->SaveDefinition(nullptr);
   vtkSMSessionProxyManager* proxyManager = source->proxyManager();
   if (numInputs > 0)
   {
     proxyManager->RegisterCustomProxyDefinition(
-      "filters", this->Form->CustomFilterName->text().toLocal8Bit().data(), root);
+      "filters", this->Form->CustomFilterName->text().toUtf8().data(), root);
   }
   else
   {
     proxyManager->RegisterCustomProxyDefinition(
-      "sources", this->Form->CustomFilterName->text().toLocal8Bit().data(), root);
+      "sources", this->Form->CustomFilterName->text().toUtf8().data(), root);
   }
   root->Delete();
 }
@@ -299,7 +296,7 @@ void pqCustomFilterDefinitionWizard::addAutoIncludedProxies()
       for (unsigned int i = 0; i < proxy_count; i++)
       {
         vtkSMProxy* proxy = pp->GetProxy(i);
-        if (!proxy || pxm->GetProxyName("sources", proxy) != NULL)
+        if (!proxy || pxm->GetProxyName("sources", proxy) != nullptr)
         {
           continue;
         }
@@ -311,7 +308,7 @@ void pqCustomFilterDefinitionWizard::addAutoIncludedProxies()
   {
     QString name = "auto_";
     name += proxy->GetGlobalIDAsString();
-    this->Filter->AddProxy(name.toLocal8Bit().data(), proxy);
+    this->Filter->AddProxy(name.toUtf8().data(), proxy);
   }
 }
 
@@ -322,8 +319,9 @@ bool pqCustomFilterDefinitionWizard::validateCustomFilterName()
   QString filterName = this->Form->CustomFilterName->text();
   if (filterName.isEmpty())
   {
-    QMessageBox::warning(this, "No Name", "The custom filter name field is empty.\n"
-                                          "Please enter a unique name for the custom filter.",
+    QMessageBox::warning(this, "No Name",
+      "The custom filter name field is empty.\n"
+      "Please enter a unique name for the custom filter.",
       QMessageBox::Ok | QMessageBox::Default, QMessageBox::NoButton);
     this->Form->CustomFilterName->setFocus();
     return false;
@@ -334,11 +332,12 @@ bool pqCustomFilterDefinitionWizard::validateCustomFilterName()
     vtkSMProxyManager::GetProxyManager()->GetActiveSessionProxyManager();
   if (!this->OverwriteOK)
   {
-    if (proxyManager->GetProxyDefinition("filters", filterName.toLocal8Bit().data()) ||
-      proxyManager->GetProxyDefinition("sources", filterName.toLocal8Bit().data()))
+    if (proxyManager->GetProxyDefinition("filters", filterName.toUtf8().data()) ||
+      proxyManager->GetProxyDefinition("sources", filterName.toUtf8().data()))
     {
-      QMessageBox::warning(this, "Duplicate Name", "This filter name already exists.\n"
-                                                   "Please enter a different name.",
+      QMessageBox::warning(this, "Duplicate Name",
+        "This filter name already exists.\n"
+        "Please enter a different name.",
         QMessageBox::Ok | QMessageBox::Default, QMessageBox::NoButton);
       return false;
     }
@@ -361,7 +360,7 @@ void pqCustomFilterDefinitionWizard::setupDefaultInputOutput()
       if (proxy)
       {
         QStringList inputNames;
-        vtkSMInputProperty* input = 0;
+        vtkSMInputProperty* input = nullptr;
         vtkSMPropertyIterator* iter = proxy->NewPropertyIterator();
         for (iter->Begin(); !iter->IsAtEnd(); iter->Next())
         {
@@ -373,7 +372,7 @@ void pqCustomFilterDefinitionWizard::setupDefaultInputOutput()
         }
 
         iter->Delete();
-        if (inputNames.size() > 0)
+        if (!inputNames.empty())
         {
           // Add the "Input" property if it exists. Otherwise, use the
           // first property.
@@ -497,7 +496,7 @@ void pqCustomFilterDefinitionWizard::updateInputForm(const QModelIndex& current,
     vtkSMProxy* proxy = source->getProxy();
     if (proxy)
     {
-      vtkSMInputProperty* input = 0;
+      vtkSMInputProperty* input = nullptr;
       vtkSMPropertyIterator* iter = proxy->NewPropertyIterator();
       for (iter->Begin(); !iter->IsAtEnd(); iter->Next())
       {
@@ -563,7 +562,7 @@ void pqCustomFilterDefinitionWizard::updatePropertyForm(
     vtkSMProxy* proxy = source->getProxy();
     if (proxy)
     {
-      vtkSMInputProperty* input = 0;
+      vtkSMInputProperty* input = nullptr;
       vtkSMPropertyIterator* iter = proxy->NewPropertyIterator();
       for (iter->Begin(); !iter->IsAtEnd(); iter->Next())
       {
@@ -614,8 +613,9 @@ void pqCustomFilterDefinitionWizard::addInput()
   QString name = this->Form->InputName->text();
   if (name.isEmpty())
   {
-    QMessageBox::warning(this, "No Name", "The input name field is empty.\n"
-                                          "Please enter a unique name for the input.",
+    QMessageBox::warning(this, "No Name",
+      "The input name field is empty.\n"
+      "Please enter a unique name for the input.",
       QMessageBox::Ok | QMessageBox::Default, QMessageBox::NoButton);
     this->Form->InputName->setFocus();
     return;
@@ -623,8 +623,9 @@ void pqCustomFilterDefinitionWizard::addInput()
 
   if (this->Form->ExposedPropertyNames.contains(name))
   {
-    QMessageBox::warning(this, "Duplicate Name", "Another input already has the name entered.\n"
-                                                 "Please enter a unique name for the input.",
+    QMessageBox::warning(this, "Duplicate Name",
+      "Another input already has the name entered.\n"
+      "Please enter a unique name for the input.",
       QMessageBox::Ok | QMessageBox::Default, QMessageBox::NoButton);
     this->Form->InputName->setFocus();
     this->Form->InputName->selectAll();
@@ -734,8 +735,9 @@ void pqCustomFilterDefinitionWizard::addOutput()
   QString name = this->Form->OutputName->text();
   if (name.isEmpty())
   {
-    QMessageBox::warning(this, "No Name", "The output name field is empty.\n"
-                                          "Please enter a unique name for the output.",
+    QMessageBox::warning(this, "No Name",
+      "The output name field is empty.\n"
+      "Please enter a unique name for the output.",
       QMessageBox::Ok | QMessageBox::Default, QMessageBox::NoButton);
     this->Form->OutputName->setFocus();
     return;
@@ -743,8 +745,9 @@ void pqCustomFilterDefinitionWizard::addOutput()
 
   if (this->Form->ExposedPortNames.contains(name))
   {
-    QMessageBox::warning(this, "Duplicate Name", "Another output already has the name entered.\n"
-                                                 "Please enter a unique name for the output.",
+    QMessageBox::warning(this, "Duplicate Name",
+      "Another output already has the name entered.\n"
+      "Please enter a unique name for the output.",
       QMessageBox::Ok | QMessageBox::Default, QMessageBox::NoButton);
     this->Form->OutputName->setFocus();
     this->Form->OutputName->selectAll();
@@ -895,8 +898,9 @@ void pqCustomFilterDefinitionWizard::addProperty()
   QString name = this->Form->PropertyName->text();
   if (name.isEmpty())
   {
-    QMessageBox::warning(this, "No Name", "The property name field is empty.\n"
-                                          "Please enter a unique name for the property.",
+    QMessageBox::warning(this, "No Name",
+      "The property name field is empty.\n"
+      "Please enter a unique name for the property.",
       QMessageBox::Ok | QMessageBox::Default, QMessageBox::NoButton);
     this->Form->PropertyName->setFocus();
     return;
@@ -904,8 +908,9 @@ void pqCustomFilterDefinitionWizard::addProperty()
 
   if (this->Form->ExposedPropertyNames.contains(name))
   {
-    QMessageBox::warning(this, "Duplicate Name", "Another property already has the name entered.\n"
-                                                 "Please enter a unique name for the property.",
+    QMessageBox::warning(this, "Duplicate Name",
+      "Another property already has the name entered.\n"
+      "Please enter a unique name for the property.",
       QMessageBox::Ok | QMessageBox::Default, QMessageBox::NoButton);
     this->Form->PropertyName->setFocus();
     this->Form->PropertyName->selectAll();

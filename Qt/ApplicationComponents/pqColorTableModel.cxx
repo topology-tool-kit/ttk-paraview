@@ -41,7 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class pqColorTableModel::pqInternals
 {
 public:
-  std::vector<std::array<double, 6> > XRGBPoints;
+  std::vector<std::array<double, 6>> XRGBPoints;
 };
 
 //-----------------------------------------------------------------------------
@@ -56,6 +56,12 @@ pqColorTableModel::pqColorTableModel(pqColorOpacityEditorWidget* widget, QObject
 
   QObject::connect(this, SIGNAL(dataChanged(const QModelIndex&, const QModelIndex&)),
     SLOT(updatePoint(const QModelIndex&)));
+}
+
+//-----------------------------------------------------------------------------
+pqColorTableModel::~pqColorTableModel()
+{
+  delete this->Internals;
 }
 
 //-----------------------------------------------------------------------------

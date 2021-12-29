@@ -1,6 +1,6 @@
 set(classes
-  vtkMultiBlockVolumeMapper
   vtkMultiBlockUnstructuredGridVolumeMapper
+  vtkMultiBlockVolumeMapper
   vtkOpenGLGPUVolumeRayCastMapper
   vtkOpenGLProjectedTetrahedraMapper
   vtkOpenGLRayCastImageDisplayHelper
@@ -18,15 +18,15 @@ set(classes
 set(shader_files
   shaders/raycasterfs.glsl
   shaders/raycastervs.glsl
-  shaders/vtkglProjectedTetrahedraVS.glsl
-  shaders/vtkglProjectedTetrahedraFS.glsl)
+  shaders/vtkglProjectedTetrahedraFS.glsl
+  shaders/vtkglProjectedTetrahedraVS.glsl)
 
 set(template_classes
   vtkOpenGLVolumeLookupTables
 )
 
 set(sources)
-set(headers)
+set(private_headers)
 foreach (shader_file IN LISTS shader_files)
   vtk_encode_string(
     INPUT         "${shader_file}"
@@ -35,7 +35,7 @@ foreach (shader_file IN LISTS shader_files)
     HEADER_OUTPUT header
     SOURCE_OUTPUT source)
   list(APPEND sources ${source})
-  list(APPEND header ${header})
+  list(APPEND private_headers ${header})
 endforeach ()
 
 # Now for the object factory.
@@ -59,4 +59,4 @@ vtk_module_add_module(VTK::RenderingVolumeOpenGL2
   CLASSES ${classes}
   TEMPLATE_CLASSES  ${template_classes}
   SOURCES ${sources} ${vtk_object_factory_source}
-  PRIVATE_HEADERS ${headers} ${vtk_object_factory_header})
+  PRIVATE_HEADERS ${private_headers} ${vtk_object_factory_header})

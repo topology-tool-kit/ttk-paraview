@@ -31,6 +31,7 @@
 #include <InvalidVariableException.h>
 #include <DebugStream.h>
 
+#include <vtk_hdf5.h>
 #include <visit-hdf5.h>
 
 

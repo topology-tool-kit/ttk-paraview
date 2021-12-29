@@ -56,7 +56,7 @@
  * has been changed to include field data arrays since 5.0. Use
  * "any-except-field" for cases where the intention is to match any attribute arrays except
  * field data arrays.
-*/
+ */
 
 #ifndef vtkSMInputArrayDomain_h
 #define vtkSMInputArrayDomain_h
@@ -144,7 +144,7 @@ public:
    * is simply set to attribute_type.
    */
   static bool IsAttributeTypeAcceptable(
-    int required_type, int attribute_type, int* acceptable_as_type = NULL);
+    int required_type, int attribute_type, int* acceptable_as_type = nullptr);
 
   /**
    * This method will check if the arrayInfo contain info about an acceptable array,

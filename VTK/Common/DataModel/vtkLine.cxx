@@ -40,10 +40,6 @@ vtkLine::vtkLine()
 }
 
 //------------------------------------------------------------------------------
-static const int VTK_NO_INTERSECTION = 0;
-static const int VTK_YES_INTERSECTION = 2;
-static const int VTK_ON_LINE = 3;
-
 int vtkLine::EvaluatePosition(const double x[3], double closestPoint[3], int& subId,
   double pcoords[3], double& dist2, double weights[])
 {
@@ -56,7 +52,7 @@ int vtkLine::EvaluatePosition(const double x[3], double closestPoint[3], int& su
   this->Points->GetPoint(1, a2);
 
   // DistanceToLine sets pcoords[0] to a value t
-  dist2 = this->DistanceToLine(x, a1, a2, pcoords[0], closestPoint);
+  dist2 = vtkLine::DistanceToLine(x, a1, a2, pcoords[0], closestPoint);
 
   // pcoords[0] == t, need weights to be 1-t and t
   weights[0] = 1.0 - pcoords[0];
@@ -97,7 +93,7 @@ void vtkLine::EvaluateLocation(
 // The parameters (u,v) are the parametric coordinates of the lines at the
 // position of closest approach.
 int vtkLine::Intersection(const double a1[3], const double a2[3], const double b1[3],
-  const double b2[3], double& u, double& v)
+  const double b2[3], double& u, double& v, const double tolerance, int tolType)
 {
   double a21[3], b21[3], b1a1[3];
   double c[2];
@@ -107,15 +103,9 @@ int vtkLine::Intersection(const double a1[3], const double a2[3], const double b
   u = v = 0.0;
 
   //   Determine line vectors.
-  a21[0] = a2[0] - a1[0];
-  b21[0] = b2[0] - b1[0];
-  b1a1[0] = b1[0] - a1[0];
-  a21[1] = a2[1] - a1[1];
-  b21[1] = b2[1] - b1[1];
-  b1a1[1] = b1[1] - a1[1];
-  a21[2] = a2[2] - a1[2];
-  b21[2] = b2[2] - b1[2];
-  b1a1[2] = b1[2] - a1[2];
+  vtkMath::Subtract(a2, a1, a21);
+  vtkMath::Subtract(b2, b1, b21);
+  vtkMath::Subtract(b1, a1, b1a1);
 
   //   Compute the system (least squares) matrix.
   A[0] = row1;
@@ -129,7 +119,7 @@ int vtkLine::Intersection(const double a1[3], const double a2[3], const double b
   c[0] = vtkMath::Dot(a21, b1a1);
   c[1] = -vtkMath::Dot(b21, b1a1);
 
-  //  Solve the system of equations
+  //  Solve the system of equations. Check for colinearity.
   if (vtkMath::SolveLinearSystem(A, c, 2) == 0)
   {
     // The lines are colinear. Therefore, one of the four endpoints is the
@@ -151,28 +141,73 @@ int vtkLine::Intersection(const double a1[3], const double a2[3], const double b
         *(uv2[i]) = static_cast<double>(i % 2); // the corresponding extremum
       }
     }
-    return VTK_ON_LINE;
-  }
-  else
-  {
-    u = c[0];
-    v = c[1];
-  }
+    return OnLine;
+  } // if colinear
 
-  //  Check parametric coordinates for intersection.
+  // The lines are not colinear, check for intersection.
+  // However if they are nearly parallel then the solution
+  // found by vtkMath::SolveLinearSystem may be very inaccurate.
+  // We hence need to check the solution against a tolerance criterion.
+  u = c[0];
+  v = c[1];
+  // calculate intersection point using u
+  double ptu[] = { a21[0], a21[1], a21[2] };
+  vtkMath::MultiplyScalar(ptu, u);
+  vtkMath::Add(ptu, a1, ptu);
+  // calculate intersection point using v
+  double ptv[] = { b21[0], b21[1], b21[2] };
+  vtkMath::MultiplyScalar(ptv, v);
+  vtkMath::Add(ptv, b1, ptv);
+  // difference between the two intersection points should ideally be zero
+  double diff[3];
+  vtkMath::Subtract(ptu, ptv, diff);
+  double diff2 = vtkMath::SquaredNorm(diff);
+
+  double tol2 = 0.0;
+  if (std::isfinite(tolerance))
+  {
+    // compare either absolute or relative diff; hence either
+    // tolerance*tolerance or diff > tolerance * max(nrm(ptu),nrm(ptv))
+    // but without taking square roots.
+    tol2 = ((tolType == Absolute || tolType == AbsoluteFuzzy)
+        ? tolerance * tolerance
+        : tolerance * tolerance * std::max(vtkMath::SquaredNorm(ptv), vtkMath::SquaredNorm(ptu)));
+    if (diff2 > tol2)
+    {
+      return NoIntersect;
+    }
+  } // valid tolerance
+
+  // Check parametric coordinates for intersection within the two finite line
+  // segments specified. Special treatment is required to make sure that
+  // intersections near the line end points are not within tolerance.  Most
+  // intersections will occur within the 0<=u,v<=1 range, handle them as
+  // quickly as possible.
   if ((0.0 <= u) && (u <= 1.0) && (0.0 <= v) && (v <= 1.0))
   {
-    return VTK_YES_INTERSECTION;
+    return Intersect;
   }
-  else
+  // Otherwise the intersection may be within tolerance at one or both of the
+  // line end points. Note that we already know from previous calculations
+  // that the two points of intersection are within tol of each other; here
+  // we are checking whether they are on the line within the range
+  // (-tol <= u,v <= 1+tol).
+  else if (tolType >= RelativeFuzzy && tol2 > 0.0)
   {
-    return VTK_NO_INTERSECTION;
+    double uTol = sqrt(tol2 / vtkMath::SquaredNorm(a21));
+    double vTol = sqrt(tol2 / vtkMath::SquaredNorm(b21));
+    if ((-uTol <= u) && (u <= (1.0 + uTol)) && (-vTol <= v) && (v <= (1.0 + vTol)))
+    {
+      return Intersect;
+    }
   }
+
+  return NoIntersect;
 }
 
 //------------------------------------------------------------------------------
-int vtkLine::Intersection3D(
-  double a1[3], double a2[3], double b1[3], double b2[3], double& u, double& v)
+int vtkLine::Intersection3D(double a1[3], double a2[3], double b1[3], double b2[3], double& u,
+  double& v, const double tolerance)
 {
   // Description:
   // Performs intersection of two finite 3D lines. An intersection is found if
@@ -181,27 +216,10 @@ int vtkLine::Intersection3D(
   // closest points of approach are within a relative tolerance. The parameters
   // (u,v) are the parametric coordinates of the lines at the position of
   // closest approach.
-  int projectedIntersection = vtkLine::Intersection(a1, a2, b1, b2, u, v);
-
-  if (projectedIntersection == VTK_YES_INTERSECTION)
-  {
-    double a_i, b_i;
-    double lenA = 0.;
-    double lenB = 0.;
-    double dist = 0.;
-    for (unsigned i = 0; i < 3; i++)
-    {
-      a_i = a1[i] + (a2[i] - a1[i]) * u;
-      b_i = b1[i] + (b2[i] - b1[i]) * v;
-      lenA += (a2[i] - a1[i]) * (a2[i] - a1[i]);
-      lenB += (b2[i] - b1[i]) * (b2[i] - b1[i]);
-      dist += (a_i - b_i) * (a_i - b_i);
-    }
-    if (dist > 1.e-6 * (lenA > lenB ? lenA : lenB))
-      return VTK_NO_INTERSECTION;
-  }
-
-  return projectedIntersection;
+  //
+  // Note: Legacy method; vtkLine::Intersection() now performs the check that the
+  // distance between the closest points is within a relative tolerance.
+  return vtkLine::Intersection(a1, a2, b1, b2, u, v, tolerance);
 }
 
 int vtkLine::Inflate(double dist)
@@ -645,7 +663,10 @@ int vtkLine::IntersectWithLine(const double p1[3], const double p2[3], double to
   this->Points->GetPoint(0, a1);
   this->Points->GetPoint(1, a2);
 
-  if (this->Intersection(p1, p2, a1, a2, t, pcoords[0]) == VTK_YES_INTERSECTION)
+  // check line-line intersection; use inf tolerance which will force
+  // vtkLine::Intersection() to only check parametric intersection
+  // we then perform the tolerance check here using the absolute tolerance tol
+  if (this->Intersection(p1, p2, a1, a2, t, pcoords[0], vtkMath::Inf()) == Intersect)
   {
     // make sure we are within tolerance
     for (i = 0; i < 3; i++)
@@ -774,7 +795,7 @@ struct LINE_CASES_t
 };
 using LINE_CASES = struct LINE_CASES_t;
 
-static LINE_CASES lineCases[] = {
+LINE_CASES lineCases[] = {
   { { -1, -1 } },   // 0
   { { 100, 1 } },   // 1
   { { 0, 101 } },   // 2

@@ -68,29 +68,29 @@ public:
    * Test whether or not a given file should even be attempted for use with this
    * reader.
    */
-  int CanReadFile(const std::string& name);
+  int CanReadFile(VTK_FILEPATH const std::string& name);
 
   /**
    * Set the filename to be read
    */
-  void SetFileName(const std::string& fname);
+  void SetFileName(VTK_FILEPATH const std::string& fname);
 
-  //@{
+  ///@{
   /**
    * Given a json filename, parse and internally store a data
    * model. Has to be called before any data input can take place.
    * See the Fides documentation for the description of the schema.
    */
-  void ParseDataModel(const std::string& fname);
+  void ParseDataModel(VTK_FILEPATH const std::string& fname);
   void ParseDataModel();
-  //@}
+  ///@}
 
   /**
    * Set the path for a Fides data source. This can be a file, an
    * SST stream or an inline data source. The name of the data source
    * corresponds to what is in the data model.
    */
-  void SetDataSourcePath(const std::string& name, const std::string& path);
+  void SetDataSourcePath(const std::string& name, VTK_FILEPATH const std::string& path);
 
   /**
    * Implements various pipeline passes.
@@ -114,7 +114,7 @@ public:
    */
   int GetNextStepStatus();
 
-  //@{
+  ///@{
   /**
    * Methods to determine whether to output a set of vtkmDataSets
    * or native VTK datasets. If the pipeline following the reader
@@ -124,7 +124,7 @@ public:
   vtkBooleanMacro(ConvertToVTK, bool);
   vtkSetMacro(ConvertToVTK, bool);
   vtkGetMacro(ConvertToVTK, bool);
-  //@}
+  ///@}
 
   /**
    * Object to perform point array selection before update.
@@ -159,7 +159,6 @@ protected:
 
   vtkDataArraySelection* PointDataArraySelection;
   vtkDataArraySelection* CellDataArraySelection;
-  vtkDataArraySelection* FieldDataArraySelection;
 
   static vtkInformationIntegerKey* NUMBER_OF_BLOCKS();
 

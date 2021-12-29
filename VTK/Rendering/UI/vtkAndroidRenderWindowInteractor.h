@@ -44,14 +44,14 @@ public:
   static vtkAndroidRenderWindowInteractor* New();
 
   vtkTypeMacro(vtkAndroidRenderWindowInteractor, vtkRenderWindowInteractor);
-  void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /**
    * Initialize the event handler
    */
-  virtual void Initialize();
+  void Initialize() override;
 
-  //@{
+  ///@{
   /**
    * Enable/Disable interactions.  By default interactors are enabled when
    * initialized.  Initialize() must be called prior to enabling/disabling
@@ -61,18 +61,18 @@ public:
    * and all other interactors associated with the widget are disabled
    * when their data is not displayed.
    */
-  virtual void Enable();
-  virtual void Disable();
-  //@}
+  void Enable() override;
+  void Disable() override;
+  ///@}
 
   /**
    * Android specific application terminate, calls ClassExitMethod then
    * calls PostQuitMessage(0) to terminate the application. An application can Specify
    * ExitMethod for alternative behavior (i.e. suppression of keyboard exit)
    */
-  void TerminateApp(void);
+  void TerminateApp(void) override;
 
-  //@{
+  ///@{
   /**
    * Methods to set the default exit method for the class. This method is
    * only used if no instance level ExitMethod has been defined.  It is
@@ -81,13 +81,13 @@ public:
    */
   static void SetClassExitMethod(void (*f)(void*), void* arg);
   static void SetClassExitMethodArgDelete(void (*f)(void*));
-  //@}
+  ///@}
 
   /**
    * These methods correspond to the Exit, User and Pick
    * callbacks. They allow for the Style to invoke them.
    */
-  virtual void ExitCallback();
+  void ExitCallback() override;
 
   virtual void SetAndroidApplication(struct android_app* app) { this->AndroidApplication = app; }
 
@@ -110,6 +110,14 @@ public:
   void HandleCommand(int32_t cmd);
   int32_t HandleInput(AInputEvent* event);
 
+  ///@{
+  /**
+   * Returns true if the window is owned by VTK.
+   */
+  vtkSetMacro(OwnWindow, bool);
+  vtkGetMacro(OwnWindow, bool);
+  ///@}
+
 protected:
   vtkAndroidRenderWindowInteractor();
   ~vtkAndroidRenderWindowInteractor() override;
@@ -122,7 +130,7 @@ protected:
 
   bool Done; // is the event loop done running
 
-  //@{
+  ///@{
   /**
    * Class variables so an exit method can be defined for this class
    * (used to set different exit methods for various language bindings,
@@ -131,23 +139,25 @@ protected:
   static void (*ClassExitMethod)(void*);
   static void (*ClassExitMethodArgDelete)(void*);
   static void* ClassExitMethodArg;
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Win32-specific internal timer methods. See the superclass for detailed
    * documentation.
    */
-  virtual int InternalCreateTimer(int timerId, int timerType, unsigned long duration);
-  virtual int InternalDestroyTimer(int platformTimerId);
-  //@}
+  int InternalCreateTimer(int timerId, int timerType, unsigned long duration) override;
+  int InternalDestroyTimer(int platformTimerId) override;
+  ///@}
 
   /**
    * This will start up the event loop and never return. If you
    * call this method it will loop processing events until the
    * application is exited.
    */
-  virtual void StartEventLoop();
+  void StartEventLoop() override;
+
+  vtkTypeBool OwnWindow;
 
 private:
   vtkAndroidRenderWindowInteractor(const vtkAndroidRenderWindowInteractor&) = delete;

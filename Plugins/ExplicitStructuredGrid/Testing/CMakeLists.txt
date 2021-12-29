@@ -1,4 +1,4 @@
-if (PARAVIEW_USE_QT AND BUILD_SHARED_LIBS)
+if (BUILD_SHARED_LIBS)
 
   ExternalData_Expand_Arguments("ParaViewData" _
     "DATA{Data/explicitStructuredGrid.vtu}")

@@ -22,7 +22,6 @@
 #include "vtkInformationVector.h"
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
-#include "vtkPVCompositeDataInformation.h"
 #include "vtkPVDataInformation.h"
 #include "vtkSMPropertyHelper.h"
 #include "vtkSMSessionProxyManager.h"
@@ -56,7 +55,7 @@ struct vtkPVMultiServerDataSource::vtkInternal
     {
       this->OutputPortInformation->AddInformation(this->ExternalProxy->GetDataInformation());
       this->DataTypeToUse = this->OutputPortInformation->GetDataSetType();
-      if (this->OutputPortInformation->GetCompositeDataInformation()->GetDataIsComposite())
+      if (this->OutputPortInformation->IsCompositeDataSet())
       {
         this->DataTypeToUse = this->OutputPortInformation->GetCompositeDataSetType();
       }
@@ -80,7 +79,7 @@ vtkPVMultiServerDataSource::vtkPVMultiServerDataSource()
 vtkPVMultiServerDataSource::~vtkPVMultiServerDataSource()
 {
   delete this->Internal;
-  this->Internal = NULL;
+  this->Internal = nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -106,14 +105,14 @@ void vtkPVMultiServerDataSource::FetchData(vtkDataObject* dataObjectToFill)
     vtkSmartPointer<vtkSMSourceProxy> reductionFilter;
     reductionFilter.TakeReference(vtkSMSourceProxy::SafeDownCast(
       this->Internal->ExternalProxy->GetSessionProxyManager()->NewProxy(
-        "filters", "ReductionFilter", NULL)));
+        "filters", "ReductionFilter", nullptr)));
 
     // Set default appender
     std::string postGatherHelperName = "vtkAppendFilter";
     int datasetType = this->Internal->OutputPortInformation->GetDataSetType();
 
     // Handle custom ones
-    if (this->Internal->OutputPortInformation->GetCompositeDataInformation()->GetDataIsComposite())
+    if (this->Internal->OutputPortInformation->IsCompositeDataSet())
     {
       postGatherHelperName = "vtkMultiBlockDataGroupFilter";
     }
@@ -155,7 +154,7 @@ void vtkPVMultiServerDataSource::FetchData(vtkDataObject* dataObjectToFill)
     vtkSmartPointer<vtkSMSourceProxy> fetcher;
     fetcher.TakeReference(
       vtkSMSourceProxy::SafeDownCast(reductionFilter->GetSessionProxyManager()->NewProxy(
-        "filters", "ClientServerMoveData", NULL)));
+        "filters", "ClientServerMoveData", nullptr)));
     vtkSMPropertyHelper(fetcher, "Input").Set(reductionFilter);
     vtkSMPropertyHelper(fetcher, "OutputDataType").Set(dataType);
     vtkSMPropertyHelper(fetcher, "WholeExtent").Set(extent, 6);
@@ -178,7 +177,7 @@ int vtkPVMultiServerDataSource::RequestDataObject(vtkInformation*,
   int datasetType = this->Internal->DataTypeToUse;
 
   // Make sure our output is of the correct type
-  if (output == NULL || output->GetDataObjectType() != datasetType)
+  if (output == nullptr || output->GetDataObjectType() != datasetType)
   {
     output = vtkDataObjectTypes::NewDataObject(datasetType);
     outInfo->Set(vtkDataObject::DATA_OBJECT(), output);

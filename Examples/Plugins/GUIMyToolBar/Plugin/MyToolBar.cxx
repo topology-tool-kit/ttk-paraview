@@ -18,13 +18,11 @@ MyToolBar::MyToolBar(QWidget* parentW)
   this->constructor();
 }
 
-MyToolBar::~MyToolBar()
-{
-}
+MyToolBar::~MyToolBar() = default;
 
 void MyToolBar::constructor()
 {
   this->addWidget(new QLabel("Custom Toolbar", this));
   this->addAction(qApp->style()->standardIcon(QStyle::SP_MessageBoxInformation), "My Action",
-    []() { QMessageBox::information(NULL, "MyAction", "MyAction was invoked\n"); });
+    []() { QMessageBox::information(nullptr, "MyAction", "MyAction was invoked\n"); });
 }

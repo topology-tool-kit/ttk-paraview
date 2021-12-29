@@ -37,13 +37,14 @@ resulting in wrapper code that is faster and more compact.
 #include "vtkCompiler.h" // for VTK_USE_EXTERN_TEMPLATE
 #include "vtkUnicodeString.h"
 
+#include <cassert>
 #include <cstring>
 #include <string>
 
 class VTKWRAPPINGPYTHONCORE_EXPORT vtkPythonArgs
 {
 public:
-  //@{
+  ///@{
   /**
    * Constructor for parsing args of a vtkObjectBase object.
    */
@@ -55,9 +56,9 @@ public:
     this->M = PyType_Check(self);
     this->I = this->M;
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Constructor for parsing method args.
    */
@@ -69,7 +70,7 @@ public:
     this->M = 0;
     this->I = 0;
   }
-  //@}
+  ///@}
 
   /**
    * Reset in order to re-parse the args.
@@ -153,7 +154,7 @@ public:
    */
   bool CheckSizeHint(int i, size_t m, size_t n);
 
-  //@{
+  ///@{
   /**
    * Get the next argument as a naked Python object.
    */
@@ -169,9 +170,9 @@ public:
     v = vtkPythonArgs::GetArgAsPythonObject(o, b);
     return b;
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the next argument as a vtkObjectBase derived type.
    * It uses a C-style cast instead of a static_cast, which
@@ -193,9 +194,9 @@ public:
     v = (T*)vtkPythonArgs::GetArgAsVTKObject(o, classname, b);
     return b;
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the next argument as a special object.  If a constructor
    * was needed to convert the arg, the constructed object will be
@@ -213,9 +214,9 @@ public:
     v = static_cast<T*>(vtkPythonArgs::GetArgAsSpecialObject(arg, classname, &o));
     return (v != nullptr);
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the next argument as a special object.  Use this if the
    * arg is a non-const ref, as it will disallow conversion.
@@ -232,9 +233,9 @@ public:
     v = static_cast<T*>(vtkPythonArgs::GetArgAsSpecialObject(o, classname, nullptr));
     return (v != nullptr);
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the next argument as an enum value.
    */
@@ -252,16 +253,16 @@ public:
     v = static_cast<T>(vtkPythonArgs::GetArgAsEnum(o, enumname, r));
     return r;
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the arguments needed for a SetExecuteMethod or a similar
    * method that requires a function-pointer argument.
    */
   bool GetFunction(PyObject*& o);
   static bool GetFunction(PyObject* arg, PyObject*& o);
-  //@}
+  ///@}
 
   // Get the next arg as a pointer to a buffer.
   bool GetBuffer(void*& a, Py_buffer* buf);
@@ -325,7 +326,7 @@ public:
   bool GetBuffer(const unsigned long long*& a, Py_buffer* buf);
   static bool GetBuffer(PyObject* o, const unsigned long long*& a, Py_buffer* buf);
 
-  //@{
+  ///@{
   /**
    * Get the next argument as a string.
    */
@@ -333,19 +334,21 @@ public:
   static bool GetValue(PyObject* o, const char*& a);
   bool GetValue(std::string& a);
   static bool GetValue(PyObject* o, std::string& a);
+  VTK_DEPRECATED_IN_9_1_0("Use bool GetValue(std::string& a)")
   bool GetValue(vtkUnicodeString& a);
+  VTK_DEPRECATED_IN_9_1_0("Use static bool GetValue(PyObject* o, std::string& a)")
   static bool GetValue(PyObject* o, vtkUnicodeString& a);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the next string arg as a character.
    */
   bool GetValue(char& a);
   static bool GetValue(PyObject* o, char& a);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the next argument.  Sets a TypeError on failure.
    */
@@ -375,9 +378,19 @@ public:
   static bool GetValue(PyObject* o, long long& a);
   bool GetValue(unsigned long long& a);
   static bool GetValue(PyObject* o, unsigned long long& a);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
+  /**
+   * Get the next argument as file system path.
+   */
+  bool GetFilePath(const char*& a);
+  static bool GetFilePath(PyObject* o, const char*& a);
+  bool GetFilePath(std::string& a);
+  static bool GetFilePath(PyObject* o, std::string& a);
+  ///@}
+
+  ///@{
   /**
    * Get the next argument as an array.
    */
@@ -396,10 +409,11 @@ public:
   bool GetArray(long long* a, size_t n);
   bool GetArray(unsigned long long* a, size_t n);
   bool GetArray(std::string* a, size_t n);
+  VTK_DEPRECATED_IN_9_1_0("Use bool GetArray(std::string* a, size_t n)")
   bool GetArray(vtkUnicodeString* a, size_t n);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the next argument as a multi-dimensional array.
    */
@@ -417,13 +431,14 @@ public:
   bool GetNArray(unsigned long* a, int ndims, const size_t* dims);
   bool GetNArray(long long* a, int ndims, const size_t* dims);
   bool GetNArray(unsigned long long* a, int ndims, const size_t* dims);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set the value of an argument that was passed by reference.
    */
   bool SetArgValue(int i, const std::string& a);
+  VTK_DEPRECATED_IN_9_1_0("Use bool SetArgValue(int i, const std::string& a)")
   bool SetArgValue(int i, const vtkUnicodeString& a);
   bool SetArgValue(int i, char a);
   bool SetArgValue(int i, float a);
@@ -452,9 +467,9 @@ public:
   bool SetArgValue(int i, const unsigned long* a, size_t n);
   bool SetArgValue(int i, const long long* a, size_t n);
   bool SetArgValue(int i, const unsigned long long* a, size_t n);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set the values in an array argument.
    */
@@ -472,9 +487,9 @@ public:
   bool SetArray(int i, const unsigned long* a, size_t n);
   bool SetArray(int i, const long long* a, size_t n);
   bool SetArray(int i, const unsigned long long* a, size_t n);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set the values in a multi-dimensional array argument.
    */
@@ -492,7 +507,7 @@ public:
   bool SetNArray(int i, const unsigned long* a, int n, const size_t* d);
   bool SetNArray(int i, const long long* a, int n, const size_t* d);
   bool SetNArray(int i, const unsigned long long* a, int n, const size_t* d);
-  //@}
+  ///@}
 
   /**
    * Set the contents of the specified argument from a sequence,
@@ -531,22 +546,23 @@ public:
    */
   static PyObject* BuildValue(const void* v);
 
-  //@{
+  ///@{
   /**
    * Build a string return value.
    */
   static PyObject* BuildValue(const char* v, size_t l);
   static PyObject* BuildValue(const char* v);
   static PyObject* BuildValue(const std::string& v);
+  VTK_DEPRECATED_IN_9_1_0("Use static PyObject* BuildValue(const std::string& v)")
   static PyObject* BuildValue(const vtkUnicodeString& v);
-  //@}
+  ///@}
 
   /**
    * Build a char return value.
    */
   static PyObject* BuildValue(char v);
 
-  //@{
+  ///@{
   /**
    * Build a numeric return value.
    */
@@ -558,14 +574,14 @@ public:
   static PyObject* BuildValue(unsigned long v);
   static PyObject* BuildValue(long long v);
   static PyObject* BuildValue(unsigned long long v);
-  //@}
+  ///@}
 
   /**
    * Build a bytes object (or string).
    */
   static PyObject* BuildBytes(const char* v, size_t n);
 
-  //@{
+  ///@{
   /**
    * Build a tuple for a return value.
    */
@@ -583,8 +599,9 @@ public:
   static PyObject* BuildTuple(const long long* a, size_t n);
   static PyObject* BuildTuple(const unsigned long long* a, size_t n);
   static PyObject* BuildTuple(const std::string* a, size_t n);
+  VTK_DEPRECATED_IN_9_1_0("Use static PyObject* BuildTuple(const std::string* a, size_t n)")
   static PyObject* BuildTuple(const vtkUnicodeString* a, size_t n);
-  //@}
+  ///@}
 
   /**
    * Copy an array.
@@ -592,7 +609,14 @@ public:
   template <class T>
   static void Save(const T* a, T* b, size_t n)
   {
-    memcpy(b, a, n * sizeof(T));
+    if (b && a)
+    {
+      memcpy(b, a, n * sizeof(T));
+    }
+    else
+    {
+      assert(n == 0);
+    }
   }
 
   /**
@@ -601,7 +625,15 @@ public:
   template <class T>
   static bool HasChanged(const T* a, const T* b, size_t n)
   {
-    return (memcmp(a, b, n * sizeof(T)) != 0);
+    if (a && b)
+    {
+      return (memcmp(a, b, n * sizeof(T)) != 0);
+    }
+    else
+    {
+      assert(n == 0);
+      return false; // Actually indeterminate, but this is compatible.
+    }
   }
 
   /**
@@ -658,37 +690,37 @@ protected:
    */
   static PyObject* GetSelfFromFirstArg(PyObject* self, PyObject* args);
 
-  //@{
+  ///@{
   /**
    * Get the next argument as an object of the given type.
    */
   PyObject* GetArgAsPythonObject(bool& valid);
   static PyObject* GetArgAsPythonObject(PyObject* o, bool& valid);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the next argument as an object of the given type.
    */
   vtkObjectBase* GetArgAsVTKObject(const char* classname, bool& valid);
   static vtkObjectBase* GetArgAsVTKObject(PyObject* o, const char* classname, bool& valid);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the next argument as an object of the given type.
    */
   void* GetArgAsSpecialObject(const char* classname, PyObject** p);
   static void* GetArgAsSpecialObject(PyObject* o, const char* classname, PyObject** p);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the next argument as an object of the given type.
    */
   int GetArgAsEnum(const char* enumname, bool& valid);
   static int GetArgAsEnum(PyObject* o, const char* enumname, bool& valid);
-  //@}
+  ///@}
 
   /**
    * Raise a TypeError if a virtual method call was called.
@@ -835,14 +867,10 @@ inline PyObject* vtkPythonArgs::BuildValue(const void* a)
 
 inline PyObject* vtkPythonArgs::BuildValue(const char* a, size_t l)
 {
-#if PY_VERSION_HEX < 0x03000000
+#ifndef VTK_PY3K
   return PyString_FromStringAndSize(a, static_cast<Py_ssize_t>(l));
 #else
-#if PY_VERSION_HEX >= 0x03030000
   PyObject* o = PyUnicode_FromStringAndSize(a, static_cast<Py_ssize_t>(l));
-#else
-  PyObject* o = PyUnicode_Decode(a, static_cast<Py_ssize_t>(l), nullptr, nullptr);
-#endif
   if (o == nullptr)
   {
     PyErr_Clear();
@@ -871,11 +899,7 @@ inline PyObject* vtkPythonArgs::BuildValue(const vtkUnicodeString& a)
 {
   std::string s;
   a.utf8_str(s);
-#ifdef Py_USING_UNICODE
   return PyUnicode_DecodeUTF8(s.c_str(), static_cast<Py_ssize_t>(s.size()), nullptr);
-#else
-  return PyString_FromStringAndSize(s.c_str(), static_cast<Py_ssize_t>(s.size()));
-#endif
 }
 
 inline PyObject* vtkPythonArgs::BuildValue(char a)

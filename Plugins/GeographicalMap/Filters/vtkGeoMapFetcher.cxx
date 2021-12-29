@@ -21,11 +21,13 @@
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
 #include "vtkPNGReader.h"
+#include "vtkPointData.h"
 #include "vtkStreamingDemandDrivenPipeline.h"
 
 #include <curl/curl.h>
 
 #include <cassert>
+#include <cmath>
 #include <sstream>
 
 //-----------------------------------------------------------------------------
@@ -156,6 +158,11 @@ int vtkGeoMapFetcher::RequestData(
         url << "terrain";
         break;
     }
+    url << "&size=" << this->Dimension[0] << "x" << this->Dimension[1];
+    if (this->Upscale)
+    {
+      url << "&scale=2";
+    }
   }
   else
   {
@@ -176,27 +183,83 @@ int vtkGeoMapFetcher::RequestData(
         url << "light";
         break;
     }
-  }
-  url << "&center=" << this->Center[0] << "," << this->Center[1];
-  url << "&zoom=" << this->ZoomLevel;
-  url << "&size=" << this->Dimension[0] << (this->Provider == GoogleMap ? "x" : ",")
-      << this->Dimension[1];
-
-  if (this->Upscale)
-  {
-    if (this->Provider == GoogleMap)
-    {
-      url << "&scale=2";
-    }
-    else
+    url << "&size=" << this->Dimension[0] << "," << this->Dimension[1];
+    if (this->Upscale)
     {
       url << "@2x";
     }
   }
 
+  int currentZoomLevel = this->ZoomLevel;
+  double currentCenter[2] = { this->Center[0], this->Center[1] };
+  if (this->FetchingMethod == BoundingBox)
+  {
+    // If we use the bounding box we'll use it to approximate the center and the needed
+    // zoom level. This allows us to stay coherent with image fetched using the `Zoom and
+    // center` method and when fetching images with different providers. Also behaviour
+    // when using both BoundingBox and Size parameters of the MapQuest API seems to gives
+    // uncoherent images.
+    // With this method, we ensure that BB Of The Result Image >= BB Of The Input Mesh.
+
+    currentCenter[0] = (this->MapBoundingBox[0] + this->MapBoundingBox[1]) * 0.5;
+    currentCenter[1] = (this->MapBoundingBox[2] + this->MapBoundingBox[3]) * 0.5;
+    double deltaLat = std::abs(2.0 * (this->MapBoundingBox[1] - currentCenter[0]));
+    double deltaLng = std::abs(2.0 * (this->MapBoundingBox[3] - currentCenter[1]));
+
+    if (deltaLat == 0.0 && deltaLng == 0.0)
+    {
+      vtkWarningMacro("Input bounding box is empty, aborting.");
+      return 0;
+    }
+
+    if (deltaLat > deltaLng)
+    {
+      currentZoomLevel = static_cast<int>(std::round(std::log2(this->Dimension[0] / deltaLat)));
+    }
+    else
+    {
+      currentZoomLevel = static_cast<int>(std::round(std::log2(this->Dimension[1] / deltaLng)));
+    }
+  }
+  url << "&center=" << currentCenter[0] << "," << currentCenter[1];
+  url << "&zoom=" << currentZoomLevel;
+
+  if (!this->FetchVtkPNG(url.str(), output))
+  {
+    vtkErrorMacro(<< "Couldn't fetch geographical image.");
+    return 0;
+  }
+
+  // Reproject image
+  int* dims = output->GetDimensions();
+  double origin[2];
+  vtkGeoMapFetcher::LatLngToPoint(currentCenter[0], currentCenter[1], origin[0], origin[1]);
+
+  // shift to corner
+  int scale = (1 << (currentZoomLevel + static_cast<int>(this->Upscale)));
+  origin[0] -= 0.5 * dims[0] / scale;
+  origin[1] -= 0.5 * dims[1] / scale;
+
+  vtkGeoMapFetcher::PointToLatLng(origin[0], origin[1], origin[0], origin[1]);
+
+  // swap lat/lon in order to have lon=X and lat=Y
+  double spacing[2] = { 2.0 * (currentCenter[0] - origin[0]) / dims[1],
+    2.0 * (currentCenter[1] - origin[1]) / dims[0] };
+
+  output->SetSpacing(spacing[1], spacing[0], 1.0);
+  output->SetOrigin(origin[1], origin[0], 0.0);
+
+  output->GetPointData()->SetActiveScalars("PNGImage");
+
+  return 1;
+}
+
+//-----------------------------------------------------------------------------
+bool vtkGeoMapFetcher::FetchVtkPNG(const std::string& url, vtkImageData* dest)
+{
   // download buffer
   std::vector<char> buffer;
-  if (!this->DownloadData(url.str(), buffer))
+  if (!this->DownloadData(url, buffer))
   {
     return 0;
   }
@@ -207,7 +270,7 @@ int vtkGeoMapFetcher::RequestData(
   if (strncmp(pngMagic, buffer.data(), 8) != 0)
   {
     vtkErrorMacro("Download failed: " << buffer.data());
-    return 0;
+    return false;
   }
 
   // convert to image
@@ -215,37 +278,16 @@ int vtkGeoMapFetcher::RequestData(
   pngReader->SetMemoryBufferLength(static_cast<vtkIdType>(buffer.size()));
   pngReader->SetMemoryBuffer(buffer.data());
   pngReader->Update();
+  dest->ShallowCopy(pngReader->GetOutput());
 
-  output->ShallowCopy(pngReader->GetOutput());
-
-  // set origin/spacing
-  int* dims = output->GetDimensions();
-
+  int* dims = dest->GetDimensions();
   if (dims[0] < 1 || dims[1] < 1)
   {
     vtkErrorMacro("Error during PNG read.");
-    return 0;
+    return false;
   }
 
-  // initialize origin to the center point
-  double origin[2];
-  vtkGeoMapFetcher::LatLngToPoint(this->Center[0], this->Center[1], origin[0], origin[1]);
-
-  // shift to corner
-  int scale = (1 << (this->ZoomLevel + (this->Upscale ? 1 : 0)));
-  origin[0] -= 0.5 * dims[0] / scale;
-  origin[1] -= 0.5 * dims[1] / scale;
-
-  vtkGeoMapFetcher::PointToLatLng(origin[0], origin[1], origin[0], origin[1]);
-
-  // swap lat/lon in order to have lon=X and lat=Y
-  double spacing[2] = { 2.0 * (this->Center[0] - origin[0]) / dims[1],
-    2.0 * (this->Center[1] - origin[1]) / dims[0] };
-
-  output->SetSpacing(spacing[1], spacing[0], 1.0);
-  output->SetOrigin(origin[1], origin[0], 0.0);
-
-  return 1;
+  return true;
 }
 
 //-----------------------------------------------------------------------------

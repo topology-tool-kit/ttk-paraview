@@ -58,7 +58,7 @@ bool vtkPVPlugin::ImportPlugin(vtkPVPlugin* plugin)
     }
   }
 
-  vtkVLogIfF(PARAVIEW_LOG_PLUGIN_VERBOSITY(), (msg.str().size() > 0), "Import status: %s \n%s",
+  vtkVLogIfF(PARAVIEW_LOG_PLUGIN_VERBOSITY(), (!msg.str().empty()), "Import status: %s \n%s",
     (status ? "success" : "failure"), msg.str().c_str());
   return status;
 }
@@ -85,9 +85,7 @@ void vtkPVPlugin::SetFileName(const char* filename)
 }
 
 //-----------------------------------------------------------------------------
-void vtkPVPlugin::GetBinaryResources(std::vector<std::string>&)
-{
-}
+void vtkPVPlugin::GetBinaryResources(std::vector<std::string>&) {}
 
 //-----------------------------------------------------------------------------
 void vtkPVPlugin::SetEULAConfirmationCallback(vtkPVPlugin::EULAConfirmationCallback ptr)

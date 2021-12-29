@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ui_pqFileMenuBuilder.h"
 
 #include "pqAboutDialogReaction.h"
+#include "pqAnimatedExportReaction.h"
 #include "pqAnimationTimeToolbar.h"
 #include "pqApplicationCore.h"
 #include "pqApplicationSettingsReaction.h"
@@ -109,8 +110,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #if VTK_MODULE_ENABLE_ParaView_pqPython
 #include "pqMacroReaction.h"
-#include "pqPythonManager.h"
 #include "pqTraceReaction.h"
+
+#include <pqPythonManager.h>
+#include <pqPythonScriptEditorReaction.h>
 #endif
 
 #include <QApplication>
@@ -130,11 +133,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class pqActiveDisabledStyle : public QProxyStyle
 {
 public:
-  int styleHint(StyleHint hint, const QStyleOption* option = 0, const QWidget* widget = 0,
-    QStyleHintReturn* returnData = 0) const override
+  int styleHint(StyleHint hint, const QStyleOption* option = nullptr,
+    const QWidget* widget = nullptr, QStyleHintReturn* returnData = nullptr) const override
   {
-    return hint == QStyle::SH_Menu_AllowActiveAndDisabled ? 1 : QProxyStyle::styleHint(
-                                                                  hint, option, widget, returnData);
+    return hint == QStyle::SH_Menu_AllowActiveAndDisabled
+      ? 1
+      : QProxyStyle::styleHint(hint, option, widget, returnData);
   }
 };
 
@@ -176,6 +180,11 @@ void pqParaViewMenuBuilders::buildFileMenu(QMenu& menu)
   new pqSaveAnimationGeometryReaction(ui.actionFileSaveGeometry);
 
   new pqExportReaction(ui.actionExport);
+#if VTK_MODULE_ENABLE_ParaView_pqPython
+  new pqAnimatedExportReaction(ui.actionAnimatedExport);
+#else
+  ui.actionAnimatedExport->setEnabled(false);
+#endif
   new pqSaveExtractsReaction(ui.actionFileSaveExtracts);
   new pqSaveDataReaction(ui.actionFileSaveData);
 
@@ -245,7 +254,9 @@ void pqParaViewMenuBuilders::buildFiltersMenu(
   QMenu& menu, QMainWindow* mainWindow, bool hideDisabled, bool quickLaunchable)
 {
   // Make sure disabled actions are still considered active
-  menu.setStyle(new pqActiveDisabledStyle);
+  auto* style = new pqActiveDisabledStyle;
+  style->setParent(&menu);
+  menu.setStyle(style);
 
   pqProxyGroupMenuManager* mgr =
     new pqProxyGroupMenuManager(&menu, "ParaViewFilters", quickLaunchable);
@@ -277,7 +288,9 @@ void pqParaViewMenuBuilders::buildExtractorsMenu(
   QMenu& menu, QMainWindow* mainWindow, bool hideDisabled, bool quickLaunchable)
 {
   // Make sure disabled actions are still considered active
-  menu.setStyle(new pqActiveDisabledStyle);
+  auto* style = new pqActiveDisabledStyle;
+  style->setParent(&menu);
+  menu.setStyle(style);
 
   pqProxyGroupMenuManager* mgr =
     new pqProxyGroupMenuManager(&menu, "ParaViewExtractWriters", quickLaunchable);
@@ -347,6 +360,9 @@ void pqParaViewMenuBuilders::buildToolsMenu(QMenu& menu)
   menu.addSeparator(); // --------------------------------------------------
   new pqTraceReaction(menu.addAction("Start Trace") << pqSetName("actionToolsStartStopTrace"),
     "Start Trace", "Stop Trace");
+  menu.addSeparator();
+  new pqPythonScriptEditorReaction(
+    menu.addAction("Python Script Editor") << pqSetName("actionToolsOpenScriptEditor"));
 #endif
 }
 
@@ -583,7 +599,7 @@ void pqParaViewMenuBuilders::buildHelpMenu(QMenu& menu)
   // Getting Started with ParaView
   new pqDesktopServicesReaction(QUrl::fromLocalFile(paraViewGettingStartedFile),
     (menu.addAction(QIcon(":/pqWidgets/Icons/pdf.png"), "Getting Started with ParaView")
-                                  << pqSetName("actionGettingStarted")));
+      << pqSetName("actionGettingStarted")));
 
   QString versionString = QString("%1.%2.%3")
                             .arg(vtkSMProxyManager::GetVersionMajor())
@@ -627,13 +643,13 @@ void pqParaViewMenuBuilders::buildHelpMenu(QMenu& menu)
                           .arg(vtkSMProxyManager::GetVersionMajor())
                           .arg(vtkSMProxyManager::GetVersionMinor())
                           .arg(vtkSMProxyManager::GetVersionPatch());
-  new pqDesktopServicesReaction(
-    QUrl(tutorialURL), (menu.addAction(QIcon(":/pqWidgets/Icons/pdf.png"), "ParaView Tutorial")
-                         << pqSetName("actionTutorialNotes")));
+  new pqDesktopServicesReaction(QUrl(tutorialURL),
+    (menu.addAction(QIcon(":/pqWidgets/Icons/pdf.png"), "ParaView Self-directed Tutorial")
+      << pqSetName("actionTutorialNotes")));
 
   // Sandia National Labs Tutorials
-  new pqDesktopServicesReaction(QUrl("http://www.paraview.org/Wiki/SNL_ParaView_4_Tutorials"),
-    (menu.addAction("Sandia National Labs Tutorials") << pqSetName("actionSNLTutorial")));
+  new pqDesktopServicesReaction(QUrl("https://www.paraview.org/Wiki/ParaView_Classroom_Tutorials"),
+    (menu.addAction("ParaView Classroom Tutorials") << pqSetName("actionClassroomTutorial")));
 
   // Example Data Sets
 
@@ -653,7 +669,7 @@ void pqParaViewMenuBuilders::buildHelpMenu(QMenu& menu)
     (menu.addAction("ParaView Wiki") << pqSetName("actionWiki")));
 
   // ParaView Community Support
-  new pqDesktopServicesReaction(QUrl("http://www.paraview.org/community-support/"),
+  new pqDesktopServicesReaction(QUrl("https://discourse.paraview.org/c/paraview-support"),
     (menu.addAction("ParaView Community Support") << pqSetName("actionCommunitySupport")));
 
   // ParaView Release Notes

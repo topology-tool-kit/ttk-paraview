@@ -15,30 +15,29 @@
 #include "vtkSMMaterialLibraryProxy.h"
 
 #include "vtkClientServerStream.h"
+#include "vtkImageData.h"
 #include "vtkObjectFactory.h"
-#include "vtkPVConfig.h"
 #include "vtkPVMaterialLibrary.h"
 #include "vtkPVSession.h"
+#include "vtkPVTrivialProducer.h"
 #include "vtkProcessModule.h"
+#include "vtkSMInputProperty.h"
 #include "vtkSMPropertyHelper.h"
 #include "vtkSMProxyInternals.h"
+#include "vtkSMProxyManager.h"
 #include "vtkSMSession.h"
+#include "vtkSMSessionProxyManager.h"
+#include "vtkSMSourceProxy.h"
 #include "vtkSmartPointer.h"
+#include "vtkTexture.h"
+
+#include <numeric>
 
 #if VTK_MODULE_ENABLE_VTK_RenderingRayTracing
 #include "vtkOSPRayMaterialLibrary.h"
 #endif
 
 vtkStandardNewMacro(vtkSMMaterialLibraryProxy);
-//-----------------------------------------------------------------------------
-vtkSMMaterialLibraryProxy::vtkSMMaterialLibraryProxy()
-{
-}
-
-//-----------------------------------------------------------------------------
-vtkSMMaterialLibraryProxy::~vtkSMMaterialLibraryProxy()
-{
-}
 
 //-----------------------------------------------------------------------------
 void vtkSMMaterialLibraryProxy::LoadMaterials(const char* filename)
@@ -49,10 +48,10 @@ void vtkSMMaterialLibraryProxy::LoadMaterials(const char* filename)
          << vtkClientServerStream::End;
   this->ExecuteStream(stream, false, vtkPVSession::RENDER_SERVER_ROOT);
 
+  // Synchronize from server to client
   this->Synchronize();
 #else
   (void)filename;
-  return;
 #endif
 }
 
@@ -65,13 +64,12 @@ void vtkSMMaterialLibraryProxy::LoadDefaultMaterials()
   stream << vtkClientServerStream::Invoke << VTKOBJECT(this) << "ReadRelativeFile"
          << "ospray_mats.json" << vtkClientServerStream::End;
   this->ExecuteStream(stream, false, vtkPVSession::RENDER_SERVER_ROOT);
-#else
-  return;
 #endif
 }
 
 //-----------------------------------------------------------------------------
-void vtkSMMaterialLibraryProxy::Synchronize()
+void vtkSMMaterialLibraryProxy::Synchronize(
+  vtkPVSession::ServerFlags from, vtkPVSession::ServerFlags to)
 {
 #if VTK_MODULE_ENABLE_VTK_RenderingRayTracing
   bool builtinMode = false;
@@ -80,15 +78,14 @@ void vtkSMMaterialLibraryProxy::Synchronize()
     // avoid serialization in serial since uneccessary and can be slow
     builtinMode = true;
   }
-
   if (!builtinMode)
   {
     vtkClientServerStream stream;
     stream << vtkClientServerStream::Invoke << VTKOBJECT(this) << "WriteBuffer"
            << vtkClientServerStream::End;
-    this->ExecuteStream(stream, false, vtkPVSession::RENDER_SERVER_ROOT);
+    this->ExecuteStream(stream, false, from);
 
-    vtkClientServerStream res = this->GetLastResult(vtkPVSession::RENDER_SERVER_ROOT);
+    vtkClientServerStream res = this->GetLastResult(from);
     std::string resbuf = "";
     res.GetArgument(0, 0, &resbuf);
     if (!resbuf.empty())
@@ -96,7 +93,7 @@ void vtkSMMaterialLibraryProxy::Synchronize()
       vtkClientServerStream stream2;
       stream2 << vtkClientServerStream::Invoke << VTKOBJECT(this) << "ReadBuffer" << resbuf
               << vtkClientServerStream::End;
-      this->ExecuteStream(stream2, false, vtkProcessModule::CLIENT);
+      this->ExecuteStream(stream2, false, to);
     }
   }
 
@@ -104,14 +101,9 @@ void vtkSMMaterialLibraryProxy::Synchronize()
     vtkPVMaterialLibrary::SafeDownCast(this->GetClientSideObject())->GetMaterialLibrary());
   ml->Fire();
 #else
-  return;
+  (void)from;
+  (void)to;
 #endif
-}
-
-//-----------------------------------------------------------------------------
-void vtkSMMaterialLibraryProxy::PrintSelf(ostream& os, vtkIndent indent)
-{
-  this->Superclass::PrintSelf(os, indent);
 }
 
 //-----------------------------------------------------------------------------

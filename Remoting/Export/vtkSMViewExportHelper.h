@@ -20,7 +20,7 @@
  * create instances of this helper on-demand to query available exporters and
  * create and exporter proxy (in same spirit as vtkSMWriterFactory, except that
  * there's no globally existing instance).
-*/
+ */
 
 #ifndef vtkSMViewExportHelper_h
 #define vtkSMViewExportHelper_h
@@ -52,7 +52,7 @@ public:
 
   /**
    * Exports the view to the given output file. Returns a new exporter instance
-   * (or NULL). Caller must release the returned object explicitly.
+   * (or nullptr). Caller must release the returned object explicitly.
    */
   virtual vtkSMExporterProxy* CreateExporter(const char* filename, vtkSMViewProxy*);
 

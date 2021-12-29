@@ -25,7 +25,7 @@
 #include "vtkReservedRemoteObjectIds.h"
 #include "vtkSMMessage.h"
 
-#include <assert.h>
+#include <cassert>
 #include <map>
 #include <sstream>
 #include <string>
@@ -76,7 +76,7 @@ public:
       const ClientsInformation_ClientInfo* user = &msg->GetExtension(ClientsInformation::user, i);
       int id = user->user();
       findChanges = findChanges || (this->UserNames[id] != user->name());
-      this->UserNames[id] = user->name().c_str();
+      this->UserNames[id] = user->name();
       if (user->is_master() && this->MultiProcessController)
       {
         findChanges = findChanges || (this->MultiProcessController->GetMasterController() != id);
@@ -84,8 +84,9 @@ public:
 
         if (this->ServerSession)
         {
-          findChanges = findChanges || (this->ServerSession->GetDisableFurtherConnections() !=
-                                         user->disable_further_connections());
+          findChanges = findChanges ||
+            (this->ServerSession->GetDisableFurtherConnections() !=
+              user->disable_further_connections());
           this->ServerSession->SetDisableFurtherConnections(user->disable_further_connections());
           unsigned int serverConnectId = this->ServerSession->GetConnectID();
           findChanges = findChanges || serverConnectId != user->connect_id();
@@ -99,7 +100,7 @@ public:
 
   vtkSMMessage* BuildServerStateMessage()
   {
-    this->ServerInformations->CopyFromObject(NULL);
+    this->ServerInformations->CopyFromObject(nullptr);
     int master = this->ServerInformations->GetMasterId();
 
     this->ServerState.ClearExtension(ClientsInformation::user);
@@ -114,7 +115,7 @@ public:
       {
         std::ostringstream newUserName;
         newUserName << "User " << userId;
-        this->UserNames[userId] = newUserName.str().c_str();
+        this->UserNames[userId] = newUserName.str();
       }
       user->set_name(this->UserNames[userId]);
       if (userId == master)
@@ -164,7 +165,7 @@ vtkSICollaborationManager::vtkSICollaborationManager()
 vtkSICollaborationManager::~vtkSICollaborationManager()
 {
   this->Internal->Delete();
-  this->Internal = NULL;
+  this->Internal = nullptr;
 }
 
 //----------------------------------------------------------------------------

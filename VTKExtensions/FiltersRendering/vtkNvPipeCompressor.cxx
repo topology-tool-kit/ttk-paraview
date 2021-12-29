@@ -33,7 +33,7 @@ vtkNvPipeCompressor::vtkNvPipeCompressor()
   : Quality(1)
   , Width(1920)
   , Height(1080)
-  , Pipe(NULL)
+  , Pipe(nullptr)
   , Bitrate(0)
 {
 }
@@ -42,7 +42,7 @@ vtkNvPipeCompressor::vtkNvPipeCompressor()
 vtkNvPipeCompressor::~vtkNvPipeCompressor()
 {
   nvpipe_destroy(this->Pipe);
-  this->Pipe = NULL;
+  this->Pipe = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -58,10 +58,10 @@ int vtkNvPipeCompressor::Compress()
     (5 - this->Quality + 1); // Quality setting in ParaView compressor GUI is inverted
   const uint64_t fps = 30;
   const uint64_t brate = static_cast<uint64_t>(this->Width * this->Height * fps * f_m * 0.07);
-  if (NULL == this->Pipe)
+  if (nullptr == this->Pipe)
   {
     this->Pipe = nvpipe_create_encoder(NVPIPE_H264_NV, brate);
-    if (NULL == this->Pipe)
+    if (nullptr == this->Pipe)
     {
       vtkErrorMacro("Could not create NvPipe encoder.");
       return VTK_ERROR;
@@ -85,7 +85,7 @@ int vtkNvPipeCompressor::Compress()
 
   size_t output_size = num_pixels * 3;
   uint8_t* obuf = static_cast<uint8_t*>(this->Output->WriteVoidPointer(0, output_size));
-  if (NULL == obuf)
+  if (nullptr == obuf)
   {
     vtkErrorMacro("Error obtaining (allocating) output buffer");
     return VTK_ERROR;
@@ -115,10 +115,10 @@ int vtkNvPipeCompressor::Decompress()
     vtkWarningMacro("Cannot decompress empty input or output detected.");
     return VTK_ERROR;
   }
-  if (this->Pipe == NULL)
+  if (this->Pipe == nullptr)
   {
     this->Pipe = nvpipe_create_decoder(NVPIPE_H264_NV);
-    if (this->Pipe == NULL)
+    if (this->Pipe == nullptr)
     {
       vtkErrorMacro("Could not create NvPipe decoder.");
       return VTK_ERROR;
@@ -152,8 +152,7 @@ void vtkNvPipeCompressor::SetImageResolution(int w, int h)
   assert(h >= 0);
   if (w > 8192 || h > 8192)
   {
-    vtkWarningMacro("Image size (" << w << "x" << h << ") exceeds max image "
-                                                       "size for NvPipe.");
+    vtkWarningMacro("Image size (" << w << "x" << h << ") exceeds max image size for NvPipe.");
   }
   this->Width = static_cast<size_t>(w);
   this->Height = static_cast<size_t>(h);
@@ -193,9 +192,9 @@ const char* vtkNvPipeCompressor::SaveConfiguration()
 const char* vtkNvPipeCompressor::RestoreConfiguration(const char* stream)
 {
   stream = this->Superclass::RestoreConfiguration(stream);
-  if (stream == NULL)
+  if (stream == nullptr)
   {
-    return NULL;
+    return nullptr;
   }
   std::istringstream iss(stream);
   int qual;

@@ -31,7 +31,9 @@
 // A helper class to to turn on memkind, if enabled, while ensuring it always is restored
 class vtkTDSCMemkindRAII
 {
+#ifdef VTK_USE_MEMKIND
   bool OriginalValue = false;
+#endif
 
 public:
   vtkTDSCMemkindRAII(vtkTemporalDataSetCache* owner)
@@ -44,15 +46,13 @@ public:
     }
 #else
     (void)owner;
-    (void)this->OriginalValue;
 #endif
   }
-  ~vtkTDSCMemkindRAII()
-  {
 #ifdef VTK_USE_MEMKIND
-    vtkObjectBase::SetUsingMemkind(this->OriginalValue);
+  ~vtkTDSCMemkindRAII() { vtkObjectBase::SetUsingMemkind(this->OriginalValue); }
+#else
+  ~vtkTDSCMemkindRAII() = default;
 #endif
-  }
   vtkTDSCMemkindRAII(vtkTDSCMemkindRAII const&) = default;
 };
 
@@ -286,7 +286,7 @@ int vtkTemporalDataSetCache::RequestDataObject(
 
       if (!output || !output->IsA(input->GetClassName()))
       {
-        auto mkhold = vtkTDSCMemkindRAII(this);
+        vtkTDSCMemkindRAII(this);
         vtkDataObject* newOutput = input->NewInstance();
         info->Set(vtkDataObject::DATA_OBJECT(), newOutput);
         newOutput->Delete();
@@ -409,7 +409,7 @@ int vtkTemporalDataSetCache::RequestData(vtkInformation* vtkNotUsed(request),
   CacheType::iterator pos = this->Cache.find(upTime);
   if (pos != this->Cache.end())
   {
-    auto mkhold = vtkTDSCMemkindRAII(this);
+    vtkTDSCMemkindRAII(this);
     vtkDataObject* cachedData = pos->second.second;
     output.TakeReference(cachedData->NewInstance());
     output->ShallowCopy(cachedData);
@@ -423,7 +423,7 @@ int vtkTemporalDataSetCache::RequestData(vtkInformation* vtkNotUsed(request),
     {
       if (inTime == upTime)
       {
-        auto mkhold = vtkTDSCMemkindRAII(this);
+        vtkTDSCMemkindRAII(this);
         output.TakeReference(input->NewInstance());
         output->ShallowCopy(input);
       }
@@ -493,9 +493,9 @@ int vtkTemporalDataSetCache::RequestData(vtkInformation* vtkNotUsed(request),
 void vtkTemporalDataSetCache::ReplaceCacheItem(
   vtkDataObject* input, double inTime, vtkMTimeType outputUpdateTime)
 {
-  auto mkhold = vtkTDSCMemkindRAII(this);
+  vtkTDSCMemkindRAII(this);
   vtkDataObject* cachedData = input->NewInstance();
-  if (input->GetUsingMemkind() && !this->IsASource)
+  if (vtkDataObject::GetUsingMemkind() && !this->IsASource)
   {
     cachedData->ShallowCopy(input);
   }

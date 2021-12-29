@@ -20,6 +20,7 @@
 -------------------------------------------------------------------------*/
 
 #include "vtkParseString.h"
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -371,12 +372,14 @@ size_t vtkParse_SkipId(const char* text)
 }
 
 /** A simple 32-bit hash function based on "djb2". */
-#define parse_hash_name(cp, h)                                                                     \
+#define parse_hash(cp, h, cond)                                                                    \
   h = 5381;                                                                                        \
   do                                                                                               \
   {                                                                                                \
     h = (h << 5) + h + (unsigned char)*cp++;                                                       \
-  } while (parse_chartype(*cp, CPRE_XID));
+  } while (cond)
+
+#define parse_hash_name(cp, h) parse_hash(cp, h, parse_chartype(*cp, CPRE_XID))
 
 unsigned int vtkParse_HashId(const char* cp)
 {
@@ -812,7 +815,7 @@ char* vtkParse_NewString(StringCache* cache, size_t n)
     cache->ChunkSize = 8176;
   }
 
-  // align next start position on an 8-byte boundary
+  /* align next start position on an 8-byte boundary */
   nextPosition = (((cache->Position + n + 8) | 7) - 7);
 
   if (cache->NumberOfChunks == 0 || nextPosition > cache->ChunkSize)
@@ -869,9 +872,31 @@ void vtkParse_FreeStringCache(StringCache* cache)
 /* duplicate the first n bytes of a string and terminate it */
 const char* vtkParse_CacheString(StringCache* cache, const char* in, size_t n)
 {
-  char* res = vtkParse_NewString(cache, n);
-  strncpy(res, in, n);
-  res[n] = '\0';
+  char* res = NULL;
+  if (in)
+  {
+    res = vtkParse_NewString(cache, n);
+    strncpy(res, in, n);
+    res[n] = '\0';
+  }
+  else
+  {
+    /* if input is NULL, length must be zero */
+    assert(n == 0);
+  }
 
   return res;
+}
+
+/* hash a string */
+unsigned int vtkParse_HashString(const char* cp, size_t l)
+{
+  unsigned int h = 0;
+
+  if (l != 0)
+  {
+    parse_hash(cp, h, --l > 0);
+  }
+
+  return h;
 }

@@ -1026,12 +1026,14 @@ int vtkParseHierarchy_IsPrimary(const HierarchyEntry* entry)
 const char* vtkParseHierarchy_ExpandTypedefsInTemplateArgs(
   const HierarchyInfo* info, const char* name, StringCache* cache, const char* scope)
 {
-  size_t i, l, n;
+  int parses_as_type;
+  const char* delims = ">,";
+  size_t i, l, n, nn;
   ValueInfo val;
   char text[256];
   size_t m = 256;
 
-  /* is the class templated? */
+  /* is the class templated? if not, return */
   for (i = 0; name[i] != '<'; i++)
   {
     if (name[i] == '\0')
@@ -1040,26 +1042,62 @@ const char* vtkParseHierarchy_ExpandTypedefsInTemplateArgs(
     }
   }
 
+  /* get the classname */
   l = i;
+  assert(l + 1 < m);
   memcpy(text, name, l);
   text[l] = '<';
 
+  /* iterate through the template parameters */
   do
   {
-    vtkParse_InitValue(&val);
     i++;
-    i += vtkParse_ValueInfoFromString(&val, cache, &name[i]);
-    vtkParseHierarchy_ExpandTypedefsInValue(info, &val, cache, scope);
+    /* get the length of the current template arg */
+    n = skip_expression(&name[i], delims);
+    /* attempt to parse it as a type */
+    vtkParse_InitValue(&val);
+    nn = vtkParse_ValueInfoFromString(&val, cache, &name[i]);
+    while (name[i + nn] == ' ')
+    {
+      nn++;
+    }
+    if (nn == n && val.Class)
+    {
+      parses_as_type = 1;
+      vtkParseHierarchy_ExpandTypedefsInValue(info, &val, cache, scope);
+      /* with NULL, this gets the length of the string that will be produced */
+      nn = vtkParse_ValueInfoToString(&val, NULL, VTK_PARSE_EVERYTHING);
+    }
+    else
+    {
+      parses_as_type = 0;
+      nn = n;
+    }
     l++;
-    n = vtkParse_ValueInfoToString(&val, NULL, VTK_PARSE_EVERYTHING);
-    if (l + n >= m)
+    /* check that the result plus the ',' or '>' will fit in our buffer */
+    if (l + nn + 1 >= m)
     {
       fprintf(stderr, "In %s:%i expansion of templated type is too long: \"%s\"\n", __FILE__,
         __LINE__, name);
       exit(1);
     }
-    l += vtkParse_ValueInfoToString(&val, &text[l], VTK_PARSE_EVERYTHING);
+    if (parses_as_type)
+    {
+      /* write the expanded template parameter */
+      l += vtkParse_ValueInfoToString(&val, &text[l], VTK_PARSE_EVERYTHING);
+    }
+    else
+    {
+      /* write the template parameter verbatim */
+      memcpy(&text[l], &name[i], n);
+      l += n;
+    }
+    while (text[l - 1] == ' ')
+    {
+      l--;
+    }
     text[l] = ',';
+    i += n;
   } while (name[i] == ',');
 
   if (name[i] != '>')
@@ -1237,9 +1275,7 @@ const char* vtkParseHierarchy_ExpandTypedefsInName(
   if (entry && entry->IsTypedef && entry->Typedef->Class)
   {
     newname = entry->Typedef->Class;
-  }
-  if (newname)
-  {
+
     cp = (char*)malloc(strlen(newname) + 1);
     strcpy(cp, newname);
     name = cp;
@@ -1252,7 +1288,7 @@ const char* vtkParseHierarchy_ExpandTypedefsInName(
 const char* vtkParseHierarchy_QualifiedEnumName(
   HierarchyInfo* hinfo, ClassInfo* data, StringCache* cache, const char* name)
 {
-  // check to see if this is an enum defined in the class
+  /* check to see if this is an enum defined in the class */
   if (data)
   {
     int j;
@@ -1270,7 +1306,7 @@ const char* vtkParseHierarchy_QualifiedEnumName(
     }
   }
 
-  // check the hierarchy information for the enum type
+  /* check the hierarchy information for the enum type */
   if (hinfo)
   {
     HierarchyEntry* entry;

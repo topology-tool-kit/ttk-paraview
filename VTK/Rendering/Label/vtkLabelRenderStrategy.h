@@ -55,21 +55,21 @@ public:
    */
   virtual bool SupportsBoundedSize() { return true; }
 
-  //@{
+  ///@{
   /**
    * Set the renderer associated with this strategy.
    */
   virtual void SetRenderer(vtkRenderer* ren);
   vtkGetObjectMacro(Renderer, vtkRenderer);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set the default text property for the strategy.
    */
   virtual void SetDefaultTextProperty(vtkTextProperty* tprop);
   vtkGetObjectMacro(DefaultTextProperty, vtkTextProperty);
-  //@}
+  ///@}
 
   /**
    * Compute the bounds of a label. Must be performed after the renderer is set.
@@ -79,6 +79,8 @@ public:
   {
     this->ComputeLabelBounds(tprop, vtkUnicodeString::from_utf8(label.c_str()), bds);
   }
+  VTK_DEPRECATED_IN_9_1_0(
+    "Use void ComputeLabelBounds(vtkTextProperty* tprop, vtkStdString label, double bds[4])")
   virtual void ComputeLabelBounds(
     vtkTextProperty* tprop, vtkUnicodeString label, double bds[4]) = 0;
 
@@ -99,7 +101,11 @@ public:
   {
     this->RenderLabel(x, tprop, vtkUnicodeString::from_utf8(label), maxWidth);
   }
+  VTK_DEPRECATED_IN_9_1_0(
+    "Use void RenderLabel(int x[2], vtkTextProperty* tprop, vtkStdString label)")
   virtual void RenderLabel(int x[2], vtkTextProperty* tprop, vtkUnicodeString label) = 0;
+  VTK_DEPRECATED_IN_9_1_0(
+    "Use void RenderLabel(int x[2], vtkTextProperty* tprop, vtkStdString label, int maxWidth)")
   virtual void RenderLabel(
     int x[2], vtkTextProperty* tprop, vtkUnicodeString label, int vtkNotUsed(maxWidth))
   {

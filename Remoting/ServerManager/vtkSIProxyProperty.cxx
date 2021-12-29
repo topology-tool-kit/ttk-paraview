@@ -24,7 +24,7 @@
 #include "vtkSmartPointer.h"
 
 #include <algorithm>
-#include <assert.h>
+#include <cassert>
 #include <iterator>
 #include <set>
 
@@ -36,7 +36,7 @@ class vtkSIProxyProperty::InternalCache : public std::set<vtkTypeUInt32>
 };
 
 class vtkSIProxyProperty::vtkObjectCache
-  : public std::map<vtkTypeUInt32, vtkSmartPointer<vtkObjectBase> >
+  : public std::map<vtkTypeUInt32, vtkSmartPointer<vtkObjectBase>>
 {
 };
 
@@ -48,17 +48,18 @@ vtkSIProxyProperty::vtkSIProxyProperty()
   this->Cache = new InternalCache();
   this->ObjectCache = new vtkObjectCache();
 
-  this->CleanCommand = NULL;
-  this->RemoveCommand = NULL;
+  this->CleanCommand = nullptr;
+  this->RemoveCommand = nullptr;
   this->ArgumentType = vtkSIProxyProperty::VTK;
   this->NullOnEmpty = false;
+  this->SkipValidCheck = false;
 }
 
 //----------------------------------------------------------------------------
 vtkSIProxyProperty::~vtkSIProxyProperty()
 {
-  this->SetCleanCommand(NULL);
-  this->SetRemoveCommand(NULL);
+  this->SetCleanCommand(nullptr);
+  this->SetRemoveCommand(nullptr);
   delete this->Cache;
   delete this->ObjectCache;
 }
@@ -78,7 +79,7 @@ bool vtkSIProxyProperty::ReadXMLAttributes(vtkSIProxy* proxyhelper, vtkPVXMLElem
   // Allow to choose the kind of object to pass as argument based on
   // its global id.
   const char* arg_type = element->GetAttribute("argument_type");
-  if (arg_type != NULL && arg_type[0] != 0)
+  if (arg_type != nullptr && arg_type[0] != 0)
   {
     if (strcmp(arg_type, "VTK") == 0)
     {
@@ -103,6 +104,12 @@ bool vtkSIProxyProperty::ReadXMLAttributes(vtkSIProxy* proxyhelper, vtkPVXMLElem
   if (element->GetScalarAttribute("null_on_empty", &null_on_empty))
   {
     this->SetNullOnEmpty(null_on_empty != 0);
+  }
+
+  int skip_valid_check;
+  if (element->GetScalarAttribute("skip_valid_check", &skip_valid_check))
+  {
+    this->SkipValidCheck = skip_valid_check != 0;
   }
 
   if (this->InformationOnly)
@@ -150,11 +157,11 @@ bool vtkSIProxyProperty::Push(vtkSMMessage* message, int offset)
          ++iter)
     {
       vtkObjectBase* arg = this->GetObjectBase(*iter);
-      if (arg == NULL)
+      if (arg == nullptr)
       {
         arg = (*this->ObjectCache)[*iter].GetPointer();
       }
-      if (arg != NULL)
+      if (arg != nullptr)
       {
         stream << vtkClientServerStream::Invoke << object << this->GetRemoveCommand() << arg
                << vtkClientServerStream::End;
@@ -176,7 +183,7 @@ bool vtkSIProxyProperty::Push(vtkSMMessage* message, int offset)
   for (std::set<vtkTypeUInt32>::iterator iter = to_add.begin(); iter != to_add.end(); ++iter)
   {
     vtkObjectBase* arg = this->GetObjectBase(*iter);
-    if (arg != NULL || this->IsValidNull(*iter))
+    if (arg != nullptr || this->IsValidNull(*iter))
     {
       stream << vtkClientServerStream::Invoke << object << this->GetCommand() << arg
              << vtkClientServerStream::End;
@@ -192,7 +199,7 @@ bool vtkSIProxyProperty::Push(vtkSMMessage* message, int offset)
   }
 
   // Take care of the Empty case
-  if (this->NullOnEmpty && this->CleanCommand == NULL && new_value.size() == 0)
+  if (this->NullOnEmpty && this->CleanCommand == nullptr && new_value.empty())
   {
     stream << vtkClientServerStream::Invoke << object << this->GetCommand() << vtkClientServerID(0)
            << vtkClientServerStream::End;
@@ -217,23 +224,23 @@ void vtkSIProxyProperty::PrintSelf(ostream& os, vtkIndent indent)
 //----------------------------------------------------------------------------
 vtkObjectBase* vtkSIProxyProperty::GetObjectBase(vtkTypeUInt32 globalId)
 {
-  vtkSIProxy* siProxy = NULL;
+  vtkSIProxy* siProxy = nullptr;
   switch (this->ArgumentType)
   {
     case VTK:
       siProxy = vtkSIProxy::SafeDownCast(this->GetSIObject(globalId));
-      return (siProxy == NULL) ? NULL : siProxy->GetVTKObject();
+      return (siProxy == nullptr) ? nullptr : siProxy->GetVTKObject();
     case SMProxy:
       return this->SIProxyObject->GetRemoteObject(globalId);
     case SIProxy:
       return this->SIProxyObject->GetSIObject(globalId);
   }
-  return NULL;
+  return nullptr;
 }
 //----------------------------------------------------------------------------
 bool vtkSIProxyProperty::IsValidNull(vtkTypeUInt32 globalId)
 {
-  if (globalId == 0)
+  if (globalId == 0 || this->SkipValidCheck)
   {
     return true;
   }
@@ -244,7 +251,7 @@ bool vtkSIProxyProperty::IsValidNull(vtkTypeUInt32 globalId)
     "That typically indicates that the Location for the Proxy may not be correct. "
     "Aborting for debugging purposes.",
     this->XMLName, this->SIProxyObject->GetXMLGroup(), this->SIProxyObject->GetXMLName());
-  assert(
-    "SIProxy shouldn't be null otherwise it's a Proxy location issue in the XML" && siProxy != 0);
+  assert("SIProxy shouldn't be nullptr otherwise it's a Proxy location issue in the XML" &&
+    siProxy != 0);
   return siProxy->IsNullProxy();
 }

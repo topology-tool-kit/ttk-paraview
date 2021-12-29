@@ -30,9 +30,10 @@
 #include "vtkPointData.h"
 #include "vtkSmartPointer.h"
 #include "vtkStreamingDemandDrivenPipeline.h"
+#include "vtkUniformGridAMR.h"
 #include "vtkUnstructuredGrid.h"
 
-#include <assert.h>
+#include <cassert>
 
 vtkStandardNewMacro(vtkIsoVolume);
 
@@ -46,9 +47,7 @@ vtkIsoVolume::vtkIsoVolume()
 }
 
 //----------------------------------------------------------------------------
-vtkIsoVolume::~vtkIsoVolume()
-{
-}
+vtkIsoVolume::~vtkIsoVolume() = default;
 
 //----------------------------------------------------------------------------
 // Criterion is cells whose scalars are between lower and upper thresholds.
@@ -75,13 +74,13 @@ int vtkIsoVolume::RequestData(vtkInformation* vtkNotUsed(request),
   vtkDataObject* outObj = outInfo->Get(vtkDataObject::DATA_OBJECT());
 
   // Common vars.
-  std::string arrayName("");
+  std::string arrayName;
   int fieldAssociation(-1);
   // double*       range (0);
   // bool          usingLowerBoundClipDS (false);
   // bool          usingUpperBoundClipDS (false);
 
-  vtkSmartPointer<vtkDataObject> outObj1(0);
+  vtkSmartPointer<vtkDataObject> outObj1(nullptr);
 
   // Get the array name and field information.
   vtkInformationVector* inArrayVec = this->GetInformation()->Get(INPUT_ARRAYS_TO_PROCESS());
@@ -163,11 +162,25 @@ int vtkIsoVolume::RequestDataObject(vtkInformation* vtkNotUsed(request),
     return 0;
   }
 
-  vtkCompositeDataSet* input = vtkCompositeDataSet::GetData(inInfo);
   vtkInformation* outInfo = outputVector->GetInformationObject(0);
-
-  if (input)
+  if (auto dtree = vtkDataObjectTree::GetData(inInfo))
   {
+    auto output = vtkDataObject::GetData(outInfo);
+    if (output == nullptr || !output->IsA(dtree->GetClassName()))
+    {
+      output = dtree->NewInstance();
+      outInfo->Set(vtkDataObject::DATA_OBJECT(), output);
+      this->GetOutputPortInformation(0)->Set(
+        vtkDataObject::DATA_EXTENT_TYPE(), output->GetExtentType());
+      output->Delete();
+    }
+    return 1;
+  }
+  else if (vtkUniformGridAMR::GetData(inInfo))
+  {
+    // Currently, we're creating a MB here since that's what executive does when
+    // it encounters an AMR. This will need to change in future to be a PDC
+    // instead.
     vtkMultiBlockDataSet* output = vtkMultiBlockDataSet::GetData(outInfo);
     if (!output)
     {

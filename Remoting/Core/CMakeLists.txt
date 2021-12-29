@@ -30,20 +30,18 @@
 #==========================================================================
 set(classes
   vtkCompositeMultiProcessController
+  vtkDisplayConfiguration
   vtkMPIMToNSocketConnection
   vtkMPIMToNSocketConnectionPortInformation
   vtkNetworkAccessManager
   vtkPResourceFileLocator
   vtkProcessModule
-  vtkProcessModuleAutoMPI
+  vtkProcessModuleConfiguration
   vtkPVAlgorithmPortsInformation
   vtkPVArrayInformation
   vtkPVClassNameInformation
-  vtkPVCompositeDataInformation
-  vtkPVCompositeDataInformationIterator
   vtkPVDataAssemblyInformation
   vtkPVDataInformation
-  vtkPVDataInformationHelper
   vtkPVDataSetAttributesInformation
   vtkPVDataSizeInformation
   vtkPVDisableStackTraceSignalHandler
@@ -52,11 +50,9 @@ set(classes
   vtkPVEnvironmentInformationHelper
   vtkPVFileInformation
   vtkPVFileInformationHelper
-  vtkPVGenericAttributeInformation
   vtkPVInformation
   vtkPVLogInformation
   vtkPVMemoryUseInformation
-  vtkPVMultiClientsInformation
   vtkPVOptions
   vtkPVOptionsXMLParser
   vtkPVPlugin
@@ -66,25 +62,22 @@ set(classes
   vtkPVProgressHandler
   vtkPVPythonInformation
   vtkPVPythonModule
-  vtkPVPythonOptions
   vtkPVPythonPluginInterface
   vtkPVServerInformation
   vtkPVServerManagerPluginInterface
-  vtkPVServerOptions
   vtkPVSession
-  vtkPVSILInformation
   vtkPVSystemConfigInformation
   vtkPVSystemInformation
   vtkPVTemporalDataInformation
   vtkPVTimerInformation
+  vtkRemotingCoreConfiguration
   vtkSession
   vtkSessionIterator
   vtkTCPNetworkAccessManager)
 
 set(sources)
 set(private_headers
-  vtkProcessModuleInternals.h
-  vtkPVServerOptionsInternals.h)
+  vtkProcessModuleInternals.h)
 
 set(headers
   vtkReservedRemoteObjectIds.h)
@@ -95,13 +88,9 @@ if (APPLE)
     vtkPVMacFileInformationHelper.h)
 endif ()
 
-set(built_shared 0)
-if (BUILD_SHARED_LIBS)
-  set(built_shared 1)
-endif ()
 set_property(SOURCE vtkPVPluginLoader.cxx APPEND
   PROPERTY
-    COMPILE_DEFINITIONS "BUILD_SHARED_LIBS=${built_shared}")
+    COMPILE_DEFINITIONS "BUILD_SHARED_LIBS=$<BOOL:${BUILD_SHARED_LIBS}>")
 
 if (WIN32)
   set(libdir_relpath ".")
@@ -113,11 +102,11 @@ endif ()
 set_property(SOURCE vtkPVPluginTracker.cxx APPEND
   PROPERTY
     COMPILE_DEFINITIONS
-      "BUILD_SHARED_LIBS=${built_shared}"
+      "BUILD_SHARED_LIBS=$<BOOL:${BUILD_SHARED_LIBS}>"
       "PARAVIEW_RELATIVE_LIBPATH=\"${libdir_relpath}\""
       "PARAVIEW_SUBDIR=\"paraview${paraview_version_suffix}/plugins\"")
 
-set(vtkProcessModule_defines "BUILD_SHARED_LIBS=${built_shared}")
+set(vtkProcessModule_defines "BUILD_SHARED_LIBS=$<BOOL:${BUILD_SHARED_LIBS}>")
 if (PARAVIEW_INITIALIZE_MPI_ON_CLIENT)
   list(APPEND vtkProcessModule_defines
     PARAVIEW_INITIALIZE_MPI_ON_CLIENT)
@@ -143,24 +132,6 @@ endif ()
 set_source_files_properties(vtkPVOptions.cxx
   PROPERTIES
     COMPILE_DEFINITIONS "${vtkPVOptions_defines}")
-
-set(vtkProcessModuleAutoMPI_defines)
-if (TARGET VTK::ParallelMPI)
-  list(APPEND vtkProcessModuleAutoMPI_defines
-    "PARAVIEW_MPIEXEC_EXECUTABLE=\"${MPIEXEC_EXECUTABLE}\""
-    "PARAVIEW_MPI_NUMPROC_FLAG=\"${MPIEXEC_NUMPROC_FLAG}\"")
-  if (MPIEXEC_PREFLAGS)
-    list(APPEND vtkProcessModuleAutoMPI_defines
-      "PARAVIEW_MPI_PREFLAGS=\"${MPIEXEC_PREFLAGS}\"")
-  endif ()
-  if (MPIEXEC_POSTFLAGS)
-    list(APPEND vtkProcessModuleAutoMPI_defines
-      "PARAVIEW_MPI_POSTFLAGS=\"${MPIEXEC_POSTFLAGS}\"")
-  endif ()
-endif ()
-set_source_files_properties(vtkProcessModuleAutoMPI.cxx
-  PROPERTIES
-    COMPILE_DEFINITIONS "${vtkProcessModuleAutoMPI_defines}")
 
 set(PARAVIEW_PLUGIN_LOADER_PATHS ""
   CACHE STRING "Extra paths to search for plugins")

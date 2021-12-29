@@ -22,23 +22,25 @@
  * @brief   A general filter for gradient estimation.
  *
  *
- * Estimates the gradient of a field in a data set.  The gradient calculation
- * is dependent on the input dataset type.  The created gradient array is
- * of the same type as the array it is calculated from (e.g. point data or cell
- * data) but the data type will be either float or double.  At the boundary
- * the gradient is not central differencing.  The output gradient array has
- * 3*number of components of the input data array.  The ordering for the
- * output gradient tuple will be {du/dx, du/dy, du/dz, dv/dx, dv/dy, dv/dz, dw/dx,
- * dw/dy, dw/dz} for an input array {u, v, w}. There are also the options
- * to additionally compute the vorticity and Q criterion of a vector field.
- * Unstructured grids and polydata can have cells of different dimensions.
- * To handle different use cases in this situation, the user can specify
- * which cells contribute to the computation. The options for this are
- * All (default), Patch and DataSetMax. Patch uses only the highest dimension
- * cells attached to a point. DataSetMax uses the highest cell dimension in
- * the entire data set. For Patch or DataSetMax it is possible that some values
- * will not be computed. The ReplacementValueOption specifies what to use
- * for these values.
+ * This filter estimates the gradient of a field in a data set.  The gradient
+ * calculation is dependent on the input dataset type.  The created gradient
+ * array is of the same type as the array it is calculated from (e.g. point
+ * data or cell data) but the data type will be either float or double.  At
+ * the boundary the gradient does not use central differencing.  The output
+ * gradient array has 3*number of components of the input data array.  The
+ * ordering for the output gradient tuple will be {du/dx, du/dy, du/dz,
+ * dv/dx, dv/dy, dv/dz, dw/dx, dw/dy, dw/dz} for an input array {u, v,
+ * w}. There are also the options to additionally compute the vorticity and Q
+ * criterion of a vector field.  Unstructured grids and polydata can have
+ * cells of different dimensions.  To handle different use cases in this
+ * situation, the user can specify which cells contribute to the
+ * computation. The options for this are All (default), Patch and
+ * DataSetMax. Patch uses only the highest dimension cells attached to a
+ * point. DataSetMax uses the highest cell dimension in the entire data
+ * set. For Patch or DataSetMax it is possible that some values will not be
+ * computed. The ReplacementValueOption specifies what to use for these
+ * values.
+ *
  */
 
 #ifndef vtkGradientFilter_h
@@ -50,8 +52,14 @@
 class VTKFILTERSGENERAL_EXPORT vtkGradientFilter : public vtkDataSetAlgorithm
 {
 public:
+  ///@{
+  /**
+   * Standard methods for instantiation, obtaining type information, and printing.
+   */
+  static vtkGradientFilter* New();
   vtkTypeMacro(vtkGradientFilter, vtkDataSetAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
+  ///@}
 
   /// Options to choose what cells contribute to the gradient calculation
   enum ContributingCellEnum
@@ -71,9 +79,7 @@ public:
     DataTypeMax = 3  //!< The maximum possible value of the input array data type
   };
 
-  static vtkGradientFilter* New();
-
-  //@{
+  ///@{
   /**
    * These are basically a convenience method that calls SetInputArrayToProcess
    * to set the array used as the input scalars.  The fieldAssociation comes
@@ -82,9 +88,9 @@ public:
    */
   virtual void SetInputScalars(int fieldAssociation, const char* name);
   virtual void SetInputScalars(int fieldAssociation, int fieldAttributeType);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get/Set the name of the gradient array to create.  This is only
    * used if ComputeGradient is non-zero. If nullptr (the
@@ -92,9 +98,9 @@ public:
    */
   vtkGetStringMacro(ResultArrayName);
   vtkSetStringMacro(ResultArrayName);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get/Set the name of the divergence array to create. This is only
    * used if ComputeDivergence is non-zero. If nullptr (the
@@ -102,9 +108,9 @@ public:
    */
   vtkGetStringMacro(DivergenceArrayName);
   vtkSetStringMacro(DivergenceArrayName);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get/Set the name of the vorticity array to create. This is only
    * used if ComputeVorticity is non-zero. If nullptr (the
@@ -112,9 +118,9 @@ public:
    */
   vtkGetStringMacro(VorticityArrayName);
   vtkSetStringMacro(VorticityArrayName);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get/Set the name of the Q criterion array to create. This is only
    * used if ComputeQCriterion is non-zero. If nullptr (the
@@ -122,9 +128,9 @@ public:
    */
   vtkGetStringMacro(QCriterionArrayName);
   vtkSetStringMacro(QCriterionArrayName);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * When this flag is on (default is off), the gradient filter will provide a
    * less accurate (but close) algorithm that performs fewer derivative
@@ -132,14 +138,14 @@ public:
    * of the output data and some possible errors on the boundary.  This
    * parameter has no effect when performing the gradient of cell data.
    * This only applies if the input grid is a vtkUnstructuredGrid or a
-   * vtkPolyData.
+   * vtkPolyData, and when point gradients are computed.
    */
   vtkGetMacro(FasterApproximation, vtkTypeBool);
   vtkSetMacro(FasterApproximation, vtkTypeBool);
   vtkBooleanMacro(FasterApproximation, vtkTypeBool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Add the gradient to the output field data.  The name of the array
    * will be ResultArrayName and will be the same type as the input
@@ -148,9 +154,9 @@ public:
   vtkSetMacro(ComputeGradient, vtkTypeBool);
   vtkGetMacro(ComputeGradient, vtkTypeBool);
   vtkBooleanMacro(ComputeGradient, vtkTypeBool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Add divergence to the output field data.  The name of the array
    * will be DivergenceArrayName and will be the same type as the input
@@ -160,9 +166,9 @@ public:
   vtkSetMacro(ComputeDivergence, vtkTypeBool);
   vtkGetMacro(ComputeDivergence, vtkTypeBool);
   vtkBooleanMacro(ComputeDivergence, vtkTypeBool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Add voriticity/curl to the output field data.  The name of the array
    * will be VorticityArrayName and will be the same type as the input
@@ -172,9 +178,9 @@ public:
   vtkSetMacro(ComputeVorticity, vtkTypeBool);
   vtkGetMacro(ComputeVorticity, vtkTypeBool);
   vtkBooleanMacro(ComputeVorticity, vtkTypeBool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Add Q-criterion to the output field data.  The name of the array
    * will be QCriterionArrayName and will be the same type as the input
@@ -185,18 +191,18 @@ public:
   vtkSetMacro(ComputeQCriterion, vtkTypeBool);
   vtkGetMacro(ComputeQCriterion, vtkTypeBool);
   vtkBooleanMacro(ComputeQCriterion, vtkTypeBool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Option to specify what cells to include in the gradient computation.
    * Options are all cells (All, Patch and DataSetMax). The default is All.
    */
   vtkSetClampMacro(ContributingCellOption, int, 0, 2);
   vtkGetMacro(ContributingCellOption, int);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Option to specify what replacement value or entities that don't have any gradient computed
    * over them based on the ContributingCellOption. Options are (Zero, NaN, DataTypeMin,
@@ -204,7 +210,7 @@ public:
    */
   vtkSetClampMacro(ReplacementValueOption, int, 0, 3);
   vtkGetMacro(ReplacementValueOption, int);
-  //@}
+  ///@}
 
 protected:
   vtkGradientFilter();

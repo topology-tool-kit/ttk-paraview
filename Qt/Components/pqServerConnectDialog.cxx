@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ========================================================================*/
 #include "pqServerConnectDialog.h"
+#include "pqQtDeprecated.h"
 #include "ui_pqServerConnectDialog.h"
 
 #include "pqApplicationCore.h"
@@ -66,11 +67,12 @@ QString getPVSCSourcesFromSettings()
 {
   pqSettings* settings = pqApplicationCore::instance()->settings();
   return settings
-    ->value("PVSC_SOURCES", QString("# Enter list of URLs to obtain server configurations from.\n"
-                                    "# Syntax:\n"
-                                    "#    pvsc <url> <userfriendly-name>\n\n"
-                                    "# Official Kitware Server Configurations\n"
-                                    "pvsc http://www.paraview.org/files/pvsc Kitware Inc.\n"))
+    ->value("PVSC_SOURCES",
+      QString("# Enter list of URLs to obtain server configurations from.\n"
+              "# Syntax:\n"
+              "#    pvsc <url> <userfriendly-name>\n\n"
+              "# Official Kitware Server Configurations\n"
+              "pvsc http://www.paraview.org/files/pvsc Kitware Inc.\n"))
     .toString();
 }
 
@@ -83,7 +85,7 @@ class SourcesSyntaxHighlighter : public QSyntaxHighlighter
   QTextCharFormat ErrorFormat;
 
 public:
-  SourcesSyntaxHighlighter(QTextDocument* parentObject = 0)
+  SourcesSyntaxHighlighter(QTextDocument* parentObject = nullptr)
     : QSyntaxHighlighter(parentObject)
   {
     this->KeywordFormat.setForeground(Qt::darkBlue);
@@ -145,7 +147,7 @@ public:
 
 //-----------------------------------------------------------------------------
 pqServerConnectDialog::pqServerConnectDialog(
-  QWidget* parentObject /*=0*/, const pqServerResource& selector /*=pqServerResource()*/)
+  QWidget* parentObject /*=nullptr*/, const pqServerResource& selector /*=pqServerResource()*/)
   : Superclass(parentObject)
 {
   this->Internals = new pqInternals();
@@ -237,7 +239,7 @@ pqServerConnectDialog::pqServerConnectDialog(
 pqServerConnectDialog::~pqServerConnectDialog()
 {
   delete this->Internals;
-  this->Internals = NULL;
+  this->Internals = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -301,7 +303,7 @@ void pqServerConnectDialog::updateConfigurations()
   }
   this->Internals->servers->setSortingEnabled(true);
   this->Internals->servers->blockSignals(old);
-  if (this->Internals->Configurations.size() > 0)
+  if (!this->Internals->Configurations.empty())
   {
     this->Internals->servers->setCurrentCell(0, 0);
   }
@@ -475,7 +477,6 @@ void pqServerConnectDialog::updateServerType()
       this->Internals->hostLabel->setVisible(true);
       this->Internals->host->setVisible(true);
       VTK_FALLTHROUGH;
-    // break; << -- don't break
 
     case CLIENT_SERVER_REVERSE_CONNECT:
       this->Internals->portLabel->setVisible(true);
@@ -488,7 +489,6 @@ void pqServerConnectDialog::updateServerType()
       this->Internals->dataServerHostLabel->setVisible(true);
       this->Internals->dataServerHost->setVisible(true);
       VTK_FALLTHROUGH;
-    // break; << -- don't break
 
     case CLIENT_DATA_SERVER_RENDER_SERVER_REVERSE_CONNECT:
       this->Internals->renderServerPortLabel->setVisible(true);
@@ -604,7 +604,7 @@ void pqServerConnectDialog::acceptConfigurationPage2()
   // Now, make this newly edited configuration the selected one.
   QList<QTableWidgetItem*> items = this->Internals->servers->findItems(
     this->Internals->ActiveConfiguration.name(), Qt::MatchFixedString);
-  if (items.size() > 0)
+  if (!items.empty())
   {
     this->Internals->servers->setCurrentItem(items[0]);
   }
@@ -650,7 +650,7 @@ void pqServerConnectDialog::saveServers()
   QString filters;
   filters += "ParaView server configuration file (*.pvsc)";
 
-  pqFileDialog dialog(NULL, this, tr("Save Server Configuration File"), QString(), filters);
+  pqFileDialog dialog(nullptr, this, tr("Save Server Configuration File"), QString(), filters);
   dialog.setObjectName("SaveServerConfigurationDialog");
   dialog.setFileMode(pqFileDialog::AnyFile);
   if (dialog.exec() == QDialog::Accepted)
@@ -667,7 +667,7 @@ void pqServerConnectDialog::loadServers()
   filters += "ParaView server configuration file (*.pvsc)";
   filters += ";;All files (*)";
 
-  pqFileDialog dialog(NULL, this, tr("Load Server Configuration File"), QString(), filters);
+  pqFileDialog dialog(nullptr, this, tr("Load Server Configuration File"), QString(), filters);
   dialog.setObjectName("LoadServerConfigurationDialog");
   dialog.setFileMode(pqFileDialog::ExistingFile);
   if (dialog.exec() == QDialog::Accepted)
@@ -702,7 +702,7 @@ const pqServerConfiguration& pqServerConnectDialog::configurationToConnect() con
 
 //-----------------------------------------------------------------------------
 bool pqServerConnectDialog::selectServer(pqServerConfiguration& selected_configuration,
-  QWidget* dialogParent /*=NULL*/, const pqServerResource& selector /*=pqServerResource()*/)
+  QWidget* dialogParent /*=nullptr*/, const pqServerResource& selector /*=pqServerResource()*/)
 {
   // see if only 1 server matched the selector (if valid). In that case, no
   // need to popup the dialog.
@@ -715,7 +715,7 @@ bool pqServerConnectDialog::selectServer(pqServerConfiguration& selected_configu
       selected_configuration = configs[0];
       return true;
     }
-    else if (configs.size() == 0)
+    else if (configs.empty())
     {
       // Ne configs found, still add resource so config can be used somehow
       selected_configuration.setResource(selector);
@@ -765,7 +765,7 @@ void pqServerConnectDialog::fetchServers()
 
   QRegExp regExp("pvsc\\s+([^\\s]+)\\s+(.+)");
   QTextStream stream(&pvsc_sources, QIODevice::ReadOnly);
-  foreach (const QString& line, stream.readAll().split("\n", QString::SkipEmptyParts))
+  foreach (const QString& line, stream.readAll().split("\n", PV_QT_SKIP_EMPTY_PARTS))
   {
     QString cleaned_line = line.trimmed();
     if (regExp.exactMatch(cleaned_line))
@@ -865,7 +865,7 @@ void pqServerConnectDialog::importError(const QString& /*message*/)
 void pqServerConnectDialog::importServersSelectionChanged()
 {
   this->Internals->importSelected->setEnabled(
-    this->Internals->importServersTable->selectedItems().size() > 0);
+    this->Internals->importServersTable->selectedItems().empty() == false);
 }
 
 //-----------------------------------------------------------------------------

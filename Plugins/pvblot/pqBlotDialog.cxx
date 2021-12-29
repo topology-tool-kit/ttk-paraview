@@ -79,9 +79,7 @@ void pqBlotDialog::setActiveServer(pqServer* server)
 }
 
 //-----------------------------------------------------------------------------
-void pqBlotDialog::open()
-{
-}
+void pqBlotDialog::open() {}
 
 //-----------------------------------------------------------------------------
 void pqBlotDialog::open(const QString& filename)
@@ -100,7 +98,7 @@ void pqBlotDialog::runScript()
 {
   QString filters = tr("BLOT Script (*.blot *.bl);;All files (*)");
   pqFileDialog* const dialog =
-    new pqFileDialog(NULL, this, tr("Run BLOT Script"), QString(), filters);
+    new pqFileDialog(nullptr, this, tr("Run BLOT Script"), QString(), filters);
 
   dialog->setObjectName("BLOTShellRunScriptDialog");
   dialog->setFileMode(pqFileDialog::ExistingFile);

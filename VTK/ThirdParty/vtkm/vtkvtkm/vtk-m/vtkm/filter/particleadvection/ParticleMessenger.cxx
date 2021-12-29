@@ -51,6 +51,16 @@ std::size_t ParticleMessenger::CalcParticleBufferSize(std::size_t nParticles, st
     + sizeof(vtkm::UInt8)                           // Status
     + sizeof(vtkm::FloatDefault);                   // Time
 
+#ifndef NDEBUG
+  vtkmdiy::MemoryBuffer buff;
+  vtkm::Particle p;
+  vtkmdiy::save(buff, p);
+
+  //If this assert fires, vtkm::Particle changed
+  //and pSize should be updated.
+  VTKM_ASSERT(pSize == buff.size());
+#endif
+
   return
     // rank
     sizeof(int)
@@ -69,10 +79,11 @@ std::size_t ParticleMessenger::CalcParticleBufferSize(std::size_t nParticles, st
 VTKM_CONT
 void ParticleMessenger::SerialExchange(
   const std::vector<vtkm::Particle>& outData,
-  const std::map<vtkm::Id, std::vector<vtkm::Id>>& outBlockIDsMap,
+  const std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& outBlockIDsMap,
   vtkm::Id vtkmNotUsed(numLocalTerm),
   std::vector<vtkm::Particle>& inData,
-  std::map<vtkm::Id, std::vector<vtkm::Id>>& inDataBlockIDsMap) const
+  std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& inDataBlockIDsMap,
+  bool vtkmNotUsed(blockAndWait)) const
 {
   for (auto& p : outData)
   {
@@ -83,23 +94,26 @@ void ParticleMessenger::SerialExchange(
 }
 
 VTKM_CONT
-void ParticleMessenger::Exchange(const std::vector<vtkm::Particle>& outData,
-                                 const std::map<vtkm::Id, std::vector<vtkm::Id>>& outBlockIDsMap,
-                                 vtkm::Id numLocalTerm,
-                                 std::vector<vtkm::Particle>& inData,
-                                 std::map<vtkm::Id, std::vector<vtkm::Id>>& inDataBlockIDsMap,
-                                 vtkm::Id& numTerminateMessages)
+void ParticleMessenger::Exchange(
+  const std::vector<vtkm::Particle>& outData,
+  const std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& outBlockIDsMap,
+  vtkm::Id numLocalTerm,
+  std::vector<vtkm::Particle>& inData,
+  std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& inDataBlockIDsMap,
+  vtkm::Id& numTerminateMessages,
+  bool blockAndWait)
 {
   numTerminateMessages = 0;
   inDataBlockIDsMap.clear();
 
-  if (this->NumRanks == 1)
-    return this->SerialExchange(outData, outBlockIDsMap, numLocalTerm, inData, inDataBlockIDsMap);
+  if (this->GetNumRanks() == 1)
+    return this->SerialExchange(
+      outData, outBlockIDsMap, numLocalTerm, inData, inDataBlockIDsMap, blockAndWait);
 
 #ifdef VTKM_ENABLE_MPI
 
   //dstRank, vector of (particles,blockIDs)
-  std::map<int, std::vector<ParticleCommType>> sendData;
+  std::unordered_map<int, std::vector<ParticleCommType>> sendData;
 
   for (const auto& p : outData)
   {
@@ -108,10 +122,16 @@ void ParticleMessenger::Exchange(const std::vector<vtkm::Particle>& outData,
     sendData[dstRank].push_back(std::make_pair(p, bids));
   }
 
+  //Do all the sends first.
+  if (numLocalTerm > 0)
+    this->SendAllMsg({ MSG_TERMINATE, static_cast<int>(numLocalTerm) });
+  this->SendParticles(sendData);
+  this->CheckPendingSendRequests();
+
   //Check if we have anything coming in.
   std::vector<ParticleRecvCommType> particleData;
   std::vector<MsgCommType> msgData;
-  if (RecvAny(&msgData, &particleData, false))
+  if (RecvAny(&msgData, &particleData, blockAndWait))
   {
     for (const auto& it : particleData)
       for (const auto& v : it.second)
@@ -128,13 +148,6 @@ void ParticleMessenger::Exchange(const std::vector<vtkm::Particle>& outData,
         numTerminateMessages += static_cast<vtkm::Id>(m.second[1]);
     }
   }
-
-  //Do all the sending...
-  if (numLocalTerm > 0)
-    SendAllMsg({ MSG_TERMINATE, static_cast<int>(numLocalTerm) });
-
-  this->SendParticles(sendData);
-  this->CheckPendingSendRequests();
 #endif
 }
 
@@ -147,7 +160,7 @@ void ParticleMessenger::RegisterMessages(int msgSz, int nParticles, int numBlock
   std::size_t messageBuffSz = CalcMessageBufferSize(msgSz + 1);
   std::size_t particleBuffSz = CalcParticleBufferSize(nParticles, numBlockIds);
 
-  int numRecvs = std::min(64, this->NumRanks - 1);
+  int numRecvs = std::min(64, this->GetNumRanks() - 1);
 
   this->RegisterTag(ParticleMessenger::MESSAGE_TAG, numRecvs, messageBuffSz);
   this->RegisterTag(ParticleMessenger::PARTICLE_TAG, numRecvs, particleBuffSz);
@@ -161,7 +174,7 @@ void ParticleMessenger::SendMsg(int dst, const std::vector<int>& msg)
   vtkmdiy::MemoryBuffer buff;
 
   //Write data.
-  vtkmdiy::save(buff, this->Rank);
+  vtkmdiy::save(buff, this->GetRank());
   vtkmdiy::save(buff, msg);
   this->SendData(dst, ParticleMessenger::MESSAGE_TAG, buff);
 }
@@ -169,8 +182,8 @@ void ParticleMessenger::SendMsg(int dst, const std::vector<int>& msg)
 VTKM_CONT
 void ParticleMessenger::SendAllMsg(const std::vector<int>& msg)
 {
-  for (int i = 0; i < this->NumRanks; i++)
-    if (i != this->Rank)
+  for (int i = 0; i < this->GetNumRanks(); i++)
+    if (i != this->GetRank())
       this->SendMsg(i, msg);
 }
 
@@ -198,23 +211,23 @@ bool ParticleMessenger::RecvAny(std::vector<MsgCommType>* msgs,
   if (!this->RecvData(tags, buffers, blockAndWait))
     return false;
 
-  for (size_t i = 0; i < buffers.size(); i++)
+  for (auto& buff : buffers)
   {
-    if (buffers[i].first == ParticleMessenger::MESSAGE_TAG)
+    if (buff.first == ParticleMessenger::MESSAGE_TAG)
     {
       int sendRank;
       std::vector<int> m;
-      vtkmdiy::load(buffers[i].second, sendRank);
-      vtkmdiy::load(buffers[i].second, m);
+      vtkmdiy::load(buff.second, sendRank);
+      vtkmdiy::load(buff.second, m);
       msgs->push_back(std::make_pair(sendRank, m));
     }
-    else if (buffers[i].first == ParticleMessenger::PARTICLE_TAG)
+    else if (buff.first == ParticleMessenger::PARTICLE_TAG)
     {
       int sendRank;
       std::vector<ParticleCommType> particles;
 
-      vtkmdiy::load(buffers[i].second, sendRank);
-      vtkmdiy::load(buffers[i].second, particles);
+      vtkmdiy::load(buff.second, sendRank);
+      vtkmdiy::load(buff.second, particles);
       recvParticles->push_back(std::make_pair(sendRank, particles));
     }
   }

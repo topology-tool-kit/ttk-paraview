@@ -24,11 +24,11 @@
 #include "vtkObjectFactory.h"
 #include "vtkPVConfig.h"
 #include "vtkPVMultiClientsInformation.h"
-#include "vtkPVOptions.h"
 #include "vtkPVProgressHandler.h"
 #include "vtkPVServerInformation.h"
 #include "vtkPVSessionServer.h"
 #include "vtkProcessModule.h"
+#include "vtkRemotingCoreConfiguration.h"
 #include "vtkReservedRemoteObjectIds.h"
 #include "vtkSMCollaborationManager.h"
 #include "vtkSMMessage.h"
@@ -46,7 +46,7 @@
 #include <string>
 #include <vtksys/RegularExpression.hxx>
 
-#include <assert.h>
+#include <cassert>
 #include <set>
 
 //****************************************************************************/
@@ -73,10 +73,10 @@ vtkSMSessionClient::vtkSMSessionClient()
   this->LastGlobalID = this->LastGlobalIDAvailable = 0;
 
   // This session can only be created on the client.
-  this->RenderServerController = NULL;
-  this->DataServerController = NULL;
-  this->URI = NULL;
-  this->CollaborationCommunicator = NULL;
+  this->RenderServerController = nullptr;
+  this->DataServerController = nullptr;
+  this->URI = nullptr;
+  this->CollaborationCommunicator = nullptr;
   this->AbortConnect = false;
 
   this->DataServerInformation = vtkPVServerInformation::New();
@@ -106,20 +106,20 @@ vtkSMSessionClient::~vtkSMSessionClient()
   {
     this->CloseSession();
   }
-  this->SetRenderServerController(0);
-  this->SetDataServerController(0);
+  this->SetRenderServerController(nullptr);
+  this->SetDataServerController(nullptr);
   this->DataServerInformation->Delete();
   this->RenderServerInformation->Delete();
   this->ServerInformation->Delete();
   if (this->CollaborationCommunicator)
   {
     this->CollaborationCommunicator->Delete();
-    this->CollaborationCommunicator = NULL;
+    this->CollaborationCommunicator = nullptr;
   }
-  this->SetURI(0);
+  this->SetURI(nullptr);
 
   delete this->ServerLastInvokeResult;
-  this->ServerLastInvokeResult = NULL;
+  this->ServerLastInvokeResult = nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -128,7 +128,7 @@ vtkMultiProcessController* vtkSMSessionClient::GetController(ServerFlags process
   switch (processType)
   {
     case CLIENT:
-      return NULL;
+      return nullptr;
 
     case DATA_SERVER:
     case DATA_SERVER_ROOT:
@@ -143,7 +143,7 @@ vtkMultiProcessController* vtkSMSessionClient::GetController(ServerFlags process
       vtkWarningMacro("Invalid processtype of GetController(): " << processType);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -158,7 +158,7 @@ bool vtkSMSessionClient::Connect(const char* url, int timeout)
     "^cdsrsrc://(([^:]+)?(:([0-9]+))?/([^:]+)?(:([0-9]+))?)?");
 
   vtkProcessModule* pm = vtkProcessModule::GetProcessModule();
-  vtkPVOptions* options = pm->GetOptions();
+  auto options = vtkRemotingCoreConfiguration::GetInstance();
 
   // generate timeout string in seconds.
   std::ostringstream timeoutString;
@@ -211,7 +211,7 @@ bool vtkSMSessionClient::Connect(const char* url, int timeout)
     std::ostringstream stream;
     stream << "tcp://" << dataserverhost << ":" << dsport << "?" << timeoutString.str()
            << handshake.str();
-    data_server_url = stream.str().c_str();
+    data_server_url = stream.str();
 
     std::ostringstream stream2;
     stream2 << "tcp://" << renderserverhost << ":" << rsport << "?" << timeoutString.str()
@@ -229,7 +229,7 @@ bool vtkSMSessionClient::Connect(const char* url, int timeout)
     std::ostringstream stream;
     stream << "tcp://localhost:" << dsport << "?listen=true&nonblocking=true&"
            << timeoutString.str() << handshake.str();
-    data_server_url = stream.str().c_str();
+    data_server_url = stream.str();
 
     std::ostringstream stream2;
     stream2 << "tcp://localhost:" << rsport << "?listen=true&nonblocking=true&"
@@ -237,21 +237,23 @@ bool vtkSMSessionClient::Connect(const char* url, int timeout)
     render_server_url = stream2.str();
   }
 
-  bool need_rcontroller = render_server_url.size() > 0;
+  bool need_rcontroller = !render_server_url.empty();
   vtkNetworkAccessManager* nam = pm->GetNetworkAccessManager();
   vtkMultiProcessController* dcontroller = nam->NewConnection(data_server_url.c_str());
   vtkMultiProcessController* rcontroller =
-    need_rcontroller ? nam->NewConnection(render_server_url.c_str()) : NULL;
+    need_rcontroller ? nam->NewConnection(render_server_url.c_str()) : nullptr;
 
   this->AbortConnect = false;
-  while (!this->AbortConnect && (dcontroller == NULL || (need_rcontroller && rcontroller == NULL)))
+  while (
+    !this->AbortConnect && (dcontroller == nullptr || (need_rcontroller && rcontroller == nullptr)))
   {
     int result = nam->ProcessEvents(100);
     if (result == 1) // some activity
     {
       dcontroller = dcontroller ? dcontroller : nam->NewConnection(data_server_url.c_str());
-      rcontroller = (rcontroller || !need_rcontroller) ? rcontroller : nam->NewConnection(
-                                                                         render_server_url.c_str());
+      rcontroller = (rcontroller || !need_rcontroller)
+        ? rcontroller
+        : nam->NewConnection(render_server_url.c_str());
     }
     else if (result == 0) // timeout
     {
@@ -360,7 +362,7 @@ void vtkSMSessionClient::SetupDataServerRenderServerConnection()
   }
   mpiMToN->UpdateVTKObjects();
   info->Delete();
-  info = NULL;
+  info = nullptr;
 
   vtkClientServerStream stream;
   stream << vtkClientServerStream::Invoke << vtkClientServerID(1) // ID for vtkSMSessionCore helper.
@@ -375,7 +377,7 @@ void vtkSMSessionClient::SetupDataServerRenderServerConnection()
 bool vtkSMSessionClient::GetIsAlive()
 {
   // TODO: add check to test connection existence.
-  return (this->DataServerController != NULL);
+  return (this->DataServerController != nullptr);
 }
 
 namespace
@@ -452,14 +454,14 @@ void vtkSMSessionClient::CloseSession()
     this->DataServerController->TriggerRMIOnAllChildren(vtkPVSessionServer::CLOSE_SESSION);
     vtkSocketCommunicator::SafeDownCast(this->DataServerController->GetCommunicator())
       ->CloseConnection();
-    this->SetDataServerController(0);
+    this->SetDataServerController(nullptr);
   }
   if (this->RenderServerController)
   {
     this->RenderServerController->TriggerRMIOnAllChildren(vtkPVSessionServer::CLOSE_SESSION);
     vtkSocketCommunicator::SafeDownCast(this->RenderServerController->GetCommunicator())
       ->CloseConnection();
-    this->SetRenderServerController(0);
+    this->SetRenderServerController(nullptr);
   }
 }
 //----------------------------------------------------------------------------
@@ -471,7 +473,7 @@ void vtkSMSessionClient::PreDisconnection()
 //----------------------------------------------------------------------------
 vtkTypeUInt32 vtkSMSessionClient::GetRealLocation(vtkTypeUInt32 location)
 {
-  if (this->RenderServerController == NULL)
+  if (this->RenderServerController == nullptr)
   {
     // re-route all render-server messages to data-server.
     if ((location & vtkPVSession::RENDER_SERVER) != 0)
@@ -500,7 +502,7 @@ void vtkSMSessionClient::PushState(vtkSMMessage* message)
   vtkTypeUInt32 location = this->GetRealLocation(message->location());
   message->set_location(location);
   int num_controllers = 0;
-  vtkMultiProcessController* controllers[2] = { NULL, NULL };
+  vtkMultiProcessController* controllers[2] = { nullptr, nullptr };
 
   if ((location & (vtkPVSession::DATA_SERVER | vtkPVSession::DATA_SERVER_ROOT)) != 0)
   {
@@ -535,7 +537,7 @@ void vtkSMSessionClient::PushState(vtkSMMessage* message)
       vtkSMRemoteObject* remoteObject =
         vtkSMRemoteObject::SafeDownCast(this->GetRemoteObject(message->global_id()));
       vtkSMMessage msg;
-      if (remoteObject && remoteObject->GetFullState() == NULL)
+      if (remoteObject && remoteObject->GetFullState() == nullptr)
       {
         vtkWarningMacro("The following vtkRemoteObject ("
           << remoteObject->GetClassName() << "-" << remoteObject->GetGlobalIDAsString()
@@ -587,13 +589,13 @@ void vtkSMSessionClient::PullState(vtkSMMessage* message)
   vtkTypeUInt32 location = this->GetRealLocation(message->location());
   message->set_location(location);
 
-  vtkMultiProcessController* controller = NULL;
+  vtkMultiProcessController* controller = nullptr;
 
   // We make sure that only ONE location is targeted with a priority order
   // (1) Client (2) DataServer (3) RenderServer
   if ((location & vtkPVSession::CLIENT) != 0)
   {
-    controller = NULL;
+    controller = nullptr;
   }
   else if ((location & (vtkPVSession::DATA_SERVER | vtkPVSession::DATA_SERVER_ROOT)) != 0)
   {
@@ -641,7 +643,7 @@ void vtkSMSessionClient::ExecuteStream(
 
   location = this->GetRealLocation(location);
 
-  vtkMultiProcessController* controllers[2] = { NULL, NULL };
+  vtkMultiProcessController* controllers[2] = { nullptr, nullptr };
   int num_controllers = 0;
   if ((location & (vtkPVSession::DATA_SERVER | vtkPVSession::DATA_SERVER_ROOT)) != 0)
   {
@@ -685,10 +687,10 @@ const vtkClientServerStream& vtkSMSessionClient::GetLastResult(vtkTypeUInt32 loc
   this->StartBusyWork();
   location = this->GetRealLocation(location);
 
-  vtkMultiProcessController* controller = NULL;
+  vtkMultiProcessController* controller = nullptr;
   if (location & vtkPVSession::CLIENT)
   {
-    controller = NULL;
+    controller = nullptr;
   }
   else if ((location & vtkPVSession::DATA_SERVER_ROOT) || (location & vtkPVSession::DATA_SERVER))
   {
@@ -731,7 +733,7 @@ bool vtkSMSessionClient::GatherInformation(
   vtkTypeUInt32 location, vtkPVInformation* information, vtkTypeUInt32 globalid)
 {
   this->StartBusyWork();
-  if (this->RenderServerController == NULL)
+  if (this->RenderServerController == nullptr)
   {
     // re-route all render-server messages to data-server.
     if (location & vtkPVSession::RENDER_SERVER)
@@ -765,7 +767,7 @@ bool vtkSMSessionClient::GatherInformation(
   std::vector<unsigned char> raw_message;
   stream.GetRawData(raw_message);
 
-  vtkMultiProcessController* controller = NULL;
+  vtkMultiProcessController* controller = nullptr;
 
   if ((location & vtkPVSession::DATA_SERVER) != 0 ||
     (location & vtkPVSession::DATA_SERVER_ROOT) != 0)
@@ -773,9 +775,9 @@ bool vtkSMSessionClient::GatherInformation(
     controller = this->DataServerController;
   }
 
-  else if (this->RenderServerController != NULL &&
+  else if (this->RenderServerController != nullptr &&
     ((location & vtkPVSession::RENDER_SERVER) != 0 ||
-             (location & vtkPVSession::RENDER_SERVER_ROOT) != 0))
+      (location & vtkPVSession::RENDER_SERVER_ROOT) != 0))
   {
     controller = this->RenderServerController;
   }
@@ -833,7 +835,7 @@ void vtkSMSessionClient::UnRegisterSIObject(vtkSMMessage* message)
   message->set_location(location);
   message->set_client_id(this->GetServerInformation()->GetClientId());
 
-  vtkMultiProcessController* controllers[2] = { NULL, NULL };
+  vtkMultiProcessController* controllers[2] = { nullptr, nullptr };
   int num_controllers = 0;
   if ((location & (vtkPVSession::DATA_SERVER | vtkPVSession::DATA_SERVER_ROOT)) != 0)
   {
@@ -874,7 +876,7 @@ void vtkSMSessionClient::RegisterSIObject(vtkSMMessage* message)
   message->set_location(location);
   message->set_client_id(this->GetServerInformation()->GetClientId());
 
-  vtkMultiProcessController* controllers[2] = { NULL, NULL };
+  vtkMultiProcessController* controllers[2] = { nullptr, nullptr };
   int num_controllers = 0;
   if ((location & (vtkPVSession::DATA_SERVER | vtkPVSession::DATA_SERVER_ROOT)) != 0)
   {
@@ -893,7 +895,7 @@ void vtkSMSessionClient::RegisterSIObject(vtkSMMessage* message)
     stream.GetRawData(raw_message);
     for (int cc = 0; cc < num_controllers; cc++)
     {
-      if (controllers[cc] != NULL)
+      if (controllers[cc] != nullptr)
       {
         controllers[cc]->TriggerRMIOnAllChildren(&raw_message[0],
           static_cast<int>(raw_message.size()), vtkPVSessionServer::CLIENT_SERVER_MESSAGE_RMI);
@@ -1012,7 +1014,7 @@ void vtkSMSessionClient::EndBusyWork()
 //-----------------------------------------------------------------------------
 vtkSMCollaborationManager* vtkSMSessionClient::GetCollaborationManager()
 {
-  if (this->CollaborationCommunicator == NULL)
+  if (this->CollaborationCommunicator == nullptr)
   {
     this->CollaborationCommunicator = vtkSMCollaborationManager::New();
     this->CollaborationCommunicator->SetSession(this);
@@ -1023,8 +1025,7 @@ vtkSMCollaborationManager* vtkSMSessionClient::GetCollaborationManager()
 //-----------------------------------------------------------------------------
 int vtkSMSessionClient::GetConnectID()
 {
-  vtkProcessModule* pm = vtkProcessModule::GetProcessModule();
-  vtkPVOptions* options = pm->GetOptions();
+  auto options = vtkRemotingCoreConfiguration::GetInstance();
   return options->GetConnectID();
 }
 

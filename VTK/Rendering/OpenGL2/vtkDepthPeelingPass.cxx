@@ -597,10 +597,10 @@ void vtkDepthPeelingPass::Render(const vtkRenderState* s)
   if (this->PeelCount > 1 || this->ColorDrawCount != 0)
   {
     this->State->PushReadFramebufferBinding();
-    this->Framebuffer->Bind(this->Framebuffer->GetReadMode());
+    this->Framebuffer->Bind(vtkOpenGLFramebufferObject::GetReadMode());
 
-    glBlitFramebuffer(0, 0, this->ViewportWidth, this->ViewportHeight, this->ViewportX,
-      this->ViewportY, this->ViewportX + this->ViewportWidth,
+    this->State->vtkglBlitFramebuffer(0, 0, this->ViewportWidth, this->ViewportHeight,
+      this->ViewportX, this->ViewportY, this->ViewportX + this->ViewportWidth,
       this->ViewportY + this->ViewportHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
     this->State->PopReadFramebufferBinding();

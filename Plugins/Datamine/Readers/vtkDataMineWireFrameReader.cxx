@@ -6,9 +6,9 @@
 //     99-04-12: Written by Jeremy Maccelari, visualn@iafrica.com
 
 #include "vtkDataMineWireFrameReader.h"
-#include "PointMap.h"
-#include "PropertyStorage.h"
-#include "dmfile.h"
+#include "ThirdParty/PointMap.h"
+#include "ThirdParty/PropertyStorage.h"
+#include "ThirdParty/dmfile.h"
 
 #include "vtkCallbackCommand.h"
 #include "vtkCellArray.h"
@@ -37,13 +37,12 @@ vtkStandardNewMacro(vtkDataMineWireFrameReader);
 // --------------------------------------
 #define vtkSetStringMacroBody(propName, fname)                                                     \
   modified = 0;                                                                                    \
-  if (fname == this->propName)                                                                     \
+  if ((fname) == this->propName)                                                                   \
     return;                                                                                        \
-  if (fname && this->propName && !strcmp(fname, this->propName))                                   \
+  if ((fname) && this->propName && !strcmp((fname), this->propName))                               \
     return;                                                                                        \
   modified = 1;                                                                                    \
-  if (this->propName)                                                                              \
-    delete[] this->propName;                                                                       \
+  delete[] this->propName;                                                                         \
   if (fname)                                                                                       \
   {                                                                                                \
     size_t fnl = strlen(fname) + 1;                                                                \
@@ -63,10 +62,10 @@ vtkStandardNewMacro(vtkDataMineWireFrameReader);
 // Constructor
 vtkDataMineWireFrameReader::vtkDataMineWireFrameReader()
 {
-  this->PointFileName = NULL;
-  this->TopoFileName = NULL;
-  this->StopeSummaryFileName = NULL;
-  this->StopeFileMap = NULL;
+  this->PointFileName = nullptr;
+  this->TopoFileName = nullptr;
+  this->StopeSummaryFileName = nullptr;
+  this->StopeFileMap = nullptr;
   this->UseStopeSummary = false;
 
   this->PropertyCount = -1;
@@ -462,7 +461,7 @@ bool vtkDataMineWireFrameReader::FindAndSetFilePath(
 
   // default guess is the way datamine guess
   // which is namept.dm and nametr.dm ( that is why it is dot - 2 )
-  const auto dot = path.rfind(".");
+  const auto dot = path.rfind('.');
   baseName = path.substr(0, (dot - 2));
   baseExt = path.substr(dot, path.size());
 

@@ -54,7 +54,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //-----------------------------------------------------------------------------
 pqExportReaction::pqExportReaction(QAction* parentObject)
   : Superclass(parentObject)
-  , ConnectedView(NULL)
+  , ConnectedView(nullptr)
 {
   // load state enable state depends on whether we are connected to an active
   // server or not and whether
@@ -104,7 +104,7 @@ void pqExportReaction::updateEnableState()
     {
       vtkSMViewProxy* viewProxy = view->getViewProxy();
       vtkNew<vtkSMViewExportHelper> helper;
-      enabled = (helper->GetSupportedFileTypes(viewProxy).size() > 0);
+      enabled = !helper->GetSupportedFileTypes(viewProxy).empty();
     }
   }
   this->parentAction()->setEnabled(enabled);
@@ -131,14 +131,14 @@ QString pqExportReaction::exportActiveView()
   }
 
   pqFileDialog file_dialog(
-    NULL, pqCoreUtilities::mainWidget(), tr("Export View:"), QString(), filters);
+    nullptr, pqCoreUtilities::mainWidget(), tr("Export View:"), QString(), filters);
   file_dialog.setObjectName("FileExportDialog");
   file_dialog.setFileMode(pqFileDialog::AnyFile);
-  if (file_dialog.exec() == QDialog::Accepted && file_dialog.getSelectedFiles().size() > 0)
+  if (file_dialog.exec() == QDialog::Accepted && !file_dialog.getSelectedFiles().empty())
   {
     QString filename = file_dialog.getSelectedFiles().first();
     vtkSmartPointer<vtkSMExporterProxy> proxy;
-    proxy.TakeReference(helper->CreateExporter(filename.toLocal8Bit().data(), viewProxy));
+    proxy.TakeReference(helper->CreateExporter(filename.toUtf8().data(), viewProxy));
     if (!proxy)
     {
       qCritical("Couldn't handle export filename");
@@ -175,7 +175,7 @@ QString pqExportReaction::exportActiveView()
       SM_SCOPED_TRACE(ExportView)
         .arg("view", viewProxy)
         .arg("exporter", proxy)
-        .arg("filename", filename.toLocal8Bit().data());
+        .arg("filename", filename.toUtf8().data());
       proxy->Write();
       return filename;
     }

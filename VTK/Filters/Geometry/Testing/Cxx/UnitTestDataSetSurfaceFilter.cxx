@@ -16,42 +16,36 @@
 // Hide VTK_DEPRECATED_IN_9_0_0() warnings for this class.
 #define VTK_DEPRECATION_LEVEL 0
 
-#include "vtkSmartPointer.h"
-
-#include "vtkDataSetSurfaceFilter.h"
-
 #include "vtkAppendFilter.h"
-#include "vtkPlaneSource.h"
-#include "vtkRegularPolygonSource.h"
-#include "vtkStripper.h"
-#include "vtkTriangleFilter.h"
-
-#include "vtkRectilinearGrid.h"
-#include "vtkStructuredGrid.h"
-#include "vtkUniformGrid.h"
-#include "vtkUnstructuredGrid.h"
-
 #include "vtkCellData.h"
+#include "vtkCommand.h"
+#include "vtkDataSetSurfaceFilter.h"
 #include "vtkDoubleArray.h"
+#include "vtkGenericCell.h"
+#include "vtkHexahedron.h"
+#include "vtkPlaneSource.h"
 #include "vtkPointData.h"
 #include "vtkPointLocator.h"
 #include "vtkPoints.h"
-
-#include "vtkGenericCell.h"
-#include "vtkHexahedron.h"
 #include "vtkPolyData.h"
 #include "vtkPolyLine.h"
 #include "vtkQuadraticWedge.h"
-#include "vtkTetra.h"
-
-#include "vtkCommand.h"
+#include "vtkRectilinearGrid.h"
+#include "vtkRegularPolygonSource.h"
+#include "vtkSmartPointer.h"
+#include "vtkStripper.h"
+#include "vtkStructuredGrid.h"
 #include "vtkTestErrorObserver.h"
+#include "vtkTetra.h"
+#include "vtkTriangleFilter.h"
+#include "vtkUniformGrid.h"
+#include "vtkUnstructuredGrid.h"
 
 #include <map>
 #include <sstream>
 
-static vtkSmartPointer<vtkDataSet> CreatePolyData(const int xres, const int yres);
-static vtkSmartPointer<vtkDataSet> CreateTriangleStripData(const int xres, const int yres);
+static vtkSmartPointer<vtkDataSet> CreatePolyData(int xres, int yres);
+static vtkSmartPointer<vtkDataSet> CreateTriangleStripData(int xres, int yres);
 static vtkSmartPointer<vtkDataSet> CreateTetraData();
 static vtkSmartPointer<vtkDataSet> CreatePolygonData(int sides = 6);
 static vtkSmartPointer<vtkDataSet> CreateQuadraticWedgeData();
@@ -114,12 +108,14 @@ int UnitTestDataSetSurfaceFilter(int, char*[])
     typesToProcess["QuadraticWedge"] = test::CellDescription(VTK_QUADRATIC_WEDGE, 26);
     typesToProcess["QuadraticPyramid"] = test::CellDescription(VTK_QUADRATIC_PYRAMID, 22);
     typesToProcess["BiQuadraticQuad"] = test::CellDescription(VTK_BIQUADRATIC_QUAD, 8);
-    typesToProcess["TriQuadraticHexahedron"] =
-      test::CellDescription(VTK_TRIQUADRATIC_HEXAHEDRON, 768);
     typesToProcess["QuadraticLinearQuad"] = test::CellDescription(VTK_QUADRATIC_LINEAR_QUAD, 4);
     typesToProcess["QuadraticLinearWedge"] = test::CellDescription(VTK_QUADRATIC_LINEAR_WEDGE, 20);
     typesToProcess["BiQuadraticQuadraticWedge"] =
       test::CellDescription(VTK_BIQUADRATIC_QUADRATIC_WEDGE, 32);
+    typesToProcess["TriQuadraticHexahedron"] =
+      test::CellDescription(VTK_TRIQUADRATIC_HEXAHEDRON, 768);
+    typesToProcess["TriQuadraticPyramid"] = test::CellDescription(VTK_TRIQUADRATIC_PYRAMID, 32);
+    typesToProcess["EmptyCell"] = test::CellDescription(VTK_EMPTY_CELL, 0);
 
     std::map<std::string, test::CellDescription>::iterator it;
     for (it = typesToProcess.begin(); it != typesToProcess.end(); ++it)
@@ -207,14 +203,12 @@ int UnitTestDataSetSurfaceFilter(int, char*[])
     std::cout << " PASSED." << std::endl;
   }
   {
-    std::cout
-      << "Testing (UniformGrid(5,10,1), UseStripsOn, PassThroughCellIds, PassThroughPointIds)...";
+    std::cout << "Testing (UniformGrid(5,10,1), PassThroughCellIds, PassThroughPointIds)...";
     vtkSmartPointer<vtkDataSetSurfaceFilter> filter =
       vtkSmartPointer<vtkDataSetSurfaceFilter>::New();
     filter->SetInputData(CreateUniformGrid(5, 10, 1));
     filter->PassThroughCellIdsOn();
     filter->PassThroughPointIdsOn();
-    filter->UseStripsOn();
     filter->Update();
     int got = filter->GetOutput()->GetNumberOfCells();
     std::cout << " # of cells: " << got;
@@ -224,14 +218,12 @@ int UnitTestDataSetSurfaceFilter(int, char*[])
     std::cout << " PASSED." << std::endl;
   }
   {
-    std::cout
-      << "Testing (UniformGrid(1,5,10), UseStripsOn, PassThroughCellIds, PassThroughPointIds)...";
+    std::cout << "Testing (UniformGrid(1,5,10), PassThroughCellIds, PassThroughPointIds)...";
     vtkSmartPointer<vtkDataSetSurfaceFilter> filter =
       vtkSmartPointer<vtkDataSetSurfaceFilter>::New();
     filter->SetInputData(CreateUniformGrid(1, 5, 10));
     filter->PassThroughCellIdsOn();
     filter->PassThroughPointIdsOn();
-    filter->UseStripsOn();
     filter->Update();
     int got = filter->GetOutput()->GetNumberOfCells();
     std::cout << " # of cells: " << got;
@@ -241,14 +233,12 @@ int UnitTestDataSetSurfaceFilter(int, char*[])
     std::cout << " PASSED." << std::endl;
   }
   {
-    std::cout
-      << "Testing (UniformGrid(5,1,10), UseStripsOn, PassThroughCellIds, PassThroughPointIds)...";
+    std::cout << "Testing (UniformGrid(5,1,10), PassThroughCellIds, PassThroughPointIds)...";
     vtkSmartPointer<vtkDataSetSurfaceFilter> filter =
       vtkSmartPointer<vtkDataSetSurfaceFilter>::New();
     filter->SetInputData(CreateUniformGrid(5, 1, 10));
     filter->PassThroughCellIdsOn();
     filter->PassThroughPointIdsOn();
-    filter->UseStripsOn();
     filter->Update();
     int got = filter->GetOutput()->GetNumberOfCells();
     std::cout << " # of cells: " << got;
@@ -258,13 +248,12 @@ int UnitTestDataSetSurfaceFilter(int, char*[])
     std::cout << " PASSED." << std::endl;
   }
   {
-    std::cout << "Testing (UniformGrid, UseStripsOff, PassThroughCellIds, PassThroughPointIds)...";
+    std::cout << "Testing (UniformGrid, PassThroughCellIds, PassThroughPointIds)...";
     vtkSmartPointer<vtkDataSetSurfaceFilter> filter =
       vtkSmartPointer<vtkDataSetSurfaceFilter>::New();
     filter->SetInputData(CreateUniformGrid(10, 5, 1));
     filter->PassThroughCellIdsOn();
     filter->PassThroughPointIdsOn();
-    filter->UseStripsOff();
     filter->Update();
     int got = filter->GetOutput()->GetNumberOfCells();
     std::cout << " # of cells: " << got;
@@ -393,10 +382,10 @@ int UnitTestDataSetSurfaceFilter(int, char*[])
                 << "Expected: 6, Found: " << output->GetNumberOfCells();
       return 1;
     }
-    else if (output->GetNumberOfPoints() != 24)
+    else if (output->GetNumberOfPoints() != 8)
     {
       std::cerr << "Incorrect number of points generated by vtkDataSetSurfaceFilter\n"
-                << "Expected 24, Found : " << output->GetNumberOfPoints();
+                << "Expected 8, Found : " << output->GetNumberOfPoints();
       return 1;
     }
     // verify that the blanked point is not present in output.
@@ -416,39 +405,6 @@ int UnitTestDataSetSurfaceFilter(int, char*[])
     std::cout << " PASSED." << std::endl;
   }
   // Error and warnings
-  {
-    std::cout << "Testing UniformGridExecute strips not supported error...";
-    vtkSmartPointer<vtkTest::ErrorObserver> errorObserver =
-      vtkSmartPointer<vtkTest::ErrorObserver>::New();
-    vtkSmartPointer<vtkDataSetSurfaceFilter> filter =
-      vtkSmartPointer<vtkDataSetSurfaceFilter>::New();
-    filter->UseStripsOn();
-    filter->AddObserver(vtkCommand::ErrorEvent, errorObserver);
-    vtkSmartPointer<vtkDataSet> ugrid = CreateUniformGrid(10, 5, 1);
-
-    vtkSmartPointer<vtkPolyData> polyData = vtkSmartPointer<vtkPolyData>::New();
-    vtkUniformGrid* grid = vtkUniformGrid::SafeDownCast(ugrid);
-    int* tmpext = grid->GetExtent();
-    vtkIdType ext[6];
-    ext[0] = tmpext[0];
-    ext[1] = tmpext[1];
-    ext[2] = tmpext[2];
-    ext[3] = tmpext[3];
-    ext[4] = tmpext[4];
-    ext[5] = tmpext[5];
-    bool faces[6] = { true, true, true, true, true, true };
-    filter->UniformGridExecute(ugrid, polyData, ext, ext, faces);
-    int status1 = errorObserver->CheckErrorMessage("Strips are not supported for uniform grid!");
-    if (status1)
-    {
-      std::cout << " FAILED." << std::endl;
-      status++;
-    }
-    else
-    {
-      std::cout << " PASSED." << std::endl;
-    }
-  }
   {
     std::cout << "Testing cells == 0 ...";
     vtkSmartPointer<vtkTest::ErrorObserver> warningObserver =
@@ -554,7 +510,7 @@ int UnitTestDataSetSurfaceFilter(int, char*[])
   return status;
 }
 
-vtkSmartPointer<vtkDataSet> CreateTriangleStripData(const int xres, const int yres)
+vtkSmartPointer<vtkDataSet> CreateTriangleStripData(int xres, int yres)
 {
   vtkSmartPointer<vtkPlaneSource> plane = vtkSmartPointer<vtkPlaneSource>::New();
   plane->SetXResolution(xres);
@@ -574,7 +530,7 @@ vtkSmartPointer<vtkDataSet> CreateTriangleStripData(const int xres, const int yr
   return unstructuredGrid;
 }
 
-vtkSmartPointer<vtkDataSet> CreatePolyData(const int xres, const int yres)
+vtkSmartPointer<vtkDataSet> CreatePolyData(int xres, int yres)
 {
   vtkSmartPointer<vtkPlaneSource> plane = vtkSmartPointer<vtkPlaneSource>::New();
   plane->SetXResolution(xres);

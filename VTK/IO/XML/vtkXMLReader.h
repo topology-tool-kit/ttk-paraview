@@ -29,7 +29,6 @@
 #include "vtkSmartPointer.h" // for vtkSmartPointer.
 
 #include <string> // for std::string
-#include <vector>
 
 class vtkAbstractArray;
 class vtkCallbackCommand;
@@ -57,15 +56,15 @@ public:
     OTHER
   };
 
-  //@{
+  ///@{
   /**
    * Get/Set the name of the input file.
    */
-  vtkSetStringMacro(FileName);
-  vtkGetStringMacro(FileName);
-  //@}
+  vtkSetFilePathMacro(FileName);
+  vtkGetFilePathMacro(FileName);
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Enable reading from an InputString instead of the default, a file.
    */
@@ -73,7 +72,7 @@ public:
   vtkGetMacro(ReadFromInputString, vtkTypeBool);
   vtkBooleanMacro(ReadFromInputString, vtkTypeBool);
   void SetInputString(const std::string& s) { this->InputString = s; }
-  //@}
+  ///@}
 
   /**
    * Test whether the file (type) with the given name can be read by this
@@ -82,17 +81,17 @@ public:
    * This enables clients (ParaView) to distinguish between failures when we
    * need to look for another reader and failures when we don't.
    */
-  virtual int CanReadFile(const char* name);
+  virtual int CanReadFile(VTK_FILEPATH const char* name);
 
-  //@{
+  ///@{
   /**
    * Get the output as a vtkDataSet pointer.
    */
   vtkDataSet* GetOutputAsDataSet();
   vtkDataSet* GetOutputAsDataSet(int index);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the data array selection tables used to configure which data
    * arrays are loaded by the reader.
@@ -100,27 +99,27 @@ public:
   vtkGetObjectMacro(PointDataArraySelection, vtkDataArraySelection);
   vtkGetObjectMacro(CellDataArraySelection, vtkDataArraySelection);
   vtkGetObjectMacro(ColumnArraySelection, vtkDataArraySelection);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the number of point, cell or column arrays available in the input.
    */
   int GetNumberOfPointArrays();
   int GetNumberOfCellArrays();
   int GetNumberOfColumnArrays();
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Getters for time data array candidates.
    */
   int GetNumberOfTimeDataArrays() const;
   const char* GetTimeDataArray(int idx) const;
   vtkGetObjectMacro(TimeDataStringArray, vtkStringArray);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Setter / Getter on ActiveTimeDataArrayName. This string
    * holds the selected time array name. If set to `nullptr`,
@@ -129,9 +128,9 @@ public:
    */
   vtkGetStringMacro(ActiveTimeDataArrayName);
   vtkSetStringMacro(ActiveTimeDataArrayName);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the name of the point, cell, column or time array with the given index in
    * the input.
@@ -139,9 +138,9 @@ public:
   const char* GetPointArrayName(int index);
   const char* GetCellArrayName(int index);
   const char* GetColumnArrayName(int index);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get/Set whether the point, cell, column or time array with the given name is to
    * be read.
@@ -152,28 +151,28 @@ public:
   void SetCellArrayStatus(const char* name, int status);
   int GetColumnArrayStatus(const char* name);
   void SetColumnArrayStatus(const char* name, int status);
-  //@}
+  ///@}
 
   // For the specified port, copy the information this reader sets up in
   // SetupOutputInformation to outInfo
   virtual void CopyOutputInformation(vtkInformation* vtkNotUsed(outInfo), int vtkNotUsed(port)) {}
 
-  //@{
+  ///@{
   /**
    * Which TimeStep to read.
    */
   vtkSetMacro(TimeStep, int);
   vtkGetMacro(TimeStep, int);
-  //@}
+  ///@}
 
   vtkGetMacro(NumberOfTimeSteps, int);
-  //@{
+  ///@{
   /**
    * Which TimeStepRange to read
    */
   vtkGetVector2Macro(TimeStepRange, int);
   vtkSetVector2Macro(TimeStepRange, int);
-  //@}
+  ///@}
 
   /**
    * Returns the internal XML parser. This can be used to access
@@ -184,23 +183,23 @@ public:
   vtkTypeBool ProcessRequest(vtkInformation* request, vtkInformationVector** inputVector,
     vtkInformationVector* outputVector) override;
 
-  //@{
+  ///@{
   /**
    * Set/get the ErrorObserver for the internal reader
    * This is useful for applications that want to catch error messages.
    */
   void SetReaderErrorObserver(vtkCommand*);
   vtkGetObjectMacro(ReaderErrorObserver, vtkCommand);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/get the ErrorObserver for the internal xml parser
    * This is useful for applications that want to catch error messages.
    */
   void SetParserErrorObserver(vtkCommand*);
   vtkGetObjectMacro(ParserErrorObserver, vtkCommand);
-  //@}
+  ///@}
 
 protected:
   vtkXMLReader();

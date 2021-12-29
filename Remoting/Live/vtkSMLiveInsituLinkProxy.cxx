@@ -16,7 +16,6 @@
 
 #include "vtkClientServerStream.h"
 #include "vtkCommand.h"
-#include "vtkCommand.h"
 #include "vtkLiveInsituLink.h"
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
@@ -39,7 +38,7 @@
 class vtkSMLiveInsituLinkProxy::vtkInternals
 {
 public:
-  typedef std::map<std::string, vtkSmartPointer<vtkSMProxy> > ExtractProxiesType;
+  typedef std::map<std::string, vtkSmartPointer<vtkSMProxy>> ExtractProxiesType;
   ExtractProxiesType ExtractProxies;
 };
 
@@ -55,7 +54,7 @@ vtkSMLiveInsituLinkProxy::vtkSMLiveInsituLinkProxy()
 vtkSMLiveInsituLinkProxy::~vtkSMLiveInsituLinkProxy()
 {
   delete this->Internals;
-  this->Internals = NULL;
+  this->Internals = nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -160,7 +159,7 @@ void vtkSMLiveInsituLinkProxy::LoadState(const vtkSMMessage* msg, vtkSMProxyLoca
     vtkSMSourceProxy* source = vtkSMSourceProxy::SafeDownCast(obj);
     if (source)
     {
-      source->MarkModified(NULL);
+      source->MarkModified(nullptr);
       source->UpdatePipeline();
     }
   }

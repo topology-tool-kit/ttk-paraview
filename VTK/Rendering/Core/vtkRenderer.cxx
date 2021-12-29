@@ -34,6 +34,7 @@
 #include "vtkPicker.h"
 #include "vtkProp3DCollection.h"
 #include "vtkPropCollection.h"
+#include "vtkRect.h"
 #include "vtkRenderPass.h"
 #include "vtkRenderTimerLog.h"
 #include "vtkRenderWindow.h"
@@ -42,6 +43,7 @@
 #include "vtkSelectionNode.h"
 #include "vtkTexture.h"
 #include "vtkTimerLog.h"
+#include "vtkVectorOperators.h"
 #include "vtkVolume.h"
 
 #include <sstream>
@@ -1328,6 +1330,142 @@ void vtkRenderer::ResetCameraClippingRange(
   this->ResetCameraClippingRange(bounds);
 }
 
+// Automatically set up the camera based on the visible actors.
+// Use a screen space bounding box to zoom closer to the data.
+void vtkRenderer::ResetCameraScreenSpace()
+{
+  double allBounds[6];
+
+  this->ComputeVisiblePropBounds(allBounds);
+
+  if (!vtkMath::AreBoundsInitialized(allBounds))
+  {
+    vtkDebugMacro(<< "Cannot reset camera!");
+  }
+  else
+  {
+    this->ResetCameraScreenSpace(allBounds);
+  }
+
+  // Here to let parallel/distributed compositing intercept
+  // and do the right thing.
+  this->InvokeEvent(vtkCommand::ResetCameraEvent, this);
+}
+
+// Alternative version of ResetCameraScreenSpace(bounds[6]);
+void vtkRenderer::ResetCameraScreenSpace(
+  double xmin, double xmax, double ymin, double ymax, double zmin, double zmax)
+{
+  double bounds[6];
+
+  bounds[0] = xmin;
+  bounds[1] = xmax;
+  bounds[2] = ymin;
+  bounds[3] = ymax;
+  bounds[4] = zmin;
+  bounds[5] = zmax;
+
+  this->ResetCameraScreenSpace(bounds);
+}
+
+// Use a screen space bounding box to zoom closer to the data.
+void vtkRenderer::ResetCameraScreenSpace(const double bounds[6])
+{
+  // Make sure all bounds are visible to project into screen space
+  this->ResetCamera(bounds);
+
+  double expandedBounds[6] = { bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5] };
+  this->ExpandBounds(expandedBounds, this->ActiveCamera->GetModelTransformMatrix());
+
+  // 1) Compute the screen space bounding box
+  double xmin = VTK_DOUBLE_MAX;
+  double ymin = VTK_DOUBLE_MAX;
+  double xmax = VTK_DOUBLE_MIN;
+  double ymax = VTK_DOUBLE_MIN;
+  double currentPointDisplay[3];
+  for (int i = 0; i < 2; ++i)
+  {
+    for (int j = 0; j < 2; ++j)
+    {
+      for (int k = 0; k < 2; ++k)
+      {
+        double currentPoint[4] = { expandedBounds[i], expandedBounds[j + 2], expandedBounds[k + 4],
+          1.0 };
+
+        this->SetWorldPoint(currentPoint);
+        this->WorldToDisplay();
+        this->GetDisplayPoint(currentPointDisplay);
+
+        xmin = std::min(currentPointDisplay[0], xmin);
+        xmax = std::max(currentPointDisplay[0], xmax);
+        ymin = std::min(currentPointDisplay[1], ymin);
+        ymax = std::max(currentPointDisplay[1], ymax);
+      }
+    }
+  }
+
+  // Project the focal point in screen space
+  double fp[4];
+  this->ActiveCamera->GetFocalPoint(fp);
+  fp[3] = 1.0;
+  double fpDisplay[3];
+  this->SetWorldPoint(fp);
+  this->WorldToDisplay();
+  this->GetDisplayPoint(fpDisplay);
+
+  // The focal point must be at the center of the box
+  // So construct a box with fpDisplay at the center
+  int xCenterFocalPoint = static_cast<int>(fpDisplay[0]);
+  int yCenterFocalPoint = static_cast<int>(fpDisplay[1]);
+
+  int xCenterBox = static_cast<int>((xmin + xmax) / 2);
+  int yCenterBox = static_cast<int>((ymin + ymax) / 2);
+
+  int xDiff = 2 * (xCenterFocalPoint - xCenterBox);
+  int yDiff = 2 * (yCenterFocalPoint - yCenterBox);
+
+  int xMaxOffset = std::max(xDiff, 0);
+  int xMinOffset = std::min(xDiff, 0);
+  int yMaxOffset = std::max(yDiff, 0);
+  int yMinOffset = std::min(yDiff, 0);
+
+  xmin += xMinOffset;
+  xmax += xMaxOffset;
+  ymin += yMinOffset;
+  ymax += yMaxOffset;
+  // Now the focal point is at the center of the box
+
+  const vtkRecti box(xmin, ymin, xmax - xmin, ymax - ymin);
+  // We let a 10% offset around the zoomed data
+  this->ZoomToBoxUsingViewAngle(box, 0.9);
+}
+
+// Display to world using vtkVector3d
+vtkVector3d vtkRenderer::DisplayToWorld(const vtkVector3d& display)
+{
+  this->SetDisplayPoint(display[0], display[1], display[2]);
+  this->DisplayToView();
+  this->ViewToWorld();
+
+  vtkVector<double, 4> world4;
+  this->GetWorldPoint(world4.GetData());
+  double invw = 1.0 * world4[3];
+  world4 = world4 * invw;
+  return vtkVector3d(world4.GetData());
+}
+
+void vtkRenderer::ZoomToBoxUsingViewAngle(const vtkRecti& box, const double offsetRatio)
+{
+  const int* size = this->GetSize();
+  double zf1 = size[0] / static_cast<double>(box.GetWidth());
+  double zf2 = size[1] / static_cast<double>(box.GetHeight());
+  double zoomFactor = std::min(zf1, zf2);
+
+  // OffsetRatio will let a free space between the zoomed data
+  // And the edges of the window
+  this->GetActiveCamera()->Zoom(zoomFactor * offsetRatio);
+}
+
 // Specify the rendering window in which to draw. This is automatically set
 // when the renderer is created by MakeRenderer.  The user probably
 // shouldn't ever need to call this method.
@@ -1424,7 +1562,6 @@ void vtkRenderer::WorldToView()
 // Convert world point coordinates to view coordinates.
 void vtkRenderer::WorldToView(double& x, double& y, double& z)
 {
-  double mat[16];
   double view[4];
 
   // get the perspective transformation from the active camera
@@ -1434,8 +1571,7 @@ void vtkRenderer::WorldToView(double& x, double& y, double& z)
     x = y = z = 0.0;
     return;
   }
-  vtkMatrix4x4::DeepCopy(mat,
-    this->ActiveCamera->GetCompositeProjectionTransformMatrix(this->GetTiledAspectRatio(), 0, 1));
+  const auto& mat = this->GetCompositeProjectionTransformationMatrix();
 
   view[0] = x * mat[0] + y * mat[1] + z * mat[2] + mat[3];
   view[1] = x * mat[4] + y * mat[5] + z * mat[6] + mat[7];
@@ -1452,7 +1588,6 @@ void vtkRenderer::WorldToView(double& x, double& y, double& z)
 
 void vtkRenderer::WorldToPose(double& x, double& y, double& z)
 {
-  double mat[16];
   double view[4];
 
   // get the perspective transformation from the active camera
@@ -1462,7 +1597,7 @@ void vtkRenderer::WorldToPose(double& x, double& y, double& z)
     x = y = z = 0.0;
     return;
   }
-  vtkMatrix4x4::DeepCopy(mat, this->ActiveCamera->GetViewTransformMatrix());
+  const auto& mat = this->GetViewTransformMatrix();
 
   view[0] = x * mat[0] + y * mat[1] + z * mat[2] + mat[3];
   view[1] = x * mat[4] + y * mat[5] + z * mat[6] + mat[7];
@@ -1479,7 +1614,6 @@ void vtkRenderer::WorldToPose(double& x, double& y, double& z)
 
 void vtkRenderer::PoseToView(double& x, double& y, double& z)
 {
-  double mat[16];
   double view[4];
 
   // get the perspective transformation from the active camera
@@ -1489,8 +1623,7 @@ void vtkRenderer::PoseToView(double& x, double& y, double& z)
     x = y = z = 0.0;
     return;
   }
-  vtkMatrix4x4::DeepCopy(
-    mat, this->ActiveCamera->GetProjectionTransformMatrix(this->GetTiledAspectRatio(), 0, 1));
+  const auto& mat = this->GetProjectionTransformationMatrix();
 
   view[0] = x * mat[0] + y * mat[1] + z * mat[2] + mat[3];
   view[1] = x * mat[4] + y * mat[5] + z * mat[6] + mat[7];
@@ -1518,10 +1651,10 @@ void vtkRenderer::PoseToWorld(double& x, double& y, double& z)
   }
 
   // get the perspective transformation from the active camera
-  vtkMatrix4x4* matrix = this->ActiveCamera->GetViewTransformMatrix();
+  const auto& matrix = this->GetViewTransformMatrix();
 
   // use the inverse matrix
-  vtkMatrix4x4::Invert(*matrix->Element, mat);
+  vtkMatrix4x4::Invert(matrix.data(), mat);
 
   // Transform point to world coordinates
   result[0] = x;
@@ -1553,13 +1686,8 @@ void vtkRenderer::ViewToPose(double& x, double& y, double& z)
     return;
   }
 
-  // get the perspective transformation from the active camera
-  vtkMatrix4x4* matrix =
-    this->ActiveCamera->GetProjectionTransformMatrix(this->GetTiledAspectRatio(), 0, 1);
-
-  // use the inverse matrix
-  vtkMatrix4x4::Invert(*matrix->Element, mat);
-
+  const auto& matrix = this->GetProjectionTransformationMatrix();
+  vtkMatrix4x4::Invert(matrix.data(), mat);
   // Transform point to world coordinates
   result[0] = x;
   result[1] = y;
@@ -1928,3 +2056,47 @@ int vtkRenderer::CaptureGL2PSSpecialProp(vtkProp* prop)
 }
 
 vtkCxxSetObjectMacro(vtkRenderer, GL2PSSpecialPropCollection, vtkPropCollection);
+
+const std::array<double, 16>& vtkRenderer::GetViewTransformMatrix()
+{
+  if (this->LastViewTransformCameraModified != this->ActiveCamera->GetMTime())
+  {
+    vtkMatrix4x4::DeepCopy(
+      this->ViewTransformMatrix.data(), this->ActiveCamera->GetViewTransformMatrix());
+
+    this->LastViewTransformCameraModified = this->ActiveCamera->GetMTime();
+  }
+  return this->ViewTransformMatrix;
+}
+
+const std::array<double, 16>& vtkRenderer::GetCompositeProjectionTransformationMatrix()
+{
+  const double tiledAspectRatio = this->GetTiledAspectRatio();
+  if (tiledAspectRatio != this->LastCompositeProjectionTransformationMatrixTiledAspectRatio ||
+    this->LastCompositeProjectionTransformationMatrixCameraModified !=
+      this->ActiveCamera->GetMTime())
+  {
+    vtkMatrix4x4::DeepCopy(this->CompositeProjectionTransformationMatrix.data(),
+      this->ActiveCamera->GetCompositeProjectionTransformMatrix(tiledAspectRatio, 0, 1));
+
+    this->LastCompositeProjectionTransformationMatrixTiledAspectRatio = tiledAspectRatio;
+    this->LastCompositeProjectionTransformationMatrixCameraModified =
+      this->ActiveCamera->GetMTime();
+  }
+  return this->CompositeProjectionTransformationMatrix;
+}
+
+const std::array<double, 16>& vtkRenderer::GetProjectionTransformationMatrix()
+{
+  const double tiledAspectRatio = this->GetTiledAspectRatio();
+  if (tiledAspectRatio != this->LastProjectionTransformationMatrixTiledAspectRatio ||
+    this->LastProjectionTransformationMatrixCameraModified != this->ActiveCamera->GetMTime())
+  {
+    vtkMatrix4x4::DeepCopy(this->ProjectionTransformationMatrix.data(),
+      this->ActiveCamera->GetProjectionTransformMatrix(tiledAspectRatio, 0, 1));
+
+    this->LastProjectionTransformationMatrixTiledAspectRatio = tiledAspectRatio;
+    this->LastProjectionTransformationMatrixCameraModified = this->ActiveCamera->GetMTime();
+  }
+  return this->ProjectionTransformationMatrix;
+}

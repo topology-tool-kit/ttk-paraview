@@ -44,12 +44,12 @@ class vtkStringArray;
 class VTKIOCORE_EXPORT vtkGlobFileNames : public vtkObject
 {
 public:
-  //@{
+  ///@{
   /**
    * Return the class name as a string.
    */
   vtkTypeMacro(vtkGlobFileNames, vtkObject);
-  //@}
+  ///@}
 
   /**
    * Create a new vtkGlobFileNames object.
@@ -66,7 +66,7 @@ public:
    */
   void Reset();
 
-  //@{
+  ///@{
   /**
    * Set the directory in which to perform the glob.  If this is
    * not set, then the current directory will be used.  Also, if
@@ -74,9 +74,9 @@ public:
    * starts with "/" or a drive letter) then that absolute path
    * will be used and Directory will be ignored.
    */
-  vtkSetStringMacro(Directory);
-  vtkGetStringMacro(Directory);
-  //@}
+  vtkSetFilePathMacro(Directory);
+  vtkGetFilePathMacro(Directory);
+  ///@}
 
   /**
    * Search for all files that match the given expression,
@@ -84,16 +84,16 @@ public:
    * be called repeatedly to add files matching additional patterns.
    * Returns 1 if successful, otherwise returns zero.
    */
-  int AddFileNames(const char* pattern);
+  int AddFileNames(VTK_FILEPATH const char* pattern);
 
-  //@{
+  ///@{
   /**
    * Recurse into subdirectories.
    */
   vtkSetMacro(Recurse, vtkTypeBool);
   vtkBooleanMacro(Recurse, vtkTypeBool);
   vtkGetMacro(Recurse, vtkTypeBool);
-  //@}
+  ///@}
 
   /**
    * Return the number of files found.
@@ -103,23 +103,23 @@ public:
   /**
    * Return the file at the given index, the indexing is 0 based.
    */
-  const char* GetNthFileName(int index);
+  VTK_FILEPATH const char* GetNthFileName(int index);
 
-  //@{
+  ///@{
   /**
    * Get an array that contains all the file names.
    */
   vtkGetObjectMacro(FileNames, vtkStringArray);
-  //@}
+  ///@}
 
 protected:
-  //@{
+  ///@{
   /**
    * Set the wildcard pattern.
    */
-  vtkSetStringMacro(Pattern);
-  vtkGetStringMacro(Pattern);
-  //@}
+  vtkSetFilePathMacro(Pattern);
+  vtkGetFilePathMacro(Pattern);
+  ///@}
 
   vtkGlobFileNames();
   ~vtkGlobFileNames() override;

@@ -17,7 +17,7 @@
  * @brief   collection of utilities.
  *
  * vtkSMCoreUtilities provides miscellaneous utility functions.
-*/
+ */
 
 #ifndef vtkSMCoreUtilities_h
 #define vtkSMCoreUtilities_h
@@ -25,7 +25,8 @@
 #include "vtkObject.h"
 #include "vtkRemotingServerManagerModule.h" //needed for exports
 
-#include <string>
+#include <string> // for std::string
+#include <vector> // for std::vector
 
 class vtkSMProxy;
 
@@ -39,14 +40,24 @@ public:
   /**
    * Given a proxy (or proxy prototype), returns the name of the property that
    * ParaView application will be use as the default FileName property.
-   * Returns the name of the property or NULL when no such property is found.
+   * Returns the name of the property or nullptr when no such property is found.
    */
   static const char* GetFileNameProperty(vtkSMProxy*);
+
+  /**
+   * Returns list of all properties that accept filenames in order that they are
+   * defined.
+   */
+  static std::vector<std::string> GetFileNameProperties(vtkSMProxy* proxy);
 
   /**
    * Sanitize a label/name to be remove spaces, delimiters etc.
    */
   static std::string SanitizeName(const char*);
+  static std::string SanitizeName(const std::string& name)
+  {
+    return vtkSMCoreUtilities::SanitizeName(name.c_str());
+  }
 
   //@{
   /**

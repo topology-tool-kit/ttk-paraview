@@ -142,9 +142,9 @@ VTKM_EXEC_CONT inline void AtomicLoadFence(vtkm::MemoryOrder order)
 }
 
 template <typename T>
-VTKM_EXEC_CONT inline T AtomicLoadImpl(const T* addr, vtkm::MemoryOrder order)
+VTKM_EXEC_CONT inline T AtomicLoadImpl(T* const addr, vtkm::MemoryOrder order)
 {
-  const volatile T* vaddr = addr; /* volatile to bypass cache*/
+  volatile T* const vaddr = addr; /* volatile to bypass cache*/
   if (order == vtkm::MemoryOrder::SequentiallyConsistent)
   {
     __threadfence();
@@ -207,16 +207,62 @@ VTKM_EXEC_CONT inline T AtomicNotImpl(T* addr, vtkm::MemoryOrder order)
 }
 
 template <typename T>
-VTKM_EXEC_CONT inline T AtomicCompareAndSwapImpl(T* addr,
-                                                 T desired,
-                                                 T expected,
-                                                 vtkm::MemoryOrder order)
+VTKM_EXEC_CONT inline bool AtomicCompareExchangeImpl(T* addr,
+                                                     T* expected,
+                                                     T desired,
+                                                     vtkm::MemoryOrder order)
 {
   AtomicStoreFence(order);
-  auto result = atomicCAS(addr, expected, desired);
+  auto result = atomicCAS(addr, *expected, desired);
   AtomicLoadFence(order);
-  return result;
+  if (result == *expected)
+  {
+    return true;
+  }
+  else
+  {
+    *expected = result;
+    return false;
+  }
 }
+#if __CUDA_ARCH__ < 200
+VTKM_EXEC_CONT inline vtkm::Float32 vtkmAtomicAddImpl(vtkm::Float32* address,
+                                                      vtkm::Float32 value,
+                                                      vtkm::MemoryOrder order)
+{
+  AtomicStoreFence(order);
+  vtkm::UInt32 assumed;
+  vtkm::UInt32 old = __float_as_int(*address);
+  do
+  {
+    assumed = old;
+    old = atomicCAS(reinterpret_cast<vtkm::UInt32*>(address),
+                    assumed,
+                    __float_as_int(__int_as_float(assumed) + value));
+  } while (assumed != old);
+  AtomicLoadFence(order);
+  return __int_as_float(old);
+}
+#endif
+#if __CUDA_ARCH__ < 600
+VTKM_EXEC_CONT inline vtkm::Float64 vtkmAtomicAdd(vtkm::Float64* address,
+                                                  vtkm::Float64 value,
+                                                  vtkm::MemoryOrder order)
+{
+  AtomicStoreFence(order);
+  vtkm::UInt64 assumed;
+  vtkm::UInt64 old = __double_as_longlong(*address);
+  do
+  {
+    assumed = old;
+    old = atomicCAS(reinterpret_cast<vtkm::UInt64*>(address),
+                    assumed,
+                    __double_as_longlong(__longlong_as_double(assumed) + value));
+  } while (assumed != old);
+  AtomicLoadFence(order);
+  return __longlong_as_double(old);
+}
+#endif
 }
 } // namespace vtkm::detail
 
@@ -239,9 +285,14 @@ VTKM_THIRDPARTY_PRE_INCLUDE
 #if defined(KOKKOS_ENABLE_CUDA) && !defined(VTKM_CUDA)
 #undef KOKKOS_ENABLE_CUDA
 #endif
+
+#if defined(KOKKOS_ENABLE_HIP) && !defined(VTKM_HIP)
+#undef KOKKOS_ENABLE_HIP
+#endif
+
 #endif //KOKKOS_MACROS_HPP not loaded
 
-#include <Kokkos_Core.hpp>
+#include <Kokkos_Atomic.hpp>
 VTKM_THIRDPARTY_POST_INCLUDE
 
 namespace vtkm
@@ -270,7 +321,7 @@ VTKM_EXEC_CONT inline void AtomicLoadFence(vtkm::MemoryOrder order)
 }
 
 template <typename T>
-VTKM_EXEC_CONT inline T AtomicLoadImpl(const T* addr, vtkm::MemoryOrder order)
+VTKM_EXEC_CONT inline T AtomicLoadImpl(T* const addr, vtkm::MemoryOrder order)
 {
   switch (order)
   {
@@ -350,15 +401,23 @@ VTKM_EXEC_CONT inline T AtomicNotImpl(T* addr, vtkm::MemoryOrder order)
 }
 
 template <typename T>
-VTKM_EXEC_CONT inline T AtomicCompareAndSwapImpl(T* addr,
-                                                 T desired,
-                                                 T expected,
-                                                 vtkm::MemoryOrder order)
+VTKM_EXEC_CONT inline bool AtomicCompareExchangeImpl(T* addr,
+                                                     T* expected,
+                                                     T desired,
+                                                     vtkm::MemoryOrder order)
 {
   AtomicStoreFence(order);
-  T result = Kokkos::atomic_compare_exchange(addr, expected, desired);
+  T oldValue = Kokkos::atomic_compare_exchange(addr, *expected, desired);
   AtomicLoadFence(order);
-  return result;
+  if (oldValue == *expected)
+  {
+    return true;
+  }
+  else
+  {
+    *expected = oldValue;
+    return false;
+  }
 }
 }
 } // namespace vtkm::detail
@@ -407,42 +466,42 @@ VTKM_EXEC_CONT inline T BitCast(T&& src)
 //
 // https://docs.microsoft.com/en-us/windows/desktop/sync/interlocked-variable-access
 
-VTKM_EXEC_CONT inline vtkm::UInt8 AtomicLoadImpl(const vtkm::UInt8* addr, vtkm::MemoryOrder order)
+VTKM_EXEC_CONT inline vtkm::UInt8 AtomicLoadImpl(vtkm::UInt8* const addr, vtkm::MemoryOrder order)
 {
   // This assumes that the memory interface is smart enough to load a 32-bit
   // word atomically and a properly aligned 8-bit word from it.
   // We could build address masks and do shifts to perform this manually if
   // this assumption is incorrect.
-  auto result = *static_cast<volatile const vtkm::UInt8*>(addr);
+  auto result = *static_cast<volatile vtkm::UInt8* const>(addr);
   std::atomic_thread_fence(internal::StdAtomicMemOrder(order));
   return result;
 }
-VTKM_EXEC_CONT inline vtkm::UInt16 AtomicLoadImpl(const vtkm::UInt16* addr, vtkm::MemoryOrder order)
+VTKM_EXEC_CONT inline vtkm::UInt16 AtomicLoadImpl(vtkm::UInt16* const addr, vtkm::MemoryOrder order)
 {
   // This assumes that the memory interface is smart enough to load a 32-bit
   // word atomically and a properly aligned 16-bit word from it.
   // We could build address masks and do shifts to perform this manually if
   // this assumption is incorrect.
-  auto result = *static_cast<volatile const vtkm::UInt16*>(addr);
+  auto result = *static_cast<volatile vtkm::UInt16* const>(addr);
   std::atomic_thread_fence(internal::StdAtomicMemOrder(order));
   return result;
 }
-VTKM_EXEC_CONT inline vtkm::UInt32 AtomicLoadImpl(const vtkm::UInt32* addr, vtkm::MemoryOrder order)
+VTKM_EXEC_CONT inline vtkm::UInt32 AtomicLoadImpl(vtkm::UInt32* const addr, vtkm::MemoryOrder order)
 {
-  auto result = *static_cast<volatile const vtkm::UInt32*>(addr);
+  auto result = *static_cast<volatile vtkm::UInt32* const>(addr);
   std::atomic_thread_fence(internal::StdAtomicMemOrder(order));
   return result;
 }
-VTKM_EXEC_CONT inline vtkm::UInt64 AtomicLoadImpl(const vtkm::UInt64* addr, vtkm::MemoryOrder order)
+VTKM_EXEC_CONT inline vtkm::UInt64 AtomicLoadImpl(vtkm::UInt64* const addr, vtkm::MemoryOrder order)
 {
-  auto result = *static_cast<volatile const vtkm::UInt64*>(addr);
+  auto result = *static_cast<volatile vtkm::UInt64* const>(addr);
   std::atomic_thread_fence(internal::StdAtomicMemOrder(order));
   return result;
 }
 
 VTKM_EXEC_CONT inline void AtomicStoreImpl(vtkm::UInt8* addr,
                                            vtkm::UInt8 val,
-                                           vtkm::MemoryOrder order)
+                                           vtkm::MemoryOrder vtkmNotUsed(order))
 {
   // There doesn't seem to be an atomic store instruction in the windows
   // API, so just exchange and discard the result.
@@ -450,7 +509,7 @@ VTKM_EXEC_CONT inline void AtomicStoreImpl(vtkm::UInt8* addr,
 }
 VTKM_EXEC_CONT inline void AtomicStoreImpl(vtkm::UInt16* addr,
                                            vtkm::UInt16 val,
-                                           vtkm::MemoryOrder order)
+                                           vtkm::MemoryOrder vtkmNotUsed(order))
 {
   // There doesn't seem to be an atomic store instruction in the windows
   // API, so just exchange and discard the result.
@@ -478,22 +537,31 @@ VTKM_EXEC_CONT inline void AtomicStoreImpl(vtkm::UInt64* addr,
       winName##suffix(reinterpret_cast<volatile winType*>(addr), BitCast<winType>(arg)));        \
   }
 
-#define VTKM_ATOMIC_OPS_FOR_TYPE(vtkmType, winType, suffix)                             \
-  VTKM_ATOMIC_OP(AtomicAddImpl, _InterlockedExchangeAdd, vtkmType, winType, suffix)     \
-  VTKM_ATOMIC_OP(AtomicAndImpl, _InterlockedAnd, vtkmType, winType, suffix)             \
-  VTKM_ATOMIC_OP(AtomicOrImpl, _InterlockedOr, vtkmType, winType, suffix)               \
-  VTKM_ATOMIC_OP(AtomicXorImpl, _InterlockedXor, vtkmType, winType, suffix)             \
-  VTKM_EXEC_CONT inline vtkmType AtomicNotImpl(vtkmType* addr, vtkm::MemoryOrder order) \
-  {                                                                                     \
-    return AtomicXorImpl(addr, static_cast<vtkmType>(~vtkmType{ 0u }), order);          \
-  }                                                                                     \
-  VTKM_EXEC_CONT inline vtkmType AtomicCompareAndSwapImpl(                              \
-    vtkmType* addr, vtkmType desired, vtkmType expected, vtkm::MemoryOrder order)       \
-  {                                                                                     \
-    return BitCast<vtkmType>(                                                           \
-      _InterlockedCompareExchange##suffix(reinterpret_cast<volatile winType*>(addr),    \
-                                          BitCast<winType>(desired),                    \
-                                          BitCast<winType>(expected)));                 \
+#define VTKM_ATOMIC_OPS_FOR_TYPE(vtkmType, winType, suffix)                                     \
+  VTKM_ATOMIC_OP(AtomicAddImpl, _InterlockedExchangeAdd, vtkmType, winType, suffix)             \
+  VTKM_ATOMIC_OP(AtomicAndImpl, _InterlockedAnd, vtkmType, winType, suffix)                     \
+  VTKM_ATOMIC_OP(AtomicOrImpl, _InterlockedOr, vtkmType, winType, suffix)                       \
+  VTKM_ATOMIC_OP(AtomicXorImpl, _InterlockedXor, vtkmType, winType, suffix)                     \
+  VTKM_EXEC_CONT inline vtkmType AtomicNotImpl(vtkmType* addr, vtkm::MemoryOrder order)         \
+  {                                                                                             \
+    return AtomicXorImpl(addr, static_cast<vtkmType>(~vtkmType{ 0u }), order);                  \
+  }                                                                                             \
+  VTKM_EXEC_CONT inline bool AtomicCompareExchangeImpl(                                         \
+    vtkmType* addr, vtkmType* expected, vtkmType desired, vtkm::MemoryOrder vtkmNotUsed(order)) \
+  {                                                                                             \
+    vtkmType result = BitCast<vtkmType>(                                                        \
+      _InterlockedCompareExchange##suffix(reinterpret_cast<volatile winType*>(addr),            \
+                                          BitCast<winType>(desired),                            \
+                                          BitCast<winType>(*expected)));                        \
+    if (result == *expected)                                                                    \
+    {                                                                                           \
+      return true;                                                                              \
+    }                                                                                           \
+    else                                                                                        \
+    {                                                                                           \
+      *expected = result;                                                                       \
+      return false;                                                                             \
+    }                                                                                           \
   }
 
 VTKM_ATOMIC_OPS_FOR_TYPE(vtkm::UInt8, CHAR, 8)
@@ -502,6 +570,39 @@ VTKM_ATOMIC_OPS_FOR_TYPE(vtkm::UInt32, LONG, )
 VTKM_ATOMIC_OPS_FOR_TYPE(vtkm::UInt64, LONG64, 64)
 
 #undef VTKM_ATOMIC_OPS_FOR_TYPE
+
+VTKM_EXEC_CONT inline vtkm::Float32 AtomicAddImpl(vtkm::Float32* address,
+                                                  vtkm::Float32 value,
+                                                  vtkm::MemoryOrder vtkmNotUsed(order))
+{
+  LONG assumed;
+  LONG old = BitCast<LONG>(*address);
+  do
+  {
+    assumed = old;
+    old = _InterlockedCompareExchange(reinterpret_cast<volatile LONG*>(address),
+                                      BitCast<LONG>(BitCast<vtkm::Float32>(assumed) + value),
+                                      assumed);
+  } while (assumed != old);
+  return BitCast<vtkm::Float32>(old);
+}
+
+VTKM_EXEC_CONT inline vtkm::Float64 AtomicAddImpl(vtkm::Float64* address,
+                                                  vtkm::Float64 value,
+                                                  vtkm::MemoryOrder vtkmNotUsed(order))
+{
+  LONG64 assumed;
+  LONG64 old = BitCast<LONG64>(*address);
+  do
+  {
+    assumed = old;
+    old = _InterlockedCompareExchange64(reinterpret_cast<volatile LONG64*>(address),
+                                        BitCast<LONG64>(BitCast<vtkm::Float64>(assumed) + value),
+                                        assumed);
+  } while (assumed != old);
+  return BitCast<vtkm::Float64>(old);
+}
+
 }
 } // namespace vtkm::detail
 
@@ -538,7 +639,7 @@ VTKM_EXEC_CONT inline int GccAtomicMemOrder(vtkm::MemoryOrder order)
 }
 
 template <typename T>
-VTKM_EXEC_CONT inline T AtomicLoadImpl(const T* addr, vtkm::MemoryOrder order)
+VTKM_EXEC_CONT inline T AtomicLoadImpl(T* const addr, vtkm::MemoryOrder order)
 {
   return __atomic_load_n(addr, GccAtomicMemOrder(order));
 }
@@ -553,6 +654,52 @@ template <typename T>
 VTKM_EXEC_CONT inline T AtomicAddImpl(T* addr, T arg, vtkm::MemoryOrder order)
 {
   return __atomic_fetch_add(addr, arg, GccAtomicMemOrder(order));
+}
+
+#include <vtkmstd/bit_cast.h>
+
+// TODO: Use enable_if to write one version for both Float32 and Float64.
+VTKM_EXEC_CONT inline vtkm::Float32 AtomicAddImpl(vtkm::Float32* addr,
+                                                  vtkm::Float32 arg,
+                                                  vtkm::MemoryOrder order)
+{
+  vtkm::UInt32 expected = vtkmstd::bit_cast<vtkm::UInt32>(*addr);
+  vtkm::UInt32 desired;
+
+  do
+  {
+    desired = vtkmstd::bit_cast<vtkm::UInt32>(vtkmstd::bit_cast<vtkm::Float32>(expected) + arg);
+  } while (
+    !__atomic_compare_exchange_n(reinterpret_cast<vtkm::UInt32*>(addr),
+                                 &expected, // reloads expected with *addr prior to the operation
+                                 desired,
+                                 false,
+                                 GccAtomicMemOrder(order),
+                                 GccAtomicMemOrder(order)));
+  // return the "old" value that was in the memory.
+  return vtkmstd::bit_cast<vtkm::Float32>(expected);
+}
+
+// TODO: Use enable_if to write one version for both Float32 and Float64.
+VTKM_EXEC_CONT inline vtkm::Float64 AtomicAddImpl(vtkm::Float64* addr,
+                                                  vtkm::Float64 arg,
+                                                  vtkm::MemoryOrder order)
+{
+  vtkm::UInt64 expected = vtkmstd::bit_cast<vtkm::UInt64>(*addr);
+  vtkm::UInt64 desired;
+
+  do
+  {
+    desired = vtkmstd::bit_cast<vtkm::UInt64>(vtkmstd::bit_cast<vtkm::Float64>(expected) + arg);
+  } while (
+    !__atomic_compare_exchange_n(reinterpret_cast<vtkm::UInt64*>(addr),
+                                 &expected, // reloads expected with *addr prior to the operation
+                                 desired,
+                                 false,
+                                 GccAtomicMemOrder(order),
+                                 GccAtomicMemOrder(order)));
+  // return the "old" value that was in the memory.
+  return vtkmstd::bit_cast<vtkm::Float64>(expected);
 }
 
 template <typename T>
@@ -580,14 +727,13 @@ VTKM_EXEC_CONT inline T AtomicNotImpl(T* addr, vtkm::MemoryOrder order)
 }
 
 template <typename T>
-VTKM_EXEC_CONT inline T AtomicCompareAndSwapImpl(T* addr,
-                                                 T desired,
-                                                 T expected,
-                                                 vtkm::MemoryOrder order)
+VTKM_EXEC_CONT inline bool AtomicCompareExchangeImpl(T* addr,
+                                                     T* expected,
+                                                     T desired,
+                                                     vtkm::MemoryOrder order)
 {
-  __atomic_compare_exchange_n(
-    addr, &expected, desired, false, GccAtomicMemOrder(order), GccAtomicMemOrder(order));
-  return expected;
+  return __atomic_compare_exchange_n(
+    addr, expected, desired, false, GccAtomicMemOrder(order), GccAtomicMemOrder(order));
 }
 }
 } // namespace vtkm::detail
@@ -627,7 +773,7 @@ using AtomicTypesSupported = vtkm::List<vtkm::UInt32, vtkm::UInt64>;
 /// or after that write.
 ///
 template <typename T>
-VTKM_EXEC_CONT inline T AtomicLoad(const T* pointer,
+VTKM_EXEC_CONT inline T AtomicLoad(T* const pointer,
                                    vtkm::MemoryOrder order = vtkm::MemoryOrder::Acquire)
 {
   return detail::AtomicLoadImpl(pointer, order);
@@ -677,7 +823,7 @@ VTKM_EXEC_CONT inline T AtomicAdd(
 {
   return detail::AtomicAddImpl(pointer, operand, order);
 }
-template <typename T>
+template <typename T, typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
 VTKM_EXEC_CONT inline T AtomicAdd(
   T* pointer,
   detail::OppositeSign<T> operand,
@@ -796,24 +942,34 @@ VTKM_EXEC_CONT inline T AtomicNot(
 
 /// \brief Atomic function that replaces a value given a condition.
 ///
-/// Given a pointer, a new desired value, and an expected value, replaces the value at the
-/// pointer if it is the same as the expected value with the new desired value. If the original
-/// value in the pointer does not equal the expected value, then the memory at the pointer
-/// remains unchanged. In either case, the function returns the _old_ original value that
-/// was at the pointer.
+/// Given a pointer to a `shared` value, a pointer holding the `expected` value at that shared
+/// location, and a new `desired` value, `AtomicCompareExchange` compares the existing `shared`
+/// value to the `expected` value, and then conditionally replaces the `shared` value with
+/// the provided `desired` value. Otherwise, the `expected` value gets replaced with the
+/// `shared` value. Note that in either case, the function returns with `expected` replaced
+/// with the value _originally_ in `shared` at the start of the call.
 ///
-/// If multiple threads call `AtomicCompareAndSwap` simultaneously, the result will be consistent
-/// as if one was called before the other (although it is indeterminate which will be applied
-/// first).
+/// If the `shared` value and `expected` value are the same, then `shared` gets set to
+/// `desired`, and `AtomicCompareAndExchange` returns `true`.
+///
+/// If the `shared` value and `expected` value are different, then `expected` gets set
+/// to `shared`, and `AtomicCompareAndExchange` returns `false`. The value at `shared`
+/// is _not_ changed in this case.
+///
+/// If multiple threads call `AtomicCompareExchange` simultaneously with the same `shared`
+/// pointer, the result will be consistent as if one was called before the other (although
+/// it is indeterminate which will be applied first). Note that the `expected` pointer should
+/// _not_ be shared among threads. The `expected` pointer should be thread-local (often
+/// pointing to an object on the stack).
 ///
 template <typename T>
-VTKM_EXEC_CONT inline T AtomicCompareAndSwap(
-  T* pointer,
+VTKM_EXEC_CONT inline bool AtomicCompareExchange(
+  T* shared,
+  T* expected,
   T desired,
-  T expected,
   vtkm::MemoryOrder order = vtkm::MemoryOrder::SequentiallyConsistent)
 {
-  return detail::AtomicCompareAndSwapImpl(pointer, desired, expected, order);
+  return detail::AtomicCompareExchangeImpl(shared, expected, desired, order);
 }
 
 } // namespace vtkm

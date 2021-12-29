@@ -43,15 +43,15 @@
  *
  * \li if vtkExtractDataArraysOverTime::ReportStatisticsOnly is true, then the
  *     stats are computed per input block (if input is a composite dataset) or on the whole
- *     input dataset and placed as blocks named as **stats block=<block id>**.
+ *     input dataset and placed as blocks named as <tt>stats block=\<block id\></tt>.
  *     For non-composite input, the single leaf block is output is named as
- *     **stats**.
+ *     \c stats.
  *
  * \li if vtkExtractDataArraysOverTime::ReportStatisticsOnly if off, then each
  *    tracked element is placed in a separate output block. The block name is of
- *    the form **id=<id> block=<block id>** where the **block=** suffix is
+ *    the form <tt>id=\<id\> block=\<block id\></tt> where the \em block= suffix is
  *    dropped for non-composite input datasets. If global ids are being used for
- *    tracking then the name is simply **gid=<global id>**.
+ *    tracking then the name is simply <tt>gid=\<global id\></tt>.
  *
  * @sa vtkPExtractDataArraysOverTime
  */
@@ -78,14 +78,14 @@ public:
   vtkTypeMacro(vtkExtractDataArraysOverTime, vtkMultiBlockDataSetAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Get the number of time steps
    */
   vtkGetMacro(NumberOfTimeSteps, int);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * FieldAssociation indicates which attributes to extract over time. This filter
    * can extract only one type of attribute arrays. Currently, vtkDataObject::FIELD
@@ -94,9 +94,9 @@ public:
   vtkSetClampMacro(
     FieldAssociation, int, vtkDataObject::POINT, vtkDataObject::NUMBER_OF_ATTRIBUTE_TYPES - 1);
   vtkGetMacro(FieldAssociation, int);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Instead of breaking a data into a separate time-history
    * table for each (block,ID)-tuple, you may call
@@ -110,16 +110,16 @@ public:
   vtkSetMacro(ReportStatisticsOnly, bool);
   vtkGetMacro(ReportStatisticsOnly, bool);
   vtkBooleanMacro(ReportStatisticsOnly, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * When ReportStatisticsOnly is false, if UseGlobalIDs is true, then the filter will track
    * elements using their global ids, if present. Default is true.
    */
   vtkSetMacro(UseGlobalIDs, bool);
   vtkGetMacro(UseGlobalIDs, bool);
-  //@}
+  ///@}
 
 protected:
   vtkExtractDataArraysOverTime();

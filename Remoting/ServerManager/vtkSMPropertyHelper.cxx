@@ -13,31 +13,31 @@
 
 =========================================================================*/
 /*
-* Copyright (c) 2007, Sandia Corporation
-* All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*     * Redistributions of source code must retain the above copyright
-*       notice, this list of conditions and the following disclaimer.
-*     * Redistributions in binary form must reproduce the above copyright
-*       notice, this list of conditions and the following disclaimer in the
-*       documentation and/or other materials provided with the distribution.
-*     * Neither the name of the Sandia Corporation nor the
-*       names of its contributors may be used to endorse or promote products
-*       derived from this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY Sandia Corporation ``AS IS'' AND ANY
-* EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-* WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-* DISCLAIMED. IN NO EVENT SHALL Sandia Corporation BE LIABLE FOR ANY
-* DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-* LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-* ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-* SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ * Copyright (c) 2007, Sandia Corporation
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the Sandia Corporation nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY Sandia Corporation ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL Sandia Corporation BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include "vtkSMPropertyHelper.h"
 
@@ -49,6 +49,7 @@
 #include "vtkSMInputProperty.h"
 #include "vtkSMIntVectorProperty.h"
 #include "vtkSMProxy.h"
+#include "vtkSMSourceProxy.h"
 #include "vtkSMStringVectorProperty.h"
 #include "vtkStringList.h"
 
@@ -155,7 +156,7 @@ inline const char* vtkSMPropertyHelper::GetProperty(unsigned int index) const
   {
     // enumeration domain
     auto domain = this->Property->FindDomain<vtkSMEnumerationDomain>();
-    if (domain != NULL)
+    if (domain != nullptr)
     {
       const char* entry = domain->GetEntryTextForValue(
         (this->UseUnchecked ? this->IntVectorProperty->GetUncheckedElement(index)
@@ -167,7 +168,7 @@ inline const char* vtkSMPropertyHelper::GetProperty(unsigned int index) const
     }
   }
 
-  return 0;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -181,7 +182,7 @@ inline vtkSMProxy* vtkSMPropertyHelper::GetProperty(unsigned int index) const
       return this->UseUnchecked ? this->ProxyProperty->GetUncheckedProxy(index)
                                 : this->ProxyProperty->GetProxy(index);
     default:
-      return 0;
+      return nullptr;
   }
 }
 
@@ -385,7 +386,7 @@ inline void vtkSMPropertyHelper::SetProperty(unsigned int index, const char* val
   {
     // enumeration domain
     auto domain = this->Property->FindDomain<vtkSMEnumerationDomain>();
-    if (domain != NULL && domain->HasEntryText(value))
+    if (domain != nullptr && domain->HasEntryText(value))
     {
       int valid; // We already know that the entry exist...
       if (this->UseUnchecked)
@@ -572,7 +573,7 @@ vtkSMPropertyHelper::vtkSMPropertyHelper(vtkSMProxy* proxy, const char* pname, b
   this->Proxy = proxy;
   this->Quiet = quiet;
 
-  // If pname is NULL, on some platforms the warning macro can segfault
+  // If pname is nullptr, on some platforms the warning macro can segfault
   assert(pname);
 
   vtkSMProperty* property = proxy->GetProperty(pname);
@@ -588,16 +589,14 @@ vtkSMPropertyHelper::vtkSMPropertyHelper(vtkSMProxy* proxy, const char* pname, b
 //----------------------------------------------------------------------------
 vtkSMPropertyHelper::vtkSMPropertyHelper(vtkSMProperty* property, bool quiet)
 {
-  this->Proxy = 0;
+  this->Proxy = nullptr;
   this->Quiet = quiet;
 
   this->Initialize(property);
 }
 
 //----------------------------------------------------------------------------
-vtkSMPropertyHelper::~vtkSMPropertyHelper()
-{
-}
+vtkSMPropertyHelper::~vtkSMPropertyHelper() = default;
 
 //----------------------------------------------------------------------------
 void vtkSMPropertyHelper::Initialize(vtkSMProperty* property)
@@ -606,7 +605,7 @@ void vtkSMPropertyHelper::Initialize(vtkSMProperty* property)
   this->Type = vtkSMPropertyHelper::NONE;
   this->UseUnchecked = false;
 
-  if (property != NULL)
+  if (property != nullptr)
   {
     if (property->IsA("vtkSMIntVectorProperty"))
     {
@@ -875,7 +874,7 @@ void vtkSMPropertyHelper::Set(unsigned int index, vtkSMProxy* value, unsigned in
 
 //----------------------------------------------------------------------------
 void vtkSMPropertyHelper::Set(
-  vtkSMProxy** value, unsigned int count, unsigned int* outputports /*=NULL*/)
+  vtkSMProxy** value, unsigned int count, unsigned int* outputports /*=nullptr*/)
 {
   if (this->UseUnchecked)
   {
@@ -963,6 +962,20 @@ unsigned int vtkSMPropertyHelper::GetOutputPort(unsigned int index /*=0*/) const
 
   vtkSMPropertyHelperWarningMacro("Call not supported for the current property type.");
   return 0;
+}
+
+//----------------------------------------------------------------------------
+vtkSMOutputPort* vtkSMPropertyHelper::GetAsOutputPort(unsigned int index) const
+{
+  if (this->Type == INPUT)
+  {
+    auto proxy = vtkSMSourceProxy::SafeDownCast(this->GetAsProxy(index));
+    auto port = this->GetOutputPort(index);
+    return proxy ? proxy->GetOutputPort(port) : nullptr;
+  }
+
+  vtkSMPropertyHelperWarningMacro("Call not supported for the current property type.");
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -1092,7 +1105,7 @@ bool vtkSMPropertyHelper::GetStatus(const char* key, double* values, int num_val
     // Now check if the information_property has the value.
     svp = svp->GetInformationOnly() == 0
       ? vtkSMStringVectorProperty::SafeDownCast(svp->GetInformationProperty())
-      : 0;
+      : nullptr;
   }
 
   return false;
@@ -1201,7 +1214,7 @@ bool vtkSMPropertyHelper::GetStatus(const int key, int* values, int num_values) 
     // Now check if the information_property has the value.
     svp = svp->GetInformationOnly() == 0
       ? vtkSMIntVectorProperty::SafeDownCast(svp->GetInformationProperty())
-      : 0;
+      : nullptr;
   }
 
   return false;
@@ -1322,7 +1335,7 @@ const char* vtkSMPropertyHelper::GetStatus(const char* key, const char* default_
     // Now check if the information_property has the value.
     svp = svp->GetInformationOnly() == 0
       ? vtkSMStringVectorProperty::SafeDownCast(svp->GetInformationProperty())
-      : 0;
+      : nullptr;
   }
 
   return default_value;
@@ -1432,10 +1445,52 @@ int vtkSMPropertyHelper::GetStatus(const int key, const int default_value) const
     // Now check if the information_property has the value.
     svp = svp->GetInformationOnly() == 0
       ? vtkSMIntVectorProperty::SafeDownCast(svp->GetInformationProperty())
-      : 0;
+      : nullptr;
   }
 
   return default_value;
+}
+
+//----------------------------------------------------------------------------
+void vtkSMPropertyHelper::RemoveStatus(const char* key)
+{
+  if (key == nullptr)
+  {
+    return;
+  }
+
+  if (this->Type != vtkSMPropertyHelper::STRING)
+  {
+    vtkSMPropertyHelperWarningMacro("Status properties can only be vtkSMStringVectorProperty.");
+    return;
+  }
+
+  const std::string skey(key);
+  auto svp = vtkSMStringVectorProperty::SafeDownCast(this->Property);
+  std::vector<std::string> values =
+    (this->UseUnchecked ? svp->GetUncheckedElements() : svp->GetElements());
+  const int step_size = svp->GetNumberOfElementsPerCommand();
+  if (step_size <= 0)
+  {
+    return;
+  }
+  for (int cc = 0; (cc + step_size) <= static_cast<int>(values.size()); cc += step_size)
+  {
+    if (values[cc] == skey)
+    {
+      values.erase(values.begin() + cc, values.begin() + cc + step_size);
+      break;
+    }
+  }
+
+  if (this->UseUnchecked)
+  {
+    svp->SetUncheckedElements(values);
+  }
+  else
+  {
+    svp->SetElements(values);
+  }
 }
 
 //----------------------------------------------------------------------------
@@ -1525,7 +1580,7 @@ const char* vtkSMPropertyHelper::GetInputArrayNameToProcess() const
   {
     vtkSMPropertyHelperWarningMacro(
       "Property for 'InputArrayToProcess' can only be vtkSMStringVectorProperty.");
-    return NULL;
+    return nullptr;
   }
 
   vtkSMStringVectorProperty* svp = vtkSMStringVectorProperty::SafeDownCast(this->Property);
@@ -1534,7 +1589,7 @@ const char* vtkSMPropertyHelper::GetInputArrayNameToProcess() const
     if (svp->GetNumberOfUncheckedElements() != 2 && svp->GetNumberOfUncheckedElements() != 5)
     {
       vtkSMPropertyHelperWarningMacro("We only support 2 or 5 element properties.");
-      return NULL;
+      return nullptr;
     }
 
     return svp->GetNumberOfUncheckedElements() == 2 ? svp->GetUncheckedElement(1)
@@ -1545,7 +1600,7 @@ const char* vtkSMPropertyHelper::GetInputArrayNameToProcess() const
     if (svp->GetNumberOfElements() != 2 && svp->GetNumberOfElements() != 5)
     {
       vtkSMPropertyHelperWarningMacro("We only support 2 or 5 element properties.");
-      return NULL;
+      return nullptr;
     }
 
     return svp->GetNumberOfElements() == 2 ? svp->GetElement(1) : svp->GetElement(4);
@@ -1558,7 +1613,7 @@ bool vtkSMPropertyHelper::CopyInternal(const vtkSMPropertyHelper& source)
 {
   std::vector<T> values = source.GetPropertyArray<T>();
   this->SetPropertyArray<T>(
-    values.size() > 0 ? &values[0] : NULL, static_cast<unsigned int>(values.size()));
+    !values.empty() ? &values[0] : nullptr, static_cast<unsigned int>(values.size()));
   return true;
 }
 

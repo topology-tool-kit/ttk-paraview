@@ -59,4 +59,5 @@ ren1.ResetCamera()
 iren.Initialize()
 
 renWin.Render()
+iren.Start()
 # --- end of script --

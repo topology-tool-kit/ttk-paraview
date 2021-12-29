@@ -53,7 +53,7 @@
 
 #include "vtkSurfaceLICInterface.h"
 
-#include "vtkCompositePolyDataMapper2Internal.h"
+#include "vtkCompositeMapperHelper2.h"
 
 typedef std::map<vtkPolyData*, vtkCompositeMapperHelperData*>::iterator dataIter;
 
@@ -73,7 +73,6 @@ protected:
   void AppendOneBufferObject(vtkRenderer* ren, vtkActor* act, vtkCompositeMapperHelperData* hdata,
     vtkIdType& flat_index, std::vector<unsigned char>& colors, std::vector<float>& norms) override;
 
-protected:
   /**
    * Set the shader parameteres related to the mapper/input data, called by UpdateShader
    */
@@ -129,7 +128,7 @@ void vtkCompositeLICHelper::ReplaceShaderValues(
     vtkShaderProgram::Substitute(FSSource, "//VTK::TCoord::Dec", "uniform mat3 normalMatrix;");
   }
 
-  if (this->LastLightComplexity[this->LastBoundBO] > 0)
+  if (this->PrimitiveInfo[this->LastBoundBO].LastLightComplexity > 0)
   {
     vtkShaderProgram::Substitute(FSSource, "//VTK::TCoord::Impl",
       // projected vectors

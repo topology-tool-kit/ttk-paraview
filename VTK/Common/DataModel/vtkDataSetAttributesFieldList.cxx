@@ -76,13 +76,10 @@ struct FieldInfo
   mutable int OutputLocation;
 
   FieldInfo()
-    : Name()
-    , Type(VTK_VOID)
+    : Type(VTK_VOID)
     , NumberOfComponents(0)
     , LUT(nullptr)
     , Information(nullptr)
-    , ComponentNames{}
-    , Location{}
     , OutputLocation(-1)
   {
   }
@@ -219,7 +216,7 @@ struct FieldInfo
 
     std::array<bool, vtkDataSetAttributes::NUM_ATTRIBUTES> curattrs;
     std::fill(curattrs.begin(), curattrs.end(), false);
-    this->AttributeTypes.push_back(std::move(curattrs));
+    this->AttributeTypes.push_back(curattrs);
   }
 
   void PreExtendForUnion(int count)
@@ -249,7 +246,7 @@ std::multimap<std::string, FieldInfo> GetFields(vtkDataSetAttributes* dsa)
     std::transform(attribute_indices.begin(), attribute_indices.end(), curattrs.begin(),
       [cc](int idx) { return idx == cc; });
 
-    finfo.AttributeTypes.push_back(std::move(curattrs));
+    finfo.AttributeTypes.push_back(curattrs);
 
     fields.insert(std::make_pair(finfo.Name, std::move(finfo)));
   }

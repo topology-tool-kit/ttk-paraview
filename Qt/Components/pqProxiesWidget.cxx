@@ -53,9 +53,9 @@ public:
   };
 
   /// Key == "ComponentName", Value == List of "ProxyInfo".
-  typedef QMap<QString, QList<ProxyInfo> > MapOfProxyList;
+  typedef QMap<QString, QList<ProxyInfo>> MapOfProxyList;
   MapOfProxyList ComponentProxies;
-  QList<QPointer<pqExpanderButton> > Expanders;
+  QList<QPointer<pqExpanderButton>> Expanders;
   QPointer<pqView> View;
   QStringList OrderedComponentNames;
 
@@ -143,7 +143,7 @@ void pqProxiesWidget::updateLayout()
   for (int cc = 0, max = keys.size(); cc < max; cc++)
   {
     const QString& key = keys[cc];
-    pqExpanderButton* expander = NULL;
+    pqExpanderButton* expander = nullptr;
     if (add_expanders)
     {
       expander = new pqExpanderButton(this);

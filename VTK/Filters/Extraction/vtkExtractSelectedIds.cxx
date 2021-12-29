@@ -17,6 +17,7 @@
 #include "vtkArrayDispatch.h"
 #include "vtkCellArray.h"
 #include "vtkCellData.h"
+#include "vtkCellIterator.h"
 #include "vtkCellType.h"
 #include "vtkDataArrayRange.h"
 #include "vtkExtractCells.h"
@@ -121,43 +122,6 @@ int vtkExtractSelectedIds::RequestData(vtkInformation* vtkNotUsed(request),
   return 1;
 }
 
-static void vtkExtractSelectedIdsCopyPointsNonSorted(
-  vtkDataSet* input, vtkDataSet* output, signed char* idArray, vtkIdType* pointMap)
-{
-
-  vtkPoints* newPts = vtkPoints::New();
-
-  vtkIdType i, numPts = input->GetNumberOfPoints();
-
-  vtkIdTypeArray* originalPtIds = vtkIdTypeArray::New();
-  originalPtIds->SetNumberOfComponents(1);
-  originalPtIds->SetName("vtkOriginalPointIds");
-
-  vtkPointData* inPD = input->GetPointData();
-  vtkPointData* outPD = output->GetPointData();
-  outPD->SetCopyGlobalIds(1);
-  outPD->CopyAllocate(inPD);
-
-  for (i = 0; i < numPts; i++)
-    pointMap[i] = -1;
-
-  int id = -1;
-  for (i = 0; i < numPts; i++)
-  {
-    id = idArray[i];
-    pointMap[id] = newPts->InsertNextPoint(input->GetPoint(id));
-    outPD->CopyData(inPD, id, pointMap[id]);
-    originalPtIds->InsertNextValue(id);
-  }
-
-  outPD->AddArray(originalPtIds);
-  originalPtIds->Delete();
-
-  // outputDS must be either vtkPolyData or vtkUnstructuredGrid
-  vtkPointSet::SafeDownCast(output)->SetPoints(newPts);
-  newPts->Delete();
-}
-
 // Copy the points marked as "in" and build a pointmap
 static void vtkExtractSelectedIdsCopyPoints(
   vtkDataSet* input, vtkDataSet* output, signed char* inArray, vtkIdType* pointMap)
@@ -214,29 +178,43 @@ void vtkExtractSelectedIdsCopyCells(
   originalIds->SetNumberOfComponents(1);
   originalIds->SetName("vtkOriginalCellIds");
 
+  int cellType;
+  vtkIdType numCellPts;
+  vtkIdList* pointIdList;
   vtkIdType i, j, newId = 0;
   vtkIdList* ptIds = vtkIdList::New();
-  for (i = 0; i < numCells; i++)
+  vtkIdList* faces;
+
+  vtkSmartPointer<vtkCellIterator> cellIter =
+    vtkSmartPointer<vtkCellIterator>::Take(input->NewCellIterator());
+  for (i = 0, cellIter->InitTraversal(); !cellIter->IsDoneWithTraversal();
+       cellIter->GoToNextCell(), ++i)
   {
     if (inArray[i] > 0)
     {
+      cellType = cellIter->GetCellType();
+      numCellPts = cellIter->GetNumberOfPoints();
+      pointIdList = cellIter->GetPointIds();
+
+      ptIds->Reset();
       // special handling for polyhedron cells
-      if (vtkUnstructuredGrid::SafeDownCast(input) && vtkUnstructuredGrid::SafeDownCast(output) &&
-        input->GetCellType(i) == VTK_POLYHEDRON)
+      if (cellType == VTK_POLYHEDRON)
       {
-        ptIds->Reset();
-        vtkUnstructuredGrid::SafeDownCast(input)->GetFaceStream(i, ptIds);
+        faces = cellIter->GetFaces();
+        for (j = 0; j < faces->GetNumberOfIds(); ++j)
+        {
+          ptIds->InsertNextId(faces->GetId(j));
+        }
         vtkUnstructuredGrid::ConvertFaceStreamPointIds(ptIds, pointMap);
       }
       else
       {
-        input->GetCellPoints(i, ptIds);
-        for (j = 0; j < ptIds->GetNumberOfIds(); j++)
+        for (j = 0; j < numCellPts; j++)
         {
-          ptIds->SetId(j, pointMap[ptIds->GetId(j)]);
+          ptIds->InsertId(j, pointMap[pointIdList->GetId(j)]);
         }
       }
-      output->InsertNextCell(input->GetCellType(i), ptIds);
+      output->InsertNextCell(cellIter->GetCellType(), ptIds);
       outCD->CopyData(inCD, i, newId++);
       originalIds->InsertNextValue(i);
     }
@@ -303,7 +281,7 @@ struct vtkESIDeepCopyImpl
 };
 
 // Deep copies a specified component (or magnitude of compno < 0).
-static void vtkESIDeepCopy(vtkAbstractArray* out, vtkAbstractArray* in, int compno)
+void vtkESIDeepCopy(vtkAbstractArray* out, vtkAbstractArray* in, int compno)
 {
   if (in->GetNumberOfComponents() == 1)
   {
@@ -490,11 +468,6 @@ struct vtkExtractSelectedIdsExtractPoints
   {
     this->execute(id->GetPointer(0), label->GetPointer(0), std::forward<Args>(args)...);
   }
-  template <typename... Args>
-  void operator()(vtkIdTypeArray* id, vtkIdTypeArray* label, Args&&... args) const
-  {
-    this->executeInOrder(id->GetPointer(0), label->GetPointer(0), std::forward<Args>(args)...);
-  }
   template <typename ArrayT, typename ArrayU, typename... Args>
   void operator()(ArrayT id, ArrayU label, Args&&... args) const
   {
@@ -603,58 +576,6 @@ struct vtkExtractSelectedIdsExtractPoints
       }
     }
 
-    if (containingCells)
-    {
-      ptCells->Delete();
-      cellPts->Delete();
-    }
-  }
-
-  template <typename IdIter, typename LabelIter>
-  void executeInOrder(IdIter id, LabelIter label, vtkExtractSelectedIds* self, int passThrough,
-    int invert, int containingCells, vtkDataSet* input, vtkIdTypeArray* idxArray,
-    vtkSignedCharArray* cellInArray, vtkSignedCharArray* pointInArray, vtkIdType numIds) const
-  {
-    using T1 = typename std::iterator_traits<IdIter>::value_type;
-    using T2 = typename std::iterator_traits<LabelIter>::value_type;
-
-    // Reverse the "in" flag
-    signed char flag = invert ? 1 : -1;
-    flag = -flag;
-
-    vtkIdList* ptCells = nullptr;
-    vtkIdList* cellPts = nullptr;
-    if (containingCells)
-    {
-      ptCells = vtkIdList::New();
-      cellPts = vtkIdList::New();
-    }
-
-    vtkIdType numPts = input->GetNumberOfPoints();
-    vtkIdType idArrayIndex = 0, labelArrayIndex = 0;
-    for (int i = 0; i < numIds; i++)
-    {
-      vtkIdType ptId = idxArray->GetValue(id[i]);
-      pointInArray->SetValue(ptId, flag);
-      if (containingCells)
-      {
-        input->GetPointCells(ptId, ptCells);
-        for (vtkIdType j = 0; j < ptCells->GetNumberOfIds(); ++j)
-        {
-          vtkIdType cellId = ptCells->GetId(j);
-          if ((!passThrough) && (!invert) && (cellInArray->GetValue(cellId) != flag))
-          {
-
-            input->GetCellPoints(cellId, cellPts);
-            for (vtkIdType k = 0; k < cellPts->GetNumberOfIds(); ++k)
-            {
-              pointInArray->SetValue(cellPts->GetId(k), flag);
-            }
-          }
-          cellInArray->SetValue(cellId, flag);
-        }
-      }
-    }
     if (containingCells)
     {
       ptCells->Delete();
@@ -774,7 +695,7 @@ int vtkExtractSelectedIds::ExtractCells(
     numIds = idArray->GetNumberOfTuples();
     vtkAbstractArray* sortedArray = vtkAbstractArray::CreateArray(idArray->GetDataType());
     sortedArray->DeepCopy(idArray);
-    // vtkSortDataArray::SortArrayByComponent(sortedArray, 0);
+    vtkSortDataArray::SortArrayByComponent(sortedArray, 0);
     idArray = sortedArray;
   }
 
@@ -816,22 +737,14 @@ int vtkExtractSelectedIds::ExtractCells(
     }
   }
 
-  // idArray->Delete();
-  // idxArray->Delete();
-  // labelArray->Delete();
+  idArray->Delete();
+  idxArray->Delete();
+  labelArray->Delete();
 
   if (!passThrough)
   {
     vtkIdType* pointMap = new vtkIdType[numPts]; // maps old point ids into new
-    if (idArray->GetDataType() == VTK_ID_TYPE && labelArray->GetDataType() == VTK_ID_TYPE)
-    {
-      vtkExtractSelectedIdsCopyPointsNonSorted(
-        input, output, pointInArray->GetPointer(0), pointMap);
-    }
-    else
-    {
-      vtkExtractSelectedIdsCopyPoints(input, output, pointInArray->GetPointer(0), pointMap);
-    }
+    vtkExtractSelectedIdsCopyPoints(input, output, pointInArray->GetPointer(0), pointMap);
     this->UpdateProgress(0.75);
     if (output->GetDataObjectType() == VTK_POLY_DATA)
     {

@@ -19,7 +19,6 @@
 #include "vtkCamera.h"
 #include "vtkChart.h"
 #include "vtkChartRepresentation.h"
-#include "vtkCommand.h"
 #include "vtkContextView.h"
 #include "vtkInformation.h"
 #include "vtkInformationIntegerKey.h"
@@ -27,16 +26,14 @@
 #include "vtkMultiProcessStream.h"
 #include "vtkObjectFactory.h"
 #include "vtkPVContextInteractorStyle.h"
-#include "vtkPVDataRepresentation.h"
-#include "vtkPVOptions.h"
 #include "vtkPVSession.h"
+#include "vtkPVStringFormatter.h"
 #include "vtkProcessModule.h"
 #include "vtkRenderWindow.h"
 #include "vtkRenderWindowInteractor.h"
 #include "vtkRenderer.h"
 #include "vtkScatterPlotMatrix.h"
 #include "vtkSelection.h"
-#include "vtkTilesHelper.h"
 #include "vtkTimerLog.h"
 
 #include <sstream>
@@ -202,23 +199,7 @@ bool vtkPVContextView::Export(vtkCSVExporter* exporter)
 //----------------------------------------------------------------------------
 std::string vtkPVContextView::GetFormattedTitle()
 {
-  if (!this->GetTitle())
-  {
-    return std::string();
-  }
-
-  std::string formattedTitle = this->GetTitle();
-
-  std::string key = "${TIME}";
-  size_t pos = formattedTitle.find(key);
-  if (pos != std::string::npos)
-  {
-    std::ostringstream stream;
-    stream << formattedTitle.substr(0, pos) << this->GetViewTime()
-           << formattedTitle.substr(pos + key.length());
-    formattedTitle = stream.str();
-  }
-  return formattedTitle;
+  return vtkPVStringFormatter::Format(this->Title ? this->Title : std::string());
 }
 
 //----------------------------------------------------------------------------

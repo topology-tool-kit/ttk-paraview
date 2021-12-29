@@ -43,38 +43,11 @@ endfunction()
 
 if(VTKm_ENABLE_TBB AND NOT TARGET vtkm::tbb)
   find_package(TBB REQUIRED)
-  add_library(vtkm::tbb UNKNOWN IMPORTED GLOBAL)
-
-  set_target_properties(vtkm::tbb PROPERTIES
-      INTERFACE_INCLUDE_DIRECTORIES "${TBB_INCLUDE_DIRS}")
-
-  if(EXISTS "${TBB_LIBRARY_RELEASE}")
-    vtkm_extract_real_library("${TBB_LIBRARY_RELEASE}" real_path)
-    set_property(TARGET vtkm::tbb APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-    set_target_properties(vtkm::tbb PROPERTIES
-      IMPORTED_LINK_INTERFACE_LANGUAGES "CXX"
-      IMPORTED_LOCATION_RELEASE "${real_path}"
-      )
-  elseif(EXISTS "${TBB_LIBRARY}")
-    #When VTK-m is mixed with OSPray we could use the OSPray FindTBB file
-    #which doesn't define TBB_LIBRARY_RELEASE but instead defined only
-    #TBB_LIBRARY
-    vtkm_extract_real_library("${TBB_LIBRARY}" real_path)
-    set_property(TARGET vtkm::tbb APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-    set_target_properties(vtkm::tbb PROPERTIES
-      IMPORTED_LINK_INTERFACE_LANGUAGES "CXX"
-      IMPORTED_LOCATION_RELEASE "${real_path}"
-      )
-  endif()
-
-  if(EXISTS "${TBB_LIBRARY_DEBUG}")
-    vtkm_extract_real_library("${TBB_LIBRARY_DEBUG}" real_path)
-    set_property(TARGET vtkm::tbb APPEND PROPERTY IMPORTED_CONFIGURATIONS DEBUG)
-    set_target_properties(vtkm::tbb PROPERTIES
-      IMPORTED_LINK_INTERFACE_LANGUAGES "CXX"
-      IMPORTED_LOCATION_DEBUG "${real_path}"
-      )
-  endif()
+  add_library(vtkmTBB INTERFACE)
+  add_library(vtkm::tbb ALIAS vtkmTBB)
+  target_link_libraries(vtkmTBB INTERFACE TBB::tbb)
+  set_target_properties(vtkmTBB PROPERTIES EXPORT_NAME tbb)
+  install(TARGETS vtkmTBB EXPORT ${VTKm_EXPORT_NAME})
 endif()
 
 
@@ -167,7 +140,10 @@ if(VTKm_ENABLE_CUDA)
     # 6 - volta
     #   - Uses: --generate-code=arch=compute_70,code=sm_70
     # 7 - turing
-    #   - Uses: --generate-code=arch=compute_75code=sm_75
+    #   - Uses: --generate-code=arch=compute_75,code=sm_75
+    # 8 - ampere
+    #   - Uses: --generate-code=arch=compute_80,code=sm_80
+    #   - Uses: --generate-code=arch=compute_86,code=sm_86
     # 8 - all
     #   - Uses: --generate-code=arch=compute_30,code=sm_30
     #   - Uses: --generate-code=arch=compute_35,code=sm_35
@@ -175,12 +151,14 @@ if(VTKm_ENABLE_CUDA)
     #   - Uses: --generate-code=arch=compute_60,code=sm_60
     #   - Uses: --generate-code=arch=compute_70,code=sm_70
     #   - Uses: --generate-code=arch=compute_75,code=sm_75
+    #   - Uses: --generate-code=arch=compute_80,code=sm_80
+    #   - Uses: --generate-code=arch=compute_86,code=sm_86
     # 8 - none
     #
 
     #specify the property
     set(VTKm_CUDA_Architecture "native" CACHE STRING "Which GPU Architecture(s) to compile for")
-    set_property(CACHE VTKm_CUDA_Architecture PROPERTY STRINGS native fermi kepler maxwell pascal volta turing all none)
+    set_property(CACHE VTKm_CUDA_Architecture PROPERTY STRINGS native fermi kepler maxwell pascal volta turing ampere all none)
 
     #detect what the property is set too
     if(VTKm_CUDA_Architecture STREQUAL "native")
@@ -234,19 +212,27 @@ if(VTKm_ENABLE_CUDA)
       set(arch_flags --generate-code=arch=compute_70,code=sm_70)
     elseif(VTKm_CUDA_Architecture STREQUAL "turing")
       set(arch_flags --generate-code=arch=compute_75,code=sm_75)
+    elseif(VTKm_CUDA_Architecture STREQUAL "ampere")
+      set(arch_flags --generate-code=arch=compute_80,code=sm_80)
+      set(arch_flags --generate-code=arch=compute_86,code=sm_86)
     elseif(VTKm_CUDA_Architecture STREQUAL "all")
       set(arch_flags --generate-code=arch=compute_30,code=sm_30
                      --generate-code=arch=compute_35,code=sm_35
                      --generate-code=arch=compute_50,code=sm_50
                      --generate-code=arch=compute_60,code=sm_60
                      --generate-code=arch=compute_70,code=sm_70
-                     --generate-code=arch=compute_75,code=sm_75)
+                     --generate-code=arch=compute_75,code=sm_75
+                     --generate-code=arch=compute_80,code=sm_80
+                     --generate-code=arch=compute_86,code=sm_86)
     endif()
 
     string(REPLACE ";" " " arch_flags "${arch_flags}")
-    if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.18)
-      #We propagate cuda flags via target* options so that they
-      #export cleanly
+
+    if(POLICY CMP0105)
+      cmake_policy(GET CMP0105 policy_105_enabled)
+    endif()
+
+    if(policy_105_enabled STREQUAL "NEW")
       set(CMAKE_CUDA_ARCHITECTURES OFF)
       target_compile_options(vtkm_cuda INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:${arch_flags}>)
       target_link_options(vtkm_cuda INTERFACE $<DEVICE_LINK:${arch_flags}>)
@@ -334,6 +320,12 @@ if(VTKm_ENABLE_KOKKOS AND NOT TARGET vtkm::kokkos)
     message(STATUS "Detected Cuda arch from Kokkos: ${cuda_arch}")
 
     add_library(vtkm::kokkos_cuda INTERFACE IMPORTED GLOBAL)
+  elseif(HIP IN_LIST Kokkos_DEVICES)
+    cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
+    enable_language(HIP)
+    add_library(vtkm::kokkos_hip INTERFACE IMPORTED GLOBAL)
+    set_property(TARGET Kokkos::kokkoscore PROPERTY INTERFACE_COMPILE_OPTIONS "")
+    set_property(TARGET Kokkos::kokkoscore PROPERTY INTERFACE_LINK_OPTIONS "")
   endif()
 
   add_library(vtkm::kokkos INTERFACE IMPORTED GLOBAL)

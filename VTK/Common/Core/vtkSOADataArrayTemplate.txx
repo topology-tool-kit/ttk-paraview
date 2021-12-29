@@ -16,6 +16,12 @@
 #ifndef vtkSOADataArrayTemplate_txx
 #define vtkSOADataArrayTemplate_txx
 
+#ifdef VTK_SOA_DATA_ARRAY_TEMPLATE_INSTANTIATING
+#define VTK_GDA_VALUERANGE_INSTANTIATING
+#include "vtkDataArrayPrivate.txx"
+#undef VTK_GDA_VALUERANGE_INSTANTIATING
+#endif
+
 #include "vtkSOADataArrayTemplate.h"
 
 #include "vtkArrayIteratorTemplate.h"
@@ -29,6 +35,28 @@ vtkSOADataArrayTemplate<ValueType>* vtkSOADataArrayTemplate<ValueType>::New()
 {
   VTK_STANDARD_NEW_BODY(vtkSOADataArrayTemplate<ValueType>);
 }
+
+//-----------------------------------------------------------------------------
+#ifndef __VTK_WRAP__
+template <class ValueTypeT>
+vtkSOADataArrayTemplate<typename vtkSOADataArrayTemplate<ValueTypeT>::ValueType>*
+vtkSOADataArrayTemplate<ValueTypeT>::FastDownCast(vtkAbstractArray* source)
+{
+  if (source)
+  {
+    switch (source->GetArrayType())
+    {
+      case vtkAbstractArray::SoADataArrayTemplate:
+        if (vtkDataTypesCompare(source->GetDataType(), vtkTypeTraits<ValueType>::VTK_TYPE_ID))
+        {
+          return static_cast<vtkSOADataArrayTemplate<ValueType>*>(source);
+        }
+        break;
+    }
+  }
+  return nullptr;
+}
+#endif
 
 //-----------------------------------------------------------------------------
 template <class ValueType>

@@ -10,10 +10,10 @@ set(libb64_headers
     include/b64/encode.h
     include/b64/catalyst_b64_mangle.h)
 
-add_library(b64 STATIC
+add_library(conduit_b64 OBJECT
   ${libb64_sources})
-target_include_directories(b64
+target_include_directories(conduit_b64
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 
-c_install_targets(b64)
+c_install_targets(conduit_b64)

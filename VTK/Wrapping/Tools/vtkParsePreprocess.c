@@ -20,11 +20,12 @@
 -------------------------------------------------------------------------*/
 
 #include "vtkParsePreprocess.h"
+#include "vtkParseSystem.h"
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 
 /**
   This file handles preprocessor directives via a simple
@@ -1655,11 +1656,10 @@ const char* preproc_find_include_file(
 {
   int i, n, ii, nn;
   size_t j, m;
-  struct stat fs;
   const char* directory;
   char* output;
   size_t outputsize = 16;
-  int count;
+  int pass, passes;
   int extra = 0;
 
   /* allow filename to be terminated by quote or bracket */
@@ -1667,6 +1667,16 @@ const char* preproc_find_include_file(
   while (filename[m] != '\"' && filename[m] != '>' && filename[m] != '\n' && filename[m] != '\0')
   {
     m++;
+  }
+
+  /* check if the header file is listed as "missing" */
+  n = info->NumberOfMissingFiles;
+  for (i = 0; i < n; i++)
+  {
+    if (strncmp(filename, info->MissingFiles[i], m) == 0 && info->MissingFiles[i][m] == '\0')
+    {
+      return NULL;
+    }
   }
 
   /* search file system for the file */
@@ -1738,8 +1748,12 @@ const char* preproc_find_include_file(
     preproc_add_include_file(info, info->FileName);
   }
 
-  /* Check twice. First check the cache, then stat the files. */
-  for (count = 0; count < (2 - cache_only); count++)
+  /* Check the cache of files that have already been included,
+     then check the cache of all files known to exist on the system,
+     then go to the filesystem as a last resort (for if case-insensitivity
+     or text normalization issues cause a false negative with the cache). */
+  passes = (cache_only ? 1 : 3);
+  for (pass = 1; pass <= passes; pass++)
   {
     n = info->NumberOfIncludeDirectories;
     for (i = 0; i < (n + extra); i++)
@@ -1819,7 +1833,8 @@ const char* preproc_find_include_file(
         output[j + m] = '\0';
       }
 
-      if (count == 0)
+      /* in pass 1, check if this file has already been included */
+      if (pass == 1)
       {
         nn = info->NumberOfIncludeFiles;
         for (ii = 0; ii < nn; ii++)
@@ -1831,11 +1846,8 @@ const char* preproc_find_include_file(
           }
         }
       }
-#if defined(_WIN32) && !defined(__CYGWIN__)
-      else if (stat(output, &fs) == 0 && (fs.st_mode & _S_IFMT) != _S_IFDIR)
-#else
-      else if (stat(output, &fs) == 0 && !S_ISDIR(fs.st_mode))
-#endif
+      /* in pass 2, check with the cache, and in pass 3, without the cache */
+      else if (vtkParse_FileExists((pass == 2 ? info->System : NULL), output) == VTK_PARSE_ISFILE)
       {
         nn = info->NumberOfIncludeFiles;
         info->IncludeFiles =
@@ -1846,6 +1858,16 @@ const char* preproc_find_include_file(
         return info->IncludeFiles[nn];
       }
     }
+  }
+
+  if (!cache_only)
+  {
+    /* header file could not be found, mark it so we don't try again */
+    n = info->NumberOfMissingFiles;
+    info->MissingFiles =
+      (const char**)preproc_array_check((char**)info->MissingFiles, sizeof(char*), n);
+    info->MissingFiles[info->NumberOfMissingFiles++] =
+      vtkParse_CacheString(info->Strings, filename, m);
   }
 
   free(output);
@@ -2472,9 +2494,6 @@ int vtkParsePreprocess_EvaluateExpression(
  */
 void vtkParsePreprocess_AddStandardMacros(PreprocessInfo* info, preproc_platform_t platform)
 {
-  int save_external = info->IsExternal;
-  info->IsExternal = 1;
-
   /* define common extension operators as macros that return "false" */
   const char** operatorMacro;
   static const char* operatorMacros[] = {
@@ -2489,6 +2508,10 @@ void vtkParsePreprocess_AddStandardMacros(PreprocessInfo* info, preproc_platform
 #endif
     NULL
   };
+
+  /* these macros aren't created by #define's in the current source file */
+  int save_external = info->IsExternal;
+  info->IsExternal = 1;
 
   /* these operators aren't true macros, but it's expedient to define them as such
    * rather than add dedicated code to the preprocessor for handling them */
@@ -4405,14 +4428,16 @@ const char* vtkParsePreprocess_ExpandMacro(
     }
     return macro->Definition;
   }
-
-  if (rp == stack_rp)
+  else
   {
-    rp = (char*)malloc(strlen(stack_rp) + 1);
-    strcpy(rp, stack_rp);
+    char* tmp = (char*)malloc(strlen(rp) + 1);
+    strcpy(tmp, rp);
+    if (rp != stack_rp)
+    {
+      free(rp);
+    }
+    return tmp;
   }
-
-  return rp;
 }
 
 /**
@@ -4631,14 +4656,17 @@ const char* vtkParsePreprocess_ProcessString(PreprocessInfo* info, const char* t
       }
       return tp;
     }
-    if (rp == stack_rp)
+    else
     {
-      rp = (char*)malloc(strlen(stack_rp) + 1);
-      strcpy(rp, stack_rp);
+      char* tmp = (char*)malloc(strlen(rp) + 1);
+      strcpy(tmp, rp);
+      if (rp != stack_rp)
+      {
+        free(rp);
+      }
+      return tmp;
     }
   }
-
-  return rp;
 }
 
 /**
@@ -4747,6 +4775,9 @@ void vtkParsePreprocess_Init(PreprocessInfo* info, const char* filename)
   info->ConditionalDepth = 0;
   info->ConditionalDone = 0;
   info->MacroCounter = 0;
+  info->NumberOfMissingFiles = 0;
+  info->MissingFiles = NULL;
+  info->System = NULL;
 
   if (filename)
   {
@@ -4786,6 +4817,7 @@ void vtkParsePreprocess_Free(PreprocessInfo* info)
 
   free((char**)info->IncludeDirectories);
   free((char**)info->IncludeFiles);
+  free((char**)info->MissingFiles);
 
   free(info);
 }

@@ -14,13 +14,11 @@
 =========================================================================*/
 /**
  * @class vtkPVDataAssemblyInformation
- * @brief information to collect vtkDataAssembly
+ * @brief fetches vtkDataAssembly from a vtkObject subclass
  *
- * vtkPVDataAssemblyInformation gathers vtkDataAssembly from an algorithm's
- * output port (chosen using vtkPVDataAssemblyInformation::SetPortNumber).
- * This is a root-only data information, i.e. it only collects the information
- * from the root node since all ranks are expected to have identical
- * vtkDataAssembly, if any.
+ * vtkPVDataAssemblyInformation is used to fetch vtkDataAssembly from a
+ * vtkObject. The method used to obtain vtkDataAssembly instance is defined by
+ * `MethodName` and defaults to "GetAssembly".
  */
 
 #ifndef vtkPVDataAssemblyInformation_h
@@ -28,9 +26,9 @@
 
 #include "vtkPVInformation.h"
 #include "vtkRemotingCoreModule.h" //needed for exports
-#include "vtkSmartPointer.h"       // for vtkSmartPointer
 
 class vtkDataAssembly;
+
 class VTKREMOTINGCORE_EXPORT vtkPVDataAssemblyInformation : public vtkPVInformation
 {
 public:
@@ -38,48 +36,36 @@ public:
   vtkTypeMacro(vtkPVDataAssemblyInformation, vtkPVInformation);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  void Initialize();
-
-  //@{
+  ///@{
   /**
-   * Port number controls which output port the information is gathered from.
-   * This is the only parameter that can be set on  the client-side before
-   * gathering the information.
+   * Get/Set the method name to use to get the assembly.
    */
-  vtkSetMacro(PortNumber, int);
-  vtkGetMacro(PortNumber, int);
-  //@}
+  vtkSetStringMacro(MethodName);
+  vtkGetStringMacro(MethodName);
+  ///@}
 
-  /**
-   * Transfer information about a single object into this object.
-   */
+  vtkGetObjectMacro(DataAssembly, vtkDataAssembly);
+
+  ///@{
   void CopyFromObject(vtkObject*) override;
-
-  //@{
-  /**
-   * Manage a serialized version of the information.
-   */
   void CopyToStream(vtkClientServerStream*) override;
   void CopyFromStream(const vtkClientServerStream*) override;
   void CopyParametersToStream(vtkMultiProcessStream&) override;
   void CopyParametersFromStream(vtkMultiProcessStream&) override;
-  //@}
-
-  /**
-   * Returns the gathered vtkDataAssembly.
-   */
-  vtkDataAssembly* GetDataAssembly();
+  ///@}
 
 protected:
   vtkPVDataAssemblyInformation();
-  ~vtkPVDataAssemblyInformation();
+  ~vtkPVDataAssemblyInformation() override;
 
 private:
   vtkPVDataAssemblyInformation(const vtkPVDataAssemblyInformation&) = delete;
   void operator=(const vtkPVDataAssemblyInformation&) = delete;
 
-  vtkSmartPointer<vtkDataAssembly> DataAssembly;
-  int PortNumber;
+  void SetDataAssembly(vtkDataAssembly*);
+
+  vtkDataAssembly* DataAssembly;
+  char* MethodName;
 };
 
 #endif

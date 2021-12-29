@@ -28,14 +28,10 @@
 //****************************************************************************
 vtkStandardNewMacro(vtkSIDirectoryProxy);
 //----------------------------------------------------------------------------
-vtkSIDirectoryProxy::vtkSIDirectoryProxy()
-{
-}
+vtkSIDirectoryProxy::vtkSIDirectoryProxy() = default;
 
 //----------------------------------------------------------------------------
-vtkSIDirectoryProxy::~vtkSIDirectoryProxy()
-{
-}
+vtkSIDirectoryProxy::~vtkSIDirectoryProxy() = default;
 
 //----------------------------------------------------------------------------
 void vtkSIDirectoryProxy::Pull(vtkSMMessage* message)
@@ -136,7 +132,7 @@ bool vtkSIDirectoryProxy::ReadXMLProperty(vtkPVXMLElement* propElement)
 {
   // We skip fake properties ;-)
   std::string name = propElement->GetAttributeOrEmpty("name");
-  if (strcmp(name.c_str(), "FileList") == 0 || strcmp(name.c_str(), "DirectoryList"))
+  if (name == "FileList" || name == "DirectoryList")
   {
     return true;
   }

@@ -42,6 +42,7 @@ public:
   vtkTypeMacro(vtkAppendLocationAttributes, vtkPassInputTypeAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
+  ///@{
   /**
    * Enable/disable whether input point locations should be saved as a point data array.
    * Default is `true` i.e. the points will be propagated as a point data array named
@@ -50,9 +51,9 @@ public:
   vtkSetMacro(AppendPointLocations, bool);
   vtkGetMacro(AppendPointLocations, bool);
   vtkBooleanMacro(AppendPointLocations, bool);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Enable/disable whether input cell center locations should be saved as a cell data array.
    * Default is `true` i.e. the cell centers will be propagated as a cell data array named
@@ -61,7 +62,7 @@ public:
   vtkSetMacro(AppendCellCenters, bool);
   vtkGetMacro(AppendCellCenters, bool);
   vtkBooleanMacro(AppendCellCenters, bool);
-  //@}
+  ///@}
 
 protected:
   vtkAppendLocationAttributes() = default;

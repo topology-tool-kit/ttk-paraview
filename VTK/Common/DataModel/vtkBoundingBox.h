@@ -29,13 +29,14 @@ PURPOSE.  See the above copyright notice for more information.
 #define vtkBoundingBox_h
 #include "vtkCommonDataModelModule.h" // For export macro
 #include "vtkSystemIncludes.h"
+#include <atomic> // For threaded bounding box computation
 
 class vtkPoints;
 
 class VTKCOMMONDATAMODEL_EXPORT vtkBoundingBox
 {
 public:
-  //@{
+  ///@{
   /**
    * Construct a bounding box with the min point set to
    * VTK_DOUBLE_MAX and the max point set to VTK_DOUBLE_MIN.
@@ -43,7 +44,7 @@ public:
   vtkBoundingBox();
   vtkBoundingBox(const double bounds[6]);
   vtkBoundingBox(double xMin, double xMax, double yMin, double yMax, double zMin, double zMax);
-  //@}
+  ///@}
 
   /**
    * Copy constructor.
@@ -55,33 +56,35 @@ public:
    */
   vtkBoundingBox& operator=(const vtkBoundingBox& bbox);
 
-  //@{
+  ///@{
   /**
    * Equality operator.
    */
   bool operator==(const vtkBoundingBox& bbox) const;
   bool operator!=(const vtkBoundingBox& bbox) const;
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set the bounds explicitly of the box (using the VTK convention for
    * representing a bounding box).  Returns 1 if the box was changed else 0.
    */
   void SetBounds(const double bounds[6]);
   void SetBounds(double xMin, double xMax, double yMin, double yMax, double zMin, double zMax);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
-   * Compute the bounding box from an array of vtkPoints. It uses a fast path
-   * when possible. The second signature (with point uses) only considers
-   * points with ptUses[i] != 0 in the bounds calculation. The non-static
-   * ComputeBounds() methods update the current bounds of an instance of this
-   * class.
+   * Compute the bounding box from an array of vtkPoints. It uses a fast
+   * (i.e., threaded) path when possible. The second signature (with point
+   * uses) only considers points with ptUses[i] != 0 in the bounds
+   * calculation. The non-static ComputeBounds() methods update the current
+   * bounds of an instance of this class.
    */
   static void ComputeBounds(vtkPoints* pts, double bounds[6]);
   static void ComputeBounds(vtkPoints* pts, const unsigned char* ptUses, double bounds[6]);
+  static void ComputeBounds(
+    vtkPoints* pts, const std::atomic<unsigned char>* ptUses, double bounds[6]);
   void ComputeBounds(vtkPoints* pts) { this->ComputeBounds(pts, (unsigned char*)nullptr); }
   void ComputeBounds(vtkPoints* pts, unsigned char* ptUses)
   {
@@ -94,43 +97,52 @@ public:
     this->MaxPnt[1] = bds[3];
     this->MaxPnt[2] = bds[5];
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
+  /**
+   * Compute local bounds.
+   * Not as fast as vtkPoints.getBounds() if u, v, w form a natural basis.
+   */
+  static void ComputeLocalBounds(
+    vtkPoints* points, double u[3], double v[3], double w[3], double outputBounds[6]);
+  ///@}
+
+  ///@{
   /**
    * Set the minimum point of the bounding box - if the min point
    * is greater than the max point then the max point will also be changed.
    */
   void SetMinPoint(double x, double y, double z);
   void SetMinPoint(double p[3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set the maximum point of the bounding box - if the max point
    * is less than the min point then the min point will also be changed.
    */
   void SetMaxPoint(double x, double y, double z);
   void SetMaxPoint(double p[3]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Returns 1 if the bounds have been set and 0 if the box is in its
    * initialized state which is an inverted state.
    */
   int IsValid() const;
   static int IsValid(const double bounds[6]);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Change bounding box so it includes the point p.  Note that the bounding
    * box may have 0 volume if its bounds were just initialized.
    */
   void AddPoint(double p[3]);
   void AddPoint(double px, double py, double pz);
-  //@}
+  ///@}
 
   /**
    * Change the bounding box to be the union of itself and the specified
@@ -175,6 +187,12 @@ public:
   bool IntersectsSphere(double center[3], double squaredRadius) const;
 
   /**
+   * Returns true if any part of segment [p1,p2] lies inside the bounding box, as well as on its
+   * boundaries. It returns false otherwise.
+   */
+  bool IntersectsLine(const double p1[3], const double p2[3]) const;
+
+  /**
    * Returns the inner dimension of the bounding box.
    */
   int ComputeInnerDimension() const;
@@ -185,37 +203,37 @@ public:
    */
   int Contains(const vtkBoundingBox& bbox) const;
 
-  //@{
+  ///@{
   /**
    * Get the bounds of the box (defined by VTK style).
    */
   void GetBounds(double bounds[6]) const;
   void GetBounds(
     double& xMin, double& xMax, double& yMin, double& yMax, double& zMin, double& zMax) const;
-  //@}
+  ///@}
 
   /**
    * Return the ith bounds of the box (defined by VTK style).
    */
   double GetBound(int i) const;
 
-  //@{
+  ///@{
   /**
    * Get the minimum point of the bounding box.
    */
   const double* GetMinPoint() const VTK_SIZEHINT(3);
   void GetMinPoint(double& x, double& y, double& z) const;
   void GetMinPoint(double x[3]) const;
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get the maximum point of the bounding box.
    */
   const double* GetMaxPoint() const VTK_SIZEHINT(3);
   void GetMaxPoint(double& x, double& y, double& z) const;
   void GetMaxPoint(double x[3]) const;
-  //@}
+  ///@}
 
   /**
    * Get the ith corner of the bounding box. The points are ordered
@@ -223,13 +241,15 @@ public:
    */
   void GetCorner(int corner, double p[3]) const;
 
-  //@{
+  ///@{
   /**
    * Returns 1 if the point is contained in the box else 0.
    */
-  vtkTypeBool ContainsPoint(double p[3]) const;
+  vtkTypeBool ContainsPoint(const double p[3]) const;
   vtkTypeBool ContainsPoint(double px, double py, double pz) const;
-  //@}
+  template <class PointT>
+  bool ContainsPoint(const PointT& p) const;
+  ///@}
 
   /**
    * Get the center of the bounding box.
@@ -257,7 +277,7 @@ public:
    */
   double GetDiagonalLength() const;
 
-  //@{
+  ///@{
   /**
    * Expand the bounding box. Inflate(delta) expands by delta on each side,
    * the box will grow by 2*delta in x, y, and z. Inflate(dx,dy,dz) expands
@@ -269,9 +289,9 @@ public:
   void Inflate(double delta);
   void Inflate(double deltaX, double deltaY, double deltaZ);
   void Inflate();
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Scale each dimension of the box by some given factor.
    * If the box is not valid, it stays unchanged.
@@ -280,9 +300,9 @@ public:
    */
   void Scale(double s[3]);
   void Scale(double sx, double sy, double sz);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Scale each dimension of the box by some given factor, with the origin of
    * the bounding box the center of the scaling. If the box is not
@@ -291,7 +311,7 @@ public:
   void ScaleAboutCenter(double s);
   void ScaleAboutCenter(double s[3]);
   void ScaleAboutCenter(double sx, double sy, double sz);
-  //@}
+  ///@}
 
   /**
    * Compute the number of divisions in the x-y-z directions given a
@@ -512,7 +532,13 @@ inline vtkTypeBool vtkBoundingBox::ContainsPoint(double px, double py, double pz
   return 1;
 }
 
-inline vtkTypeBool vtkBoundingBox::ContainsPoint(double p[3]) const
+inline vtkTypeBool vtkBoundingBox::ContainsPoint(const double p[3]) const
+{
+  return this->ContainsPoint(p[0], p[1], p[2]);
+}
+
+template <class PointT>
+inline bool vtkBoundingBox::ContainsPoint(const PointT& p) const
 {
   return this->ContainsPoint(p[0], p[1], p[2]);
 }

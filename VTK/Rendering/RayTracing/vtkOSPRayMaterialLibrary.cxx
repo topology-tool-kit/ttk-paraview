@@ -30,8 +30,10 @@
 #include "vtksys/FStream.hxx"
 #include "vtksys/SystemTools.hxx"
 
+#include <cctype>
 #include <fstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <sys/types.h>
@@ -77,10 +79,28 @@ std::string FindRealName(const std::string& materialType, const std::string& ali
   }
   return alias;
 }
+
+// backward compatibility over OSPRay 2.0 name changes
+void BackwardCompatibilityName(std::string& implname)
+{
+  implname[0] = std::tolower(implname[0]);
+  if (implname == "oBJMaterial")
+  {
+    implname = "obj";
+  }
+}
+
+std::string FilePathToTextureName(const std::string& path)
+{
+  std::string res = vtksys::SystemTools::GetFilenameName(path);
+  std::size_t dot = res.find_last_of('.');
+  return (dot == std::string::npos) ? res : std::string(res.begin(), res.begin() + dot);
+}
 }
 
 typedef std::map<std::string, std::vector<double>> NamedVariables;
-typedef std::map<std::string, vtkSmartPointer<vtkTexture>> NamedTextures;
+// Map ShaderVariableName -> Pair(TextureName, TexturePointer)
+typedef std::map<std::string, std::pair<std::string, vtkSmartPointer<vtkTexture>>> NamedTextures;
 
 class vtkOSPRayMaterialLibraryInternals
 {
@@ -151,30 +171,30 @@ void vtkOSPRayMaterialLibrary::RemoveMaterial(const std::string& nickname)
 }
 
 //------------------------------------------------------------------------------
-void vtkOSPRayMaterialLibrary::AddTexture(
-  const std::string& nickname, const std::string& texname, vtkTexture* tex)
+void vtkOSPRayMaterialLibrary::AddTexture(const std::string& nickname, const std::string& varname,
+  vtkTexture* tex, const std::string& texname)
 {
-  std::string realname = ::FindRealName(this->Internal->ImplNames[nickname], texname);
+  std::string realname = ::FindRealName(this->Internal->ImplNames[nickname], varname);
 
   auto& dic = vtkOSPRayMaterialLibrary::GetParametersDictionary();
   auto& params = dic.at(this->Internal->ImplNames[nickname]);
   if (params.find(realname) != params.end())
   {
     NamedTextures& tsForNickname = this->Internal->TexturesFor[nickname];
-    tsForNickname[realname] = tex;
+    tsForNickname[realname] = { texname, tex };
   }
   else
   {
-    vtkGenericWarningMacro("Unknown parameter \"" << texname << "\" for type \""
+    vtkGenericWarningMacro("Unknown parameter \"" << varname << "\" for type \""
                                                   << this->Internal->ImplNames[nickname] << "\"");
   }
 }
 
 //------------------------------------------------------------------------------
 void vtkOSPRayMaterialLibrary::RemoveTexture(
-  const std::string& nickname, const std::string& texname)
+  const std::string& nickname, const std::string& varname)
 {
-  std::string realname = ::FindRealName(this->Internal->ImplNames[nickname], texname);
+  std::string realname = ::FindRealName(this->Internal->ImplNames[nickname], varname);
   this->Internal->TexturesFor[nickname].erase(realname);
 }
 
@@ -329,49 +349,19 @@ bool vtkOSPRayMaterialLibrary::InternalParseJSON(
 
     std::string implname = nextmat["type"].asString();
     // backward compatibility over OSPRay 2.0 name changes
-    if (implname == "Alloy")
-    {
-      implname = "alloy";
-    }
-    if (implname == "CarPaint")
-    {
-      implname = "carPaint";
-    }
-    if (implname == "Glass")
-    {
-      implname = "glass";
-    }
-    if (implname == "Metal")
-    {
-      implname = "metal";
-    }
-    if (implname == "MetallicPaint")
-    {
-      implname = "metallicPaint";
-    }
-    if (implname == "OBJMaterial")
-    {
-      implname = "obj";
-    }
-    if (implname == "Principled")
-    {
-      implname = "principled";
-    }
-    if (implname == "ThinGlass")
-    {
-      implname = "thinGlass";
-    }
+    ::BackwardCompatibilityName(implname);
     this->Internal->ImplNames[nickname] = implname;
     if (nextmat.isMember("textures"))
     {
       const Json::Value textures = nextmat["textures"];
-      for (const std::string& tname : textures.getMemberNames())
+      for (const std::string& vname : textures.getMemberNames())
       {
-        const Json::Value nexttext = textures[tname];
+        const Json::Value nexttext = textures[vname];
         const char* tfname = nexttext.asCString();
-        vtkSmartPointer<vtkTexture> textr = vtkSmartPointer<vtkTexture>::New();
-        vtkSmartPointer<vtkJPEGReader> jpgReader = vtkSmartPointer<vtkJPEGReader>::New();
-        vtkSmartPointer<vtkPNGReader> pngReader = vtkSmartPointer<vtkPNGReader>::New();
+        vtkNew<vtkTexture> textr;
+        vtkNew<vtkJPEGReader> jpgReader;
+        vtkNew<vtkPNGReader> pngReader;
+        std::string textureName = "unnamedTexture";
         if (fromfile)
         {
           std::string tfullname = parentDir + "/" + tfname;
@@ -380,6 +370,7 @@ bool vtkOSPRayMaterialLibrary::InternalParseJSON(
             cerr << "No such texture file " << tfullname << " skipping" << endl;
             continue;
           }
+          textureName = ::FilePathToTextureName(tfullname);
           if (tfullname.substr(tfullname.length() - 3) == "png")
           {
             pngReader->SetFileName(tfullname.c_str());
@@ -395,14 +386,14 @@ bool vtkOSPRayMaterialLibrary::InternalParseJSON(
         }
         else
         {
-          vtkSmartPointer<vtkXMLImageDataReader> reader =
-            vtkSmartPointer<vtkXMLImageDataReader>::New();
+          textureName = "rawDataTexture";
+          vtkNew<vtkXMLImageDataReader> reader;
           reader->ReadFromInputStringOn();
           reader->SetInputString(tfname);
           textr->SetInputConnection(reader->GetOutputPort(0));
         }
         textr->Update();
-        this->AddTexture(nickname, tname, textr);
+        this->AddTexture(nickname, vname, textr, textureName);
       }
     }
     if (nextmat.isMember("doubles"))
@@ -488,38 +479,7 @@ bool vtkOSPRayMaterialLibrary::InternalParseMTL(
         implname = "thinGlass";
       }
       // backward compatibility over OSPRay 2.0 name changes
-      if (implname == "Alloy")
-      {
-        implname = "alloy";
-      }
-      if (implname == "CarPaint")
-      {
-        implname = "carPaint";
-      }
-      if (implname == "Glass")
-      {
-        implname = "glass";
-      }
-      if (implname == "Metal")
-      {
-        implname = "metal";
-      }
-      if (implname == "MetallicPaint")
-      {
-        implname = "metallicPaint";
-      }
-      if (implname == "OBJMaterial")
-      {
-        implname = "obj";
-      }
-      if (implname == "Principled")
-      {
-        implname = "principled";
-      }
-      if (implname == "ThinGlass")
-      {
-        implname = "thinGlass";
-      }
+      ::BackwardCompatibilityName(implname);
 
       this->Internal->ImplNames[nickname] = implname;
     }
@@ -607,9 +567,10 @@ bool vtkOSPRayMaterialLibrary::InternalParseMTL(
       }
       if (!tfname.empty())
       {
-        vtkSmartPointer<vtkTexture> textr = vtkSmartPointer<vtkTexture>::New();
-        vtkSmartPointer<vtkJPEGReader> jpgReader = vtkSmartPointer<vtkJPEGReader>::New();
-        vtkSmartPointer<vtkPNGReader> pngReader = vtkSmartPointer<vtkPNGReader>::New();
+        vtkNew<vtkTexture> textr;
+        vtkNew<vtkJPEGReader> jpgReader;
+        vtkNew<vtkPNGReader> pngReader;
+        std::string textureName = "unnamedTexture";
         if (fromfile)
         {
           std::string tfullname = parentDir + "/" + tfname;
@@ -618,6 +579,7 @@ bool vtkOSPRayMaterialLibrary::InternalParseMTL(
             cerr << "No such texture file " << tfullname << " skipping" << endl;
             continue;
           }
+          textureName = ::FilePathToTextureName(tfullname);
           if (tfullname.substr(tfullname.length() - 3) == "png")
           {
             pngReader->SetFileName(tfullname.c_str());
@@ -633,15 +595,15 @@ bool vtkOSPRayMaterialLibrary::InternalParseMTL(
         }
         else
         {
-          vtkSmartPointer<vtkXMLImageDataReader> reader =
-            vtkSmartPointer<vtkXMLImageDataReader>::New();
+          textureName = "rawDataTexture";
+          vtkNew<vtkXMLImageDataReader> reader;
           reader->ReadFromInputStringOn();
           reader->SetInputString(tfname);
           textr->SetInputConnection(reader->GetOutputPort(0));
         }
         textr->Update();
 
-        this->AddTexture(nickname, key.substr(0, key.size() - 1).c_str(), textr);
+        this->AddTexture(nickname, key.substr(0, key.size() - 1).c_str(), textr, textureName);
       }
     }
   }
@@ -695,7 +657,7 @@ const char* vtkOSPRayMaterialLibrary::WriteBuffer()
       while (vit != this->Internal->TexturesFor[nickname].end())
       {
         std::string vname = vit->first;
-        vtkSmartPointer<vtkTexture> vvals = vit->second;
+        vtkSmartPointer<vtkTexture> vvals = vit->second.second;
         idwriter->SetInputData(vvals->GetInput());
         idwriter->Write();
         std::string os = idwriter->GetOutputString();
@@ -751,16 +713,30 @@ std::string vtkOSPRayMaterialLibrary::LookupImplName(const std::string& nickname
 
 //------------------------------------------------------------------------------
 vtkTexture* vtkOSPRayMaterialLibrary::GetTexture(
-  const std::string& nickname, const std::string& texturename)
+  const std::string& nickname, const std::string& varname)
 {
   NamedTextures tsForNickname;
   if (this->Internal->TexturesFor.find(nickname) != this->Internal->TexturesFor.end())
   {
     tsForNickname = this->Internal->TexturesFor[nickname];
-    std::string realname = ::FindRealName(this->Internal->ImplNames[nickname], texturename);
-    return tsForNickname[realname];
+    std::string realname = ::FindRealName(this->Internal->ImplNames[nickname], varname);
+    return tsForNickname[realname].second;
   }
   return nullptr;
+}
+
+//------------------------------------------------------------------------------
+std::string vtkOSPRayMaterialLibrary::GetTextureName(
+  const std::string& nickname, const std::string& varname)
+{
+  NamedTextures tsForNickname;
+  if (this->Internal->TexturesFor.find(nickname) != this->Internal->TexturesFor.end())
+  {
+    tsForNickname = this->Internal->TexturesFor[nickname];
+    std::string realname = ::FindRealName(this->Internal->ImplNames[nickname], varname);
+    return tsForNickname[realname].first;
+  }
+  return "";
 }
 
 //------------------------------------------------------------------------------
@@ -1181,7 +1157,7 @@ vtkOSPRayMaterialLibrary::GetParametersDictionary()
         { "map_baseColor.scale", vtkOSPRayMaterialLibrary::ParameterType::VEC2 },
         { "map_baseColor.translation", vtkOSPRayMaterialLibrary::ParameterType::VEC2 },
       } },
-    { "Luminous",
+    { "luminous",
       {
         { "color", vtkOSPRayMaterialLibrary::ParameterType::COLOR_RGB },
         { "intensity", vtkOSPRayMaterialLibrary::ParameterType::NORMALIZED_FLOAT },

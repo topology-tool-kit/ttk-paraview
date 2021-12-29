@@ -150,11 +150,11 @@ public:
     NAND //!< Only include elements that don't belong to any input set
   };
 
-  //@{
+  ///@{
   /**
    * Add a mesh subset to be computed by thresholding an attribute of the input mesh.
-   * The subset can then be added to an output mesh with OutputSet() or combined with other sets
-   using AddBooleanSet.
+   * The subset can then be added to an output mesh with OutputSet() or
+   * combined with other sets using AddBooleanSet.
    * If you wish to include all cells with values below some number \a a, call
    * with xmin set to vtkMath::NegInf() and xmax set to \a a.
    * Similarly, if you wish to include all cells with values above some number \a a,
@@ -207,9 +207,9 @@ public:
     int component, int allScalars);
   int AddIntervalSet(double xmin, double xmax, int omin, int omax, int assoc, int attribType,
     int component, int allScalars);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * These convenience members make it easy to insert closed intervals.
    * The "notch" interval is accomplished by creating a bandpass interval and applying a NAND
@@ -225,7 +225,7 @@ public:
     double xmin, double xmax, int assoc, const char* arrayName, int component, int allScalars);
   int AddNotchIntervalSet(
     double xlo, double xhi, int assoc, const char* arrayName, int component, int allScalars);
-  //@}
+  ///@}
 
   /**
    * Create a new mesh subset using boolean operations on pre-existing sets.

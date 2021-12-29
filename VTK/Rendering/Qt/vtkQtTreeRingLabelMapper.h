@@ -44,6 +44,7 @@
 #ifndef vtkQtTreeRingLabelMapper_h
 #define vtkQtTreeRingLabelMapper_h
 
+#include "vtkDeprecation.h" // for deprecation macros
 #include "vtkLabeledDataMapper.h"
 #include "vtkRenderingQtModule.h" // For export macro
 
@@ -68,13 +69,13 @@ public:
   vtkTypeMacro(vtkQtTreeRingLabelMapper, vtkLabeledDataMapper);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Draw the text to the screen at each input point.
    */
   void RenderOpaqueGeometry(vtkViewport* viewport, vtkActor2D* actor) override;
   void RenderOverlay(vtkViewport* viewport, vtkActor2D* actor) override;
-  //@}
+  ///@}
 
   /**
    * The input to this filter.
@@ -86,7 +87,7 @@ public:
    */
   virtual void SetSectorsArrayName(const char* name);
 
-  //@{
+  ///@{
   /**
    * Set/Get the text property. Note that multiple type text properties
    * (set with a second integer parameter) are not currently supported,
@@ -102,15 +103,15 @@ public:
   {
     return this->Superclass::GetLabelTextProperty(type);
   }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Set/Get the name of the text rotation array.
    */
   vtkSetStringMacro(TextRotationArrayName);
   vtkGetStringMacro(TextRotationArrayName);
-  //@}
+  ///@}
 
   /**
    * Return the object's MTime. This is overridden to include
@@ -132,8 +133,18 @@ protected:
   vtkQtTreeRingLabelMapper();
   ~vtkQtTreeRingLabelMapper() override;
   void LabelTree(vtkTree* tree, vtkDataArray* sectorInfo, vtkDataArray* numericData,
+    vtkStringArray* stringData, int activeComp, int numComps, vtkViewport* viewport);
+  VTK_DEPRECATED_IN_9_1_0(
+    "Use void LabelTree(vtkTree* tree, vtkDataArray* sectorInfo, vtkDataArray* numericData, "
+    "vtkStringArray* stringData, int activeComp, int numComps, vtkViewport* viewport)")
+  void LabelTree(vtkTree* tree, vtkDataArray* sectorInfo, vtkDataArray* numericData,
     vtkStringArray* stringData, vtkUnicodeStringArray* uStringData, int activeComp, int numComps,
     vtkViewport* viewport);
+  void GetVertexLabel(vtkIdType vertex, vtkDataArray* numericData, vtkStringArray* stringData,
+    int activeComp, int numComps, char* string, size_t stringSize);
+  VTK_DEPRECATED_IN_9_1_0(
+    "Use void GetVertexLabel(vtkIdType vertex, vtkDataArray* numericData, vtkStringArray* "
+    "stringData, int activeComp, int numComps, char* string, size_t stringSize)")
   void GetVertexLabel(vtkIdType vertex, vtkDataArray* numericData, vtkStringArray* stringData,
     vtkUnicodeStringArray* uStringData, int activeComp, int numComps, char* string,
     size_t stringSize);

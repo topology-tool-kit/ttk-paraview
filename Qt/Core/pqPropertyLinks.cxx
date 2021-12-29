@@ -44,7 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class pqPropertyLinks::pqInternals
 {
 public:
-  QList<QPointer<pqPropertyLinksConnection> > Connections;
+  QList<QPointer<pqPropertyLinksConnection>> Connections;
   bool IgnoreSMChanges;
   pqInternals()
     : IgnoreSMChanges(false)
@@ -68,7 +68,7 @@ pqPropertyLinks::~pqPropertyLinks()
   this->clear();
 
   delete this->Internals;
-  this->Internals = 0;
+  this->Internals = nullptr;
 }
 
 //-----------------------------------------------------------------------------

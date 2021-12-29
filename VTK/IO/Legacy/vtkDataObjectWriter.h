@@ -42,12 +42,12 @@ public:
   vtkTypeMacro(vtkDataObjectWriter, vtkWriter);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Methods delegated to vtkDataWriter, see vtkDataWriter.
    */
-  void SetFileName(const char* filename) { this->Writer->SetFileName(filename); }
-  char* GetFileName() { return this->Writer->GetFileName(); }
+  void SetFileName(VTK_FILEPATH const char* filename) { this->Writer->SetFileName(filename); }
+  VTK_FILEPATH char* GetFileName() { return this->Writer->GetFileName(); }
   void SetHeader(const char* header) { this->Writer->SetHeader(header); }
   char* GetHeader() { return this->Writer->GetHeader(); }
   void SetFileType(int type) { this->Writer->SetFileType(type); }
@@ -64,7 +64,7 @@ public:
   unsigned char* GetBinaryOutputString() { return this->Writer->GetBinaryOutputString(); }
   void SetFieldDataName(const char* fieldname) { this->Writer->SetFieldDataName(fieldname); }
   char* GetFieldDataName() { return this->Writer->GetFieldDataName(); }
-  //@}
+  ///@}
 
 protected:
   vtkDataObjectWriter();

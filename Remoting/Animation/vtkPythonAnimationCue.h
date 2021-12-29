@@ -17,7 +17,7 @@
  *
  * vtkPythonAnimationCue is an animation cue that can execute arbitrary Python
  * scripts.
-*/
+ */
 
 #ifndef vtkPythonAnimationCue_h
 #define vtkPythonAnimationCue_h
@@ -25,8 +25,8 @@
 #include "vtkAnimationCue.h"
 #include "vtkRemotingAnimationModule.h" //needed for exports
 
-#include <memory>
-#include <string>
+#include <memory> //for std::unique_ptr
+#include <string> // for std::string
 
 class VTKREMOTINGANIMATION_EXPORT vtkPythonAnimationCue : public vtkAnimationCue
 {

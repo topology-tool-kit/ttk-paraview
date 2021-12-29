@@ -124,7 +124,7 @@ static void pqDeleteReactionGetSelectedSet(
 bool pqDeleteReaction::canDeleteSelected()
 {
   vtkSMProxySelectionModel* selModel = pqActiveObjects::instance().activeSourcesSelectionModel();
-  if (selModel == NULL || selModel->GetNumberOfSelectedProxies() == 0)
+  if (selModel == nullptr || selModel->GetNumberOfSelectedProxies() == 0)
   {
     return false;
   }
@@ -132,7 +132,7 @@ bool pqDeleteReaction::canDeleteSelected()
   QSet<pqProxy*> selectedSources;
   ::pqDeleteReactionGetSelectedSet(selModel, selectedSources);
 
-  if (selectedSources.size() == 0)
+  if (selectedSources.empty())
   {
     return false;
   }
@@ -204,7 +204,7 @@ void pqDeleteReaction::deleteSource(pqProxy* source)
 //-----------------------------------------------------------------------------
 void pqDeleteReaction::deleteSources(const QSet<pqProxy*>& argSources)
 {
-  if (argSources.size() == 0)
+  if (argSources.empty())
   {
     return;
   }
@@ -241,13 +241,13 @@ void pqDeleteReaction::deleteSources(const QSet<pqProxy*>& argSources)
         break;
       }
     }
-  } while (something_deleted_in_current_iteration && (sources.size() > 0));
+  } while (something_deleted_in_current_iteration && !sources.empty());
 
   // update scalar bars, if needed
   int sbMode = vtkPVGeneralSettings::GetInstance()->GetScalarBarMode();
   if (something_deleted &&
     (sbMode == vtkPVGeneralSettings::AUTOMATICALLY_SHOW_AND_HIDE_SCALAR_BARS ||
-        sbMode == vtkPVGeneralSettings::AUTOMATICALLY_HIDE_SCALAR_BARS))
+      sbMode == vtkPVGeneralSettings::AUTOMATICALLY_HIDE_SCALAR_BARS))
   {
     vtkNew<vtkSMTransferFunctionManager> tmgr;
     pqServerManagerModel* smmodel = pqApplicationCore::instance()->getServerManagerModel();
@@ -333,9 +333,10 @@ void pqDeleteReaction::onTriggered()
   if (this->DeleteAll)
   {
     if (pqCoreUtilities::promptUser("pqDeleteReaction::onTriggered", QMessageBox::Question,
-          "Delete All?", tr("The current visualization will be reset \n"
-                            "and the state will be discarded.\n\n"
-                            "Are you sure you want to continue?"),
+          "Delete All?",
+          tr("The current visualization will be reset \n"
+             "and the state will be discarded.\n\n"
+             "Are you sure you want to continue?"),
           QMessageBox::Yes | QMessageBox::No))
     {
       pqDeleteReaction::deleteAll();

@@ -57,6 +57,7 @@
 #include "vtkStructuredGrid.h"
 #include "vtkTetra.h"
 #include "vtkTriQuadraticHexahedron.h"
+#include "vtkTriQuadraticPyramid.h"
 #include "vtkUnsignedCharArray.h"
 #include "vtkUnstructuredGrid.h"
 #include "vtkVoxel.h"
@@ -1120,6 +1121,12 @@ int vtkUnstructuredGridGeometryFilter::RequestData(vtkInformation* vtkNotUsed(re
             this->HashTable->InsertFaces<vtkQuadraticPyramid, 1, 5, 6, VTK_QUADRATIC_TRIANGLE>(
               pts, cellId);
             break;
+          case VTK_TRIQUADRATIC_PYRAMID:
+            this->HashTable->InsertFaces<vtkTriQuadraticPyramid, 0, 1, 9, VTK_BIQUADRATIC_QUAD>(
+              pts, cellId);
+            this->HashTable->InsertFaces<vtkTriQuadraticPyramid, 1, 5, 7, VTK_BIQUADRATIC_TRIANGLE>(
+              pts, cellId);
+            break;
           case VTK_TRIQUADRATIC_HEXAHEDRON:
             this->HashTable->InsertFaces<vtkTriQuadraticHexahedron, 0, 6, 9, VTK_BIQUADRATIC_QUAD>(
               pts, cellId);
@@ -1264,10 +1271,9 @@ int vtkUnstructuredGridGeometryFilter::RequestData(vtkInformation* vtkNotUsed(re
       vtkIdType newCellId = output->InsertNextCell(cellType2D, cellIds);
       outputCD->CopyData(cd, cellId, newCellId);
 
-      if (outputCD->SetActiveAttribute(
-            "HigherOrderDegrees", vtkDataSetAttributes::AttributeTypes::HIGHERORDERDEGREES) != -1)
+      vtkDataArray* v = outputCD->GetHigherOrderDegrees();
+      if (v)
       {
-        vtkDataArray* v = outputCD->GetHigherOrderDegrees();
         double degrees[3];
         degrees[0] = surfel->Degrees[0];
         degrees[1] = surfel->Degrees[1];

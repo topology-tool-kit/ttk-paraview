@@ -37,7 +37,6 @@ set(classes
   vtkEquivalenceSet
   vtkExtractScatterPlot
   vtkFlashContour
-  vtkGridConnectivity
   vtkHierarchicalFractal
   vtkHybridProbeFilter
   vtkImageSimpleSource
@@ -57,6 +56,7 @@ set(classes
   vtkPVExtractVOI
   vtkPVGlyphFilter
   vtkPVGlyphFilterLegacy
+  vtkPVGradientFilter
   vtkPVLinearExtrusionFilter
   vtkPVMetaClipDataSet
   vtkPVMetaSliceDataSet

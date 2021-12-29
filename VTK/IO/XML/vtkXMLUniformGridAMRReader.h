@@ -45,7 +45,7 @@ public:
   vtkTypeMacro(vtkXMLUniformGridAMRReader, vtkXMLCompositeDataReader);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * This reader supports demand-driven heavy data reading i.e. downstream
    * pipeline can request specific blocks from the AMR using
@@ -57,7 +57,7 @@ public:
    */
   vtkSetMacro(MaximumLevelsToReadByDefault, unsigned int);
   vtkGetMacro(MaximumLevelsToReadByDefault, unsigned int);
-  //@}
+  ///@}
 
 protected:
   vtkXMLUniformGridAMRReader();
@@ -119,6 +119,9 @@ protected:
 private:
   vtkXMLUniformGridAMRReader(const vtkXMLUniformGridAMRReader&) = delete;
   void operator=(const vtkXMLUniformGridAMRReader&) = delete;
+
+  void SynchronizeDataArraySelectionRecursively(
+    vtkXMLDataElement* element, const std::string& filePath);
 
   char* OutputDataType;
   vtkSetStringMacro(OutputDataType);

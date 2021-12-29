@@ -58,6 +58,9 @@ vtk_add_test_cxx(vtkChartsCoreCxxTests tests
   TestChartDoubleColors.cxx
   TestChartDoubleColorsOpaque.cxx
   TestChartMatrix.cxx
+  TestChartMatrix2.cxx
+  TestChartMatrix3.cxx
+  TestChartPicking.cxx,NO_DATA,NO_VALID
   TestChartTileScaling.cxx
   TestChartUnicode.cxx
   TestChartsOn3D.cxx
@@ -89,13 +92,16 @@ vtk_add_test_cxx(vtkChartsCoreCxxTests tests
   TestLinePlotInteraction.cxx
   TestLinePlotSelection.cxx
   TestLinePlotSelection2.cxx
+  TestLinePlotSelectionMultiBlock.cxx
   TestMultipleChartRenderers.cxx
   TestMultipleRenderers.cxx
   TestMultipleScalarsToColors.cxx
   TestParallelCoordinates.cxx
   TestParallelCoordinatesDouble.cxx
   TestPieChart.cxx
+  TestPlotBarRangeHandlesItem.cxx,NO_DATA,NO_VALID
   TestPlotMatrix.cxx
+  TestPlotRangeHandlesItem.cxx,NO_DATA,NO_VALID
   TestPropItem.cxx
   TestRangeHandlesItemEvents.cxx,NO_DATA,NO_VALID
   TestScalarsToColors.cxx

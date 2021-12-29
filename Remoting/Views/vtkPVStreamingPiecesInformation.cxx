@@ -24,7 +24,7 @@
 #include <vector>
 
 class vtkPVStreamingPiecesInformation::vtkInternals
-  : public std::set<std::pair<unsigned int, unsigned int> >
+  : public std::set<std::pair<unsigned int, unsigned int>>
 {
 };
 
@@ -39,7 +39,7 @@ vtkPVStreamingPiecesInformation::vtkPVStreamingPiecesInformation()
 vtkPVStreamingPiecesInformation::~vtkPVStreamingPiecesInformation()
 {
   delete this->Internals;
-  this->Internals = NULL;
+  this->Internals = nullptr;
 }
 
 //----------------------------------------------------------------------------

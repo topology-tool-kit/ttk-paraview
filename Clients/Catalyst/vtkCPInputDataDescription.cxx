@@ -40,7 +40,7 @@ vtkCxxSetObjectMacro(vtkCPInputDataDescription, TemporalCache, vtkSMSourceProxy)
 //----------------------------------------------------------------------------
 vtkCPInputDataDescription::vtkCPInputDataDescription()
 {
-  this->Grid = NULL;
+  this->Grid = nullptr;
   this->GenerateMesh = false;
   this->AllFields = false;
   this->Internals = new vtkCPInputDataDescription::vtkInternals();
@@ -56,7 +56,7 @@ vtkCPInputDataDescription::~vtkCPInputDataDescription()
   if (this->Internals)
   {
     delete this->Internals;
-    this->Internals = NULL;
+    this->Internals = nullptr;
   }
   this->SetTemporalCache(nullptr);
 }
@@ -83,14 +83,14 @@ void vtkCPInputDataDescription::AddField(const char* fieldName, int type)
 unsigned int vtkCPInputDataDescription::GetNumberOfFields()
 {
   unsigned int count = 0;
-  for (auto iter : this->Internals->Fields)
+  for (const auto& iter : this->Internals->Fields)
   {
     count += static_cast<unsigned int>(iter.second.size());
   }
   if (count > 2)
   {
     count = 0;
-    for (auto iter : this->Internals->Fields)
+    for (const auto& iter : this->Internals->Fields)
     {
       count += static_cast<unsigned int>(iter.second.size());
     }
@@ -129,7 +129,7 @@ int vtkCPInputDataDescription::GetFieldType(unsigned int fieldIndex)
     return -1;
   }
   size_t count = 0;
-  for (auto iter : this->Internals->Fields)
+  for (const auto& iter : this->Internals->Fields)
   {
     size_t size = iter.second.size();
     if (size + count > static_cast<size_t>(fieldIndex))

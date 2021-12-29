@@ -15,7 +15,7 @@
 /**
  * @class   vtkPlotEdges
  *
-*/
+ */
 
 #ifndef vtkPlotEdges_h
 #define vtkPlotEdges_h
@@ -23,8 +23,6 @@
 #include "vtkMultiBlockDataSetAlgorithm.h"
 #include "vtkPVVTKExtensionsFiltersGeneralModule.h" //needed for exports
 
-class Node;
-class Segment;
 class vtkPolyData;
 class vtkCollection;
 class vtkMultiBlockDataSet;

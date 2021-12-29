@@ -64,17 +64,17 @@ public:
   vtkTypeMacro(vtkOBJImporter, vtkImporter);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Specify the name of the file to read.
    */
-  void SetFileName(const char* arg);
-  void SetFileNameMTL(const char* arg);
-  void SetTexturePath(const char* path);
-  const char* GetFileName() const;
-  const char* GetFileNameMTL() const;
-  const char* GetTexturePath() const;
-  //@}
+  void SetFileName(VTK_FILEPATH const char* arg);
+  void SetFileNameMTL(VTK_FILEPATH const char* arg);
+  void SetTexturePath(VTK_FILEPATH const char* path);
+  VTK_FILEPATH const char* GetFileName() const;
+  VTK_FILEPATH const char* GetFileNameMTL() const;
+  VTK_FILEPATH const char* GetTexturePath() const;
+  ///@}
 
   /**
    * Get a printable string describing all outputs
@@ -102,4 +102,3 @@ private:
 };
 
 #endif
-// VTK-HeaderTest-Exclude: vtkOBJImporter.h

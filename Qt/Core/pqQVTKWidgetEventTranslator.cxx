@@ -52,9 +52,7 @@ pqQVTKWidgetEventTranslator::pqQVTKWidgetEventTranslator(QObject* p)
 {
 }
 
-pqQVTKWidgetEventTranslator::~pqQVTKWidgetEventTranslator()
-{
-}
+pqQVTKWidgetEventTranslator::~pqQVTKWidgetEventTranslator() = default;
 
 bool pqQVTKWidgetEventTranslator::translateEvent(
   QObject* Object, QEvent* Event, int eventType, bool& error)
@@ -110,12 +108,13 @@ bool pqQVTKWidgetEventTranslator::translateEvent(
           QSize size = widget->size();
           double normalized_x = mouseEvent->x() / static_cast<double>(size.width());
           double normalized_y = mouseEvent->y() / static_cast<double>(size.height());
-          Q_EMIT recordEvent(widget, "mousePress", QString("(%1,%2,%3,%4,%5)")
-                                                     .arg(normalized_x)
-                                                     .arg(normalized_y)
-                                                     .arg(mouseEvent->button())
-                                                     .arg(mouseEvent->buttons())
-                                                     .arg(mouseEvent->modifiers()));
+          Q_EMIT recordEvent(widget, "mousePress",
+            QString("(%1,%2,%3,%4,%5)")
+              .arg(normalized_x)
+              .arg(normalized_y)
+              .arg(mouseEvent->button())
+              .arg(mouseEvent->buttons())
+              .arg(mouseEvent->modifiers()));
         }
         return true;
         break;
@@ -132,18 +131,20 @@ bool pqQVTKWidgetEventTranslator::translateEvent(
           // Move to the place where the mouse was released and then release it.
           // This mimics drag without actually having to save all the intermediate
           // mouse move positions.
-          Q_EMIT recordEvent(widget, "mouseMove", QString("(%1,%2,%3,%4,%5)")
-                                                    .arg(normalized_x)
-                                                    .arg(normalized_y)
-                                                    .arg(mouseEvent->button())
-                                                    .arg(mouseEvent->buttons())
-                                                    .arg(mouseEvent->modifiers()));
-          Q_EMIT recordEvent(widget, "mouseRelease", QString("(%1,%2,%3,%4,%5)")
-                                                       .arg(normalized_x)
-                                                       .arg(normalized_y)
-                                                       .arg(mouseEvent->button())
-                                                       .arg(mouseEvent->buttons())
-                                                       .arg(mouseEvent->modifiers()));
+          Q_EMIT recordEvent(widget, "mouseMove",
+            QString("(%1,%2,%3,%4,%5)")
+              .arg(normalized_x)
+              .arg(normalized_y)
+              .arg(mouseEvent->button())
+              .arg(mouseEvent->buttons())
+              .arg(mouseEvent->modifiers()));
+          Q_EMIT recordEvent(widget, "mouseRelease",
+            QString("(%1,%2,%3,%4,%5)")
+              .arg(normalized_x)
+              .arg(normalized_y)
+              .arg(mouseEvent->button())
+              .arg(mouseEvent->buttons())
+              .arg(mouseEvent->modifiers()));
         }
         return true;
         break;
@@ -192,8 +193,8 @@ bool pqQVTKWidgetEventTranslator::translateEvent(
       filters += ";;TIFF image (*.tif)";
       filters += ";;PPM image (*.ppm)";
       filters += ";;JPG image (*.jpg)";
-      pqFileDialog file_dialog(
-        NULL, pqCoreUtilities::mainWidget(), tr("Save Screenshot:"), baselineDir.path(), filters);
+      pqFileDialog file_dialog(nullptr, pqCoreUtilities::mainWidget(), tr("Save Screenshot:"),
+        baselineDir.path(), filters);
       file_dialog.setObjectName("FileSaveScreenshotDialog");
       file_dialog.setFileMode(pqFileDialog::AnyFile);
 

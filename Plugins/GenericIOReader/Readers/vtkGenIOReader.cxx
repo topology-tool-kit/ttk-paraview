@@ -67,6 +67,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "utils/timer.h"
 
 #include <algorithm>
+#include <cmath>
 #include <numeric>
 #include <random>
 #include <thread>
@@ -76,8 +77,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <mpi.h>
 #endif
 
-#include <stdlib.h>
-#include <time.h>
+#include <cstdlib>
+#include <ctime>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -133,18 +134,18 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "LANL/utils/timer.h"
 */
 
-vtkStandardNewMacro(vtkGenIOReader)
+vtkStandardNewMacro(vtkGenIOReader);
 
-  vtkGenIOReader::vtkGenIOReader()
+vtkGenIOReader::vtkGenIOReader()
 {
-  this->Controller = NULL;
+  this->Controller = nullptr;
   this->Controller = vtkMultiProcessController::GetGlobalController();
 
   this->SetNumberOfInputPorts(0);
   this->SetNumberOfOutputPorts(1);
 
   // data
-  gioReader = NULL;
+  gioReader = nullptr;
   numDataRanks = 0;
   numVars = 0;
   metaDataBuilt = false;
@@ -186,11 +187,11 @@ vtkGenIOReader::~vtkGenIOReader()
   {
     gioReader->close();
     delete gioReader;
-    gioReader = NULL;
+    gioReader = nullptr;
   }
 
   CellDataArraySelection->Delete();
-  CellDataArraySelection = 0;
+  CellDataArraySelection = nullptr;
 }
 
 //
@@ -562,7 +563,7 @@ int vtkGenIOReader::RequestInformation(vtkInformation* /*rqst*/,
   outInfo->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
 
   fullClock.start();
-  if (gioReader != NULL)
+  if (gioReader != nullptr)
   {
     if (currentFilename != dataFilename)
     {
@@ -570,17 +571,17 @@ int vtkGenIOReader::RequestInformation(vtkInformation* /*rqst*/,
              << "\n";
       gioReader->close();
       delete gioReader;
-      gioReader = NULL;
+      gioReader = nullptr;
 
       metaDataBuilt = false; // signal to re-build metadata
       unsigned Method = lanl::gio::GenericIO::FileIOPOSIX;
 
       randomNumGenerated = false;
-      gioReader = new lanl::gio::GenericIO(dataFilename.c_str(), Method);
+      gioReader = new lanl::gio::GenericIO(dataFilename, Method);
       msgLog << "Opening ... \n";
 
       currentFilename = dataFilename;
-      msgLog << "gioReader != NULL\n";
+      msgLog << "gioReader != nullptr\n";
     }
   }
   else
@@ -589,14 +590,14 @@ int vtkGenIOReader::RequestInformation(vtkInformation* /*rqst*/,
     unsigned Method = lanl::gio::GenericIO::FileIOPOSIX;
 
     randomNumGenerated = false;
-    gioReader = new lanl::gio::GenericIO(dataFilename.c_str(), Method);
+    gioReader = new lanl::gio::GenericIO(dataFilename, Method);
     msgLog << "Opening . .. .\n";
 
     currentFilename = dataFilename;
-    msgLog << "gioReader == NULL\n";
+    msgLog << "gioReader == nullptr\n";
   }
 
-  assert("post: Internal GenericIO reader should not be NULL!" && (this->gioReader != NULL));
+  assert("post: Internal GenericIO reader should not be nullptr!" && (this->gioReader != nullptr));
 
   if (!metaDataBuilt)
   {
@@ -801,7 +802,7 @@ int vtkGenIOReader::RequestData(
   int numSelections = 0;
   if (sampleType == 3 && selectionChanged == true)
   {
-    if (selections.size() == 0)
+    if (selections.empty())
       selections.push_back(_sel);
     else
     {
@@ -975,35 +976,25 @@ int vtkGenIOReader::RequestData(
             readInData[j].allocateMem(1);
 
             if (readInData[j].dataType == "float")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (float*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (float*)readInData[j].data, true);
             else if (readInData[j].dataType == "double")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (double*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (double*)readInData[j].data, true);
             else if (readInData[j].dataType == "int8_t")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (int8_t*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (int8_t*)readInData[j].data, true);
             else if (readInData[j].dataType == "int16_t")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (int16_t*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (int16_t*)readInData[j].data, true);
             else if (readInData[j].dataType == "int32_t")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (int32_t*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (int32_t*)readInData[j].data, true);
             else if (readInData[j].dataType == "int64_t")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (int64_t*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (int64_t*)readInData[j].data, true);
             else if (readInData[j].dataType == "uint8_t")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (uint8_t*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (uint8_t*)readInData[j].data, true);
             else if (readInData[j].dataType == "uint16_t")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (uint16_t*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (uint16_t*)readInData[j].data, true);
             else if (readInData[j].dataType == "uint32_t")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (uint32_t*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (uint32_t*)readInData[j].data, true);
             else if (readInData[j].dataType == "uint64_t")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (uint64_t*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (uint64_t*)readInData[j].data, true);
             else
               msgLog << readInData[j].dataType << " = data type undefined!!!";
           }
@@ -1054,10 +1045,12 @@ int vtkGenIOReader::RequestData(
         nextHash = numLoadingRows;
 
         std::vector<std::thread> threadPool;
-
+        threadPool.reserve(concurentThreadsSupported);
         for (int t = 0; t < concurentThreadsSupported; t++)
+        {
           threadPool.push_back(std::thread(&vtkGenIOReader::theadedParsing, this, t,
             concurentThreadsSupported, numRowsToSample, numLoadingRows, cells, pnts, -1));
+        }
 
         for (auto& th : threadPool)
           th.join();
@@ -1121,35 +1114,25 @@ int vtkGenIOReader::RequestData(
             readInData[j].allocateMem(1);
 
             if (readInData[j].dataType == "float")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (float*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (float*)readInData[j].data, true);
             else if (readInData[j].dataType == "double")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (double*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (double*)readInData[j].data, true);
             else if (readInData[j].dataType == "int8_t")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (int8_t*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (int8_t*)readInData[j].data, true);
             else if (readInData[j].dataType == "int16_t")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (int16_t*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (int16_t*)readInData[j].data, true);
             else if (readInData[j].dataType == "int32_t")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (int32_t*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (int32_t*)readInData[j].data, true);
             else if (readInData[j].dataType == "int64_t")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (int64_t*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (int64_t*)readInData[j].data, true);
             else if (readInData[j].dataType == "uint8_t")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (uint8_t*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (uint8_t*)readInData[j].data, true);
             else if (readInData[j].dataType == "uint16_t")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (uint16_t*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (uint16_t*)readInData[j].data, true);
             else if (readInData[j].dataType == "uint32_t")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (uint32_t*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (uint32_t*)readInData[j].data, true);
             else if (readInData[j].dataType == "uint64_t")
-              gioReader->addVariable(
-                (readInData[j].name).c_str(), (uint64_t*)readInData[j].data, true);
+              gioReader->addVariable((readInData[j].name), (uint64_t*)readInData[j].data, true);
             else
               msgLog << readInData[j].dataType << " = data type undefined!!!";
           }
@@ -1199,11 +1182,13 @@ int vtkGenIOReader::RequestData(
         nextHash = numLoadingRows;
 
         std::vector<std::thread> threadPool;
-
+        threadPool.reserve(concurentThreadsSupported);
         for (int t = 0; t < concurentThreadsSupported; t++)
+        {
           threadPool.push_back(
             std::thread(&vtkGenIOReader::theadedParsing, this, t, concurentThreadsSupported,
               numRowsToSample, numLoadingRows, cells, pnts, numSelections));
+        }
 
         for (auto& th : threadPool)
           th.join();

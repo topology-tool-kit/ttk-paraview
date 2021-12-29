@@ -31,7 +31,7 @@
 #include "vtkSMStateLocator.h"
 #include "vtkSmartPointer.h"
 
-#include <assert.h>
+#include <cassert>
 
 namespace
 {
@@ -66,7 +66,7 @@ vtkSMProxyProperty::vtkSMProxyProperty()
 vtkSMProxyProperty::~vtkSMProxyProperty()
 {
   delete this->PPInternals;
-  this->PPInternals = NULL;
+  this->PPInternals = nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -171,7 +171,7 @@ unsigned int vtkSMProxyProperty::GetNumberOfProxies()
 //---------------------------------------------------------------------------
 unsigned int vtkSMProxyProperty::GetNumberOfUncheckedProxies()
 {
-  if (this->PPInternals->GetUncheckedProxies().size() > 0)
+  if (!this->PPInternals->GetUncheckedProxies().empty())
   {
     return static_cast<unsigned int>(this->PPInternals->GetUncheckedProxies().size());
   }
@@ -279,7 +279,7 @@ void vtkSMProxyProperty::ReadFrom(
         vtkTypeUInt32 gid = user_data.variant(0).proxy_global_id(cc);
 
         // either ask the locator for the proxy, or find an existing one.
-        vtkSMProxy* proxy = NULL;
+        vtkSMProxy* proxy = nullptr;
         if (locator && vtkSMProxyProperty::CanCreateProxy())
         {
           proxy = locator->LocateProxy(gid);
@@ -288,12 +288,12 @@ void vtkSMProxyProperty::ReadFrom(
         {
           proxy = vtkSMProxy::SafeDownCast(this->GetParent()->GetSession()->GetRemoteObject(gid));
         }
-        if (proxy != NULL || gid == 0)
+        if (proxy != nullptr || gid == 0)
         {
           proxies.push_back(proxy);
         }
       }
-      proxies.push_back(NULL);
+      proxies.push_back(nullptr);
 
       pld->SetProxies(&proxies[0], static_cast<unsigned int>(proxies.size() - 1));
     }
@@ -379,7 +379,7 @@ void vtkSMProxyProperty::SaveStateValues(vtkPVXMLElement* propertyElement)
 vtkPVXMLElement* vtkSMProxyProperty::AddProxyElementState(vtkPVXMLElement* prop, unsigned int idx)
 {
   vtkSMProxy* proxy = this->GetProxy(idx);
-  vtkPVXMLElement* proxyElement = 0;
+  vtkPVXMLElement* proxyElement = nullptr;
   if (proxy)
   {
     proxyElement = vtkPVXMLElement::New();
@@ -421,8 +421,9 @@ int vtkSMProxyProperty::LoadState(vtkPVXMLElement* element, vtkSMProxyLocator* l
   for (unsigned int i = 0; i < numElems; i++)
   {
     vtkPVXMLElement* currentElement = element->GetNestedElement(i);
-    if (currentElement->GetName() && (strcmp(currentElement->GetName(), "Element") == 0 ||
-                                       strcmp(currentElement->GetName(), "Proxy") == 0))
+    if (currentElement->GetName() &&
+      (strcmp(currentElement->GetName(), "Element") == 0 ||
+        strcmp(currentElement->GetName(), "Proxy") == 0))
     {
       int id;
       if (currentElement->GetScalarAttribute("value", &id))
@@ -447,7 +448,7 @@ int vtkSMProxyProperty::LoadState(vtkPVXMLElement* element, vtkSMProxyLocator* l
         }
         else
         {
-          this->PPInternals->Add(NULL);
+          this->PPInternals->Add(nullptr);
         }
       }
     }

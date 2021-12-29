@@ -44,19 +44,19 @@ public:
   vtkTypeMacro(vtkCompositeDataReader, vtkDataReader);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Get the output of this reader.
    */
   vtkCompositeDataSet* GetOutput();
   vtkCompositeDataSet* GetOutput(int idx);
   void SetOutput(vtkCompositeDataSet* output);
-  //@}
+  ///@}
 
   /**
    * Actual reading happens here
    */
-  int ReadMeshSimple(const std::string& fname, vtkDataObject* output) override;
+  int ReadMeshSimple(VTK_FILEPATH const std::string& fname, vtkDataObject* output) override;
 
 protected:
   vtkCompositeDataReader();

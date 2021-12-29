@@ -13,8 +13,11 @@
 
 =========================================================================*/
 
-#include "vtkXOpenGLRenderWindow.h"
+// Must be included first to avoid conflicts with X11's `Status` define.
+#include "vtksys/SystemTools.hxx"
+
 #include "vtkOpenGLRenderer.h"
+#include "vtkXOpenGLRenderWindow.h"
 
 #include "vtk_glew.h"
 // Define GLX_GLXEXT_LEGACY to prevent glx.h from including the glxext.h
@@ -57,18 +60,25 @@ typedef ptrdiff_t GLsizeiptr;
 #include "vtkRenderWindowInteractor.h"
 #include "vtkRendererCollection.h"
 #include "vtkStringOutputWindow.h"
-#include "vtkToolkits.h"
-#include "vtksys/SystemTools.hxx"
 
 #include <sstream>
 
 #include <X11/Xatom.h>
+#include <X11/cursorfont.h>
 #if VTK_HAVE_XCURSOR
 #include <X11/Xcursor/Xcursor.h>
 #endif
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
-#include <X11/cursorfont.h>
+
+/*
+ * Work-around to get forward declarations of C typedef of anonymous
+ * structs working. We do not want to include XUtil.h in the header as
+ * it populates the global namespace.
+ */
+struct vtkXVisualInfo : public XVisualInfo
+{
+};
 
 #define GLX_CONTEXT_MAJOR_VERSION_ARB 0x2091
 #define GLX_CONTEXT_MINOR_VERSION_ARB 0x2092
@@ -229,7 +239,7 @@ int XEventTypeEquals(Display*, XEvent* event, XPointer)
   return event->type == EventType;
 }
 
-XVisualInfo* vtkXOpenGLRenderWindow::GetDesiredVisualInfo()
+vtkXVisualInfo* vtkXOpenGLRenderWindow::GetDesiredVisualInfo()
 {
   XVisualInfo* v = nullptr;
 
@@ -263,7 +273,7 @@ XVisualInfo* vtkXOpenGLRenderWindow::GetDesiredVisualInfo()
       vtkErrorMacro(<< "Could not find a decent visual\n");
     }
   }
-  return (v);
+  return reinterpret_cast<vtkXVisualInfo*>(v);
 }
 
 vtkXOpenGLRenderWindow::vtkXOpenGLRenderWindow()
@@ -795,7 +805,7 @@ void vtkXOpenGLRenderWindow::DestroyWindow()
 }
 
 // Initialize the window for rendering.
-void vtkXOpenGLRenderWindow::WindowInitialize(void)
+void vtkXOpenGLRenderWindow::WindowInitialize()
 {
   this->CreateAWindow();
 
@@ -813,7 +823,7 @@ void vtkXOpenGLRenderWindow::WindowInitialize(void)
 }
 
 // Initialize the rendering window.
-void vtkXOpenGLRenderWindow::Initialize(void)
+void vtkXOpenGLRenderWindow::Initialize()
 {
   if (!this->Internal->ContextId)
   {
@@ -822,7 +832,7 @@ void vtkXOpenGLRenderWindow::Initialize(void)
   }
 }
 
-void vtkXOpenGLRenderWindow::Finalize(void)
+void vtkXOpenGLRenderWindow::Finalize()
 {
   // clean and destroy window
   this->DestroyWindow();
@@ -926,7 +936,7 @@ void vtkXOpenGLRenderWindow::WindowRemap()
 }
 
 // Begin the rendering process.
-void vtkXOpenGLRenderWindow::Start(void)
+void vtkXOpenGLRenderWindow::Start()
 {
   this->Initialize();
 
@@ -1097,6 +1107,15 @@ void vtkXOpenGLRenderWindow::MakeCurrent()
   }
 }
 
+void vtkXOpenGLRenderWindow::ReleaseCurrent()
+{
+  if (this->Internal->ContextId && (this->Internal->ContextId == glXGetCurrentContext()) &&
+    this->DisplayId)
+  {
+    glXMakeCurrent(this->DisplayId, None, nullptr);
+  }
+}
+
 //------------------------------------------------------------------------------
 // Description:
 // Tells if this window is the current OpenGL context for the calling thread.
@@ -1207,7 +1226,7 @@ int* vtkXOpenGLRenderWindow::GetScreenSize()
 }
 
 // Get the position in screen coordinates (pixels) of the window.
-int* vtkXOpenGLRenderWindow::GetPosition(void)
+int* vtkXOpenGLRenderWindow::GetPosition()
 {
   XWindowAttributes attribs;
   int x, y;

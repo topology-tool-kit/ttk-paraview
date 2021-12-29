@@ -1017,18 +1017,21 @@ int vtkEnSight6BinaryReader::ReadScalarsPerNode(const char* fileName, const char
       {
         partId = this->UnstructuredPartIds->GetId(i);
         output = this->GetDataSetFromBlock(compositeOutput, partId);
-        if (component == 0)
+        if (output)
         {
-          scalars->SetName(description);
-          output->GetPointData()->AddArray(scalars);
-          if (!output->GetPointData()->GetScalars())
+          if (component == 0)
           {
-            output->GetPointData()->SetScalars(scalars);
+            scalars->SetName(description);
+            output->GetPointData()->AddArray(scalars);
+            if (!output->GetPointData()->GetScalars())
+            {
+              output->GetPointData()->SetScalars(scalars);
+            }
           }
-        }
-        else
-        {
-          output->GetPointData()->AddArray(scalars);
+          else
+          {
+            output->GetPointData()->AddArray(scalars);
+          }
         }
       }
     }
@@ -1036,10 +1039,13 @@ int vtkEnSight6BinaryReader::ReadScalarsPerNode(const char* fileName, const char
     {
       scalars->SetName(description);
       output = this->GetDataSetFromBlock(compositeOutput, this->NumberOfGeometryParts);
-      output->GetPointData()->AddArray(scalars);
-      if (!output->GetPointData()->GetScalars())
+      if (output)
       {
-        output->GetPointData()->SetScalars(scalars);
+        output->GetPointData()->AddArray(scalars);
+        if (!output->GetPointData()->GetScalars())
+        {
+          output->GetPointData()->SetScalars(scalars);
+        }
       }
     }
     delete[] scalarsRead;
@@ -2050,7 +2056,6 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
   int lineRead = 1;
   int i, j;
   int* nodeIdList;
-  vtkIdType* nodeIds;
   int numElements;
   int idx, cellType;
   vtkIdType cellId;
@@ -2093,7 +2098,6 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         vtkErrorMacro("Invalid number of point cells; check that ByteOrder is set correctly.");
         return 0;
       }
-      nodeIds = new vtkIdType[1];
       if (this->ElementIdsListed)
       {
         // skip element ids
@@ -2105,15 +2109,14 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
 
       for (i = 0; i < numElements; i++)
       {
-        nodeIds[0] = nodeIdList[i] - 1;
+        vtkIdType nodeIds = nodeIdList[i] - 1;
         if (this->UnstructuredNodeIds)
         {
-          nodeIds[0] = this->UnstructuredNodeIds->GetValue(nodeIds[0]);
+          nodeIds = this->UnstructuredNodeIds->GetValue(nodeIds);
         }
-        cellId = output->InsertNextCell(VTK_VERTEX, 1, nodeIds);
+        cellId = output->InsertNextCell(VTK_VERTEX, 1, &nodeIds);
         this->GetCellIds(idx, vtkEnSightReader::POINT)->InsertNextId(cellId);
       }
-      delete[] nodeIds;
       delete[] nodeIdList;
     }
     else if (strncmp(line, "bar2", 4) == 0)
@@ -2126,7 +2129,6 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         vtkErrorMacro("Invalid number of bar2 cells; check that ByteOrder is set correctly.");
         return 0;
       }
-      nodeIds = new vtkIdType[2];
       if (this->ElementIdsListed)
       {
         // skip element ids
@@ -2136,6 +2138,7 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
       nodeIdList = new int[numElements * 2];
       this->ReadIntArray(nodeIdList, numElements * 2);
 
+      vtkIdType nodeIds[2];
       for (i = 0; i < numElements; i++)
       {
         for (j = 0; j < 2; j++)
@@ -2153,7 +2156,6 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         cellId = output->InsertNextCell(VTK_LINE, 2, nodeIds);
         this->GetCellIds(idx, vtkEnSightReader::BAR2)->InsertNextId(cellId);
       }
-      delete[] nodeIds;
       delete[] nodeIdList;
     }
     else if (strncmp(line, "bar3", 4) == 0)
@@ -2167,7 +2169,6 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         vtkErrorMacro("Invalid number of bar3 cells; check that ByteOrder is set correctly.");
         return 0;
       }
-      nodeIds = new vtkIdType[2];
       if (this->ElementIdsListed)
       {
         // skip element ids
@@ -2177,6 +2178,7 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
       nodeIdList = new int[numElements * 3];
       this->ReadIntArray(nodeIdList, numElements * 3);
 
+      vtkIdType nodeIds[2];
       for (i = 0; i < numElements; i++)
       {
         for (j = 0; j < 2; j++)
@@ -2194,7 +2196,6 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         cellId = output->InsertNextCell(VTK_LINE, 2, nodeIds);
         this->GetCellIds(idx, vtkEnSightReader::BAR3)->InsertNextId(cellId);
       }
-      delete[] nodeIds;
       delete[] nodeIdList;
     }
     else if (strncmp(line, "tria3", 5) == 0 || strncmp(line, "tria6", 5) == 0)
@@ -2217,7 +2218,6 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         vtkErrorMacro("Invalid number of triangle cells; check that ByteOrder is set correctly.");
         return 0;
       }
-      nodeIds = new vtkIdType[3];
       if (this->ElementIdsListed)
       {
         // skip element ids
@@ -2235,6 +2235,7 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         this->ReadIntArray(nodeIdList, numElements * 6);
       }
 
+      vtkIdType nodeIds[3];
       for (i = 0; i < numElements; i++)
       {
         if (cellType == vtkEnSightReader::TRIA3)
@@ -2261,7 +2262,6 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         cellId = output->InsertNextCell(VTK_TRIANGLE, 3, nodeIds);
         this->GetCellIds(idx, cellType)->InsertNextId(cellId);
       }
-      delete[] nodeIds;
       delete[] nodeIdList;
     }
     else if (strncmp(line, "quad4", 5) == 0 || strncmp(line, "quad8", 5) == 0)
@@ -2284,7 +2284,6 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         vtkErrorMacro("Invalid number of quad cells; check that ByteOrder is set correctly.");
         return 0;
       }
-      nodeIds = new vtkIdType[4];
       if (this->ElementIdsListed)
       {
         // skip element ids
@@ -2302,6 +2301,7 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         this->ReadIntArray(nodeIdList, numElements * 8);
       }
 
+      vtkIdType nodeIds[4];
       for (i = 0; i < numElements; i++)
       {
         if (cellType == vtkEnSightReader::QUAD4)
@@ -2328,7 +2328,6 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         cellId = output->InsertNextCell(VTK_QUAD, 4, nodeIds);
         this->GetCellIds(idx, cellType)->InsertNextId(cellId);
       }
-      delete[] nodeIds;
       delete[] nodeIdList;
     }
     else if (strncmp(line, "tetra4", 6) == 0 || strncmp(line, "tetra10", 7) == 0)
@@ -2352,7 +2351,6 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
           "Invalid number of tetrahedral cells; check that ByteOrder is set correctly.");
         return 0;
       }
-      nodeIds = new vtkIdType[4];
       if (this->ElementIdsListed)
       {
         // skip element ids
@@ -2370,6 +2368,7 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         this->ReadIntArray(nodeIdList, numElements * 10);
       }
 
+      vtkIdType nodeIds[4];
       for (i = 0; i < numElements; i++)
       {
         if (cellType == vtkEnSightReader::TETRA4)
@@ -2396,7 +2395,6 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         cellId = output->InsertNextCell(VTK_TETRA, 4, nodeIds);
         this->GetCellIds(idx, cellType)->InsertNextId(cellId);
       }
-      delete[] nodeIds;
       delete[] nodeIdList;
     }
     else if (strncmp(line, "pyramid5", 8) == 0 || strncmp(line, "pyramid13", 9) == 0)
@@ -2419,7 +2417,6 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         vtkErrorMacro("Invalid number of pyramid cells; check that ByteOrder is set correctly.");
         return 0;
       }
-      nodeIds = new vtkIdType[5];
       if (this->ElementIdsListed)
       {
         // skip element ids
@@ -2437,6 +2434,7 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         this->ReadIntArray(nodeIdList, numElements * 13);
       }
 
+      vtkIdType nodeIds[5];
       for (i = 0; i < numElements; i++)
       {
         if (cellType == vtkEnSightReader::PYRAMID5)
@@ -2463,7 +2461,6 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         cellId = output->InsertNextCell(VTK_PYRAMID, 5, nodeIds);
         this->GetCellIds(idx, cellType)->InsertNextId(cellId);
       }
-      delete[] nodeIds;
       delete[] nodeIdList;
     }
     else if (strncmp(line, "hexa8", 5) == 0 || strncmp(line, "hexa20", 6) == 0)
@@ -2486,7 +2483,6 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         vtkErrorMacro("Invalid number of hexahedral cells; check that ByteOrder is set correctly.");
         return 0;
       }
-      nodeIds = new vtkIdType[8];
       if (this->ElementIdsListed)
       {
         // skip element ids
@@ -2504,6 +2500,7 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         this->ReadIntArray(nodeIdList, numElements * 20);
       }
 
+      vtkIdType nodeIds[8];
       for (i = 0; i < numElements; i++)
       {
         if (cellType == vtkEnSightReader::HEXA8)
@@ -2530,7 +2527,6 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         cellId = output->InsertNextCell(VTK_HEXAHEDRON, 8, nodeIds);
         this->GetCellIds(idx, cellType)->InsertNextId(cellId);
       }
-      delete[] nodeIds;
       delete[] nodeIdList;
     }
     else if (strncmp(line, "penta6", 6) == 0 || strncmp(line, "penta15", 7) == 0)
@@ -2553,7 +2549,6 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         vtkErrorMacro("Invalid number of pentagonal cells; check that ByteOrder is set correctly.");
         return 0;
       }
-      nodeIds = new vtkIdType[6];
       if (this->ElementIdsListed)
       {
         // skip element ids
@@ -2571,6 +2566,7 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         this->ReadIntArray(nodeIdList, numElements * 15);
       }
 
+      vtkIdType nodeIds[6];
       const unsigned char wedgeMap[6] = { 0, 2, 1, 3, 5, 4 };
       for (i = 0; i < numElements; i++)
       {
@@ -2598,7 +2594,6 @@ int vtkEnSight6BinaryReader::CreateUnstructuredGridOutput(
         cellId = output->InsertNextCell(VTK_WEDGE, 6, nodeIds);
         this->GetCellIds(idx, cellType)->InsertNextId(cellId);
       }
-      delete[] nodeIds;
       delete[] nodeIdList;
     }
     lineRead = this->ReadLine(line);

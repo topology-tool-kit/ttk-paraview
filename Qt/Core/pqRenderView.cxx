@@ -71,7 +71,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqApplicationCore.h"
 #include "pqDataRepresentation.h"
 #include "pqLinkViewWidget.h"
-#include "pqOptions.h"
 #include "pqOutputPort.h"
 #include "pqPipelineSource.h"
 #include "pqQVTKWidget.h"
@@ -88,7 +87,7 @@ pqDataRepresentation* findRepresentationFromProxy(vtkSMRepresentationProxy* prox
 {
   if (!proxy)
   {
-    return 0;
+    return nullptr;
   }
 
   pqServerManagerModel* smm = pqApplicationCore::instance()->getServerManagerModel();
@@ -117,7 +116,7 @@ public:
     this->UndoStackBuilder->SetUndoStack(this->InteractionUndoStack);
   }
 
-  ~pqInternal() {}
+  ~pqInternal() = default;
 };
 
 namespace
@@ -151,7 +150,7 @@ void pqRenderView::InternalConstructor(vtkSMViewProxy* renModule)
 
   // we need to fire signals when undo stack changes.
   this->getConnector()->Connect(this->Internal->InteractionUndoStack, vtkCommand::ModifiedEvent,
-    this, SLOT(onUndoStackChanged()), 0, 0, Qt::QueuedConnection);
+    this, SLOT(onUndoStackChanged()), nullptr, 0, Qt::QueuedConnection);
 
   this->ResetCenterWithCamera = true;
   this->UseMultipleRepresentationSelection = false;
@@ -231,10 +230,10 @@ void pqRenderView::onResetCameraEvent()
 }
 
 //-----------------------------------------------------------------------------
-void pqRenderView::resetCamera()
+void pqRenderView::resetCamera(bool closest)
 {
   this->fakeInteraction(true);
-  this->getRenderViewProxy()->ResetCamera();
+  this->getRenderViewProxy()->ResetCamera(closest);
   this->fakeInteraction(false);
   this->render();
 }
@@ -566,7 +565,7 @@ void pqRenderView::emitSelectionSignal(QList<pqOutputPort*> opPorts, int selecti
     if (selectionModifier == pqView::PV_SELECTION_DEFAULT)
     {
       // Only emit an empty selection if we aren't modifying the current selection
-      Q_EMIT this->selected(0);
+      Q_EMIT this->selected(nullptr);
     }
   }
 
@@ -592,11 +591,11 @@ pqDataRepresentation* pqRenderView::pick(int pos[2])
 }
 
 //-----------------------------------------------------------------------------
-pqDataRepresentation* pqRenderView::pickBlock(int pos[2], unsigned int& flatIndex)
+pqDataRepresentation* pqRenderView::pickBlock(int pos[2], unsigned int& flatIndex, int& rank)
 {
   BEGIN_UNDO_EXCLUDE();
   vtkSMRenderViewProxy* renderView = this->getRenderViewProxy();
-  vtkSMRepresentationProxy* repr = renderView->PickBlock(pos[0], pos[1], flatIndex);
+  vtkSMRepresentationProxy* repr = renderView->PickBlock(pos[0], pos[1], flatIndex, rank);
   pqDataRepresentation* pq_repr = findRepresentationFromProxy(repr);
   END_UNDO_EXCLUDE();
   if (pq_repr)
@@ -643,13 +642,19 @@ void pqRenderView::collectSelectionPorts(vtkCollection* selectedRepresentations,
     pqOutputPort* opPort = pqRepr->getOutputPortFromInput();
     vtkSMSourceProxy* selectedSource =
       vtkSMSourceProxy::SafeDownCast(opPort->getSource()->getProxy());
-
     if (select_blocks)
     {
-      // convert the index based selection to vtkSelectionNode::BLOCKS selection.
+      // convert the index based selection to BLOCKS or BLOCK_SELECTORS.
+      // Eventually, we want all datasets to simply create `BLOCK_SELECTORS`,
+      // however I am worried this will impact custom applications. So we only
+      // do this for ParitionedDataSetCollection for now.
+      auto dinfo = opPort->getDataInformation();
+      const int targetContentType = dinfo->DataSetTypeIsA(VTK_PARTITIONED_DATA_SET_COLLECTION)
+        ? vtkSelectionNode::BLOCK_SELECTORS
+        : vtkSelectionNode::BLOCKS;
       vtkSMSourceProxy* newSelSource =
         vtkSMSourceProxy::SafeDownCast(vtkSMSelectionHelper::ConvertSelection(
-          vtkSelectionNode::BLOCKS, selectionSource, selectedSource, opPort->getPortNumber()));
+          targetContentType, selectionSource, selectedSource, opPort->getPortNumber()));
       selectionSource.TakeReference(newSelSource);
     }
 
@@ -706,7 +711,7 @@ void pqRenderView::selectOnSurfaceInternal(int rect[4], QList<pqOutputPort*>& pq
     SM_SCOPED_TRACE(CallFunction)
       .arg("SelectSurfacePoints")
       .arg("Rectangle", rectVector)
-      .arg("Modifier", modifier.size() > 0 ? modifier.c_str() : nullptr)
+      .arg("Modifier", modifier.empty() ? nullptr : modifier.c_str())
       .arg("comment", "create a surface points selection");
   }
   else
@@ -722,7 +727,7 @@ void pqRenderView::selectOnSurfaceInternal(int rect[4], QList<pqOutputPort*>& pq
       SM_SCOPED_TRACE(CallFunction)
         .arg("SelectSurfaceBlocks")
         .arg("Rectangle", rectVector)
-        .arg("Modifier", modifier.size() > 0 ? modifier.c_str() : nullptr)
+        .arg("Modifier", modifier.empty() ? nullptr : modifier.c_str())
         .arg("comment", "create a frustum selection of cells");
     }
     else
@@ -730,7 +735,7 @@ void pqRenderView::selectOnSurfaceInternal(int rect[4], QList<pqOutputPort*>& pq
       SM_SCOPED_TRACE(CallFunction)
         .arg("SelectSurfaceCells")
         .arg("Rectangle", rectVector)
-        .arg("Modifier", modifier.size() > 0 ? modifier.c_str() : nullptr)
+        .arg("Modifier", modifier.empty() ? nullptr : modifier.c_str())
         .arg("comment", "create a surface cells selection");
     }
   }
@@ -800,7 +805,7 @@ void pqRenderView::selectPolygonInternal(vtkIntArray* polygon, QList<pqOutputPor
     SM_SCOPED_TRACE(CallFunction)
       .arg("SelectSurfacePoints")
       .arg("Polygon", polygonVector)
-      .arg("Modifier", modifier.size() > 0 ? modifier.c_str() : nullptr)
+      .arg("Modifier", modifier.empty() ? nullptr : modifier.c_str())
       .arg("comment", "create a surface points polygon selection");
   }
   else
@@ -814,7 +819,7 @@ void pqRenderView::selectPolygonInternal(vtkIntArray* polygon, QList<pqOutputPor
     SM_SCOPED_TRACE(CallFunction)
       .arg("SelectSurfaceCells")
       .arg("Polygon", polygonVector)
-      .arg("Modifier", modifier.size() > 0 ? modifier.c_str() : nullptr)
+      .arg("Modifier", modifier.empty() ? nullptr : modifier.c_str())
       .arg("comment", "create a surface cells polygon selection");
   }
 

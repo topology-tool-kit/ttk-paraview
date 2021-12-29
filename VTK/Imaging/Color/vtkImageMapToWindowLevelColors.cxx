@@ -22,6 +22,8 @@
 #include "vtkPointData.h"
 #include "vtkScalarsToColors.h"
 
+#include <cmath>
+
 vtkStandardNewMacro(vtkImageMapToWindowLevelColors);
 
 // Constructor sets default values
@@ -69,6 +71,7 @@ int vtkImageMapToWindowLevelColors::RequestData(
       this->DataWasPassed = 0;
     }
 
+    // NOLINTNEXTLINE(bugprone-parent-virtual-call)
     return this->vtkThreadedImageAlgorithm::RequestData(request, inputVector, outputVector);
   }
 

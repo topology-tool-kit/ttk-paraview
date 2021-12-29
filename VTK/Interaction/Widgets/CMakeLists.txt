@@ -1,6 +1,7 @@
 set(classes
   vtk3DWidget
   vtkAbstractPolygonalHandleRepresentation3D
+  vtkAbstractSplineRepresentation
   vtkAbstractWidget
   vtkAffineRepresentation
   vtkAffineRepresentation2D
@@ -26,6 +27,11 @@ set(classes
   vtkBrokenLineWidget
   vtkButtonRepresentation
   vtkButtonWidget
+  vtkCameraHandleSource
+  vtkCameraOrientationWidget
+  vtkCameraOrientationRepresentation
+  vtkCameraPathRepresentation
+  vtkCameraPathWidget
   vtkCameraRepresentation
   vtkCameraWidget
   vtkCaptionRepresentation
@@ -49,6 +55,7 @@ set(classes
   vtkDistanceRepresentation3D
   vtkDistanceWidget
   vtkEllipsoidTensorProbeRepresentation
+  vtkEqualizerContextItem
   vtkEvent
   vtkFinitePlaneRepresentation
   vtkFinitePlaneWidget
@@ -131,10 +138,10 @@ set(classes
   vtkSplineRepresentation
   vtkSplineWidget
   vtkSplineWidget2
-  vtkTensorRepresentation
-  vtkTensorWidget
   vtkTensorProbeRepresentation
   vtkTensorProbeWidget
+  vtkTensorRepresentation
+  vtkTensorWidget
   vtkTerrainContourLineInterpolator
   vtkTerrainDataPointPlacer
   vtkTextRepresentation

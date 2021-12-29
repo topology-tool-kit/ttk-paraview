@@ -16,26 +16,24 @@
  * @class   vtkSMVectorPropertyTemplate
  *
  *
-*/
+ */
 
 #ifndef vtkSMVectorPropertyTemplate_h
 #define vtkSMVectorPropertyTemplate_h
 
-#include "vtkCommand.h"
-#include "vtkPVXMLElement.h"
-#include "vtkSMProperty.h"
-#include "vtkSMProxy.h"
+#include "vtkCommand.h"      // for vtkCommand enums
+#include "vtkPVXMLElement.h" // for vtkPVXMLElement
 
 // clang-format off
-#include "vtk_doubleconversion.h"
+#include "vtk_doubleconversion.h" // for double conversion
 #include VTK_DOUBLECONVERSION_HEADER(double-conversion.h)
 // clang-format on
 
-#include <algorithm>
-#include <cassert>
-#include <sstream>
-#include <string>
-#include <vector>
+#include <algorithm> // for std::equal
+#include <cassert>   // for assert
+#include <sstream>   // for std::ostringstream
+#include <string>    // for std::string
+#include <vector>    // for std::vector
 
 class vtkSMProperty;
 
@@ -165,12 +163,12 @@ public:
   }
 
   //---------------------------------------------------------------------------
-  T* GetElements() { return (this->Values.size() > 0) ? &this->Values[0] : NULL; }
+  T* GetElements() { return (this->Values.size() > 0) ? &this->Values[0] : nullptr; }
 
   //---------------------------------------------------------------------------
   T* GetUncheckedElements()
   {
-    return (this->UncheckedValues.size() > 0) ? &this->UncheckedValues[0] : NULL;
+    return (this->UncheckedValues.size() > 0) ? &this->UncheckedValues[0] : nullptr;
   }
   //---------------------------------------------------------------------------
   T& GetUncheckedElement(unsigned int idx)

@@ -18,8 +18,8 @@
   Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
   the U.S. Government retains certain rights in this software.
 -------------------------------------------------------------------------*/
-
 #include "pqSLACManager.h"
+#include "ui_pqSLACActionHolder.h"
 
 #include "pqActiveObjects.h"
 #include "pqApplicationCore.h"
@@ -48,14 +48,13 @@
 #include "vtkSMPropertyHelper.h"
 #include "vtkSMProxyManager.h"
 #include "vtkSMSourceProxy.h"
+#include "vtkSMViewProxy.h"
 #include "vtkTable.h"
 #include "vtkTemporalRanges.h"
 
 #include <QMainWindow>
 #include <QPointer>
 #include <QtDebug>
-
-#include "ui_pqSLACActionHolder.h"
 
 //=============================================================================
 class pqSLACManager::pqInternal
@@ -66,17 +65,17 @@ public:
 };
 
 //=============================================================================
-QPointer<pqSLACManager> pqSLACManagerInstance = NULL;
+QPointer<pqSLACManager> pqSLACManagerInstance = nullptr;
 
 pqSLACManager* pqSLACManager::instance()
 {
-  if (pqSLACManagerInstance == NULL)
+  if (pqSLACManagerInstance == nullptr)
   {
     pqApplicationCore* core = pqApplicationCore::instance();
     if (!core)
     {
       qFatal("Cannot use the SLAC Tools without an application core instance.");
-      return NULL;
+      return nullptr;
     }
 
     pqSLACManagerInstance = new pqSLACManager(core);
@@ -95,7 +94,7 @@ pqSLACManager::pqSLACManager(QObject* p)
 
   // This widget serves no real purpose other than initializing the Actions
   // structure created with designer that holds the actions.
-  this->Internal->ActionPlaceholder = new QWidget(NULL);
+  this->Internal->ActionPlaceholder = new QWidget(nullptr);
   this->Internal->Actions.setupUi(this->Internal->ActionPlaceholder);
 
   this->actionShowParticles()->setChecked(true);
@@ -208,7 +207,7 @@ QWidget* pqSLACManager::getMainWindow()
     if (qobject_cast<QMainWindow*>(topWidget))
       return topWidget;
   }
-  return NULL;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -244,7 +243,7 @@ pqView* pqSLACManager::findView(pqPipelineSource* source, int port, const QStrin
   }
 
   // Give up.  A new view needs to be created.
-  return NULL;
+  return nullptr;
 }
 
 pqView* pqSLACManager::getMeshView()
@@ -275,7 +274,7 @@ pqPipelineSource* pqSLACManager::findPipelineSource(const char* SMName)
       return s;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 pqPipelineSource* pqSLACManager::getMeshReader()
@@ -359,26 +358,26 @@ void pqSLACManager::checkActionEnabled()
     vtkPVDataInformation* dataInfo = outputPort->getDataInformation();
     vtkPVDataSetAttributesInformation* pointFields = dataInfo->GetPointDataInformation();
 
-    this->actionShowEField()->setEnabled(pointFields->GetArrayInformation("efield") != NULL);
-    this->actionShowBField()->setEnabled(pointFields->GetArrayInformation("bfield") != NULL);
+    this->actionShowEField()->setEnabled(pointFields->GetArrayInformation("efield") != nullptr);
+    this->actionShowBField()->setEnabled(pointFields->GetArrayInformation("bfield") != nullptr);
 
     this->actionSolidMesh()->setEnabled(true);
     this->actionWireframeSolidMesh()->setEnabled(true);
     this->actionWireframeAndBackMesh()->setEnabled(true);
 
-    this->actionPlotOverZ()->setEnabled(pointFields->GetArrayInformation("efield") != NULL);
+    this->actionPlotOverZ()->setEnabled(pointFields->GetArrayInformation("efield") != nullptr);
 
     this->actionTemporalResetRange()->setEnabled(true);
     this->actionCurrentTimeResetRange()->setEnabled(true);
   }
 
-  this->actionShowParticles()->setEnabled(particlesReader != NULL);
+  this->actionShowParticles()->setEnabled(particlesReader != nullptr);
 }
 
 //-----------------------------------------------------------------------------
 void pqSLACManager::showField(QString name)
 {
-  this->showField(name.toLocal8Bit().data());
+  this->showField(name.toUtf8().data());
 }
 
 void pqSLACManager::showField(const char* name)
@@ -452,7 +451,7 @@ void pqSLACManager::showField(const char* name)
       pm->NewProxy("strategies", "ClientDeliveryStrategy"));
     vtkSMSourceProxy* temporalRangesProxy =
       vtkSMSourceProxy::SafeDownCast(temporalRanges->getProxy());
-    delivery->AddInput(temporalRangesProxy, NULL);
+    delivery->AddInput(temporalRangesProxy, nullptr);
     delivery->Update();
     vtkAlgorithm* alg = vtkAlgorithm::SafeDownCast(delivery->GetOutput()->GetClientSideObject());
     vtkTable* ranges = vtkTable::SafeDownCast(alg->GetOutputDataObject(0));
@@ -460,7 +459,7 @@ void pqSLACManager::showField(const char* name)
     if (!rangeData)
     {
       QString magName = QString("%1_M").arg(name);
-      rangeData = ranges->GetColumnByName(magName.toLocal8Bit().data());
+      rangeData = ranges->GetColumnByName(magName.toUtf8().data());
     }
 
     this->CurrentFieldRangeKnown = true;
@@ -538,7 +537,7 @@ void pqSLACManager::updatePlotField()
   // with the viewed mesh.
   auto domain =
     reprProxy->GetProperty("SeriesVisibility")->FindDomain<vtkSMChartSeriesSelectionDomain>();
-  if (domain == NULL)
+  if (domain == nullptr)
   {
     return;
   }
@@ -553,14 +552,12 @@ void pqSLACManager::updatePlotField()
       visibility << seriesName << 1;
 
       double color[3] = { 0.0, 0.0, 0.0 };
-      vtkSMPropertyHelper(reprProxy, "SeriesColor")
-        .SetStatus(seriesName.toLocal8Bit().data(), color, 3);
+      vtkSMPropertyHelper(reprProxy, "SeriesColor").SetStatus(seriesName.toUtf8().data(), color, 3);
 
       vtkSMPropertyHelper(reprProxy, "SeriesLineThickness")
-        .SetStatus(seriesName.toLocal8Bit().data(), 1);
+        .SetStatus(seriesName.toUtf8().data(), 1);
 
-      vtkSMPropertyHelper(reprProxy, "SeriesLineStyle")
-        .SetStatus(seriesName.toLocal8Bit().data(), 1);
+      vtkSMPropertyHelper(reprProxy, "SeriesLineStyle").SetStatus(seriesName.toUtf8().data(), 1);
     }
     else
     {
@@ -749,7 +746,7 @@ void pqSLACManager::createPlotOverZ()
   dataInfo->GetBounds(bounds);
 
   // Create the plot filter.
-  QMap<QString, QList<pqOutputPort*> > namedInputs;
+  QMap<QString, QList<pqOutputPort*>> namedInputs;
   QList<pqOutputPort*> inputs;
   inputs.push_back(meshReader->getOutputPort(1));
   namedInputs["Input"] = inputs;
@@ -759,27 +756,37 @@ void pqSLACManager::createPlotOverZ()
   // Set up the line for the plot.  The line is one of the inputs to the filter
   // which is implicitly set up through a proxy list domain.
   vtkSMProxy* plotProxy = plotFilter->getProxy();
-  pqSMProxy lineProxy = pqSMAdaptor::getProxyProperty(plotProxy->GetProperty("Source"));
-  if (!lineProxy)
-  {
-    qWarning() << "Could not retrieve plot line source.  "
-               << "Plot not set up correctly.";
-  }
-  else
-  {
-    QList<QVariant> minPoint;
-    minPoint << 0.0 << 0.0 << bounds[4];
-    pqSMAdaptor::setMultipleElementProperty(lineProxy->GetProperty("Point1"), minPoint);
-    QList<QVariant> maxPoint;
-    maxPoint << 0.0 << 0.0 << bounds[5];
-    pqSMAdaptor::setMultipleElementProperty(lineProxy->GetProperty("Point2"), maxPoint);
-    pqSMAdaptor::setElementProperty(lineProxy->GetProperty("Resolution"), 1000);
-    lineProxy->UpdateVTKObjects();
-  }
+  QList<QVariant> minPoint;
+  minPoint << 0.0 << 0.0 << bounds[4];
+  pqSMAdaptor::setMultipleElementProperty(plotProxy->GetProperty("Point1"), minPoint);
+  QList<QVariant> maxPoint;
+  maxPoint << 0.0 << 0.0 << bounds[5];
+  pqSMAdaptor::setMultipleElementProperty(plotProxy->GetProperty("Point2"), maxPoint);
+  pqSMAdaptor::setElementProperty(plotProxy->GetProperty("SamplingPattern"), 2);
+  pqSMAdaptor::setElementProperty(plotProxy->GetProperty("Resolution"), 1000);
+  plotProxy->UpdateVTKObjects();
   plotFilter->updatePipeline();
 
   // Make representation
-  controller->Show(plotFilter->getSourceProxy(), 0, plotView ? plotView->getViewProxy() : nullptr);
+  if (plotView)
+  {
+    controller->Show(plotFilter->getSourceProxy(), 0, plotView->getViewProxy());
+  }
+  else
+  {
+    auto newview = vtkSMViewProxy::SafeDownCast(
+      controller->ShowInPreferredView(plotFilter->getSourceProxy(), 0, nullptr));
+    if (newview)
+    {
+      const auto& activeObjects = pqActiveObjects::instance();
+      controller->AssignViewToLayout(
+        newview, activeObjects.activeLayout(), activeObjects.activeLayoutLocation());
+    }
+    else
+    {
+      qWarning() << "Failed to create 'Plot View'.";
+    }
+  }
 
   this->updatePlotField();
 
@@ -813,15 +820,18 @@ void pqSLACManager::toggleBackgroundBW()
   {
     color[0] = color[1] = color[2] = 1.0;
     helper.Set(color, 3);
+    vtkSMPropertyHelper(viewProxy, "UseColorPaletteForBackground").Set(0);
   }
   else if ((color[0] == 1.0) && (color[1] == 1.0) && (color[2] == 1.0))
   {
     smProperty->ResetToXMLDefaults();
+    vtkSMPropertyHelper(viewProxy, "UseColorPaletteForBackground").Set(1);
   }
   else
   {
     color[0] = color[1] = color[2] = 0.0;
     helper.Set(color, 3);
+    vtkSMPropertyHelper(viewProxy, "UseColorPaletteForBackground").Set(0);
   }
   viewProxy->UpdateVTKObjects();
   view->render();

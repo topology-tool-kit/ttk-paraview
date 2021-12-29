@@ -116,7 +116,9 @@ private:
 
 //-----------------------------------------------------------------------------
 // model model for key frame values
-class pqKeyFrameItem : public QObject, public QStandardItem
+class pqKeyFrameItem
+  : public QObject
+  , public QStandardItem
 {
 public:
   // return an editor for the item
@@ -130,10 +132,7 @@ public:
 class pqKeyFrameInterpolationItem : public pqKeyFrameItem
 {
 public:
-  pqKeyFrameInterpolationItem()
-    : Widget()
-  {
-  }
+  pqKeyFrameInterpolationItem() = default;
   // get data from combo box on key frame editor
   QVariant data(int role) const override
   {
@@ -151,8 +150,7 @@ class pqCameraKeyFrameItem : public pqKeyFrameItem
 {
 public:
   pqCameraKeyFrameItem()
-    : Widget()
-    , CamWidget(&this->Widget)
+    : CamWidget(&this->Widget)
   {
     QVBoxLayout* l = new QVBoxLayout(&this->Widget);
     l->setMargin(0);
@@ -384,7 +382,7 @@ pqKeyFrameEditor::pqKeyFrameEditor(
     this->Internal->ValueRange.first = this->Internal->TimeRange.first;
     this->Internal->ValueRange.second = this->Internal->TimeRange.second;
   }
-  else if (domain.size())
+  else if (!domain.empty())
   {
     this->Internal->ValueRange.first = domain[0];
     this->Internal->ValueRange.second = domain[1];
@@ -551,7 +549,7 @@ void pqKeyFrameEditor::writeKeyFrameData()
     this->Internal->Cue->insertKeyFrame(0);
   }
 
-  QList<QPair<int, double> > sortedKeyFrames;
+  QList<QPair<int, double>> sortedKeyFrames;
   for (int i = 0; i < newNumber; i++)
   {
     QModelIndex idx = this->Internal->Model.index(i, 0);
@@ -647,10 +645,7 @@ void pqKeyFrameEditor::deleteKeyFrame()
   if (this->Internal->Model.rowCount() == 1)
   {
     QStandardItem* item = this->Internal->Model.takeItem(0, 1);
-    if (item)
-    {
-      delete item;
-    }
+    delete item;
   }
 }
 

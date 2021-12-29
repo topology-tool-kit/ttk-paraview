@@ -36,8 +36,11 @@
 #include "vtkCommonDataModelModule.h" // For export macro
 #include "vtkDataObject.h"
 
+#include <vector> // For GetDataSets
+
 class vtkCompositeDataIterator;
 class vtkCompositeDataSetInternals;
+class vtkDataSet;
 class vtkInformation;
 class vtkInformationStringKey;
 class vtkInformationIntegerKey;
@@ -88,26 +91,34 @@ public:
    */
   unsigned long GetActualMemorySize() override;
 
-  //@{
+  ///@{
   /**
    * Retrieve an instance of this class from an information object.
    */
   static vtkCompositeDataSet* GetData(vtkInformation* info);
   static vtkCompositeDataSet* GetData(vtkInformationVector* v, int i = 0);
-  //@}
+  ///@}
 
   /**
    * Restore data object to initial state,
    */
   void Initialize() override;
 
-  //@{
+  ///@{
   /**
    * Shallow and Deep copy.
    */
   void ShallowCopy(vtkDataObject* src) override;
   void DeepCopy(vtkDataObject* src) override;
-  //@}
+  ///@}
+
+  /**
+   * For historical reasons, `vtkCompositeDataSet::ShallowCopy` simply pass
+   * pointers to the leaf non-composite datasets. In some cases, we truly want
+   * to shallow copy those leaf non-composite datasets as well. For those cases,
+   * use this method.
+   */
+  virtual void RecursiveShallowCopy(vtkDataObject* src) = 0;
 
   /**
    * Returns the total number of points of all blocks. This will
@@ -153,6 +164,19 @@ public:
    */
   static vtkInformationIntegerKey* CURRENT_PROCESS_CAN_LOAD_BLOCK();
 
+  /**
+   * Extract datasets from the given data object. This method returns a vector
+   * of DataSetT* from the `dobj`. If dobj is a DataSetT, the returned
+   * vector will have just 1 DataSetT. If dobj is a vtkCompositeDataSet, then
+   * we iterate over it and add all non-null leaf nodes to the returned vector.
+   *
+   * If `preserveNull` is true (defaults to false), then `nullptr` place holders
+   * are added as placeholders when leaf node dataset type does not match the
+   * requested or is nullptr to begin with.
+   */
+  template <class DataSetT = vtkDataSet>
+  static std::vector<DataSetT*> GetDataSets(vtkDataObject* dobj, bool preserveNull = false);
+
 protected:
   vtkCompositeDataSet();
   ~vtkCompositeDataSet() override;
@@ -161,5 +185,7 @@ private:
   vtkCompositeDataSet(const vtkCompositeDataSet&) = delete;
   void operator=(const vtkCompositeDataSet&) = delete;
 };
+
+#include "vtkCompositeDataSet.txx" // for template implementations
 
 #endif

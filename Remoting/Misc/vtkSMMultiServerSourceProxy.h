@@ -19,7 +19,7 @@
  * vtkSMMultiServerSourceProxy can be useful in case of multi-server setup
  * when the user want to display a data object that belong to another server
  * into its local built-in view.
-*/
+ */
 
 #ifndef vtkSMMultiServerSourceProxy_h
 #define vtkSMMultiServerSourceProxy_h
@@ -42,7 +42,7 @@ public:
   virtual void SetExternalProxy(vtkSMSourceProxy* proxyFromAnotherServer, int port = 0);
 
   /**
-   * Return the proxy that is currently binded if any otherwise return NULL;
+   * Return the proxy that is currently binded if any otherwise return nullptr;
    */
   virtual vtkSMSourceProxy* GetExternalProxy();
 

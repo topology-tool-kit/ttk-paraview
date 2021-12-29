@@ -35,10 +35,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqReaction.h"
 
 /**
-* @ingroup Reactions
-* pqCameraReaction has the logic to handle common operations associated with
-* the camera such as reset view along X axis etc.
-*/
+ * @ingroup Reactions
+ * pqCameraReaction has the logic to handle common operations associated with
+ * the camera such as reset view along X axis etc.
+ */
 class PQAPPLICATIONCOMPONENTS_EXPORT pqCameraReaction : public pqReaction
 {
   Q_OBJECT
@@ -56,12 +56,14 @@ public:
     RESET_NEGATIVE_Z,
     ZOOM_TO_DATA,
     ROTATE_CAMERA_CW,
-    ROTATE_CAMERA_CCW
+    ROTATE_CAMERA_CCW,
+    ZOOM_CLOSEST_TO_DATA,
+    RESET_CAMERA_CLOSEST
   };
 
   pqCameraReaction(QAction* parent, Mode mode);
 
-  static void resetCamera();
+  static void resetCamera(bool closest = false);
   static void resetPositiveX();
   static void resetPositiveY();
   static void resetPositiveZ();
@@ -70,20 +72,20 @@ public:
   static void resetNegativeZ();
   static void resetDirection(
     double look_x, double look_y, double look_z, double up_x, double up_y, double up_z);
-  static void zoomToData();
+  static void zoomToData(bool closest = false);
   static void rotateCamera(double angle);
 
 public Q_SLOTS:
   /**
-  * Updates the enabled state. Applications need not explicitly call
-  * this.
-  */
+   * Updates the enabled state. Applications need not explicitly call
+   * this.
+   */
   void updateEnableState() override;
 
 protected:
   /**
-  * Called when the action is triggered.
-  */
+   * Called when the action is triggered.
+   */
   void onTriggered() override;
 
 private:

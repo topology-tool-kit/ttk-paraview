@@ -52,7 +52,7 @@ vtkAnimationPlayer* vtkCompositeAnimationPlayer::GetActivePlayer()
     case SNAP_TO_TIMESTEPS:
       return this->TimestepsAnimationPlayer;
   }
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -150,4 +150,11 @@ void vtkCompositeAnimationPlayer::RemoveAllTimeSteps()
 void vtkCompositeAnimationPlayer::SetFramesPerTimestep(int val)
 {
   this->TimestepsAnimationPlayer->SetFramesPerTimestep(val);
+}
+
+//----------------------------------------------------------------------------
+void vtkCompositeAnimationPlayer::SetStride(int _val)
+{
+  this->TimestepsAnimationPlayer->SetStride(_val);
+  this->SequenceAnimationPlayer->SetStride(_val);
 }

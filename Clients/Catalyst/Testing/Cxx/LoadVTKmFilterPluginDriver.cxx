@@ -24,7 +24,7 @@
 #include "vtkCPPythonStringPipeline.h"
 #endif
 
-static const char* script=R"==(
+static const char* script = R"==(
 from paraview.simple import *
 LoadDistributedPlugin("VTKmFilters", ns=globals())
 assert VTKmContour
@@ -52,7 +52,7 @@ int LoadVTKmFilterPluginDriver(int argc, char* argv[])
   }
 
 #if VTK_MODULE_ENABLE_ParaView_PythonCatalyst
-  if (scripts.size() > 0)
+  if (!scripts.empty())
   {
     for (auto& scriptfile : scripts)
     {

@@ -46,7 +46,7 @@ vtkAbstractArray* vtkNewArray(vtkPVArrayInformation* aInfo)
     array->SetName(aInfo->GetName());
     return array;
   }
-  return NULL;
+  return nullptr;
 }
 
 void vtkSerialize(vtkClientServerStream& css, vtkDataSetAttributes* dsa)
@@ -61,7 +61,7 @@ void vtkSerialize(vtkClientServerStream& css, vtkDataSetAttributes* dsa)
   for (int cc = 0, max = dsa->GetNumberOfArrays(); cc < max; ++cc)
   {
     vtkNew<vtkPVArrayInformation> arrayInfo;
-    arrayInfo->CopyFromObject(dsa->GetAbstractArray(cc));
+    arrayInfo->CopyFromArray(dsa->GetAbstractArray(cc));
 
     vtkClientServerStream acss;
     arrayInfo->CopyToStream(&acss);
@@ -145,7 +145,7 @@ vtkCompleteArrays::~vtkCompleteArrays()
   if (this->Controller)
   {
     this->Controller->UnRegister(this);
-    this->Controller = NULL;
+    this->Controller = nullptr;
   }
 }
 
@@ -350,7 +350,7 @@ void vtkCompleteArrays::CompleteArraysOnBlock(vtkDataSet* inputDS, vtkDataSet*& 
   {
     // Collected information from the remote processes.
 
-    // Process 0 may have a null block - get the data type from the process
+    // Process 0 may have a nullptr block - get the data type from the process
     // that has the data information and instantiate a placeholder block.
     int typeAndLength[2];
     this->Controller->Receive(typeAndLength, 2, infoProc, 389002);
@@ -443,7 +443,6 @@ void vtkCompleteArrays::CompleteArraysOnBlock(vtkDataSet* inputDS, vtkDataSet*& 
     this->Controller->Send(typeAndLength, 2, 0, 389002);
     this->Controller->Send(const_cast<unsigned char*>(data), typeAndLength[1], 0, 389003);
   }
-  return;
 }
 
 //-----------------------------------------------------------------------------

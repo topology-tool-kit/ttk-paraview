@@ -38,6 +38,35 @@
 #include <vtkm/cont/DataSetBuilderUniform.h>
 #include <vtkm/cont/Field.h>
 
+namespace
+{
+struct build_type_array
+{
+  template <typename CellStateT>
+  void operator()(CellStateT& state, vtkUnsignedCharArray* types) const
+  {
+    const vtkIdType size = state.GetNumberOfCells();
+    for (vtkIdType i = 0; i < size; ++i)
+    {
+      auto cellSize = state.GetCellSize(i);
+      unsigned char cellType;
+      switch (cellSize)
+      {
+        case 3:
+          cellType = VTK_TRIANGLE;
+          break;
+        case 4:
+          cellType = VTK_QUAD;
+          break;
+        default:
+          cellType = VTK_POLYGON;
+          break;
+      }
+      types->SetValue(i, cellType);
+    }
+  }
+};
+}
 namespace tovtkm
 {
 
@@ -82,11 +111,18 @@ vtkm::cont::DataSet Convert(vtkPolyData* input, FieldsFlag fields)
     }
     else
     {
-      // we have mixture of polygins/quads/triangles, we don't support that
-      // currently
-      vtkErrorWithObjectMacro(input,
-        "VTK-m currently only handles vtkPolyData "
-        "with only triangles or only quads.");
+      // need to construct a vtkUnsignedCharArray* types mapping for our zoo data
+      // we can do this by mapping number of points per cell to the type
+      // 3 == tri, 4 == quad, else polygon
+      vtkNew<vtkUnsignedCharArray> types;
+      types->SetNumberOfComponents(1);
+      types->SetNumberOfTuples(static_cast<vtkIdType>(cells->GetNumberOfCells()));
+
+      cells->Visit(build_type_array{}, types.GetPointer());
+
+      vtkm::cont::DynamicCellSet dcells = Convert(types, cells, numPoints);
+      dataset.SetCellSet(dcells);
+      filled = true;
     }
   }
   else if (onlyLines)
@@ -158,7 +194,7 @@ bool Convert(const vtkm::cont::DataSet& voutput, vtkPolyData* output, vtkDataSet
   // this should be fairly easy as the cells are all a single cell type
   // so we just need to determine what cell type it is and copy the results
   // into a new array
-  vtkm::cont::DynamicCellSet outCells = voutput.GetCellSet();
+  vtkm::cont::DynamicCellSet const& outCells = voutput.GetCellSet();
   vtkNew<vtkCellArray> cells;
   const bool cellsConverted = fromvtkm::Convert(outCells, cells.GetPointer());
   if (!cellsConverted)

@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkChartXYZ.h
+  Module:    vtkChartXYZ.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -772,7 +772,7 @@ void vtkChartXYZ::NewDetermineWhichAxesToLabel()
       gradient = dy / dx;
     }
 
-    axisData.push_back(std::make_tuple(axisState, std::abs(gradient), gradient, axis));
+    axisData.emplace_back(axisState, std::abs(gradient), gradient, axis);
   }
 
   // sort the list of axes by state (low enum value to high) and, for standard axes by gradient
@@ -1906,7 +1906,7 @@ bool vtkChartXYZ::RemovePlot(vtkPlot3D* plot)
   {
     if (this->Plots[i] == plot)
     {
-      this->Plots[i] = 0;
+      this->Plots[i] = nullptr;
       this->FreePlaces.push_back(i);
       ret = true;
     }

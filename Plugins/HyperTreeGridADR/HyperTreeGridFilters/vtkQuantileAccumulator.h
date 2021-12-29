@@ -30,10 +30,10 @@
 #include "vtkAbstractAccumulator.h"
 #include "vtkFiltersHyperTreeGridADRModule.h" // For export macro
 
-#include <memory>
-#include <vector>
+#include <memory> //for std::shared_ptr
+#include <vector> // for std::vector
 
-class vtkDataObject;
+class vtkObject;
 
 class VTKFILTERSHYPERTREEGRIDADR_EXPORT vtkQuantileAccumulator : public vtkAbstractAccumulator
 {
@@ -98,12 +98,12 @@ public:
   /**
    * ShallowCopy implementation, both object then share the same SortedList.
    */
-  void ShallowCopy(vtkDataObject* accumulator) override;
+  void ShallowCopy(vtkObject* accumulator) override;
 
   /**
    * DeepCopy implementation.
    */
-  void DeepCopy(vtkDataObject* accumulator) override;
+  void DeepCopy(vtkObject* accumulator) override;
 
   /**
    * Getter of internally stored sorted list of values and weights
@@ -176,8 +176,8 @@ protected:
   ListPointer SortedList;
 
 private:
-  vtkQuantileAccumulator(vtkQuantileAccumulator&) = delete;
-  void operator=(vtkQuantileAccumulator&) = delete;
+  vtkQuantileAccumulator(const vtkQuantileAccumulator&) = delete;
+  void operator=(const vtkQuantileAccumulator&) = delete;
 };
 
 #endif

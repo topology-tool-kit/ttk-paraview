@@ -28,7 +28,7 @@
  * valid Python variable, it has to be accessed through a dictionary called
  * arrays (i.e. arrays['array_name']). The points can be accessed using the
  * points variable.
-*/
+ */
 
 #ifndef vtkPythonCalculator_h
 #define vtkPythonCalculator_h
@@ -59,20 +59,22 @@ public:
    * must return a scalar value (which is converted to an array) or a
    * numpy array.
    */
-  vtkSetStringMacro(Expression) vtkGetStringMacro(Expression)
-    //@}
+  vtkSetStringMacro(Expression);
+  vtkGetStringMacro(Expression);
+  //@}
 
-    //@{
-    /**
-     * Set the name of the output array.
-     */
-    vtkSetStringMacro(ArrayName) vtkGetStringMacro(ArrayName)
-    //@}
+  //@{
+  /**
+   * Set the name of the output array.
+   */
+  vtkSetStringMacro(ArrayName);
+  vtkGetStringMacro(ArrayName);
+  //@}
 
-    /**
-     * For internal use only.
-     */
-    static void ExecuteScript(void*);
+  /**
+   * For internal use only.
+   */
+  static void ExecuteScript(void*);
 
 protected:
   vtkPythonCalculator();
@@ -88,7 +90,10 @@ protected:
   // overridden to allow multiple inputs to port 0
   int FillInputPortInformation(int port, vtkInformation* info) override;
 
-  // DeExpressionion:
+  // overridden to allow string substitutions for the Expression
+  int RequestData(vtkInformation* request, vtkInformationVector** inputVector,
+    vtkInformationVector* outputVector) override;
+
   // Creates whatever output data set type is selected.
   int RequestDataObject(vtkInformation* request, vtkInformationVector** inputVector,
     vtkInformationVector* outputVector) override;

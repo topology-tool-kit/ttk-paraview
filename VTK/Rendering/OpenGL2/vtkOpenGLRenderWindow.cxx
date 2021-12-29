@@ -64,6 +64,25 @@ static int vtkOpenGLRenderWindowGlobalMaximumNumberOfMultiSamples = 0;
 static int vtkOpenGLRenderWindowGlobalMaximumNumberOfMultiSamples = 8;
 #endif
 
+// Some linux drivers have issues reading a multisampled texture,
+// so we check the driver's "Renderer" against this list of strings.
+struct vtkOpenGLRenderWindowDriverInfo
+{
+  const char* Vendor;
+  const char* Version;
+  const char* Renderer;
+};
+static const vtkOpenGLRenderWindowDriverInfo vtkOpenGLRenderWindowMSAATextureBug[] = {
+  // OpenGL Vendor: Intel
+  // OpenGL Version: 4.6 (Core Profile) Mesa 20.1.3
+  // OpenGL Renderer: Mesa Intel® HD Graphics 630 (KBL GT2)
+  { "Intel", "", "Mesa Intel" },
+  // OpenGL Vendor: X.Org
+  // OpenGL Version: 4.6 (Core Profile) Mesa 20.0.8
+  // OpenGL Renderer: AMD RAVEN (DRM 3.35.0, 5.4.0-42-generic, LLVM 10.0.0)
+  { "X.Org", "", "AMD" },
+};
+
 const char* defaultWindowName = "Visualization Toolkit - OpenGL";
 
 const char* ResolveShader =
@@ -80,7 +99,7 @@ const char* ResolveShader =
 
     // for each sample in the multi sample buffer...
     ivec2 itexcoords = ivec2(floor(textureSize(tex) * texCoord));
-    vec3 accumulate;
+    vec3 accumulate = vec3(0.0,0.0,0.0);
     float alpha = 0.0;
 
     for (int i = 0; i < samplecount; i++)
@@ -94,6 +113,21 @@ const char* ResolveShader =
     // divide and reverse gamma correction
     accumulate /= float(samplecount);
     gl_FragData[0] = vec4(pow(accumulate, vec3(1.0/gamma)), alpha/float(samplecount));
+  }
+  )***";
+
+const char* DepthBlitShader =
+  R"***(
+  //VTK::System::Dec
+  in vec2 texCoord;
+  uniform sampler2D tex;
+  uniform vec2 texLL;
+  uniform vec2 texSize;
+  //VTK::Output::Dec
+
+  void main()
+  {
+    gl_FragDepth = texture(tex, texCoord*texSize + texLL).r;
   }
   )***";
 
@@ -125,6 +159,7 @@ vtkOpenGLRenderWindow::vtkOpenGLRenderWindow()
   this->State = vtkOpenGLState::New();
   this->FrameBlitMode = BlitToHardware;
   this->ResolveQuad = nullptr;
+  this->DepthBlitQuad = nullptr;
 
   this->Initialized = false;
   this->GlewInitValid = false;
@@ -254,11 +289,11 @@ void vtkOpenGLRenderWindow::ReleaseGraphicsResources(vtkWindow* renWin)
 {
   this->PushContext();
 
-  if (this->ResolveQuad)
-  {
-    delete this->ResolveQuad;
-    this->ResolveQuad = nullptr;
-  }
+  delete this->ResolveQuad;
+  this->ResolveQuad = nullptr;
+
+  delete this->DepthBlitQuad;
+  this->DepthBlitQuad = nullptr;
 
   this->RenderFramebuffer->ReleaseGraphicsResources(renWin);
   this->DisplayFramebuffer->ReleaseGraphicsResources(renWin);
@@ -838,10 +873,9 @@ int vtkOpenGLRenderWindow::ReadPixels(
 
       // Now blit to resolve the MSAA and get an anti-aliased rendering in
       // resolvedFBO.
-      // Note: extents are (x-min, x-max, y-min, y-max).
-      const int srcExtents[4] = { rect.GetLeft(), rect.GetRight(), rect.GetBottom(),
-        rect.GetTop() };
-      vtkOpenGLFramebufferObject::Blit(srcExtents, srcExtents, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+      this->GetState()->vtkglBlitFramebuffer(rect.GetLeft(), rect.GetBottom(), rect.GetRight(),
+        rect.GetTop(), rect.GetLeft(), rect.GetBottom(), rect.GetRight(), rect.GetTop(),
+        GL_COLOR_BUFFER_BIT, GL_NEAREST);
       this->GetState()->PopDrawFramebufferBinding();
 
       // Now make the resolvedFBO the read buffer and read from it.
@@ -871,6 +905,69 @@ void vtkOpenGLRenderWindow::End()
   this->GetState()->PopFramebufferBindings();
 }
 
+void vtkOpenGLRenderWindow::TextureDepthBlit(vtkTextureObject* source, int srcX, int srcY,
+  int srcX2, int srcY2, int destX, int destY, int destX2, int destY2)
+{
+  // blit upper right is exclusive
+  vtkOpenGLState::ScopedglViewport viewportSaver(this->GetState());
+  this->GetState()->vtkglViewport(destX, destY, destX2 - destX, destY2 - destY);
+  this->TextureDepthBlit(source, srcX, srcY, srcX2, srcY2);
+}
+
+void vtkOpenGLRenderWindow::TextureDepthBlit(vtkTextureObject* source)
+{
+  this->TextureDepthBlit(source, 0, 0, source->GetWidth(), source->GetHeight());
+}
+
+void vtkOpenGLRenderWindow::TextureDepthBlit(
+  vtkTextureObject* source, int srcX, int srcY, int srcX2, int srcY2)
+{
+  assert("pre: must have both source and destination FO" && source);
+
+  if (!this->DepthBlitQuad)
+  {
+    this->DepthBlitQuad = new vtkOpenGLQuadHelper(this, nullptr, DepthBlitShader, "");
+    if (!this->DepthBlitQuad->Program || !this->DepthBlitQuad->Program->GetCompiled())
+    {
+      vtkErrorMacro("Couldn't build the shader program for depth blits");
+    }
+  }
+  else
+  {
+    this->GetShaderCache()->ReadyShaderProgram(this->DepthBlitQuad->Program);
+  }
+
+  if (this->DepthBlitQuad->Program && this->DepthBlitQuad->Program->GetCompiled())
+  {
+    auto ostate = this->GetState();
+    // save any state we mess with
+    vtkOpenGLState::ScopedglEnableDisable stsaver(ostate, GL_SCISSOR_TEST);
+    ostate->vtkglDisable(GL_SCISSOR_TEST);
+
+    vtkOpenGLState::ScopedglColorMask colorMaskSaver(ostate);
+    ostate->vtkglColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+    vtkOpenGLState::ScopedglDepthMask depthMaskSaver(ostate);
+    ostate->vtkglDepthMask(GL_TRUE);
+
+    vtkOpenGLState::ScopedglDepthFunc depthTestSaver(ostate);
+    this->GetState()->vtkglDepthFunc(GL_ALWAYS);
+
+    source->Activate();
+    double width = source->GetWidth();
+    double height = source->GetHeight();
+    this->DepthBlitQuad->Program->SetUniformi("tex", source->GetTextureUnit());
+    float tmp[2] = { static_cast<float>(srcX / width), static_cast<float>(srcY / height) };
+    this->DepthBlitQuad->Program->SetUniform2f("texLL", tmp);
+    tmp[0] = (srcX2 - srcX) / width;
+    tmp[1] = (srcY2 - srcY) / height;
+    this->DepthBlitQuad->Program->SetUniform2f("texSize", tmp);
+
+    this->DepthBlitQuad->Render();
+    source->Deactivate();
+  }
+}
+
 //------------------------------------------------------------------------------
 // for crystal eyes in stereo we have to blit here as well
 void vtkOpenGLRenderWindow::StereoMidpoint()
@@ -889,16 +986,25 @@ void vtkOpenGLRenderWindow::StereoMidpoint()
 
     bool copiedColor = false;
 
-    // Some intel linux drivers have issues reading a multisampled texture
-    // OpenGL Vendor: Intel
-    // OpenGL Version: 4.6 (Core Profile) Mesa 20.1.3
-    // OpenGL Renderer: Mesa Intel® HD Graphics 630 (KBL GT2)
+    // Some linux drivers have issues reading a multisampled texture
     bool useTexture = false;
     if (this->MultiSamples > 1 && this->RenderFramebuffer->GetColorAttachmentAsTextureObject(0))
     {
-      if (this->GetState()->GetRenderer().find("Mesa Intel") == std::string::npos)
+      useTexture = true;
+      const std::string& vendorString = this->GetState()->GetVendor();
+      const std::string& versionString = this->GetState()->GetVersion();
+      const std::string& rendererString = this->GetState()->GetRenderer();
+      size_t numExceptions =
+        sizeof(vtkOpenGLRenderWindowMSAATextureBug) / sizeof(vtkOpenGLRenderWindowDriverInfo);
+      for (size_t i = 0; i < numExceptions; i++)
       {
-        useTexture = true;
+        if (vendorString.find(vtkOpenGLRenderWindowMSAATextureBug[i].Vendor) == 0 &&
+          versionString.find(vtkOpenGLRenderWindowMSAATextureBug[i].Version) == 0 &&
+          rendererString.find(vtkOpenGLRenderWindowMSAATextureBug[i].Renderer) == 0)
+        {
+          useTexture = false;
+          break;
+        }
       }
     }
 
@@ -931,6 +1037,7 @@ void vtkOpenGLRenderWindow::StereoMidpoint()
         this->ResolveQuad->Program->SetUniformi("tex", tex->GetTextureUnit());
         this->ResolveQuad->Render();
         tex->Deactivate();
+        copiedColor = true;
         this->GetState()->vtkglEnable(GL_DEPTH_TEST);
         this->GetState()->vtkglEnable(GL_BLEND);
       }
@@ -939,14 +1046,7 @@ void vtkOpenGLRenderWindow::StereoMidpoint()
     this->RenderFramebuffer->Bind(GL_READ_FRAMEBUFFER);
     this->RenderFramebuffer->ActivateReadBuffer(0);
 
-    // ON APPLE OSX you must turn off scissor test for DEPTH blits to work
-    auto ostate = this->GetState();
-    vtkOpenGLState::ScopedglEnableDisable stsaver(ostate, GL_SCISSOR_TEST);
-    ostate->vtkglDisable(GL_SCISSOR_TEST);
-
-    // recall Blit upper right corner is exclusive of the range
-    const int srcExtents[4] = { 0, fbsize[0], 0, fbsize[1] };
-    vtkOpenGLFramebufferObject::Blit(srcExtents, srcExtents,
+    this->GetState()->vtkglBlitFramebuffer(0, 0, fbsize[0], fbsize[1], 0, 0, fbsize[0], fbsize[1],
       (copiedColor ? 0 : GL_COLOR_BUFFER_BIT) | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
     this->GetState()->PopFramebufferBindings();
@@ -968,16 +1068,25 @@ void vtkOpenGLRenderWindow::Frame()
     this->GetState()->vtkglViewport(0, 0, fbsize[0], fbsize[1]);
     this->GetState()->vtkglScissor(0, 0, fbsize[0], fbsize[1]);
 
-    // Some intel linux drivers have issues reading a multisampled texture
-    // OpenGL Vendor: Intel
-    // OpenGL Version: 4.6 (Core Profile) Mesa 20.1.3
-    // OpenGL Renderer: Mesa Intel® HD Graphics 630 (KBL GT2)
+    // Some linux drivers have issues reading a multisampled texture
     bool useTexture = false;
     if (this->MultiSamples > 1 && this->RenderFramebuffer->GetColorAttachmentAsTextureObject(0))
     {
-      if (this->GetState()->GetRenderer().find("Mesa Intel") == std::string::npos)
+      useTexture = true;
+      const std::string& vendorString = this->GetState()->GetVendor();
+      const std::string& versionString = this->GetState()->GetVersion();
+      const std::string& rendererString = this->GetState()->GetRenderer();
+      size_t numExceptions =
+        sizeof(vtkOpenGLRenderWindowMSAATextureBug) / sizeof(vtkOpenGLRenderWindowDriverInfo);
+      for (size_t i = 0; i < numExceptions; i++)
       {
-        useTexture = true;
+        if (vendorString.find(vtkOpenGLRenderWindowMSAATextureBug[i].Vendor) == 0 &&
+          versionString.find(vtkOpenGLRenderWindowMSAATextureBug[i].Version) == 0 &&
+          rendererString.find(vtkOpenGLRenderWindowMSAATextureBug[i].Renderer) == 0)
+        {
+          useTexture = false;
+          break;
+        }
       }
     }
 
@@ -1017,14 +1126,7 @@ void vtkOpenGLRenderWindow::Frame()
     this->RenderFramebuffer->Bind(GL_READ_FRAMEBUFFER);
     this->RenderFramebuffer->ActivateReadBuffer(0);
 
-    // ON APPLE OSX you must turn off scissor test for DEPTH blits to work
-    auto ostate = this->GetState();
-    vtkOpenGLState::ScopedglEnableDisable stsaver(ostate, GL_SCISSOR_TEST);
-    ostate->vtkglDisable(GL_SCISSOR_TEST);
-
-    // recall Blit upper right corner is exclusive of the range
-    const int srcExtents[4] = { 0, fbsize[0], 0, fbsize[1] };
-    vtkOpenGLFramebufferObject::Blit(srcExtents, srcExtents,
+    this->GetState()->vtkglBlitFramebuffer(0, 0, fbsize[0], fbsize[1], 0, 0, fbsize[0], fbsize[1],
       (copiedColor ? 0 : GL_COLOR_BUFFER_BIT) | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
     this->GetState()->vtkglViewport(0, 0, this->Size[0], this->Size[1]);
@@ -1049,27 +1151,33 @@ void vtkOpenGLRenderWindow::BlitDisplayFramebuffersToHardware()
 {
   auto ostate = this->GetState();
   ostate->PushFramebufferBindings();
-  this->DisplayFramebuffer->Bind(GL_READ_FRAMEBUFFER);
-  this->GetState()->vtkglViewport(0, 0, this->Size[0], this->Size[1]);
-  this->GetState()->vtkglScissor(0, 0, this->Size[0], this->Size[1]);
+  ostate->vtkglViewport(0, 0, this->Size[0], this->Size[1]);
+  ostate->vtkglScissor(0, 0, this->Size[0], this->Size[1]);
 
-  // recall Blit upper right corner is exclusive of the range
-  const int srcExtents[4] = { 0, this->Size[0], 0, this->Size[1] };
-
-  this->GetState()->vtkglBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+  ostate->vtkglBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
   if (this->StereoRender && this->StereoType == VTK_STEREO_CRYSTAL_EYES)
   {
+    // bind the read buffer to detach the display framebuffer to be safe
+    ostate->vtkglBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    this->TextureDepthBlit(this->DisplayFramebuffer->GetDepthAttachmentAsTextureObject());
+
+    this->DisplayFramebuffer->Bind(GL_READ_FRAMEBUFFER);
     this->DisplayFramebuffer->ActivateReadBuffer(1);
-    this->GetState()->vtkglDrawBuffer(this->DoubleBuffer ? GL_BACK_RIGHT : GL_FRONT_RIGHT);
-    vtkOpenGLFramebufferObject::Blit(
-      srcExtents, srcExtents, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    ostate->vtkglDrawBuffer(this->DoubleBuffer ? GL_BACK_RIGHT : GL_FRONT_RIGHT);
+    ostate->vtkglBlitFramebuffer(0, 0, this->Size[0], this->Size[1], 0, 0, this->Size[0],
+      this->Size[1], GL_COLOR_BUFFER_BIT, GL_NEAREST);
   }
 
+  ostate->vtkglDrawBuffer(this->DoubleBuffer ? GL_BACK_LEFT : GL_FRONT_LEFT);
+  // bind the read buffer to detach the display framebuffer to be safe
+  ostate->vtkglBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+  this->TextureDepthBlit(this->DisplayFramebuffer->GetDepthAttachmentAsTextureObject());
+
+  this->DisplayFramebuffer->Bind(GL_READ_FRAMEBUFFER);
   this->DisplayFramebuffer->ActivateReadBuffer(0);
-  this->GetState()->vtkglDrawBuffer(this->DoubleBuffer ? GL_BACK_LEFT : GL_FRONT_LEFT);
-  vtkOpenGLFramebufferObject::Blit(
-    srcExtents, srcExtents, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+  ostate->vtkglBlitFramebuffer(0, 0, this->Size[0], this->Size[1], 0, 0, this->Size[0],
+    this->Size[1], GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
   this->GetState()->PopFramebufferBindings();
 }
@@ -1089,15 +1197,14 @@ void vtkOpenGLRenderWindow::BlitDisplayFramebuffer(int right, int srcX, int srcY
   vtkOpenGLState::ScopedglEnableDisable stsaver(ostate, GL_SCISSOR_TEST);
   ostate->vtkglDisable(GL_SCISSOR_TEST);
 
-  this->GetState()->PushReadFramebufferBinding();
+  ostate->PushReadFramebufferBinding();
   this->DisplayFramebuffer->Bind(GL_READ_FRAMEBUFFER);
   this->DisplayFramebuffer->ActivateReadBuffer(right ? 1 : 0);
-  const int srcExtents[4] = { srcX, srcX + srcWidth, srcY, srcY + srcHeight };
-  const int destExtents[4] = { destX, destX + destWidth, destY, destY + destHeight };
-  this->GetState()->vtkglViewport(destX, destY, destWidth, destHeight);
-  this->GetState()->vtkglScissor(destX, destY, destWidth, destHeight);
-  vtkOpenGLFramebufferObject::Blit(srcExtents, destExtents, bufferMode, interpolation);
-  this->GetState()->PopReadFramebufferBinding();
+  ostate->vtkglViewport(destX, destY, destWidth, destHeight);
+  ostate->vtkglScissor(destX, destY, destWidth, destHeight);
+  ostate->vtkglBlitFramebuffer(srcX, srcY, srcX + srcWidth, srcY + srcHeight, destX, destY,
+    destX + destWidth, destY + destHeight, bufferMode, interpolation);
+  ostate->PopReadFramebufferBinding();
 }
 
 void vtkOpenGLRenderWindow::BlitToRenderFramebuffer(bool includeDepth)
@@ -1117,8 +1224,6 @@ void vtkOpenGLRenderWindow::BlitToRenderFramebuffer(int srcX, int srcY, int srcW
   auto ostate = this->GetState();
   ostate->PushFramebufferBindings();
 
-  const int srcExtents[4] = { srcX, srcX + srcWidth, srcY, srcY + srcHeight };
-  const int destExtents[4] = { destX, destX + destWidth, destY, destY + destHeight };
   ostate->vtkglViewport(destX, destY, destWidth, destHeight);
   ostate->vtkglScissor(destX, destY, destWidth, destHeight);
 
@@ -1135,8 +1240,8 @@ void vtkOpenGLRenderWindow::BlitToRenderFramebuffer(int srcX, int srcY, int srcW
     this->ResolveFramebuffer->Bind(GL_DRAW_FRAMEBUFFER);
     this->ResolveFramebuffer->ActivateDrawBuffer(0);
 
-    // Note: extents are (x-min, x-max, y-min, y-max).
-    vtkOpenGLFramebufferObject::Blit(srcExtents, destExtents, bufferMode, interpolation);
+    ostate->vtkglBlitFramebuffer(srcX, srcY, srcX + srcWidth, srcY + srcHeight, destX, destY,
+      destX + destWidth, destY + destHeight, bufferMode, interpolation);
 
     // Now make the resolvedFBO the read buffer and read from it.
     this->ResolveFramebuffer->Bind(GL_READ_FRAMEBUFFER);
@@ -1145,7 +1250,8 @@ void vtkOpenGLRenderWindow::BlitToRenderFramebuffer(int srcX, int srcY, int srcW
 
   this->RenderFramebuffer->Bind(GL_DRAW_FRAMEBUFFER);
   this->RenderFramebuffer->ActivateDrawBuffer(0);
-  vtkOpenGLFramebufferObject::Blit(srcExtents, destExtents, bufferMode, interpolation);
+  ostate->vtkglBlitFramebuffer(srcX, srcY, srcX + srcWidth, srcY + srcHeight, destX, destY,
+    destX + destWidth, destY + destHeight, bufferMode, interpolation);
   ostate->PopFramebufferBindings();
 }
 
@@ -1790,9 +1896,9 @@ int vtkOpenGLRenderWindow::GetZbufferData(int x1, int y1, int x2, int y2, float*
 
     // Now blit to resolve the MSAA and get an anti-aliased rendering in
     // resolvedFBO.
-    // Note: extents are (x-min, x-max, y-min, y-max).
-    const int srcExtents[4] = { x_low, x_low + width, y_low, y_low + height };
-    vtkOpenGLFramebufferObject::Blit(srcExtents, srcExtents, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    // this is a safe blit as we own both of these texture backed framebuffers
+    this->GetState()->vtkglBlitFramebuffer(x_low, y_low, x_low + width, y_low + height, x_low,
+      y_low, x_low + width, y_low + height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
     this->GetState()->PopDrawFramebufferBinding();
 
     // Now make the resolvedFBO the read buffer and read from it.

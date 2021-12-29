@@ -178,8 +178,25 @@ __global__ void SumExclusiveScan(T a, T b, T result, BinaryOperationType binary_
 #pragma GCC diagnostic pop
 #endif
 
+template <typename FunctorType, typename ArgType>
+struct FunctorSupportsUnaryImpl
+{
+  template <typename F, typename A, typename = decltype(std::declval<F>()(std::declval<A>()))>
+  static std::true_type has(int);
+  template <typename F, typename A>
+  static std::false_type has(...);
+  using type = decltype(has<FunctorType, ArgType>(0));
+};
+template <typename FunctorType, typename ArgType>
+using FunctorSupportsUnary = typename FunctorSupportsUnaryImpl<FunctorType, ArgType>::type;
+
+template <typename PortalType,
+          typename BinaryAndUnaryFunctor,
+          typename = FunctorSupportsUnary<BinaryAndUnaryFunctor, typename PortalType::ValueType>>
+struct CastPortal;
+
 template <typename PortalType, typename BinaryAndUnaryFunctor>
-struct CastPortal
+struct CastPortal<PortalType, BinaryAndUnaryFunctor, std::true_type>
 {
   using InputType = typename PortalType::ValueType;
   using ValueType = decltype(std::declval<BinaryAndUnaryFunctor>()(std::declval<InputType>()));
@@ -199,6 +216,28 @@ struct CastPortal
 
   VTKM_EXEC
   ValueType Get(vtkm::Id index) const { return this->Functor(this->Portal.Get(index)); }
+};
+
+template <typename PortalType, typename BinaryFunctor>
+struct CastPortal<PortalType, BinaryFunctor, std::false_type>
+{
+  using InputType = typename PortalType::ValueType;
+  using ValueType =
+    decltype(std::declval<BinaryFunctor>()(std::declval<InputType>(), std::declval<InputType>()));
+
+  PortalType Portal;
+
+  VTKM_CONT
+  CastPortal(const PortalType& portal, const BinaryFunctor&)
+    : Portal(portal)
+  {
+  }
+
+  VTKM_EXEC
+  vtkm::Id GetNumberOfValues() const { return this->Portal.GetNumberOfValues(); }
+
+  VTKM_EXEC
+  ValueType Get(vtkm::Id index) const { return static_cast<ValueType>(this->Portal.Get(index)); }
 };
 
 struct CudaFreeFunctor
@@ -1094,7 +1133,7 @@ public:
       numBits = BitFieldToUnorderedSetPortal<vtkm::UInt64>(bitsPortal, indicesPortal);
     }
 
-    indices.Shrink(numBits);
+    indices.Allocate(numBits, vtkm::CopyFlag::On);
     return numBits;
   }
 
@@ -1107,7 +1146,7 @@ public:
     const vtkm::Id inSize = input.GetNumberOfValues();
     if (inSize <= 0)
     {
-      output.Shrink(inSize);
+      output.Allocate(inSize, vtkm::CopyFlag::On);
       return;
     }
     vtkm::cont::Token token;
@@ -1125,7 +1164,7 @@ public:
     vtkm::Id size = stencil.GetNumberOfValues();
     if (size <= 0)
     {
-      output.Shrink(size);
+      output.Allocate(size, vtkm::CopyFlag::On);
       return;
     }
 
@@ -1140,7 +1179,7 @@ public:
                              ::vtkm::NotZeroInitialized()); //yes on the stencil
     }
 
-    output.Shrink(newSize);
+    output.Allocate(newSize, vtkm::CopyFlag::On);
   }
 
   template <typename T, typename U, class SIn, class SStencil, class SOut, class UnaryPredicate>
@@ -1154,7 +1193,7 @@ public:
     vtkm::Id size = stencil.GetNumberOfValues();
     if (size <= 0)
     {
-      output.Shrink(size);
+      output.Allocate(size, vtkm::CopyFlag::On);
       return;
     }
 
@@ -1168,7 +1207,7 @@ public:
                              unary_predicate);
     }
 
-    output.Shrink(newSize);
+    output.Allocate(newSize, vtkm::CopyFlag::On);
   }
 
   template <typename T, typename U, class SIn, class SOut>
@@ -1364,8 +1403,8 @@ public:
         binary_functor);
     }
 
-    keys_output.Shrink(reduced_size);
-    values_output.Shrink(reduced_size);
+    keys_output.Allocate(reduced_size, vtkm::CopyFlag::On);
+    values_output.Allocate(reduced_size, vtkm::CopyFlag::On);
   }
 
   template <typename T, class SIn, class SOut>
@@ -1639,6 +1678,8 @@ public:
   static void ScheduleTask(vtkm::exec::cuda::internal::TaskStrided1D<WType, IType>& functor,
                            vtkm::Id numInstances)
   {
+    VTKM_LOG_SCOPE_FUNCTION(vtkm::cont::LogLevel::Perf);
+
     VTKM_ASSERT(numInstances >= 0);
     if (numInstances < 1)
     {
@@ -1671,6 +1712,8 @@ public:
   static void ScheduleTask(vtkm::exec::cuda::internal::TaskStrided3D<WType, IType>& functor,
                            vtkm::Id3 rangeMax)
   {
+    VTKM_LOG_SCOPE_FUNCTION(vtkm::cont::LogLevel::Perf);
+
     VTKM_ASSERT((rangeMax[0] >= 0) && (rangeMax[1] >= 0) && (rangeMax[2] >= 0));
     if ((rangeMax[0] < 1) || (rangeMax[1] < 1) || (rangeMax[2] < 1))
     {
@@ -1778,7 +1821,7 @@ public:
       newSize = UniquePortal(values.PrepareForInPlace(DeviceAdapterTagCuda(), token));
     }
 
-    values.Shrink(newSize);
+    values.Allocate(newSize, vtkm::CopyFlag::On);
   }
 
   template <typename T, class Storage, class BinaryCompare>
@@ -1794,7 +1837,7 @@ public:
         UniquePortal(values.PrepareForInPlace(DeviceAdapterTagCuda(), token), binary_compare);
     }
 
-    values.Shrink(newSize);
+    values.Allocate(newSize, vtkm::CopyFlag::On);
   }
 
   template <typename T, class SIn, class SVal, class SOut>

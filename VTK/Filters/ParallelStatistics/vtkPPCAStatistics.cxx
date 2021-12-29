@@ -17,7 +17,6 @@
   Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
   the U.S. Government retains certain rights in this software.
   -------------------------------------------------------------------------*/
-#include "vtkToolkits.h"
 
 #include "vtkPPCAStatistics.h"
 
@@ -38,14 +37,14 @@ vtkCxxSetObjectMacro(vtkPPCAStatistics, Controller, vtkMultiProcessController);
 //------------------------------------------------------------------------------
 vtkPPCAStatistics::vtkPPCAStatistics()
 {
-  this->Controller = 0;
+  this->Controller = nullptr;
   this->SetController(vtkMultiProcessController::GetGlobalController());
 }
 
 //------------------------------------------------------------------------------
 vtkPPCAStatistics::~vtkPPCAStatistics()
 {
-  this->SetController(0);
+  this->SetController(nullptr);
 }
 
 //------------------------------------------------------------------------------

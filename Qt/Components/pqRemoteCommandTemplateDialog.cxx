@@ -6,9 +6,6 @@
 #include <QString>
 
 #include <iostream>
-using std::cerr;
-using std::endl;
-
 #include <sstream>
 #include <string>
 
@@ -25,7 +22,7 @@ class pqRemoteCommandTemplateDialogUI : public Ui::pqRemoteCommandTemplateDialog
 pqRemoteCommandTemplateDialog::pqRemoteCommandTemplateDialog(QWidget* Parent, Qt::WindowFlags flags)
   : QDialog(Parent, flags)
   , Modified(0)
-  , Ui(0)
+  , Ui(nullptr)
 {
   this->Ui = new pqRemoteCommandTemplateDialogUI;
   this->Ui->setupUi(this);

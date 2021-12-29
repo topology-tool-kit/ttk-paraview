@@ -33,15 +33,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ui_pqTimeInspectorWidget.h"
 
 #include "pqActiveObjects.h"
+#include "pqAnimationManager.h"
 #include "pqAnimationModel.h"
+#include "pqAnimationScene.h"
 #include "pqAnimationTrack.h"
 #include "pqApplicationCore.h"
 #include "pqCoreUtilities.h"
+#include "pqPVApplicationCore.h"
 #include "pqPropertyLinks.h"
 #include "pqPropertyLinksConnection.h"
 #include "pqProxy.h"
 #include "pqServer.h"
 #include "pqServerManagerModel.h"
+#include "pqTimelineScrollbar.h"
+#include "pqUndoStack.h"
 #include "vtkCommand.h"
 #include "vtkCompositeAnimationPlayer.h"
 #include "vtkNew.h"
@@ -50,6 +55,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkSMParaViewPipelineController.h"
 #include "vtkSMPropertyHelper.h"
 #include "vtkSMSourceProxy.h"
+#include "vtkSMTrace.h"
 
 #include <QHeaderView>
 #include <QLineF>
@@ -75,12 +81,13 @@ class pqTimeInspectorWidget::PropertyLinksConnection : public pqPropertyLinksCon
 public:
   PropertyLinksConnection(QObject* qobject, const char* qproperty, const char* qsignal,
     vtkSMProxy* smproxy, vtkSMProperty* smproperty, int smindex, bool use_unchecked_modified_event,
-    QObject* parentObject = 0)
+    QObject* parentObject = nullptr)
     : Superclass(qobject, qproperty, qsignal, smproxy, smproperty, smindex,
         use_unchecked_modified_event, parentObject)
   {
   }
-  ~PropertyLinksConnection() override {}
+  ~PropertyLinksConnection() override = default;
+
 protected:
   /// These are the methods that subclasses can override to customize how
   /// values are updated in either directions.
@@ -95,7 +102,7 @@ protected:
       vtkSMProxy* aproxy = reinterpret_cast<vtkSMProxy*>(var.value<void*>());
       proxies.push_back(aproxy);
     }
-    proxies.push_back(NULL);
+    proxies.push_back(nullptr);
     assert(proxies.size() > 0);
     vtkSMPropertyHelper(this->propertySM())
       .Set(&proxies[0], static_cast<unsigned int>(proxies.size() - 1));
@@ -123,15 +130,13 @@ class pqTimeInspectorWidget::TimeTrack : public pqAnimationTrack
   unsigned long ObserverId1;
   unsigned long ObserverId2;
   std::vector<double> Markers;
-  bool HasDataTime;
-  double DataTime;
+  bool HasDataTime = false;
+  double DataTime = 0.0;
 
 public:
-  TimeTrack(vtkSMProxy* sourceProxy, QObject* parentObj = NULL)
+  TimeTrack(vtkSMProxy* sourceProxy, QObject* parentObj = nullptr)
     : Superclass(parentObj)
     , Source(sourceProxy)
-    , HasDataTime(false)
-    , DataTime(0.0)
   {
     this->ObserverId1 = sourceProxy->AddObserver(
       vtkCommand::UpdateInformationEvent, this, &TimeTrack::updateTimeSteps);
@@ -183,9 +188,9 @@ protected:
     pqAnimationModel* model = this->animationModel();
     foreach (double mark, this->Markers)
     {
-      if (mark >= model->startTime() && mark <= model->endTime())
+      if (mark >= model->zoomStartTime() && mark <= model->zoomEndTime())
       {
-        mark = (mark - model->startTime()) / (model->endTime() - model->startTime());
+        mark = (mark - model->zoomStartTime()) / (model->zoomEndTime() - model->zoomStartTime());
         mark = trackRectF.left() + mark * trackRectF.width();
         QLineF line(mark, trackRectF.top() + 10, mark, trackRectF.top() + trackRectF.height() - 10);
         p->drawLine(line);
@@ -193,10 +198,10 @@ protected:
     }
     if (this->HasDataTime)
     {
-      if (this->DataTime >= model->startTime() && this->DataTime <= model->endTime())
+      if (this->DataTime >= model->zoomStartTime() && this->DataTime <= model->zoomEndTime())
       {
-        double time =
-          (this->DataTime - model->startTime()) / (model->endTime() - model->startTime());
+        double time = (this->DataTime - model->zoomStartTime()) /
+          (model->zoomEndTime() - model->zoomStartTime());
         time = trackRectF.left() + time * trackRectF.width();
         QLineF line(time, trackRectF.top() + 3, time, trackRectF.top() + trackRectF.height() - 3);
         pen.setColor(QColor("green"));
@@ -211,7 +216,7 @@ private:
   void updateTimeSteps()
   {
     this->Markers = vtkSMPropertyHelper(this->Source, "TimestepValues",
-                      /*quiet*/ true)
+      /*quiet*/ true)
                       .GetDoubleArray();
     pqAnimationModel* model = this->animationModel();
     model->update();
@@ -240,7 +245,8 @@ private:
 class pqTimeInspectorWidget::pqInternals
 {
 public:
-  void* VoidServer;
+  void* VoidServer = nullptr;
+  QPointer<pqAnimationScene> Scene;
   QPointer<pqServer> Server;
   Ui::TimeInspectorWidget Ui;
   pqPropertyLinks Links;
@@ -248,7 +254,6 @@ public:
   QList<QVariant> SuppressedTimeSources;
 
   pqInternals(pqTimeInspectorWidget* self)
-    : VoidServer(NULL)
   {
     this->Ui.setupUi(self);
     this->Ui.AnimationWidget->createDeleteHeader()->hide();
@@ -280,11 +285,26 @@ pqTimeInspectorWidget::pqTimeInspectorWidget(QWidget* parentObject)
 
   pqCoreUtilities::connect(vtkPVGeneralSettings::GetInstance(), vtkCommand::ModifiedEvent, this,
     SLOT(generalSettingsChanged()));
+
+  this->connect(pqPVApplicationCore::instance()->animationManager(),
+    SIGNAL(activeSceneChanged(pqAnimationScene*)), SLOT(setAnimationScene(pqAnimationScene*)));
+
+  pqTimelineScrollbar* timelineScrollbar = this->Internals->Ui.TimelineScrollbar;
+  timelineScrollbar->linkSpacing(this->Internals->Ui.AnimationWidget);
+  timelineScrollbar->setAnimationModel(this->Internals->Ui.AnimationWidget->animationModel());
 }
 
 //-----------------------------------------------------------------------------
-pqTimeInspectorWidget::~pqTimeInspectorWidget()
+pqTimeInspectorWidget::~pqTimeInspectorWidget() = default;
+
+//-----------------------------------------------------------------------------
+void pqTimeInspectorWidget::setAnimationScene(pqAnimationScene* scene)
 {
+  this->Internals->Scene = scene;
+  if (scene)
+  {
+    QObject::connect(scene, SIGNAL(animationTime(double)), this, SLOT(updateSceneTime()));
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -320,7 +340,7 @@ void pqTimeInspectorWidget::updateScene()
     animationModel->setStartTime(0.0);
     animationModel->setEndTime(1.0);
     animationModel->setMode(pqAnimationModel::Sequence);
-    this->Internals->Ui.AnimationTimeWidget->setAnimationScene(NULL);
+    this->Internals->Ui.AnimationTimeWidget->setAnimationScene(nullptr);
     // FIXME: remove all tracks.
     return;
   }
@@ -328,7 +348,10 @@ void pqTimeInspectorWidget::updateScene()
   vtkSMSession* session = curServer->session();
   vtkNew<vtkSMParaViewPipelineController> controller;
 
-  vtkSMProxy* sceneProxy = controller->FindAnimationScene(session);
+  pqAnimationScene* scene = this->Internals->Scene;
+
+  vtkSMProxy* sceneProxy = scene ? scene->getProxy() : nullptr;
+
   if (!sceneProxy)
   {
     // The sceneProxy may be null when cleaning up a session. Hence,
@@ -336,7 +359,7 @@ void pqTimeInspectorWidget::updateScene()
     return;
   }
 
-  this->Internals->Ui.AnimationTimeWidget->setAnimationScene(sceneProxy);
+  this->Internals->Ui.AnimationTimeWidget->setAnimationScene(scene);
 
   links.addTraceablePropertyLink(this, "sceneStartTime", SIGNAL(dummySignal()), sceneProxy,
     sceneProxy->GetProperty("StartTime"));
@@ -346,8 +369,6 @@ void pqTimeInspectorWidget::updateScene()
     this, "scenePlayMode", SIGNAL(dummySignal()), sceneProxy, sceneProxy->GetProperty("PlayMode"));
   links.addTraceablePropertyLink(this, "sceneNumberOfFrames", SIGNAL(dummySignal()), sceneProxy,
     sceneProxy->GetProperty("NumberOfFrames"));
-  links.addTraceablePropertyLink(this, "sceneCurrentTime", SIGNAL(sceneCurrentTimeChanged()),
-    sceneProxy, sceneProxy->GetProperty("AnimationTime"));
   // FIXME: update ticks based on play mode.
 
   vtkSMProxy* timeKeeper = controller->FindTimeKeeper(session);
@@ -448,13 +469,13 @@ void pqTimeInspectorWidget::setSceneTimeSteps(const QList<QVariant>& val)
       timeSteps.push_back(v.toDouble());
     }
   }
-  if (timeSteps.size() > 0)
+  if (!timeSteps.empty())
   {
     animationModel->setTickMarks(static_cast<int>(timeSteps.size()), &timeSteps[0]);
   }
   else
   {
-    animationModel->setTickMarks(0, NULL);
+    animationModel->setTickMarks(0, nullptr);
   }
 
   this->generalSettingsChanged();
@@ -561,20 +582,29 @@ QList<QVariant> pqTimeInspectorWidget::suppressedTimeSources() const
 }
 
 //-----------------------------------------------------------------------------
-double pqTimeInspectorWidget::sceneCurrentTime() const
+void pqTimeInspectorWidget::setSceneCurrentTime(double time)
 {
-  pqAnimationModel* animationModel = this->Internals->Ui.AnimationWidget->animationModel();
-  assert(animationModel);
-  return animationModel->currentTime();
+  BEGIN_UNDO_EXCLUDE();
+
+  vtkSMProxy* animationScene = this->Internals->Scene->getProxy();
+  {
+    // Use another scope to prevent modifications to the TimeKeeper from
+    // being traced.
+    SM_SCOPED_TRACE(PropertiesModified).arg("proxy", animationScene);
+    vtkSMPropertyHelper(animationScene, "AnimationTime").Set(time);
+  }
+  animationScene->UpdateVTKObjects();
+
+  END_UNDO_EXCLUDE();
 }
 
 //-----------------------------------------------------------------------------
-void pqTimeInspectorWidget::setSceneCurrentTime(double time)
+void pqTimeInspectorWidget::updateSceneTime()
 {
-  pqAnimationModel* animationModel = this->Internals->Ui.AnimationWidget->animationModel();
-  assert(animationModel);
-  animationModel->setCurrentTime(time);
-  Q_EMIT this->sceneCurrentTimeChanged();
+  double time = this->Internals->Scene->getAnimationTime();
+
+  pqAnimationModel* animModel = this->Internals->Ui.AnimationWidget->animationModel();
+  animModel->setCurrentTime(time);
 }
 
 //-----------------------------------------------------------------------------
@@ -604,7 +634,7 @@ void pqTimeInspectorWidget::toggleTrackSuppression(pqAnimationTrack* track)
     }
     this->Internals->SuppressedTimeSources = newValue;
   }
-  Q_EMIT this->suppressedTimeSourcesChanged();
+  emit this->suppressedTimeSourcesChanged();
 }
 
 //-----------------------------------------------------------------------------

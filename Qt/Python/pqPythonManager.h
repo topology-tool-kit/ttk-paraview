@@ -42,21 +42,21 @@ class pqServer;
 class pqPythonDialog;
 
 /**
-* pqPythonManager is a class to facilitate the use of a python interpreter
-* by various paraview GUI components.
-*
-* @section Roadmap Roadmap
-*
-* pqPythonManager is slated for deprecation. It's unclear there's a need for
-* such a manager anymore since Python interpreter is globally accessible via
-* vtkPythonInterpreter.
-*/
+ * pqPythonManager is a class to facilitate the use of a python interpreter
+ * by various paraview GUI components.
+ *
+ * @section Roadmap Roadmap
+ *
+ * pqPythonManager is slated for deprecation. It's unclear there's a need for
+ * such a manager anymore since Python interpreter is globally accessible via
+ * vtkPythonInterpreter.
+ */
 class PQPYTHON_EXPORT pqPythonManager : public QObject
 {
   Q_OBJECT
 
 public:
-  pqPythonManager(QObject* parent = NULL);
+  pqPythonManager(QObject* parent = nullptr);
   ~pqPythonManager() override;
 
   /**
@@ -112,7 +112,7 @@ public Q_SLOTS:
   void editMacro(const QString& fileName);
 
 private:
-  class pqInternal;
+  struct pqInternal;
   pqInternal* Internal;
 };
 #endif

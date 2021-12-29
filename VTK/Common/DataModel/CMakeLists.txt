@@ -47,6 +47,7 @@ set(classes
   vtkCubicLine
   vtkCylinder
   vtkDataAssembly
+  vtkDataAssemblyUtilities
   vtkDataObject
   vtkDataObjectCollection
   vtkDataObjectTree
@@ -222,6 +223,7 @@ set(classes
   vtkTreeDFSIterator
   vtkTreeIterator
   vtkTriQuadraticHexahedron
+  vtkTriQuadraticPyramid
   vtkTriangle
   vtkTriangleStrip
   vtkUndirectedGraph
@@ -256,8 +258,8 @@ set(template_classes
 set(headers
   vtkCellType.h
   vtkColor.h
-  vtkCompositeDataSetRange.h
   vtkCompositeDataSetNodeReference.h
+  vtkCompositeDataSetRange.h
   vtkDataArrayDispatcher.h
   vtkDataAssemblyVisitor.h
   vtkDataObjectTreeInternals.h
@@ -273,11 +275,15 @@ set(headers
   vtkVector.h
   vtkVectorOperators.h)
 
+set(templates
+  vtkCompositeDataSet.txx)
+
 set(private_templates
   vtkImageIterator.txx)
 
 vtk_module_add_module(VTK::CommonDataModel
   CLASSES           ${classes}
+  TEMPLATES         ${templates}
   TEMPLATE_CLASSES  ${template_classes}
   HEADERS           ${headers}
   PRIVATE_TEMPLATES ${private_templates})

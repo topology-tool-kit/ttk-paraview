@@ -141,13 +141,13 @@ void pqTextureComboBox::onCurrentIndexChanged(int index)
 void pqTextureComboBox::loadTexture()
 {
   QString filters = "Image files (*.png *.jpg *.bmp *.ppm *.tiff *.hdr);;All files (*)";
-  pqFileDialog dialog(0, this, tr("Open Texture:"), QString(), filters);
+  pqFileDialog dialog(nullptr, this, tr("Open Texture:"), QString(), filters);
   dialog.setObjectName("LoadTextureDialog");
   dialog.setFileMode(pqFileDialog::ExistingFile);
   if (dialog.exec())
   {
     QStringList files = dialog.getSelectedFiles();
-    if (files.size() > 0)
+    if (!files.empty())
     {
       if (this->loadTexture(files[0]))
       {

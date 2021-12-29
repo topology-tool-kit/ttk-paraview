@@ -16,24 +16,10 @@
 
 #include "vtkArrayDispatch.h"
 #include "vtkArrayIteratorIncludes.h"
-#include "vtkAssume.h"
-#include "vtkCell.h"
-#include "vtkCharArray.h"
 #include "vtkDataArrayRange.h"
-#include "vtkDoubleArray.h"
-#include "vtkFloatArray.h"
-#include "vtkIdTypeArray.h"
-#include "vtkInformation.h"
-#include "vtkIntArray.h"
-#include "vtkLongArray.h"
-#include "vtkMath.h"
 #include "vtkObjectFactory.h"
-#include "vtkShortArray.h"
 #include "vtkStructuredExtent.h"
-#include "vtkUnsignedCharArray.h"
-#include "vtkUnsignedIntArray.h"
-#include "vtkUnsignedLongArray.h"
-#include "vtkUnsignedShortArray.h"
+
 #include <vector>
 
 vtkStandardNewMacro(vtkDataSetAttributes);
@@ -418,8 +404,8 @@ void vtkDataSetAttributes::PassData(vtkFieldData* fd)
       }
     }
 
-    int i, arrayIndex;
-    for (i = it.BeginIndex(); !it.End(); i = it.NextIndex())
+    int arrayIndex;
+    for (const auto& i : it)
     {
       arrayIndex = this->AddArray(dsa->GetAbstractArray(i));
       // If necessary, make the array an attribute
@@ -607,10 +593,7 @@ void vtkDataSetAttributesCopyValues(vtkArrayIteratorTemplate<vtkStdString>* dest
 void vtkDataSetAttributes::CopyStructuredData(
   vtkDataSetAttributes* fromPd, const int* inExt, const int* outExt, bool setSize)
 {
-  int i;
-
-  for (i = this->RequiredArrays.BeginIndex(); !this->RequiredArrays.End();
-       i = this->RequiredArrays.NextIndex())
+  for (const auto& i : this->RequiredArrays)
   {
     vtkAbstractArray* inArray = fromPd->Data[i];
     vtkAbstractArray* outArray = this->Data[this->TargetIndices[i]];
@@ -686,7 +669,6 @@ void vtkDataSetAttributes::InternalCopyAllocate(vtkDataSetAttributes* pd, int ct
   vtkIdType ext, int shallowCopyArrays, bool createNewArrays)
 {
   vtkAbstractArray* newAA;
-  int i;
 
   // Create various point data depending upon input
   //
@@ -707,19 +689,18 @@ void vtkDataSetAttributes::InternalCopyAllocate(vtkDataSetAttributes* pd, int ct
   }
   delete[] this->TargetIndices;
   this->TargetIndices = new int[pd->GetNumberOfArrays()];
-  for (i = 0; i < pd->GetNumberOfArrays(); i++)
+  for (int i = 0; i < pd->GetNumberOfArrays(); i++)
   {
     this->TargetIndices[i] = -1;
   }
 
   vtkAbstractArray* aa = nullptr;
+  int attributeType;
+
   // If we are not copying on self
   if ((pd != this) && createNewArrays)
   {
-    int attributeType;
-
-    for (i = this->RequiredArrays.BeginIndex(); !this->RequiredArrays.End();
-         i = this->RequiredArrays.NextIndex())
+    for (const auto& i : this->RequiredArrays)
     {
       // Create all required arrays
       aa = pd->GetAbstractArray(i);
@@ -771,8 +752,7 @@ void vtkDataSetAttributes::InternalCopyAllocate(vtkDataSetAttributes* pd, int ct
   {
     // If copying on self, resize the arrays and initialize
     // TargetIndices
-    for (i = this->RequiredArrays.BeginIndex(); !this->RequiredArrays.End();
-         i = this->RequiredArrays.NextIndex())
+    for (const auto& i : this->RequiredArrays)
     {
       aa = pd->GetAbstractArray(i);
       aa->Resize(sze);
@@ -784,8 +764,7 @@ void vtkDataSetAttributes::InternalCopyAllocate(vtkDataSetAttributes* pd, int ct
     // All we are asked to do is create a mapping.
     // Here we assume that arrays are the same and ordered
     // the same way.
-    for (i = this->RequiredArrays.BeginIndex(); !this->RequiredArrays.End();
-         i = this->RequiredArrays.NextIndex())
+    for (const auto& i : this->RequiredArrays)
     {
       this->TargetIndices[i] = i;
     }
@@ -821,9 +800,7 @@ void vtkDataSetAttributes::RemoveArray(int index)
 // been invoked before using this method.
 void vtkDataSetAttributes::CopyData(vtkDataSetAttributes* fromPd, vtkIdType fromId, vtkIdType toId)
 {
-  int i;
-  for (i = this->RequiredArrays.BeginIndex(); !this->RequiredArrays.End();
-       i = this->RequiredArrays.NextIndex())
+  for (const auto& i : this->RequiredArrays)
   {
     this->CopyTuple(fromPd->Data[i], this->Data[this->TargetIndices[i]], fromId, toId);
   }
@@ -833,9 +810,7 @@ void vtkDataSetAttributes::CopyData(vtkDataSetAttributes* fromPd, vtkIdType from
 void vtkDataSetAttributes::CopyData(
   vtkDataSetAttributes* fromPd, vtkIdList* fromIds, vtkIdList* toIds)
 {
-  int i;
-  for (i = this->RequiredArrays.BeginIndex(); !this->RequiredArrays.End();
-       i = this->RequiredArrays.NextIndex())
+  for (const auto& i : this->RequiredArrays)
   {
     this->CopyTuples(fromPd->Data[i], this->Data[this->TargetIndices[i]], fromIds, toIds);
   }
@@ -845,8 +820,7 @@ void vtkDataSetAttributes::CopyData(
 void vtkDataSetAttributes::CopyData(
   vtkDataSetAttributes* fromPd, vtkIdType dstStart, vtkIdType n, vtkIdType srcStart)
 {
-  for (int i = this->RequiredArrays.BeginIndex(); !this->RequiredArrays.End();
-       i = this->RequiredArrays.NextIndex())
+  for (const auto& i : this->RequiredArrays)
   {
     this->CopyTuples(fromPd->Data[i], this->Data[this->TargetIndices[i]], dstStart, n, srcStart);
   }
@@ -872,8 +846,7 @@ void vtkDataSetAttributes::InterpolateAllocate(
 void vtkDataSetAttributes::InterpolatePoint(
   vtkDataSetAttributes* fromPd, vtkIdType toId, vtkIdList* ptIds, double* weights)
 {
-  for (int i = this->RequiredArrays.BeginIndex(); !this->RequiredArrays.End();
-       i = this->RequiredArrays.NextIndex())
+  for (const auto& i : this->RequiredArrays)
   {
     vtkAbstractArray* fromArray = fromPd->Data[i];
     vtkAbstractArray* toArray = this->Data[this->TargetIndices[i]];
@@ -899,7 +872,7 @@ void vtkDataSetAttributes::InterpolatePoint(
     {
       toArray->InterpolateTuple(toId, ptIds, fromArray, weights);
     }
-  }
+  } // for all arrays to interpolate
 }
 
 //------------------------------------------------------------------------------
@@ -910,8 +883,7 @@ void vtkDataSetAttributes::InterpolatePoint(
 void vtkDataSetAttributes::InterpolateEdge(
   vtkDataSetAttributes* fromPd, vtkIdType toId, vtkIdType p1, vtkIdType p2, double t)
 {
-  for (int i = this->RequiredArrays.BeginIndex(); !this->RequiredArrays.End();
-       i = this->RequiredArrays.NextIndex())
+  for (const auto& i : this->RequiredArrays)
   {
     vtkAbstractArray* fromArray = fromPd->Data[i];
     vtkAbstractArray* toArray = this->Data[this->TargetIndices[i]];
@@ -1301,7 +1273,7 @@ int vtkDataSetAttributes::SetActiveAttribute(int index, int attributeType)
           << ". Only vtkDataArray subclasses can be set as active attributes.");
         return -1;
       }
-      if (!this->CheckNumberOfComponents(darray, attributeType))
+      if (!vtkDataSetAttributes::CheckNumberOfComponents(darray, attributeType))
       {
         vtkWarningMacro("Can not set attribute "
           << vtkDataSetAttributes::AttributeNames[attributeType]

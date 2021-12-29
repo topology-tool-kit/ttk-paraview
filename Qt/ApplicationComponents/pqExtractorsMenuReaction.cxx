@@ -76,9 +76,7 @@ pqExtractorsMenuReaction::pqExtractorsMenuReaction(
 }
 
 //-----------------------------------------------------------------------------
-pqExtractorsMenuReaction::~pqExtractorsMenuReaction()
-{
-}
+pqExtractorsMenuReaction::~pqExtractorsMenuReaction() = default;
 
 //-----------------------------------------------------------------------------
 void pqExtractorsMenuReaction::updateEnableState(bool)
@@ -156,7 +154,7 @@ void pqExtractorsMenuReaction::updateEnableState(bool)
           input->AddUncheckedInputConnection(port->getSource()->getProxy(), port->getPortNumber());
         }
 
-        vtkSMDomain* domain = NULL;
+        vtkSMDomain* domain = nullptr;
         if (input && !input->IsInDomains(&domain)) // Wrong input domain
         {
           actn->setStatusTip(pqMenuReactionUtils::getDomainDisplayText(domain));
@@ -184,7 +182,7 @@ pqExtractor* pqExtractorsMenuReaction::createExtractor(
   auto view = activeObjects.activeView() ? activeObjects.activeView()->getProxy() : nullptr;
   auto port =
     activeObjects.activePort() ? activeObjects.activePort()->getOutputPortProxy() : nullptr;
-  auto prototype = pxm->GetPrototypeProxy(group.toLocal8Bit().data(), name.toLocal8Bit().data());
+  auto prototype = pxm->GetPrototypeProxy(group.toUtf8().data(), name.toUtf8().data());
 
   vtkNew<vtkSMExtractsController> controller;
   vtkSMProxy* input = nullptr;
@@ -202,7 +200,7 @@ pqExtractor* pqExtractorsMenuReaction::createExtractor(
   }
 
   BEGIN_UNDO_SET(QString("Create Extract Generator '%1'").arg(name));
-  auto generator = controller->CreateExtractor(input, name.toLocal8Bit());
+  auto generator = controller->CreateExtractor(input, name.toUtf8());
   END_UNDO_SET();
   auto smmodel = pqApplicationCore::instance()->getServerManagerModel();
   return generator ? smmodel->findItem<pqExtractor*>(generator) : nullptr;

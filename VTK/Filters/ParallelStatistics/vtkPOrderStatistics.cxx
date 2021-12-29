@@ -19,7 +19,6 @@ PURPOSE.  See the above copyright notice for more information.
   -------------------------------------------------------------------------*/
 
 #include "vtkPOrderStatistics.h"
-#include "vtkToolkits.h"
 
 #include "vtkCommunicator.h"
 #include "vtkIdTypeArray.h"
@@ -42,14 +41,14 @@ vtkCxxSetObjectMacro(vtkPOrderStatistics, Controller, vtkMultiProcessController)
 //------------------------------------------------------------------------------
 vtkPOrderStatistics::vtkPOrderStatistics()
 {
-  this->Controller = 0;
+  this->Controller = nullptr;
   this->SetController(vtkMultiProcessController::GetGlobalController());
 }
 
 //------------------------------------------------------------------------------
 vtkPOrderStatistics::~vtkPOrderStatistics()
 {
-  this->SetController(0);
+  this->SetController(nullptr);
 }
 
 //------------------------------------------------------------------------------
@@ -120,7 +119,7 @@ static void StringBufferToStringVector(
     {
       if (!*finish)
       {
-        strings.push_back(vtkStdString(start));
+        strings.emplace_back(start);
         start = finish;
         break;
       }
@@ -283,7 +282,7 @@ void vtkPOrderStatistics::Learn(
       }
 
       // Allocate receive buffer on reducer process, based on the global size obtained above
-      char* sPack_g = 0;
+      char* sPack_g = nullptr;
       if (myRank == rProc)
       {
         sPack_g = new char[ncTotal];

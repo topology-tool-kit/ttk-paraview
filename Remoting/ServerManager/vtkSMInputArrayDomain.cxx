@@ -33,19 +33,16 @@ bool vtkSMInputArrayDomain::AutomaticPropertyConversion = false;
 
 //---------------------------------------------------------------------------
 static const char* const vtkSMInputArrayDomainAttributeTypes[] = { "point", "cell", "field",
-  "any-except-field", "vertex", "edge", "row", "any", NULL };
+  "any-except-field", "vertex", "edge", "row", "any", nullptr };
 
 //---------------------------------------------------------------------------
 vtkSMInputArrayDomain::vtkSMInputArrayDomain()
   : AttributeType(vtkSMInputArrayDomain::ANY_EXCEPT_FIELD)
-  , DataType()
 {
 }
 
 //---------------------------------------------------------------------------
-vtkSMInputArrayDomain::~vtkSMInputArrayDomain()
-{
-}
+vtkSMInputArrayDomain::~vtkSMInputArrayDomain() = default;
 
 //---------------------------------------------------------------------------
 int vtkSMInputArrayDomain::IsInDomain(vtkSMProperty* property)
@@ -137,33 +134,22 @@ int vtkSMInputArrayDomain::IsInDomain(vtkSMSourceProxy* proxy, unsigned int outp
 
 //----------------------------------------------------------------------------
 bool vtkSMInputArrayDomain::IsAttributeTypeAcceptable(
-  int required_type, int attribute_type, int* acceptable_as_type /*=NULL*/)
+  int required_type, int attribute_type, int* acceptable_as_type /*=nullptr*/)
 {
   if (acceptable_as_type)
   {
     *acceptable_as_type = attribute_type;
   }
 
-  if (required_type == ANY)
+  if (required_type == ANY_EXCEPT_FIELD && attribute_type == FIELD)
+  {
+    return false;
+  }
+
+  if (required_type == ANY || required_type == ANY_EXCEPT_FIELD)
   {
     return attribute_type == POINT || attribute_type == CELL || attribute_type == FIELD ||
       attribute_type == EDGE || attribute_type == VERTEX || attribute_type == ROW;
-  }
-
-  if (required_type == ANY_EXCEPT_FIELD)
-  {
-    // Try out all attribute types except field data sequentially.
-    int attribute_types_to_try[] = { vtkDataObject::POINT, vtkDataObject::CELL,
-      vtkDataObject::VERTEX, vtkDataObject::EDGE, vtkDataObject::ROW, -1 };
-    for (int cc = 0; attribute_types_to_try[cc] != -1; ++cc)
-    {
-      if (vtkSMInputArrayDomain::IsAttributeTypeAcceptable(
-            attribute_types_to_try[cc], attribute_type, acceptable_as_type))
-      {
-        return true;
-      }
-    }
-    return false;
   }
 
   switch (attribute_type)
@@ -216,7 +202,7 @@ bool vtkSMInputArrayDomain::IsAttributeTypeAcceptable(
 //----------------------------------------------------------------------------
 int vtkSMInputArrayDomain::IsArrayAcceptable(vtkPVArrayInformation* arrayInfo)
 {
-  if (arrayInfo == NULL)
+  if (arrayInfo == nullptr)
   {
     return -1;
   }
@@ -225,7 +211,7 @@ int vtkSMInputArrayDomain::IsArrayAcceptable(vtkPVArrayInformation* arrayInfo)
 
   // Empty AcceptableNumbersOfComponents means any number of components
   // are acceptable
-  if (this->AcceptableNumbersOfComponents.size() == 0)
+  if (this->AcceptableNumbersOfComponents.empty())
   {
     return numberOfComponents;
   }
@@ -260,7 +246,8 @@ int vtkSMInputArrayDomain::IsArrayAcceptable(vtkPVArrayInformation* arrayInfo)
 //----------------------------------------------------------------------------
 bool vtkSMInputArrayDomain::IsAttributeTypeAcceptable(int attributeType)
 {
-  return vtkSMInputArrayDomain::IsAttributeTypeAcceptable(this->AttributeType, attributeType, NULL);
+  return vtkSMInputArrayDomain::IsAttributeTypeAcceptable(
+    this->AttributeType, attributeType, nullptr);
 }
 
 //----------------------------------------------------------------------------
@@ -342,7 +329,7 @@ const char* vtkSMInputArrayDomain::GetAttributeTypeAsString()
 //---------------------------------------------------------------------------
 void vtkSMInputArrayDomain::SetAttributeType(const char* type)
 {
-  if (type == NULL)
+  if (type == nullptr)
   {
     vtkErrorMacro("No type specified");
     return;
@@ -412,7 +399,7 @@ void vtkSMInputArrayDomain::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
   os << indent << "AcceptableNumbersOfComponents: ";
-  if (this->AcceptableNumbersOfComponents.size() == 0)
+  if (this->AcceptableNumbersOfComponents.empty())
   {
     os << "0" << endl;
   }

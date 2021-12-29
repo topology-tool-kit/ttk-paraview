@@ -16,24 +16,27 @@
 
 #include "vtkAlgorithm.h"
 #include "vtkErrorCode.h"
+#include "vtkFloatArray.h"
 #include "vtkImageData.h"
 #include "vtkMultiProcessController.h"
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
 #include "vtkPVLogger.h"
+#include "vtkPVRenderView.h"
 #include "vtkPVXMLElement.h"
+#include "vtkPointData.h"
 #include "vtkProcessModule.h"
 #include "vtkRenderWindow.h"
 #include "vtkSMParaViewPipelineControllerWithRendering.h"
 #include "vtkSMProperty.h"
 #include "vtkSMPropertyHelper.h"
 #include "vtkSMProxyListDomain.h"
+#include "vtkSMRenderViewProxy.h"
 #include "vtkSMSession.h"
 #include "vtkSMSessionProxyManager.h"
 #include "vtkSMSourceProxy.h"
 #include "vtkSMTrace.h"
 #include "vtkSMViewLayoutProxy.h"
-#include "vtkSMViewProxy.h"
 #include "vtkSmartPointer.h"
 #include "vtkTimerLog.h"
 #include "vtkVectorOperators.h"
@@ -188,7 +191,7 @@ public:
    */
   void SetColorPalette(const char* palette)
   {
-    if (palette == NULL || palette[0] == '\0')
+    if (palette == nullptr || palette[0] == '\0')
     {
       return;
     }
@@ -248,9 +251,9 @@ public:
 
   void SetTransparentBackground(bool val) { vtkSMViewProxy::SetTransparentBackground(val); }
 
-  std::pair<vtkSmartPointer<vtkImageData>, vtkSmartPointer<vtkImageData> > CaptureImages()
+  std::pair<vtkSmartPointer<vtkImageData>, vtkSmartPointer<vtkImageData>> CaptureImages()
   {
-    std::pair<vtkSmartPointer<vtkImageData>, vtkSmartPointer<vtkImageData> > result;
+    std::pair<vtkSmartPointer<vtkImageData>, vtkSmartPointer<vtkImageData>> result;
     if (this->BothEyes)
     {
       vtkVLogScopeF(PARAVIEW_LOG_RENDERING_VERBOSITY(), "Capture stereo images");
@@ -331,12 +334,15 @@ private:
 class vtkSMSaveScreenshotProxy::vtkStateView : public vtkSMSaveScreenshotProxy::vtkState
 {
   vtkWeakPointer<vtkSMViewProxy> View;
+  bool UseFloatingPointBuffers;
+
   typedef vtkSMSaveScreenshotProxy::vtkState Superclass;
 
 public:
   vtkStateView(vtkSMViewProxy* view)
     : Superclass(view->GetSessionProxyManager())
     , View(view)
+    , UseFloatingPointBuffers(false)
   {
   }
 
@@ -358,11 +364,34 @@ public:
   vtkSmartPointer<vtkImageData> CaptureImage() override
   {
     vtkSmartPointer<vtkImageData> img;
-    img.TakeReference(this->View->CaptureWindow(this->Magnification[0], this->Magnification[1]));
+    auto rv = vtkPVRenderView::SafeDownCast(this->View->GetClientSideObject());
+    if (rv && this->UseFloatingPointBuffers)
+    {
+      this->View->StillRender();
+      auto array = rv->GrabValuePassResult();
+      auto size = this->GetSize();
+      if (array != nullptr && array->GetNumberOfTuples() == (size[0] * size[1]))
+      {
+        img.TakeReference(vtkImageData::New());
+        img->SetDimensions(size[0], size[1], 1);
+        img->GetPointData()->SetScalars(array);
+      }
+      else
+      {
+        vtkLogF(ERROR, "Failed to grab values buffer correctly! array=%p, count=%d, dx=%d, dy=%d",
+          array.GetPointer(), array ? (int)array->GetNumberOfTuples() : 0, size[0], size[1]);
+      }
+    }
+    else
+    {
+      img.TakeReference(this->View->CaptureWindow(this->Magnification[0], this->Magnification[1]));
+    }
     return img;
   }
 
   void SetFontScaling(int mode) override { this->SetViewFontScaling(this->View, mode); }
+
+  void SetUseFloatingPointBuffers(bool value) { this->UseFloatingPointBuffers = value; }
 
 protected:
   void UpdateStereoMode(int mode, bool restoreable) override
@@ -460,7 +489,8 @@ protected:
 vtkStandardNewMacro(vtkSMSaveScreenshotProxy);
 //----------------------------------------------------------------------------
 vtkSMSaveScreenshotProxy::vtkSMSaveScreenshotProxy()
-  : State(NULL)
+  : State(nullptr)
+  , UseFloatingPointBuffers(false)
 {
 }
 
@@ -468,7 +498,7 @@ vtkSMSaveScreenshotProxy::vtkSMSaveScreenshotProxy()
 vtkSMSaveScreenshotProxy::~vtkSMSaveScreenshotProxy()
 {
   delete this->State;
-  this->State = NULL;
+  this->State = nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -511,8 +541,8 @@ bool vtkSMSaveScreenshotProxy::WriteImage(const char* fname, vtkTypeUInt32 locat
   vtkSMViewProxy* view = this->GetView();
 
   // view and layout are mutually exclusive.
-  assert(layout == NULL || view == NULL);
-  if (layout == NULL && view == NULL)
+  assert(layout == nullptr || view == nullptr);
+  if (layout == nullptr && view == nullptr)
   {
     vtkErrorMacro("Cannot WriteImage without a view or layout.");
     return false;
@@ -526,10 +556,12 @@ bool vtkSMSaveScreenshotProxy::WriteImage(const char* fname, vtkTypeUInt32 locat
   }
 
   SM_SCOPED_TRACE(SaveLayoutSizes)
-    .arg("proxy", view != NULL ? static_cast<vtkSMProxy*>(view) : static_cast<vtkSMProxy*>(layout));
+    .arg(
+      "proxy", view != nullptr ? static_cast<vtkSMProxy*>(view) : static_cast<vtkSMProxy*>(layout));
 
   SM_SCOPED_TRACE(SaveCameras)
-    .arg("proxy", view != NULL ? static_cast<vtkSMProxy*>(view) : static_cast<vtkSMProxy*>(layout));
+    .arg(
+      "proxy", view != nullptr ? static_cast<vtkSMProxy*>(view) : static_cast<vtkSMProxy*>(layout));
 
   SM_SCOPED_TRACE(SaveScreenshotOrAnimation)
     .arg("helper", this)
@@ -543,6 +575,23 @@ bool vtkSMSaveScreenshotProxy::WriteImage(const char* fname, vtkTypeUInt32 locat
     vtkErrorMacro("Failed to prepare to capture image.");
     return false;
   }
+
+  // Some experimental code to add the ability to capture floating point buffers
+  // instead of RGB(A) images.
+  if (this->UseFloatingPointBuffers)
+  {
+    if (view == nullptr)
+    {
+      vtkErrorMacro("UseFloatingPointBuffers is only supported when using a single view.");
+    }
+    else
+    {
+      auto state = dynamic_cast<vtkStateView*>(this->State);
+      assert(state != nullptr);
+      state->SetUseFloatingPointBuffers(true);
+    }
+  }
+
   auto image_pair = this->CapturePreppedImages();
   this->Cleanup();
 
@@ -606,10 +655,10 @@ vtkSmartPointer<vtkImageData> vtkSMSaveScreenshotProxy::CaptureImage()
   if (!this->Prepare())
   {
     vtkErrorMacro("Failed to prepare to capture image.");
-    return NULL;
+    return nullptr;
   }
 
-  assert(this->State != NULL);
+  assert(this->State != nullptr);
   vtkSmartPointer<vtkImageData> img = this->CapturePreppedImages().first;
 
   this->Cleanup();
@@ -617,10 +666,10 @@ vtkSmartPointer<vtkImageData> vtkSMSaveScreenshotProxy::CaptureImage()
 }
 
 //----------------------------------------------------------------------------
-std::pair<vtkSmartPointer<vtkImageData>, vtkSmartPointer<vtkImageData> >
+std::pair<vtkSmartPointer<vtkImageData>, vtkSmartPointer<vtkImageData>>
 vtkSMSaveScreenshotProxy::CapturePreppedImages()
 {
-  assert(this->State != NULL);
+  assert(this->State != nullptr);
   return this->State->CaptureImages();
 }
 
@@ -755,7 +804,7 @@ vtkSMViewLayoutProxy* vtkSMSaveScreenshotProxy::GetLayout()
   {
     return vtkSMViewLayoutProxy::SafeDownCast(vtkSMPropertyHelper(this, "Layout").GetAsProxy());
   }
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -765,7 +814,7 @@ vtkSMViewProxy* vtkSMSaveScreenshotProxy::GetView()
   {
     return vtkSMViewProxy::SafeDownCast(vtkSMPropertyHelper(this, "View").GetAsProxy());
   }
-  return NULL;
+  return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -775,14 +824,14 @@ bool vtkSMSaveScreenshotProxy::Prepare()
   vtkSMViewProxy* view = this->GetView();
 
   // view and layout are mutually exclusive.
-  assert(layout == NULL || view == NULL);
-  if (layout == NULL && view == NULL)
+  assert(layout == nullptr || view == nullptr);
+  if (layout == nullptr && view == nullptr)
   {
     vtkErrorMacro("Cannot `CaptureImage` without a view or layout.");
     return false;
   }
 
-  assert(this->State == NULL);
+  assert(this->State == nullptr);
   if (layout)
   {
     this->State = new vtkStateLayout(layout);
@@ -815,9 +864,9 @@ bool vtkSMSaveScreenshotProxy::Prepare()
 //----------------------------------------------------------------------------
 bool vtkSMSaveScreenshotProxy::Cleanup()
 {
-  assert(this->State != NULL);
+  assert(this->State != nullptr);
   delete this->State;
-  this->State = NULL;
+  this->State = nullptr;
   return true;
 }
 
@@ -835,7 +884,7 @@ void vtkSMSaveScreenshotProxy::UpdateDefaultsAndVisibilities(const char* filenam
 
   vtkSMViewLayoutProxy* layout =
     vtkSMViewLayoutProxy::SafeDownCast(vtkSMPropertyHelper(this, "Layout").GetAsProxy());
-  if (layout == NULL || (layout->GetViews().size() <= 1))
+  if (layout == nullptr || (layout->GetViews().size() <= 1))
   {
     this->GetProperty("SaveAllViews")->SetPanelVisibility("never");
     this->GetProperty("SeparatorWidth")->SetPanelVisibility("never");
@@ -903,9 +952,9 @@ vtkSmartPointer<vtkImageData> vtkSMSaveScreenshotProxy::CaptureImage(
 
 namespace detail
 {
-std::pair<std::string, std::vector<std::string> > GetFormatOptions(vtkSMProxy* proxy)
+std::pair<std::string, std::vector<std::string>> GetFormatOptions(vtkSMProxy* proxy)
 {
-  using pair_type = std::pair<std::string, std::vector<std::string> >;
+  using pair_type = std::pair<std::string, std::vector<std::string>>;
   vtkPVXMLElement* hints =
     proxy->GetHints() ? proxy->GetHints()->FindNestedElementByName("FormatOptions") : nullptr;
   if (hints && hints->GetAttribute("extensions") && hints->GetAttribute("file_description"))
@@ -930,7 +979,7 @@ std::string vtkSMSaveScreenshotProxy::GetFileFormatFilters()
           pxm->GetPrototypeProxy(proxyType.GroupName.c_str(), proxyType.ProxyName.c_str()))
     {
       const auto options = detail::GetFormatOptions(formatProxy);
-      if (options.second.size() == 0)
+      if (options.second.empty())
       {
         continue;
       }
@@ -960,7 +1009,7 @@ vtkSMProxy* vtkSMSaveScreenshotProxy::GetFormatProxy(const std::string& filename
 {
   auto extension = vtksys::SystemTools::GetFilenameLastExtension(filename);
   extension.erase(0, 1);
-  if (extension.size() == 0)
+  if (extension.empty())
   {
     vtkErrorMacro("Unknown file format for '" << filename << "'.");
   }
@@ -972,7 +1021,7 @@ vtkSMProxy* vtkSMSaveScreenshotProxy::GetFormatProxy(const std::string& filename
           pxm->GetPrototypeProxy(proxyType.GroupName.c_str(), proxyType.ProxyName.c_str()))
     {
       const auto options = detail::GetFormatOptions(formatProxy);
-      if (options.second.size() > 0)
+      if (!options.second.empty())
       {
         const auto& exts = options.second;
         auto iter = std::find(exts.begin(), exts.end(), extension);
@@ -1006,4 +1055,5 @@ std::string vtkSMSaveScreenshotProxy::GetStereoFileName(const std::string& filen
 void vtkSMSaveScreenshotProxy::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
+  os << indent << "UseFloatingPointBuffers: " << this->UseFloatingPointBuffers << endl;
 }

@@ -1,4 +1,5 @@
 set(classes
+  vtkAnimateModes
   vtkAnnotationLink
   vtkAppendLocationAttributes
   vtkAppendPoints
@@ -39,7 +40,9 @@ set(classes
   vtkDiscreteMarchingCubes
   vtkDistancePolyDataFilter
   vtkEdgePoints
+  vtkEqualizerFilter
   vtkExtractArray
+  vtkExtractGhostCells
   vtkExtractSelectedFrustum
   vtkExtractSelectionBase
   vtkGradientFilter
@@ -47,6 +50,8 @@ set(classes
   vtkGraphToPoints
   vtkGraphWeightEuclideanDistanceFilter
   vtkGraphWeightFilter
+  vtkGroupDataSetsFilter
+  vtkGroupTimeStepsFilter
   vtkHierarchicalDataLevelFilter
   vtkHyperStreamline
   vtkIconGlyphFilter
@@ -62,6 +67,8 @@ set(classes
   vtkMatricizeArray
   vtkMergeArrays
   vtkMergeCells
+  vtkMergeTimeFilter
+  vtkMergeVectorComponents
   vtkMultiBlockDataGroupFilter
   vtkMultiBlockFromTimeSeriesFilter
   vtkMultiBlockMergeFilter
@@ -102,6 +109,7 @@ set(classes
   vtkSubdivisionFilter
   vtkSynchronizeTimeFilter
   vtkTableBasedClipDataSet
+  vtkTableFFT
   vtkTableToPolyData
   vtkTableToStructuredGrid
   vtkTemporalPathLineFilter

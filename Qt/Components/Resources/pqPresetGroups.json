@@ -17,7 +17,7 @@
       "Rainbow Desaturated",
       "Yellow - Gray - Blue",
       "Rainbow Uniform",
-      "Jet"
+      "Turbo"
     ]
   },
   {
@@ -51,6 +51,7 @@
       "erdc_blue2gold",
       "Blue to Yellow",
       "blue2yellow",
+      "Cividis",
       "CIELab Blue to Red",
       "BuGn",
       "GnBuPu",
@@ -136,6 +137,7 @@
     "presets": [
       "Rainbow Desaturated",
       "Rainbow Uniform",
+      "Turbo",
       "Jet",
       "Blue to Red Rainbow",
       "Rainbow Blended White",

@@ -219,7 +219,7 @@ void vtkDataLabelRepresentation::SetPointLabelFormat(const char* format)
   }
   else
   {
-    this->PointLabelMapper->SetLabelFormat(NULL);
+    this->PointLabelMapper->SetLabelFormat(nullptr);
   }
 }
 
@@ -304,7 +304,7 @@ void vtkDataLabelRepresentation::SetCellLabelFormat(const char* format)
   }
   else
   {
-    this->CellLabelMapper->SetLabelFormat(NULL);
+    this->CellLabelMapper->SetLabelFormat(nullptr);
   }
 }
 

@@ -55,9 +55,9 @@ class PQWIDGETS_EXPORT pqDoubleRangeWidget : public pqDoubleSliderWidget
 
 public:
   /**
-  * constructor requires the proxy, property
-  */
-  pqDoubleRangeWidget(QWidget* parent = NULL);
+   * constructor requires the proxy, property
+   */
+  pqDoubleRangeWidget(QWidget* parent = nullptr);
   ~pqDoubleRangeWidget() override;
 
   // get the min range value

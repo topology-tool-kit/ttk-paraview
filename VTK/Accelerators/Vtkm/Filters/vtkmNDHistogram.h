@@ -36,8 +36,9 @@
 
 #include "vtkAcceleratorsVTKmFiltersModule.h" // required for correct export
 #include "vtkArrayDataAlgorithm.h"
-#include <utility>
-#include <vector>
+#include <string>  // for std::string
+#include <utility> // for std::pair
+#include <vector>  // for std::vector
 
 class VTKACCELERATORSVTKMFILTERS_EXPORT vtkmNDHistogram : public vtkArrayDataAlgorithm
 {
@@ -77,5 +78,3 @@ private:
 };
 
 #endif // vtkmNDHistogram_h
-
-// VTK-HeaderTest-Exclude: vtkmNDHistogram.h

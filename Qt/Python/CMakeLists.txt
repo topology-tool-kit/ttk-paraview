@@ -29,13 +29,25 @@
 #
 #==========================================================================
 set(classes
+  pqLinkedObjectPythonTextArea
   pqPythonDebugLeaksView
+  pqPythonEditorActions
+  pqPythonFileIO
+  pqPythonLineNumberArea
   pqPythonMacroSupervisor
   pqPythonManager
   pqPythonScriptEditor
   pqPythonShell
   pqPythonShellCompleter
-  pqPythonSyntaxHighlighter)
+  pqPythonSyntaxHighlighter
+  pqPythonTabWidget
+  pqPythonTextArea
+  pqPythonUndoCommand
+)
+
+set(headers
+  pqTextLinkerPython.h
+)
 
 set(ui_files
   pqPythonShell.ui)
@@ -53,7 +65,9 @@ source_group("Resources" FILES
 vtk_module_add_module(ParaView::pqPython
   CLASSES ${classes}
   SOURCES ${ui_files}
-          ${resource_files})
+          ${resource_files}
+  HEADERS ${headers})
+
 vtk_module_link(ParaView::pqPython
   PRIVATE
     Qt5::Widgets)

@@ -33,9 +33,7 @@ vtkPVTrackballRotate::vtkPVTrackballRotate()
 }
 
 //-------------------------------------------------------------------------
-vtkPVTrackballRotate::~vtkPVTrackballRotate()
-{
-}
+vtkPVTrackballRotate::~vtkPVTrackballRotate() = default;
 
 //-------------------------------------------------------------------------
 void vtkPVTrackballRotate::OnButtonDown(int, int, vtkRenderer* ren, vtkRenderWindowInteractor*)
@@ -44,15 +42,13 @@ void vtkPVTrackballRotate::OnButtonDown(int, int, vtkRenderer* ren, vtkRenderWin
 }
 
 //-------------------------------------------------------------------------
-void vtkPVTrackballRotate::OnButtonUp(int, int, vtkRenderer*, vtkRenderWindowInteractor*)
-{
-}
+void vtkPVTrackballRotate::OnButtonUp(int, int, vtkRenderer*, vtkRenderWindowInteractor*) {}
 
 //-------------------------------------------------------------------------
 void vtkPVTrackballRotate::OnMouseMove(
   int x, int y, vtkRenderer* ren, vtkRenderWindowInteractor* rwi)
 {
-  if (ren == NULL)
+  if (ren == nullptr)
   {
     return;
   }

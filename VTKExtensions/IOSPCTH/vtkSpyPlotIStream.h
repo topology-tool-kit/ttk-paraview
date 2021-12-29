@@ -20,13 +20,13 @@ PURPOSE.  See the above copyright notice for more information.
  * was factored out of vtkSpyPlotReader.cxx.  The class wraps an already
  * opened istream
  *
-*/
+ */
 
 #ifndef vtkSpyPlotIStream_h
 #define vtkSpyPlotIStream_h
 #include "vtkPVVTKExtensionsIOSPCTHModule.h" //needed for exports
-#include "vtkSystemIncludes.h"
-#include "vtkType.h"
+#include "vtkSystemIncludes.h"               // for istream
+#include "vtkType.h"                         // for vtkTypeInt64
 
 class VTKPVVTKEXTENSIONSIOSPCTH_EXPORT vtkSpyPlotIStream
 {

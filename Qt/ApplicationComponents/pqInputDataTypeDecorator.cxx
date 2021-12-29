@@ -57,7 +57,7 @@ pqInputDataTypeDecorator::pqInputDataTypeDecorator(
   , ObserverId(0)
 {
   vtkSMProxy* proxy = parentObject->proxy();
-  vtkSMProperty* prop = proxy ? proxy->GetProperty("Input") : NULL;
+  vtkSMProperty* prop = proxy ? proxy->GetProperty("Input") : nullptr;
   if (!prop)
   {
     qDebug("Could not locate property named 'Input'. "
@@ -114,7 +114,7 @@ bool pqInputDataTypeDecorator::processState() const
 {
   pqPropertyWidget* parentObject = this->parentWidget();
   vtkSMProxy* proxy = parentObject->proxy();
-  vtkSMProperty* prop = proxy ? proxy->GetProperty("Input") : NULL;
+  vtkSMProperty* prop = proxy ? proxy->GetProperty("Input") : nullptr;
   if (prop)
   {
     pqPipelineSource* source =
@@ -125,20 +125,20 @@ bool pqInputDataTypeDecorator::processState() const
     {
       return false;
     }
-    pqOutputPort* cur_input = NULL;
+    pqOutputPort* cur_input = nullptr;
     QList<pqOutputPort*> ports = source->getOutputPorts();
-    cur_input = ports.size() > 0 ? ports[0] : NULL;
+    cur_input = ports.empty() ? nullptr : ports[0];
     int exclude = 0;
     this->xml()->GetScalarAttribute("exclude", &exclude);
     std::string dataname = this->xml()->GetAttribute("name");
     std::vector<std::string> parts = vtksys::SystemTools::SplitString(dataname, ' ');
-    if (cur_input && parts.size())
+    if (cur_input && !parts.empty())
     {
       vtkPVDataInformation* dataInfo = cur_input->getDataInformation();
       for (std::size_t i = 0; i < parts.size(); ++i)
       {
-        bool match = (dataInfo->IsDataStructured() && !strcmp(parts[i].c_str(), "Structured")) ||
-          (dataInfo->DataSetTypeIsA(parts[i].c_str()));
+        const bool match = (parts[i] == "Structured") ? dataInfo->IsDataStructured()
+                                                      : dataInfo->DataSetTypeIsA(parts[i].c_str());
         if (match)
         {
           return !exclude;

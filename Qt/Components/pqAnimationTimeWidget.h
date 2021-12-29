@@ -42,26 +42,26 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QWidget>
 #include <vector>
 
+class pqAnimationScene;
 class vtkSMProxy;
 
 /**
-* pqAnimationTimeWidget is a widget that can be used to show/set the current
-* animation time.
-* The widget allow the user to do the following:
-* \li View and/or change the current time value (in seq/realtime modes), or
-*     current time step value (in snap-to-timesteps mode).
-* \li View and/or change the play mode (from seq to snap-to-timesteps). While
-*     the widget behaves acceptably if the application externally changes the
-*     animation play mode to realtime, the widget itself doesn't allow the
-*     user to do that. This mode is optional. You can disabling allowing the
-*     user to change the play mode by setting playModeReadOnly to true
-*     (default is false).
-*/
+ * pqAnimationTimeWidget is a widget that can be used to show/set the current
+ * animation time.
+ * The widget allow the user to do the following:
+ * \li View and/or change the current time value (in seq/realtime modes), or
+ *     current time step value (in snap-to-timesteps mode).
+ * \li View and/or change the play mode (from seq to snap-to-timesteps). While
+ *     the widget behaves acceptably if the application externally changes the
+ *     animation play mode to realtime, the widget itself doesn't allow the
+ *     user to do that. This mode is optional. You can disabling allowing the
+ *     user to change the play mode by setting playModeReadOnly to true
+ *     (default is false).
+ */
 class PQCOMPONENTS_EXPORT pqAnimationTimeWidget : public QWidget
 {
   Q_OBJECT
   Q_ENUMS(RealNumberNotation)
-  Q_PROPERTY(double timeValue READ timeValue WRITE setTimeValue NOTIFY timeValueChanged)
   Q_PROPERTY(QString playMode READ playMode WRITE setPlayMode NOTIFY playModeChanged)
   Q_PROPERTY(bool playModeReadOnly READ playModeReadOnly WRITE setPlayModeReadOnly)
   Q_PROPERTY(QString timeLabel READ timeLabel WRITE setTimeLabel)
@@ -72,14 +72,18 @@ class PQCOMPONENTS_EXPORT pqAnimationTimeWidget : public QWidget
 public:
   pqAnimationTimeWidget(QWidget* parent = 0);
   ~pqAnimationTimeWidget() override;
-
   using RealNumberNotation = pqDoubleLineEdit::RealNumberNotation;
 
   /**
-  * Provides access to the animation scene proxy currently
-  * controlled/reflected by this widget.
-  */
+   * Provides access to the animation scene proxy currently
+   * controlled/reflected by this widget.
+   */
   vtkSMProxy* animationScene() const;
+
+  /**
+   * Set the animation scene which is reflected/controlled by this widget.
+   */
+  void setAnimationScene(pqAnimationScene* animationScene);
 
   //@{
   /**
@@ -90,13 +94,10 @@ public:
   const QList<QVariant>& timestepValues() const;
   //@}
 
-  //@{
   /**
-  * Get/set the current time value.
-  */
-  void setTimeValue(double time);
-  double timeValue() const;
-  //@}
+   * Set the current animation time
+   */
+  void setCurrentTime(double t);
 
   /**
    * Return the notation used to display the number.
@@ -112,25 +113,25 @@ public:
 
   //@{
   /**
-  * Get/set the animation playback mode.
-  */
+   * Get/set the animation playback mode.
+   */
   void setPlayMode(const QString& mode);
   QString playMode() const;
   //@}
 
   //@{
   /**
-  * Get/set whether the user should be able to change the animation
-  * play mode using this widget.
-  */
+   * Get/set whether the user should be able to change the animation
+   * play mode using this widget.
+   */
   void setPlayModeReadOnly(bool val);
   bool playModeReadOnly() const;
   //@}
 
   //@{
   /**
-  * Get/set the label text to use for the "time" parameter.
-  */
+   * Get/set the label text to use for the "time" parameter.
+   */
   void setTimeLabel(const QString& val);
   QString timeLabel() const;
   //@}
@@ -155,17 +156,10 @@ public:
   //@}
 
 Q_SIGNALS:
-  void timeValueChanged();
   void playModeChanged();
   void dummySignal();
 
 public Q_SLOTS:
-  /**
-  * Set the animation scene proxy which is reflected/controlled by this
-  * widget.
-  */
-  void setAnimationScene(vtkSMProxy* animationScene);
-
   /**
    * Set the notation used to display the number.
    * \sa notation()
@@ -177,6 +171,12 @@ public Q_SLOTS:
    * \sa precision()
    */
   void setPrecision(int precision);
+
+protected Q_SLOTS:
+  /**
+   * Update the current time in the widget GUI
+   */
+  void updateCurrentTime(double t);
 
 private:
   Q_DISABLE_COPY(pqAnimationTimeWidget)

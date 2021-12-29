@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 3.8)
 project(ParaViewExamples)
 
 if (ParaView_BINARY_DIR)
+  set(paraview_catalyst_directory "")
+  if (TARGET ParaView::catalyst-paraview)
+    get_property(paraview_catalyst_directory GLOBAL
+      PROPERTY paraview_catalyst_directory)
+  endif ()
+
   function (add_example dir)
     cmake_parse_arguments(arg "" "TEST_TIMEOUT" "" ${ARGN})
     if (arg_UNPARSED_ARGUMENTS)
@@ -10,27 +16,21 @@ if (ParaView_BINARY_DIR)
 
     add_test(
       NAME    "ParaViewExample-${dir}"
-      COMMAND "${CMAKE_CTEST_COMMAND}"
-              --build-generator
-                "${CMAKE_GENERATOR}"
-              --build-and-test
-                "${CMAKE_CURRENT_SOURCE_DIR}/${dir}"
-                "${CMAKE_CURRENT_BINARY_DIR}/${dir}"
-              --build-options
-                "-DBUILD_TESTING:BOOL=ON"
-                "-DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}"
-                "-DBUILD_SHARED_LIBS:BOOL=${BUILD_SHARED_LIBS}"
-                "-DParaView_DIR:PATH=${paraview_cmake_build_dir}"
-              --test-command
-                "${CMAKE_CTEST_COMMAND}"
-                  -C $<CONFIGURATION>)
-    if (WIN32)
-      set(example_path "$ENV{PATH};${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
-      string(REPLACE ";" "\;" example_path "${example_path}")
-      set_property(TEST "ParaViewExample-${dir}" APPEND
-        PROPERTY
-          ENVIRONMENT "PATH=${example_path}")
-    endif ()
+      COMMAND "${CMAKE_COMMAND}"
+              "-Dconfig=$<CONFIGURATION>"
+              "-Dgenerator=${CMAKE_GENERATOR}"
+              "-Dsource=${CMAKE_CURRENT_SOURCE_DIR}"
+              "-Dbinary=${CMAKE_CURRENT_BINARY_DIR}"
+              "-Dexample_dir=${dir}"
+              "-Dbuild_type=${CMAKE_BUILD_TYPE}"
+              "-Dshared=${BUILD_SHARED_LIBS}"
+              "-Dparaview_dir=${paraview_cmake_build_dir}"
+              "-Dctest=${CMAKE_CTEST_COMMAND}"
+              "-Dplatform=${CMAKE_GENERATOR_PLATFORM}"
+              "-Dtoolset=${CMAKE_GENERATOR_TOOLSET}"
+              "-Dparaview_binary_dir=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+              "-Dparaview_catalyst_dir=${ParaView_BINARY_DIR}/${paraview_catalyst_directory}"
+              -P "${CMAKE_CURRENT_LIST_DIR}/RunExample.cmake")
     set_property(TEST "ParaViewExample-${dir}" APPEND
       PROPERTY
         SKIP_REGULAR_EXPRESSION "Skipping example")
@@ -43,6 +43,12 @@ if (ParaView_BINARY_DIR)
     endif()
   endfunction ()
 else ()
+  if (NOT BUILD_SHARED_LIBS)
+    set(CMAKE_JOB_POOL_LINK static_exe_link)
+    set_property(GLOBAL APPEND PROPERTY
+      JOB_POOLS "${CMAKE_JOB_POOL_LINK}=1")
+  endif ()
+
   find_package(ParaView REQUIRED)
 
   macro (add_example dir)
@@ -50,9 +56,14 @@ else ()
   endmacro ()
 endif ()
 
+add_example(Plugins/AddPQProxy)
 add_example(Plugins/Autostart)
+add_example(Plugins/ComplexPluginArchitecture)
+add_example(Plugins/ContextMenu)
 add_example(Plugins/DockWidget)
-add_example(Plugins/ElevationFilter)
+if (TARGET ParaView::RemotingMisc)
+  add_example(Plugins/ElevationFilter)
+endif ()
 add_example(Plugins/GUIMyToolBar)
 add_example(Plugins/LagrangianIntegrationModel)
 add_example(Plugins/MyPNGReader)
@@ -86,3 +97,6 @@ add_example(Catalyst2/CFullExample)
 add_example(Catalyst2/CxxFullExample)
 add_example(Catalyst2/CxxImageDataExample)
 add_example(Catalyst2/CxxMultiChannelInputExample)
+add_example(Catalyst2/CxxPolyhedra)
+add_example(Catalyst2/CxxMultimesh)
+add_example(Catalyst2/CxxSteeringExample)

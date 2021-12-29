@@ -30,14 +30,13 @@
 #include <iostream>
 #include <map>
 #include <sstream>
+#include <vtksys/FStream.hxx>
 
 #ifdef _WIN32
 const static char* Slash = "\\/";
 #else
 const static char* Slash = "/";
 #endif
-
-using namespace std;
 
 namespace
 {
@@ -60,16 +59,16 @@ int* endCell;
 int* countCell;
 
 // mpi tag
-static const int mpiTag = 2564961;
+const int mpiTag = 2564961;
 
 // Used in load balancing of hypertree grid
 std::map<int, int> myHyperTree;
-bool sort_desc(const pair<int, int>& a, const pair<int, int>& b)
+bool sort_desc(const std::pair<int, int>& a, const std::pair<int, int>& b)
 {
   return (a.first > b.first);
 }
 
-static void BroadcastString(vtkMultiProcessController* controller, std::string& str, int rank)
+void BroadcastString(vtkMultiProcessController* controller, std::string& str, int rank)
 {
   unsigned long len = static_cast<unsigned long>(str.size()) + 1;
   controller->Broadcast(&len, 1, 0);
@@ -91,7 +90,7 @@ static void BroadcastString(vtkMultiProcessController* controller, std::string& 
   }
 }
 
-static void BroadcastStringVector(
+void BroadcastStringVector(
   vtkMultiProcessController* controller, std::vector<std::string>& svec, int rank)
 {
   unsigned long len = static_cast<unsigned long>(svec.size());
@@ -105,7 +104,7 @@ static void BroadcastStringVector(
   }
 }
 
-static void BroadcastStringList(
+void BroadcastStringList(
   vtkMultiProcessController* controller, std::list<std::string>& slist, int rank)
 {
   unsigned long len = static_cast<unsigned long>(slist.size());
@@ -119,7 +118,7 @@ static void BroadcastStringList(
   }
 }
 
-static void BroadcastDoubleVector(
+void BroadcastDoubleVector(
   vtkMultiProcessController* controller, std::vector<double>& dvec, int rank)
 {
   unsigned long len = static_cast<unsigned long>(dvec.size());
@@ -154,7 +153,7 @@ PIOAdaptor::PIOAdaptor(vtkMultiProcessController* ctrl)
     this->Rank = 0;
     this->TotalRank = 1;
   }
-  this->pioData = 0;
+  this->pioData = nullptr;
 
   // For load balancing in unstructured grid
   startCell = new int[this->TotalRank];
@@ -164,8 +163,7 @@ PIOAdaptor::PIOAdaptor(vtkMultiProcessController* ctrl)
 
 PIOAdaptor::~PIOAdaptor()
 {
-  if (this->pioData != 0)
-    delete this->pioData;
+  delete this->pioData;
   this->Controller = nullptr;
   delete[] startCell;
   delete[] endCell;
@@ -249,7 +247,7 @@ int PIOAdaptor::collectMetaData(const char* PIOFileName)
       uint64_t numDumps = 0;
       for (unsigned int i = 0; i < numFiles; i++)
       {
-        string fileName = directory->GetFile(i);
+        std::string fileName = directory->GetFile(i);
         std::size_t found = fileName.find(this->dumpBaseName);
         if (found != std::string::npos)
         {
@@ -261,7 +259,7 @@ int PIOAdaptor::collectMetaData(const char* PIOFileName)
             long cycle = std::strtol(timeStr.c_str(), &p, 10);
             if (*p == 0)
             {
-              ostringstream tempStr;
+              std::ostringstream tempStr;
               tempStr << this->dumpDirectory[dir] << Slash << fileName;
               std::pair<long, std::string> pair(cycle, tempStr.str());
               fileMap.insert(pair);
@@ -273,9 +271,9 @@ int PIOAdaptor::collectMetaData(const char* PIOFileName)
       if (numDumps == 0)
       {
         // get the original base name for the warning message
-        string basename = this->dumpBaseName;
-        string::size_type pos = basename.find("-dmp");
-        if (pos != string::npos)
+        std::string basename = this->dumpBaseName;
+        std::string::size_type pos = basename.find("-dmp");
+        if (pos != std::string::npos)
         {
           basename = basename.substr(0, pos);
         }
@@ -320,7 +318,7 @@ int PIOAdaptor::collectMetaData(const char* PIOFileName)
     return 0;
   }
   delete this->pioData;
-  this->pioData = 0;
+  this->pioData = nullptr;
 
   /////////////////////////////////////////////////////////////////////////////
   //
@@ -441,15 +439,15 @@ int PIOAdaptor::collectMetaData(const char* PIOFileName)
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-string PIOAdaptor::trimString(const string& str)
+std::string PIOAdaptor::trimString(const std::string& str)
 {
-  string whitespace = " \n\r\t\f\v";
+  std::string whitespace = " \n\r\t\f\v";
   size_t start = str.find_first_not_of(whitespace);
   size_t end = str.find_last_not_of(whitespace);
-  if (start == string::npos || end == string::npos)
+  if (start == std::string::npos || end == std::string::npos)
   {
     // the whole line is whitespace
-    return string("");
+    return std::string("");
   }
   else
   {
@@ -475,7 +473,7 @@ string PIOAdaptor::trimString(const string& str)
 int PIOAdaptor::parsePIOFile(const char* PIOFileName)
 {
   this->descFileName = PIOFileName;
-  ifstream pioStr(this->descFileName);
+  vtksys::ifstream pioStr(this->descFileName.c_str());
   if (!pioStr)
   {
     vtkGenericWarningMacro("Could not open the global description .pio file: " << PIOFileName);
@@ -484,12 +482,12 @@ int PIOAdaptor::parsePIOFile(const char* PIOFileName)
 
   // Get the directory name from the full path of the .pio file in GUI
   // or simple name from python script
-  string::size_type dirPos = this->descFileName.find_last_of(Slash);
-  string dirName;
-  if (dirPos == string::npos)
+  std::string::size_type dirPos = this->descFileName.find_last_of(Slash);
+  std::string dirName;
+  if (dirPos == std::string::npos)
   {
     // No directory name included
-    ostringstream tempStr;
+    std::ostringstream tempStr;
     tempStr << "." << Slash;
     dirName = tempStr.str();
   }
@@ -502,14 +500,14 @@ int PIOAdaptor::parsePIOFile(const char* PIOFileName)
   // Either .pio file or an actual basename-dmp000000 to guide open file
   // Opening actual dump file requires asking for All files and picking PIOReader
   // Opening a pio suffix file defaults to the correct action
-  string::size_type pos = this->descFileName.rfind('.');
-  string suffix = this->descFileName.substr(pos + 1);
+  std::string::size_type pos = this->descFileName.rfind('.');
+  std::string suffix = this->descFileName.substr(pos + 1);
   if (suffix == "pio")
   {
     // Parse the pio input file
     char inBuf[256];
-    string rest;
-    string keyword;
+    std::string rest;
+    std::string keyword;
     this->useHTG = false;
     this->useTracer = false;
     this->useFloat64 = false;
@@ -517,7 +515,7 @@ int PIOAdaptor::parsePIOFile(const char* PIOFileName)
 
     while (pioStr.getline(inBuf, 256))
     {
-      string localline(inBuf);
+      std::string localline(inBuf);
       localline = trimString(localline);
       if (localline.length() > 0)
       {
@@ -528,19 +526,19 @@ int PIOAdaptor::parsePIOFile(const char* PIOFileName)
           localline.erase(std::remove(localline.begin(), localline.end(), '\''), localline.end());
 
           // check for comments in the middle of the line
-          string::size_type poundPos = localline.find('#');
-          if (poundPos != string::npos)
+          std::string::size_type poundPos = localline.find('#');
+          if (poundPos != std::string::npos)
           {
             localline = localline.substr(0, poundPos);
           }
 
-          string::size_type bangPos = localline.find('!');
-          if (bangPos != string::npos)
+          std::string::size_type bangPos = localline.find('!');
+          if (bangPos != std::string::npos)
           {
             localline = localline.substr(0, bangPos);
           }
 
-          string::size_type keyPos = localline.find(' ');
+          std::string::size_type keyPos = localline.find(' ');
           keyword = trimString(localline.substr(0, keyPos));
           rest = trimString(localline.substr(keyPos + 1));
 
@@ -554,14 +552,14 @@ int PIOAdaptor::parsePIOFile(const char* PIOFileName)
             else
             {
               // If partial path append to the dir of the .pio file
-              ostringstream tempStr;
+              std::ostringstream tempStr;
               tempStr << dirName << Slash << rest;
               this->dumpDirectory.push_back(tempStr.str());
             }
           }
           if (keyword == "DUMP_BASE_NAME")
           {
-            ostringstream tempStr;
+            std::ostringstream tempStr;
             tempStr << rest << "-dmp";
             this->dumpBaseName = tempStr.str();
           }
@@ -583,7 +581,7 @@ int PIOAdaptor::parsePIOFile(const char* PIOFileName)
         }
       }
     }
-    if (this->dumpDirectory.size() == 0)
+    if (this->dumpDirectory.empty())
     {
       this->dumpDirectory.push_back(dirName);
     }
@@ -593,8 +591,8 @@ int PIOAdaptor::parsePIOFile(const char* PIOFileName)
     //
     // Use the basename-dmp000000 file to discern the info that is in the pio file
     //
-    string::size_type pos1 = this->descFileName.rfind(Slash);
-    string::size_type pos2 = this->descFileName.find("-dmp");
+    std::string::size_type pos1 = this->descFileName.rfind(Slash);
+    std::string::size_type pos2 = this->descFileName.find("-dmp");
     this->dumpBaseName = this->descFileName.substr(pos1 + 1, pos2 - pos1 + 3);
     this->dumpDirectory.push_back(this->descFileName.substr(0, pos1));
     this->useHTG = false;
@@ -707,14 +705,14 @@ int PIOAdaptor::initializeDump(int timeStep)
   if (this->Rank == 0)
   {
     // Start with a fresh pioData initialized for this time step
-    if (this->pioData != 0)
+    if (this->pioData != nullptr)
     {
       delete this->pioData;
-      this->pioData = 0;
+      this->pioData = nullptr;
     }
 
     // Create one PIOData which accesses the PIO file to fetch data
-    if (this->pioData == 0)
+    if (this->pioData == nullptr)
     {
       this->pioData = new PIO_DATA(this->dumpFileName[timeStep].c_str(), &this->fieldsToRead);
       if (this->pioData->good_read())
@@ -724,7 +722,7 @@ int PIOAdaptor::initializeDump(int timeStep)
         const double* amhc_r8 = this->pioData->GetPIOData("amhc_r8");
         const double* amhc_l = this->pioData->GetPIOData("amhc_l");
 
-        if (amhc_i != 0 && amhc_r8 != 0 && amhc_l != 0)
+        if (amhc_i != nullptr && amhc_r8 != nullptr && amhc_l != nullptr)
         {
           dimension = uint32_t(amhc_i[Nnumdim]);
           numberOfDaughters = (int)pow(2.0, dimension);
@@ -1520,8 +1518,8 @@ void PIOAdaptor::create_amr_HTG(vtkMultiBlockDataSet* grid)
   std::valarray<int> histsize;
   std::valarray<int> level;
   std::valarray<std::valarray<double>> center;
-  int64_t* cell_daughter = 0;
-  int* cell_level = 0;
+  int64_t* cell_daughter = nullptr;
+  int* cell_level = nullptr;
   double* cell_center[3];
 
   if (this->Rank == 0)
@@ -1820,7 +1818,7 @@ void PIOAdaptor::load_variable_data_HTG(
 {
   for (size_t var = 0; var < this->variableName.size(); var++)
   {
-    double** dataVector = 0;
+    double** dataVector = nullptr;
     std::valarray<double> scalarArray;
     std::valarray<std::valarray<double>> vectorArray;
     int numberOfComponents;

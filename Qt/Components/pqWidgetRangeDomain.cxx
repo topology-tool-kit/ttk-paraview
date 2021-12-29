@@ -143,11 +143,11 @@ void pqWidgetRangeDomain::setRange(QVariant min, QVariant max)
   {
     if (!this->Internal->MinProp.isEmpty())
     {
-      range->setProperty(this->Internal->MinProp.toLocal8Bit().data(), min);
+      range->setProperty(this->Internal->MinProp.toUtf8().data(), min);
     }
     if (!this->Internal->MaxProp.isEmpty())
     {
-      range->setProperty(this->Internal->MaxProp.toLocal8Bit().data(), max);
+      range->setProperty(this->Internal->MaxProp.toUtf8().data(), max);
     }
   }
 }
@@ -156,7 +156,7 @@ void pqWidgetRangeDomain::setRange(QVariant min, QVariant max)
 QWidget* pqWidgetRangeDomain::getWidget() const
 {
   QWidget* range = qobject_cast<QWidget*>(this->parent());
-  assert(range != NULL);
+  assert(range != nullptr);
   return range;
 }
 

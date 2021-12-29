@@ -1,46 +1,6 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
-// Copyright (c) 2014-2019, Lawrence Livermore National Security, LLC.
-// 
-// Produced at the Lawrence Livermore National Laboratory
-// 
-// LLNL-CODE-666778
-// 
-// All rights reserved.
-// 
-// This file is part of Conduit. 
-// 
-// For details, see: http://software.llnl.gov/conduit/.
-// 
-// Please also read conduit/LICENSE
-// 
-// Redistribution and use in source and binary forms, with or without 
-// modification, are permitted provided that the following conditions are met:
-// 
-// * Redistributions of source code must retain the above copyright notice, 
-//   this list of conditions and the disclaimer below.
-// 
-// * Redistributions in binary form must reproduce the above copyright notice,
-//   this list of conditions and the disclaimer (as noted below) in the
-//   documentation and/or other materials provided with the distribution.
-// 
-// * Neither the name of the LLNS/LLNL nor the names of its contributors may
-//   be used to endorse or promote products derived from this software without
-//   specific prior written permission.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY,
-// LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
-// DAMAGES  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-// OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, 
-// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
-// IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
-// POSSIBILITY OF SUCH DAMAGE.
-// 
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
+// Copyright (c) Lawrence Livermore National Security, LLC and other Conduit
+// Project developers. See top-level LICENSE AND COPYRIGHT files for dates and
+// other details. No copyright assignment is required to contribute to Conduit.
 
 //-----------------------------------------------------------------------------
 ///
@@ -110,6 +70,15 @@ bool CONDUIT_BLUEPRINT_API verify(const conduit::Node &n,
 bool CONDUIT_BLUEPRINT_API is_multi_domain(const conduit::Node &n);
 
 //-------------------------------------------------------------------------
+index_t CONDUIT_BLUEPRINT_API number_of_domains(const conduit::Node &n);
+
+//-----------------------------------------------------------------------------
+std::vector<const conduit::Node *> CONDUIT_BLUEPRINT_API domains(const Node &n);
+
+/// Note: to_multi_domain uses Node::set_external to avoid copying data.
+/// If you need a copy of the data unlinked from the input, set into
+/// another node.
+//-------------------------------------------------------------------------
 void CONDUIT_BLUEPRINT_API to_multi_domain(const conduit::Node &n,
                                            conduit::Node &dest);
 
@@ -150,6 +119,9 @@ namespace coordset
 
     //-------------------------------------------------------------------------
     index_t CONDUIT_BLUEPRINT_API dims(const conduit::Node &n);
+
+    //-------------------------------------------------------------------------
+    index_t CONDUIT_BLUEPRINT_API length(const conduit::Node &n);
 
     //-------------------------------------------------------------------------
     // blueprint::mesh::coordset::uniform protocol interface
@@ -257,6 +229,12 @@ namespace topology
     //-------------------------------------------------------------------------
     bool CONDUIT_BLUEPRINT_API verify(const conduit::Node &n,
                                       conduit::Node &info);
+
+    //-------------------------------------------------------------------------
+    index_t CONDUIT_BLUEPRINT_API dims(const conduit::Node &n);
+
+    //-------------------------------------------------------------------------
+    index_t CONDUIT_BLUEPRINT_API length(const conduit::Node &n);
 
     //-------------------------------------------------------------------------
     // blueprint::mesh::topology::points protocol interface
@@ -429,6 +407,29 @@ namespace matset
                                       conduit::Node &info);
 
     //-------------------------------------------------------------------------
+    bool CONDUIT_BLUEPRINT_API is_multi_buffer(const conduit::Node &n);
+
+    //-------------------------------------------------------------------------
+    bool CONDUIT_BLUEPRINT_API is_uni_buffer(const conduit::Node &n);
+
+    //-------------------------------------------------------------------------
+    bool CONDUIT_BLUEPRINT_API is_element_dominant(const conduit::Node &n);
+
+    //-------------------------------------------------------------------------
+    bool CONDUIT_BLUEPRINT_API is_material_dominant(const conduit::Node &n);
+
+    //-------------------------------------------------------------------------
+    // Converts a blueprint matset to the silo style sparse mixed slot 
+    // representation.
+    //
+    // For details about the silo format, see documentation for 
+    // 'DBPutMaterial' at:
+    // https://wci.llnl.gov/content/assets/docs/simulation/computer-codes/silo/LLNL-SM-654357.pdf
+    void CONDUIT_BLUEPRINT_API to_silo(const conduit::Node &matset,
+                                       conduit::Node &dest,
+                                       const float64 epsilon = CONDUIT_EPSILON);
+
+    //-------------------------------------------------------------------------
     // blueprint::mesh::matset::index protocol interface
     //-------------------------------------------------------------------------
     namespace index
@@ -450,6 +451,19 @@ namespace field
     //-------------------------------------------------------------------------
     bool CONDUIT_BLUEPRINT_API verify(const conduit::Node &n,
                                       conduit::Node &info);
+
+    //-------------------------------------------------------------------------
+    // Given a blueprint field and matset, converts the matset and the field
+    // values + matset_values to the silo style sparse mixed slot
+    // representation.
+    //
+    // For details about the silo format, see documentation for 
+    // 'DBPutZZZVar' methods `mixvar` / `mixlen` params at:
+    // https://wci.llnl.gov/content/assets/docs/simulation/computer-codes/silo/LLNL-SM-654357.pdf
+    void CONDUIT_BLUEPRINT_API to_silo(const conduit::Node &field,
+                                       const conduit::Node &matset,
+                                       conduit::Node &dest,
+                                       const float64 epsilon = CONDUIT_EPSILON);
 
     //-------------------------------------------------------------------------
     // blueprint::mesh::field::index protocol interface

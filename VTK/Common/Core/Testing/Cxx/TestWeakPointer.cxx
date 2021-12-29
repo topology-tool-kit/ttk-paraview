@@ -134,6 +134,7 @@ int TestWeakPointer(int, char*[])
   {
     vtkNew<vtkIntArray> array;
     vtkWeakPointer<vtkIntArray> intArray(array);
+    // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
     vtkWeakPointer<vtkIntArray> intArray2(intArray);
     if (array != intArray || array != intArray2 || array->GetReferenceCount() != 1)
     {
@@ -152,6 +153,7 @@ int TestWeakPointer(int, char*[])
     vtkNew<vtkIntArray> array;
     vtkWeakPointer<vtkIntArray> intArray(array);
     vtkWeakPointer<vtkIntArray> intArray2(std::move(intArray));
+    // NOLINTNEXTLINE(bugprone-use-after-move)
     if (intArray || array != intArray2 || array->GetReferenceCount() != 1)
     {
       std::cerr << "Move failed.\n";
@@ -186,6 +188,7 @@ int TestWeakPointer(int, char*[])
     vtkNew<vtkIntArray> array;
     vtkWeakPointer<vtkIntArray> intArray(array);
     vtkWeakPointer<vtkDataArray> dataArray(std::move(intArray));
+    // NOLINTNEXTLINE(bugprone-use-after-move)
     if (intArray || array != dataArray || array->GetReferenceCount() != 1)
     {
       std::cerr << "Move failed.\n";

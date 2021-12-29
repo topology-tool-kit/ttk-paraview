@@ -19,7 +19,7 @@
  * as a spreadsheet. This view can only show one representation at a
  * time. If more than one representation is added to this view, only the first
  * visible representation will be shown.
-*/
+ */
 
 #ifndef vtkSpreadSheetView_h
 #define vtkSpreadSheetView_h
@@ -198,7 +198,7 @@ public:
    * \note CallOnAllProcesses
    */
   void SetColumnNameToSort(const char*);
-  void SetColumnNameToSort() { this->SetColumnNameToSort(NULL); }
+  void SetColumnNameToSort() { this->SetColumnNameToSort(nullptr); }
 
   /**
    * Get/Set whether the sort order must be Max to Min rather than Min to Max.

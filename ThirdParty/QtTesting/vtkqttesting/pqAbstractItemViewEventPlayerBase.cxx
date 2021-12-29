@@ -32,12 +32,36 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqAbstractItemViewEventPlayerBase.h"
 #include "pqEventTypes.h"
 
-//#include <QCoreApplication>
-//#include <QEvent>
-//#include <QKeyEvent>
 #include <QAbstractItemView>
+#include <QContextMenuEvent>
+#include <QCoreApplication>
 #include <QDebug>
 #include <QMenu>
+
+namespace
+{
+int findSection(QAbstractItemModel* model, const QString& label, Qt::Orientation orientation,
+  int role = Qt::DisplayRole)
+{
+  QStringList currentHeaders;
+  const int max = orientation == Qt::Horizontal ? model->columnCount() : model->rowCount();
+  for (int section = 0; section < max; ++section)
+  {
+    auto data = model->headerData(section, orientation, role).toString();
+    currentHeaders.push_back(data);
+    if (data == label)
+    {
+      return section;
+    }
+  }
+
+  qCritical() << "No header labeled '" << label << "' was found. "
+              << "Available values are " << currentHeaders;
+  return -1;
+}
+
+} // end of namespace
+
 //-----------------------------------------------------------------------------
 pqAbstractItemViewEventPlayerBase::pqAbstractItemViewEventPlayerBase(QObject* parentObject)
   : Superclass(parentObject)
@@ -57,19 +81,45 @@ QModelIndex pqAbstractItemViewEventPlayerBase::GetIndex(
   int sep = itemStr.indexOf(",");
   QString strIndex = itemStr.left(sep);
 
-  // Recover model index
-  QStringList indices = strIndex.split(".", QString::SkipEmptyParts);
-  QModelIndex index;
-  if (indices.size() < 2)
+// Recover model index
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 14, 0))
+  const QStringList indices = strIndex.split(".", Qt::SkipEmptyParts);
+#else
+  const QStringList indices = strIndex.split(".", QString::SkipEmptyParts);
+#endif
+  if (indices.isEmpty() || (indices.size() % 2 != 0)) // indices are in pairs (row, column).
   {
     error = true;
-    return index;
+    qCritical() << "ERROR: Incorrect number of values in index! Cannot playback.";
+    return QModelIndex();
   }
 
-  index = abstractItemView->model()->index(indices[0].toInt(), indices[1].toInt(), index);
-  for (int cc = 2; (cc + 1) < indices.size(); cc += 2)
+  QList<int> iIndices;
+  auto model = abstractItemView->model();
+
+  // indices may be simply ints or strings. If not ints, then assume strings that
+  // represent row or column name.
+  for (int cc = 0; cc < indices.size(); ++cc)
   {
-    index = abstractItemView->model()->index(indices[cc].toInt(), indices[cc + 1].toInt(), index);
+    bool ok;
+    int index = indices[cc].toInt(&ok);
+    if (!ok)
+    {
+      // must be a string that represents the row/column name. determine the index.
+      index = ::findSection(model, indices[cc], (cc % 2 == 0) ? Qt::Vertical : Qt::Horizontal);
+      if (index == -1)
+      {
+        error = true;
+        return QModelIndex();
+      }
+    }
+    iIndices.push_back(index);
+  }
+
+  QModelIndex index;
+  for (int cc = 0; (cc + 1) < iIndices.size(); cc += 2)
+  {
+    index = abstractItemView->model()->index(iIndices[cc], iIndices[cc + 1], /*parent=*/index);
     if (!index.isValid())
     {
       error = true;
@@ -256,6 +306,28 @@ bool pqAbstractItemViewEventPlayerBase::playEvent(
           selection.merge(itemSel, QItemSelectionModel::Select);
         }
         selModel->select(selection, selFlag);
+      }
+      return true;
+    }
+    else if (command == "openContextMenu")
+    {
+      const QModelIndex index =
+        pqAbstractItemViewEventPlayerBase::GetIndex(arguments, abstractItemView, error);
+      if (error)
+      {
+        return true;
+      }
+      const QRect itemRect = abstractItemView->visualRect(index);
+      const QPoint centerOfItem = itemRect.topLeft();
+      const QPoint globalCenterOfItem = abstractItemView->viewport()->mapToGlobal(centerOfItem);
+
+      QContextMenuEvent contextMenuEvent(
+        QContextMenuEvent::Other, centerOfItem, globalCenterOfItem);
+      if (!qApp->notify(abstractItemView->viewport(), &contextMenuEvent))
+      {
+        qCritical() << "The " << abstractItemView->objectName()
+                    << " rejected the context menu event";
+        error = true;
       }
       return true;
     }

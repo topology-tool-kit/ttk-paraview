@@ -68,7 +68,7 @@ uint qHash(QPair<QPointer<pqPipelineSource>, int> arg)
 class pqPipelineFilter::pqInternal
 {
 public:
-  typedef QList<QPointer<pqOutputPort> > InputList;
+  typedef QList<QPointer<pqOutputPort>> InputList;
   typedef QMap<QString, InputList> InputMap;
   InputMap Inputs;
 
@@ -78,7 +78,7 @@ public:
 
 //-----------------------------------------------------------------------------
 pqPipelineFilter::pqPipelineFilter(
-  QString name, vtkSMProxy* proxy, pqServer* server, QObject* p /*=NULL*/)
+  QString name, vtkSMProxy* proxy, pqServer* server, QObject* p /*=nullptr*/)
   : pqPipelineSource(name, proxy, server, p)
 {
   this->Internal = new pqInternal();
@@ -106,8 +106,9 @@ static void pqPipelineFilterGetInputProperties(
     if (inputProp)
     {
       vtkPVXMLElement* hints = inputProp->GetHints();
-      if (hints && (hints->FindNestedElementByName("NoGUI") ||
-                     hints->FindNestedElementByName("SelectionInput")))
+      if (hints &&
+        (hints->FindNestedElementByName("NoGUI") ||
+          hints->FindNestedElementByName("SelectionInput")))
       {
         // hints suggest that this input property is not to be considered by the
         // GUI.
@@ -271,9 +272,9 @@ QList<pqOutputPort*> pqPipelineFilter::getInputs(const QString& portname) const
 }
 
 //-----------------------------------------------------------------------------
-QMap<QString, QList<pqOutputPort*> > pqPipelineFilter::getNamedInputs() const
+QMap<QString, QList<pqOutputPort*>> pqPipelineFilter::getNamedInputs() const
 {
-  QMap<QString, QList<pqOutputPort*> > map;
+  QMap<QString, QList<pqOutputPort*>> map;
 
   pqInternal::InputMap::iterator iter = this->Internal->Inputs.begin();
   for (; iter != this->Internal->Inputs.end(); ++iter)
@@ -298,13 +299,13 @@ pqOutputPort* pqPipelineFilter::getInput(const QString& portname, int index) con
   if (iter == this->Internal->Inputs.end())
   {
     qCritical() << "Invalid input port name: " << portname;
-    return 0;
+    return nullptr;
   }
 
   if (index < 0 || index >= iter.value().size())
   {
     qCritical() << "Invalid index: " << index;
-    return 0;
+    return nullptr;
   }
 
   return iter.value()[index];
@@ -314,7 +315,7 @@ pqOutputPort* pqPipelineFilter::getInput(const QString& portname, int index) con
 pqPipelineSource* pqPipelineFilter::getInput(int index) const
 {
   pqOutputPort* op = this->getInput(this->getInputPortName(0), index);
-  return (op ? op->getSource() : 0);
+  return (op ? op->getSource() : nullptr);
 }
 
 //-----------------------------------------------------------------------------
@@ -324,12 +325,12 @@ pqOutputPort* pqPipelineFilter::getAnyInput() const
   {
     QString portName = this->getInputPortName(i);
     pqInternal::InputMap::iterator iter = this->Internal->Inputs.find(portName);
-    if (iter != this->Internal->Inputs.end() && iter.value().size() > 0)
+    if (iter != this->Internal->Inputs.end() && !iter.value().empty())
     {
       return iter.value()[0];
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -374,7 +375,7 @@ void pqPipelineFilter::inputChanged(const QString& portname)
   }
 
   vtkSMInputProperty* ivp =
-    vtkSMInputProperty::SafeDownCast(this->getProxy()->GetProperty(portname.toLocal8Bit().data()));
+    vtkSMInputProperty::SafeDownCast(this->getProxy()->GetProperty(portname.toUtf8().data()));
   if (!ivp)
   {
     qCritical() << "Failed to locate input property " << portname;

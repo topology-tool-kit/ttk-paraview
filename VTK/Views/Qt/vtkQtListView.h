@@ -73,14 +73,14 @@ public:
     ROW_DATA = 5,
   };
 
-  //@{
+  ///@{
   /**
    * The field type to copy into the output table.
    * Should be one of FIELD_DATA, POINT_DATA, CELL_DATA, VERTEX_DATA, EDGE_DATA.
    */
   vtkGetMacro(FieldType, int);
   void SetFieldType(int);
-  //@}
+  ///@}
 
   /**
    * Enable drag and drop on this widget
@@ -100,22 +100,22 @@ public:
    */
   void SetDecorationStrategy(int);
 
-  //@{
+  ///@{
   /**
    * The array to use for coloring items in view.  Default is "color".
    */
   void SetColorArrayName(const char* name);
   const char* GetColorArrayName();
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Whether to color vertices.  Default is off.
    */
   void SetColorByArray(bool vis);
   bool GetColorByArray();
   vtkBooleanMacro(ColorByArray, bool);
-  //@}
+  ///@}
 
   /**
    * The column to display
@@ -125,9 +125,13 @@ public:
   /**
    * The column used to filter on
    */
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 12, 0))
+  void SetFilterRegExp(const QRegularExpression& pattern);
+#else
   void SetFilterRegExp(const QRegExp& pattern);
+#endif
 
-  //@{
+  ///@{
   /**
    * Set the icon ivars. Only used if the decoration strategy is set to ICONS.
    */
@@ -135,7 +139,7 @@ public:
   void SetIconSize(int w, int h);
   void SetIconSheetSize(int w, int h);
   void SetIconArrayName(const char* name);
-  //@}
+  ///@}
 
   void ApplyViewTheme(vtkViewTheme* theme) override;
 

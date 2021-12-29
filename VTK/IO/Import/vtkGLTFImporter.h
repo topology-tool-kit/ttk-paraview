@@ -78,13 +78,13 @@ public:
   vtkTypeMacro(vtkGLTFImporter, vtkImporter);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * Specify the name of the file to read.
    */
-  vtkSetStringMacro(FileName);
-  vtkGetStringMacro(FileName);
-  //@}
+  vtkSetFilePathMacro(FileName);
+  vtkGetFilePathMacro(FileName);
+  ///@}
 
   /**
    * glTF defines multiple camera objects, but no default behavior for which camera should be
@@ -92,11 +92,6 @@ public:
    * the asset's other cameras.
    */
   vtkSmartPointer<vtkCamera> GetCamera(unsigned int id);
-
-  /**
-   * Get the total number of cameras
-   */
-  size_t GetNumberOfCameras();
 
   /**
    * Get a printable string describing all outputs
@@ -118,14 +113,30 @@ public:
    */
   std::string GetAnimationName(vtkIdType animationIndex) override;
 
-  //@{
+  ///@{
   /**
    * Enable/Disable/Get the status of specific animations
    */
   void EnableAnimation(vtkIdType animationIndex) override;
   void DisableAnimation(vtkIdType animationIndex) override;
   bool IsAnimationEnabled(vtkIdType animationIndex) override;
-  //@}
+  ///@}
+
+  /**
+   * Get the number of available cameras.
+   */
+  vtkIdType GetNumberOfCameras() override;
+
+  /**
+   * Get the name of a camera.
+   */
+  std::string GetCameraName(vtkIdType camIndex) override;
+
+  /**
+   * Enable a specific camera.
+   * If a negative index is provided, no camera from the importer is used.
+   */
+  void SetCamera(vtkIdType camIndex) override;
 
   /**
    * Get temporal informations for the currently enabled animations.
@@ -144,14 +155,17 @@ protected:
   void ImportCameras(vtkRenderer* renderer) override;
   void ImportLights(vtkRenderer* renderer) override;
 
+  void ApplySkinningMorphing();
+
   char* FileName = nullptr;
 
-  std::vector<vtkSmartPointer<vtkCamera>> Cameras;
+  std::map<int, vtkSmartPointer<vtkCamera>> Cameras;
   std::map<int, vtkSmartPointer<vtkTexture>> Textures;
   std::map<int, std::vector<vtkSmartPointer<vtkActor>>> Actors;
   vtkSmartPointer<vtkGLTFDocumentLoader> Loader;
   std::string OutputsDescription;
   std::vector<bool> EnabledAnimations;
+  vtkIdType EnabledCamera = -1;
 
 private:
   vtkGLTFImporter(const vtkGLTFImporter&) = delete;

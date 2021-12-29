@@ -33,7 +33,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "pqApplicationCore.h"
 #include "pqCoreUtilities.h"
-#include "pqOptions.h"
 #include "pqServerManagerModel.h"
 #include "pqSettings.h"
 #include "pqTimeKeeper.h"
@@ -44,7 +43,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkNetworkAccessManager.h"
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
-#include "vtkPVOptions.h"
 #include "vtkPVServerInformation.h"
 #include "vtkProcessModule.h"
 #include "vtkSMCollaborationManager.h"
@@ -59,7 +57,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkSMSessionClient.h"
 #include "vtkSMSessionProxyManager.h"
 #include "vtkSMViewProxy.h"
-#include "vtkToolkits.h"
 
 // Qt includes.
 #include <QColor>
@@ -89,13 +86,12 @@ public:
 // pqServer
 
 //-----------------------------------------------------------------------------
-pqServer::pqServer(vtkIdType connectionID, vtkPVOptions* options, QObject* _parent)
+pqServer::pqServer(vtkIdType connectionID, QObject* _parent)
   : pqServerManagerModelItem(_parent)
 {
   this->Internals = new pqInternals;
 
   this->ConnectionID = connectionID;
-  this->Options = options;
   this->Session =
     vtkSMSession::SafeDownCast(vtkProcessModule::GetProcessModule()->GetSession(connectionID));
 
@@ -156,7 +152,7 @@ pqServer::~pqServer()
     }
     */
   this->ConnectionID = 0;
-  this->Session = NULL;
+  this->Session = nullptr;
   delete this->Internals;
 }
 
@@ -289,12 +285,6 @@ void pqServer::setResource(const pqServerResource& server_resource)
 {
   this->Resource = server_resource;
   Q_EMIT this->nameChanged(this);
-}
-
-//-----------------------------------------------------------------------------
-vtkPVOptions* pqServer::getOptions() const
-{
-  return this->Options;
 }
 
 //-----------------------------------------------------------------------------

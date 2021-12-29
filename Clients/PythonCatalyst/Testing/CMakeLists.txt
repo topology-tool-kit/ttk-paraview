@@ -68,109 +68,157 @@ vtk_module_test_data(
   "DATA{${CMAKE_CURRENT_SOURCE_DIR}/Data/Baseline/WaveletVolumeRenderWithCinema_CoprocessingExtracts_image_000000otf_4.png"
   "DATA{${CMAKE_CURRENT_SOURCE_DIR}/Data/Baseline/WaveletVolumeRenderWithCinema_ImmediateExtracts_image_000000otf_0.png"
   "DATA{${CMAKE_CURRENT_SOURCE_DIR}/Data/Baseline/WaveletVolumeRenderWithCinema_ImmediateExtracts_image_000000otf_4.png"
+
+  # baselines for WaveletTimeTrigger
+  "DATA{${CMAKE_CURRENT_SOURCE_DIR}/Data/Baseline/WaveletTimeTrigger_BatchExtracts_RenderView1_000000.png}"
+  "DATA{${CMAKE_CURRENT_SOURCE_DIR}/Data/Baseline/WaveletTimeTrigger_ImmediateExtracts_RenderView1_000000.png}"
+  "DATA{${CMAKE_CURRENT_SOURCE_DIR}/Data/Baseline/WaveletTimeTrigger_CoprocessingExtracts_RenderView1_000000.png}"
 )
 
 set(simple_scripts
   ValidateChangingInput.py
-  LiveOnly.py
   CatalystScriptCustomCallbackVerifier.py
   package_test
   package_test_zip.zip)
 
-paraview_add_test(
-  PREFIX "Catalyst::WaveletMiniApp"
-  ARGS   "$<TARGET_FILE:ParaView::pvbatch>" -dr -sym -m paraview.demos.wavelet_miniapp -t 20 --size 21 -s
-  TEST_SCRIPTS ${simple_scripts})
+if (TARGET ParaView::RemotingLive)
+  list(APPEND simple_scripts
+      LiveOnly.py)
+endif()
+
+if (NOT PARAVIEW_SERIAL_TESTS_USE_MPIEXEC)
+  # no need to add these non-MPI tests if serial tests are going to use MPI
+  # anyways. The have another `paraview_add_test_mpi` invocation right after this
+  # to handle it.
+  paraview_add_test(
+    PREFIX "Catalyst::WaveletMiniApp"
+    ARGS   "$<TARGET_FILE:ParaView::pvbatch>" --dr --sym -- -m paraview.demos.wavelet_miniapp -t 20 --size 21 -s
+    TEST_SCRIPTS ${simple_scripts})
+
+  # Add test to test for adding the same pipeline script twice.
+  paraview_add_test(
+    PREFIX "Catalyst::WaveletMiniApp"
+    ARGS   "$<TARGET_FILE:ParaView::pvbatch>" --dr --sym -- -m paraview.demos.wavelet_miniapp -t 2 --size 21
+            --script-version 2
+            -s "${CMAKE_CURRENT_SOURCE_DIR}/repeated_pipeline.py"
+            -s
+    TEST_SCRIPTS "repeated_pipeline.py" )
+  set_tests_properties("Catalyst::WaveletMiniApp.repeated_pipeline"
+     PROPERTIES
+        PASS_REGULAR_EXPRESSION "Importing 'repeated_pipeline' for 2-th time!")
+endif()
+
 paraview_add_test_mpi(
   PREFIX "Catalyst::MPI::WaveletMiniApp"
-  ARGS   "$<TARGET_FILE:ParaView::pvbatch>" -dr -sym -m paraview.demos.wavelet_miniapp -t 20 --size 21 -s
+  ARGS   "$<TARGET_FILE:ParaView::pvbatch>" --dr --sym -- -m paraview.demos.wavelet_miniapp -t 20 --size 21 -s
   TEST_SCRIPTS ${simple_scripts})
 
+# Add test to test for adding the same pipeline script twice.
+paraview_add_test_mpi(
+  PREFIX "Catalyst::MPI::WaveletMiniApp"
+  ARGS   "$<TARGET_FILE:ParaView::pvbatch>" --dr --sym -- -m paraview.demos.wavelet_miniapp -t 2 --size 21
+          --script-version 2
+          -s "${CMAKE_CURRENT_SOURCE_DIR}/repeated_pipeline.py"
+          -s
+  TEST_SCRIPTS "repeated_pipeline.py" )
+set_tests_properties("Catalyst::WaveletMiniApp.repeated_pipeline"
+   PROPERTIES
+      PASS_REGULAR_EXPRESSION "Importing 'repeated_pipeline' for 2-th time!")
+
 foreach (tname IN LISTS scripts)
+  if (NOT PARAVIEW_SERIAL_TESTS_USE_MPIEXEC)
     set_tests_properties("Catalyst::WaveletMiniApp.${tname}"
       PROPERTIES
         PASS_REGULAR_EXPRESSION "All ok")
-    if (PARAVIEW_USE_MPI)
-        set_tests_properties("Catalyst::MPI::WaveletMiniApp.${tname}"
-          PROPERTIES
-            PASS_REGULAR_EXPRESSION "All ok")
-    endif()
+  endif()
+  if (PARAVIEW_USE_MPI)
+    set_tests_properties("Catalyst::MPI::WaveletMiniApp.${tname}"
+      PROPERTIES
+        PASS_REGULAR_EXPRESSION "All ok")
+  endif()
 endforeach()
 
-#--------------------------------------------------------------------
-# add test to validate multiple analysis pipelines can be used.
-add_test(NAME Catalyst::WaveletMiniApp::MultiplePipelines::Prepare
-         COMMAND "${CMAKE_COMMAND}" -E remove_directory "${CMAKE_BINARY_DIR}/Testing/Temporary/MultiplePipelines")
-set_tests_properties(
-  "Catalyst::WaveletMiniApp::MultiplePipelines::Prepare"
-  PROPERTIES
-    FIXTURES_SETUP "Catalyst::WaveletMiniApp::MultiplePipelines::Prepare")
-paraview_add_test(
-    PREFIX "Catalyst::WaveletMiniApp::MultiplePipelines::pipeline1"
-    ENVIRONMENT
-      PARAVIEW_OVERRIDE_EXTRACTS_OUTPUT_DIRECTORY=${CMAKE_BINARY_DIR}/Testing/Temporary/MultiplePipelines/
-    ARGS   "$<TARGET_FILE:ParaView::pvbatch>"
-           -sym
-           -dr
-           -m paraview.demos.wavelet_miniapp -t 10 --size 21
-           --channel Wavelet1
-           -s "${CMAKE_CURRENT_SOURCE_DIR}/pipeline1.py"
-           -s
-    TEST_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/pipeline2.py")
-set_tests_properties(
-  "Catalyst::WaveletMiniApp::MultiplePipelines::pipeline1.pipeline2"
-  PROPERTIES
-    FIXTURES_REQUIRED "Catalyst::WaveletMiniApp::MultiplePipelines::Prepare")
+if (TARGET ParaView::RemotingViews)
+  #--------------------------------------------------------------------
+  # add test to validate multiple analysis pipelines can be used.
+  add_test(NAME Catalyst::WaveletMiniApp::MultiplePipelines::Prepare
+           COMMAND "${CMAKE_COMMAND}" -E remove_directory "${CMAKE_BINARY_DIR}/Testing/Temporary/MultiplePipelines")
+  set_tests_properties(
+    "Catalyst::WaveletMiniApp::MultiplePipelines::Prepare"
+    PROPERTIES
+      FIXTURES_SETUP "Catalyst::WaveletMiniApp::MultiplePipelines::Prepare")
+  paraview_add_test(
+      PREFIX "Catalyst::WaveletMiniApp::MultiplePipelines::pipeline1"
+      ENVIRONMENT
+        PARAVIEW_OVERRIDE_EXTRACTS_OUTPUT_DIRECTORY=${CMAKE_BINARY_DIR}/Testing/Temporary/MultiplePipelines/
+      ARGS   "$<TARGET_FILE:ParaView::pvbatch>"
+             --sym
+             --dr
+             --
+             -m paraview.demos.wavelet_miniapp -t 10 --size 21
+             --channel Wavelet1
+             -s "${CMAKE_CURRENT_SOURCE_DIR}/pipeline1.py"
+             -s
+      TEST_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/pipeline2.py")
+  set_tests_properties(
+    "Catalyst::WaveletMiniApp::MultiplePipelines::pipeline1.pipeline2"
+    PROPERTIES
+      FIXTURES_REQUIRED "Catalyst::WaveletMiniApp::MultiplePipelines::Prepare")
 
-paraview_add_test(
-    PREFIX "Catalyst::WaveletMiniApp::MultiplePipelines::Validate::pipeline1"
-    ARGS   "$<TARGET_FILE:ParaView::pvpython>"
-           -dr
-           -m paraview.tests.validate_extracts
-           --name MultiplePipelines
-           --root "${CMAKE_BINARY_DIR}/Testing/Temporary/MultiplePipelines"
-           --baseline-dir "${paraview_test_data_directory_output}/Clients/PythonCatalyst/Testing/Data/Baseline"
-           --temp-dir "${CMAKE_BINARY_DIR}/Testing/Temporary"
-           --json
-    TEST_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/pipeline2.json")
-set_tests_properties(
-    "Catalyst::WaveletMiniApp::MultiplePipelines::Validate::pipeline1.pipeline2"
-    PROPERTIES DEPENDS
-      "Catalyst::WaveletMiniApp::MultiplePipelines::pipeline1.pipeline2")
-
+  paraview_add_test(
+      PREFIX "Catalyst::WaveletMiniApp::MultiplePipelines::Validate::pipeline1"
+      ARGS   "$<TARGET_FILE:ParaView::pvpython>"
+             --dr
+             --
+             -m paraview.tests.validate_extracts
+             --name MultiplePipelines
+             --root "${CMAKE_BINARY_DIR}/Testing/Temporary/MultiplePipelines"
+             --baseline-dir "${paraview_test_data_directory_output}/Clients/PythonCatalyst/Testing/Data/Baseline"
+             --temp-dir "${CMAKE_BINARY_DIR}/Testing/Temporary"
+             --json
+      TEST_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/pipeline2.json")
+  set_tests_properties(
+      "Catalyst::WaveletMiniApp::MultiplePipelines::Validate::pipeline1.pipeline2"
+      PROPERTIES DEPENDS
+        "Catalyst::WaveletMiniApp::MultiplePipelines::pipeline1.pipeline2")
+endif()
 
 #---------------------------------------------------------------------
 # add tests for filedriver_miniapp
 set(filedriver_tests
    ValidateChangingTime.py)
 
-paraview_add_test(
-  PREFIX "Catalyst::FileDriverMiniApp::Wavelet"
-  ARGS  "$<TARGET_FILE:ParaView::pvbatch>" -dr -sym
-        -m paraview.demos.filedriver_miniapp
-        -g "${paraview_test_data_directory_output}/Testing/Data/Wavelet/*.pvti"
-        -s
-  TEST_SCRIPTS ${filedriver_tests})
+if (NOT PARAVIEW_SERIAL_TESTS_USE_MPIEXEC)
+  # if PARAVIEW_SERIAL_TESTS_USE_MPIEXEC, the paraview_add_test_mpi
+  # call and this will be duplicates, so no need to do these here.
+  paraview_add_test(
+    PREFIX "Catalyst::FileDriverMiniApp::Wavelet"
+    ARGS  "$<TARGET_FILE:ParaView::pvbatch>" --dr --sym --
+          -m paraview.demos.filedriver_miniapp
+          -g "${paraview_test_data_directory_output}/Testing/Data/Wavelet/*.pvti"
+          -s
+    TEST_SCRIPTS ${filedriver_tests})
+
+  paraview_add_test(
+    PREFIX "Catalyst::FileDriverMiniApp::Can"
+    ARGS  "$<TARGET_FILE:ParaView::pvbatch>" --dr --sym --
+          -m paraview.demos.filedriver_miniapp
+          -g "${paraview_test_data_directory_output}/Testing/Data/can_vtm/*.vtm"
+          -s
+    TEST_SCRIPTS ${filedriver_tests})
+endif()
 
 paraview_add_test_mpi(
   PREFIX "Catalyst::MPI::FileDriverMiniApp::Wavelet"
-  ARGS  "$<TARGET_FILE:ParaView::pvbatch>" -dr -sym
+  ARGS  "$<TARGET_FILE:ParaView::pvbatch>" --dr --sym --
         -m paraview.demos.filedriver_miniapp
         -g "${paraview_test_data_directory_output}/Testing/Data/Wavelet/*.pvti"
-        -s
-  TEST_SCRIPTS ${filedriver_tests})
-
-paraview_add_test(
-  PREFIX "Catalyst::FileDriverMiniApp::Can"
-  ARGS  "$<TARGET_FILE:ParaView::pvbatch>" -dr -sym
-        -m paraview.demos.filedriver_miniapp
-        -g "${paraview_test_data_directory_output}/Testing/Data/can_vtm/*.vtm"
         -s
   TEST_SCRIPTS ${filedriver_tests})
 
 paraview_add_test_mpi(
   PREFIX "Catalyst::MPI::FileDriverMiniApp::Can"
-  ARGS  "$<TARGET_FILE:ParaView::pvbatch>" -dr -sym
+  ARGS  "$<TARGET_FILE:ParaView::pvbatch>" --dr --sym --
         -m paraview.demos.filedriver_miniapp
         -g "${paraview_test_data_directory_output}/Testing/Data/can_vtm/*.vtm"
         -s
@@ -237,19 +285,21 @@ unset(filedriver_tests)
 #    `vtk_module_test_data` call at the start of this file to include the new
 #    baselines.
 #---------------------------------------------------------------------
-if (PARAVIEW_USE_QT)
+if (TARGET ParaView::paraview OR paraview_will_be_built)
   include(FindPythonModules)
   find_python_module(pandas pandas_found)
 
   set(catalyst_tests
-    WaveletHistogramExtracts.xml)
+    WaveletHistogramExtracts.xml
+    WaveletTimeTrigger.xml)
 
   if (pandas_found)
     list(APPEND catalyst_tests
-      WaveletPhiThetaExtractsWithCinema.xml,CINEMA,
+      WaveletPhiThetaExtractsWithCinema.xml,CINEMA
       WaveletVolumeRenderWithCinema.xml,CINEMA)
   else ()
-    message(WARNING "'pandas' is missing. Skipping Cinema tests")
+    message(AUTHOR_WARNING
+      "'pandas' is missing. Skipping Cinema tests")
   endif()
 
   set(catalyst_options
@@ -261,40 +311,41 @@ if (PARAVIEW_USE_QT)
 
   foreach (tname IN LISTS names)
     _vtk_test_set_options("${catalyst_options}" "local_" ${_${tname}_options})
+    _vtk_test_parse_name("${tname}" "xml")
 
-    set(ttemp_dir "${CMAKE_BINARY_DIR}/Testing/Temporary/${tname}")
+    set(ttemp_dir "${CMAKE_BINARY_DIR}/Testing/Temporary/${test_name}")
 
     #----------------------------------------------------------------------
     # Fixture setup
     # remove ttemp_dir as first step
-    add_test(NAME Catalyst::Workflow::RemoveOld.${tname}
+    add_test(NAME Catalyst::Workflow::RemoveOld.${test_name}
              COMMAND "${CMAKE_COMMAND}" -E remove_directory "${ttemp_dir}")
 
     # create the ttemp_dir
-    add_test(NAME Catalyst::Workflow::Prepare.${tname}
+    add_test(NAME Catalyst::Workflow::Prepare.${test_name}
              COMMAND "${CMAKE_COMMAND}" -E make_directory "${ttemp_dir}")
 
     set_tests_properties(
-        "Catalyst::Workflow::Prepare.${tname}"
+        "Catalyst::Workflow::Prepare.${test_name}"
       PROPERTIES
-        FIXTURES_SETUP "CatalystWorkflowSetup.${tname}"
-        FIXTURES_REQUIRED "CatalystWorkflowPreSetup.${tname}")
+        FIXTURES_SETUP "CatalystWorkflowSetup.${test_name}"
+        FIXTURES_REQUIRED "CatalystWorkflowPreSetup.${test_name}")
 
     set_tests_properties(
-      "Catalyst::Workflow::RemoveOld.${tname}"
+      "Catalyst::Workflow::RemoveOld.${test_name}"
       PROPERTIES
-        FIXTURES_SETUP "CatalystWorkflowPreSetup.${tname}")
+        FIXTURES_SETUP "CatalystWorkflowPreSetup.${test_name}")
     #----------------------------------------------------------------------
 
     # 1. run GUI to generate the pvsm state file and validate "export now"
     paraview_add_client_tests(
       PREFIX "Catalyst::Workflow::ParaView"
       TEST_DIRECTORY "${ttemp_dir}"
-      TEST_SCRIPTS ${tname}.xml)
+      TEST_SCRIPTS "${test_file}")
 
-    set_tests_properties("Catalyst::Workflow::ParaView.${tname}"
+    set_tests_properties("Catalyst::Workflow::ParaView.${test_name}"
       PROPERTIES
-        FIXTURES_REQUIRED "CatalystWorkflowSetup.${tname}"
+        FIXTURES_REQUIRED "CatalystWorkflowSetup.${test_name}"
         ENVIRONMENT
             PARAVIEW_OVERRIDE_EXTRACTS_OUTPUT_DIRECTORY=${ttemp_dir}/ImmediateExtracts
         )
@@ -303,19 +354,20 @@ if (PARAVIEW_USE_QT)
     paraview_add_test(
       PREFIX "Catalyst::Workflow::ParaView::Validate"
       ARGS "$<TARGET_FILE:ParaView::pvpython>"
-           -dr
+           --dr
+           --
            -m paraview.tests.validate_extracts
-           --name "${tname}"
+           --name "${test_name}"
            --root  "${ttemp_dir}"
            --subdir "ImmediateExtracts"
            --baseline-dir "${paraview_test_data_directory_output}/Clients/PythonCatalyst/Testing/Data/Baseline"
            --temp-dir "${CMAKE_BINARY_DIR}/Testing/Temporary"
            --json
-      TEST_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/${tname}.json")
+      TEST_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/${test_name}.json")
 
     set_tests_properties(
-      "Catalyst::Workflow::ParaView::Validate.${tname}"
-      PROPERTIES DEPENDS "Catalyst::Workflow::ParaView.${tname}")
+      "Catalyst::Workflow::ParaView::Validate.${test_name}"
+      PROPERTIES DEPENDS "Catalyst::Workflow::ParaView.${test_name}")
 
     # 2. add test to generate Catalyst Python state. We'll just use pvpython for
     #    this.
@@ -327,17 +379,18 @@ if (PARAVIEW_USE_QT)
     paraview_add_test(
       PREFIX "Catalyst::Workflow::SaveCatalystState"
       ARGS "$<TARGET_FILE:ParaView::pvpython>"
-            -dr
+            --dr
+            --
             -m paraview.demos.export_catalyst_state
-            --output "${ttemp_dir}/${tname}.py"
+            --output "${ttemp_dir}/${test_name}.py"
             --extracts-dir "${ttemp_dir}/CoprocessingExtracts"
             ${cinema_args}
             --pvsm
-      TEST_SCRIPTS ${ttemp_dir}/${tname}.pvsm)
+      TEST_SCRIPTS ${ttemp_dir}/${test_name}.pvsm)
 
     set_tests_properties(
-      "Catalyst::Workflow::SaveCatalystState.${tname}"
-      PROPERTIES DEPENDS "Catalyst::Workflow::ParaView.${tname}")
+      "Catalyst::Workflow::SaveCatalystState.${test_name}"
+      PROPERTIES DEPENDS "Catalyst::Workflow::ParaView.${test_name}")
 
     # 3. add test to load catalyst script in pvbatch.
     paraview_add_test_mpi_optional(
@@ -345,17 +398,17 @@ if (PARAVIEW_USE_QT)
       ENVIRONMENT
         PARAVIEW_OVERRIDE_EXTRACTS_OUTPUT_DIRECTORY=${ttemp_dir}/BatchExtracts
       ARGS "$<TARGET_FILE:ParaView::pvbatch>"
-           -dr
-      TEST_SCRIPTS ${ttemp_dir}/${tname}.py)
+           --dr
+      TEST_SCRIPTS ${ttemp_dir}/${test_name}.py)
 
     set_tests_properties(
-      "Catalyst::Workflow::BatchExecute.${tname}"
+      "Catalyst::Workflow::BatchExecute.${test_name}"
       PROPERTIES DEPENDS
-        "Catalyst::Workflow::SaveCatalystState.${tname}")
+        "Catalyst::Workflow::SaveCatalystState.${test_name}")
 
     # 3.1 validate 'BatchExtracts'
     set(json_infix )
-    if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${tname}.MPI.json AND PARAVIEW_USE_MPI)
+    if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${test_name}.MPI.json AND PARAVIEW_USE_MPI)
       # MPI runs sometimes have different files generated. Handle that.
       set(json_infix ".MPI")
     endif()
@@ -363,52 +416,55 @@ if (PARAVIEW_USE_QT)
     paraview_add_test(
       PREFIX "Catalyst::Workflow::BatchExecute::Validate"
       ARGS "$<TARGET_FILE:ParaView::pvpython>"
-           -dr
+           --dr
+           --
            -m paraview.tests.validate_extracts
-           --name "${tname}"
+           --name "${test_name}"
            --root  "${ttemp_dir}"
            --subdir "BatchExtracts"
            --baseline-dir "${paraview_test_data_directory_output}/Clients/PythonCatalyst/Testing/Data/Baseline"
            --temp-dir "${CMAKE_BINARY_DIR}/Testing/Temporary"
            --json
-      TEST_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/${tname}${json_infix}.json")
+      TEST_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/${test_name}${json_infix}.json")
 
     set_tests_properties(
-      "Catalyst::Workflow::BatchExecute::Validate.${tname}"
-      PROPERTIES DEPENDS "Catalyst::Workflow::BatchExecute.${tname}")
+      "Catalyst::Workflow::BatchExecute::Validate.${test_name}"
+      PROPERTIES DEPENDS "Catalyst::Workflow::BatchExecute.${test_name}")
 
     # 4. run with WaveletMiniApp
     paraview_add_test_mpi_optional(
       PREFIX "Catalyst::Workflow::WaveletMiniApp"
       ARGS "$<TARGET_FILE:ParaView::pvbatch>"
-            -dr
-            -sym -m paraview.demos.wavelet_miniapp -t 20 --size 21
+            --dr
+            --sym --
+            -m paraview.demos.wavelet_miniapp -t 20 --size 21
             --channel Wavelet1
             -s
-      TEST_SCRIPTS ${ttemp_dir}/${tname}.py)
+      TEST_SCRIPTS ${ttemp_dir}/${test_name}.py)
 
     set_tests_properties(
-      "Catalyst::Workflow::WaveletMiniApp.${tname}"
+      "Catalyst::Workflow::WaveletMiniApp.${test_name}"
       PROPERTIES DEPENDS
-        "Catalyst::Workflow::SaveCatalystState.${tname}")
+        "Catalyst::Workflow::SaveCatalystState.${test_name}")
 
     # 4.1 validate 'CoprocessingExtracts'
     paraview_add_test(
       PREFIX "Catalyst::Workflow::WaveletMiniApp::Validate"
       ARGS "$<TARGET_FILE:ParaView::pvpython>"
-           -dr
+           --dr
+           --
            -m paraview.tests.validate_extracts
-           --name "${tname}"
+           --name "${test_name}"
            --root  "${ttemp_dir}"
            --subdir "CoprocessingExtracts"
            --baseline-dir "${paraview_test_data_directory_output}/Clients/PythonCatalyst/Testing/Data/Baseline"
            --temp-dir "${CMAKE_BINARY_DIR}/Testing/Temporary"
            --json
-      TEST_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/${tname}${json_infix}.json")
+      TEST_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/${test_name}${json_infix}.json")
 
     set_tests_properties(
-      "Catalyst::Workflow::WaveletMiniApp::Validate.${tname}"
-      PROPERTIES DEPENDS "Catalyst::Workflow::WaveletMiniApp.${tname}")
+      "Catalyst::Workflow::WaveletMiniApp::Validate.${test_name}"
+      PROPERTIES DEPENDS "Catalyst::Workflow::WaveletMiniApp.${test_name}")
   endforeach()
 else()
   message(STATUS "ParaView client not built. Skipping Catalyst workflow tests.")

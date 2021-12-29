@@ -28,14 +28,10 @@ vtkSMWidgetRepresentationProxy::vtkSMWidgetRepresentationProxy()
 }
 
 //---------------------------------------------------------------------------
-vtkSMWidgetRepresentationProxy::~vtkSMWidgetRepresentationProxy()
-{
-}
+vtkSMWidgetRepresentationProxy::~vtkSMWidgetRepresentationProxy() = default;
 
 //---------------------------------------------------------------------------
-void vtkSMWidgetRepresentationProxy::OnStartInteraction()
-{
-}
+void vtkSMWidgetRepresentationProxy::OnStartInteraction() {}
 
 //---------------------------------------------------------------------------
 void vtkSMWidgetRepresentationProxy::OnInteraction()
@@ -50,9 +46,7 @@ void vtkSMWidgetRepresentationProxy::OnEndInteraction()
 }
 
 //---------------------------------------------------------------------------
-void vtkSMWidgetRepresentationProxy::SendRepresentation()
-{
-}
+void vtkSMWidgetRepresentationProxy::SendRepresentation() {}
 
 //---------------------------------------------------------------------------
 void vtkSMWidgetRepresentationProxy::PrintSelf(ostream& os, vtkIndent indent)

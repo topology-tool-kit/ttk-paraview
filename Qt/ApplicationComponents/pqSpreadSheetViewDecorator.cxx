@@ -82,7 +82,7 @@ public:
   {
   }
 
-  ~SpreadsheetConnection() = default;
+  ~SpreadsheetConnection() override = default;
 
   void setServerManagerValue(bool use_unchecked, const QVariant& value) override
   {
@@ -157,7 +157,7 @@ static void populateMenu(pqSpreadSheetView* view, QMenu* menu)
   // add checkboxes for known columns.
   auto model = view->getViewModel();
 
-  std::vector<std::pair<std::string, bool> > columnLabels;
+  std::vector<std::pair<std::string, bool>> columnLabels;
   std::set<std::string> columnLabelsSet;
   for (int col = 0, max = model->columnCount(); col < max; ++col)
   {
@@ -168,7 +168,7 @@ static void populateMenu(pqSpreadSheetView* view, QMenu* menu)
     else
     {
       const std::string label =
-        model->headerData(col, Qt::Horizontal, Qt::DisplayRole).toString().toLatin1().data();
+        model->headerData(col, Qt::Horizontal, Qt::DisplayRole).toString().toUtf8().data();
       bool checked =
         model->headerData(col, Qt::Horizontal, pqSpreadSheetViewModel::SectionVisible).toBool();
       if (columnLabelsSet.insert(label).second == true)
@@ -202,7 +202,7 @@ static void populateMenu(pqSpreadSheetView* view, QMenu* menu)
 
   auto allCheckbox = addCheckableAction(menu, "All Columns", false);
   menu->addSeparator();
-  auto checkboxes = std::make_shared<std::vector<QCheckBox*> >();
+  auto checkboxes = std::make_shared<std::vector<QCheckBox*>>();
 
   for (const auto& pair : columnLabels)
   {
@@ -238,7 +238,7 @@ static void populateMenu(pqSpreadSheetView* view, QMenu* menu)
         vproxy->UpdateVTKObjects();
         view->render();
 
-        updateAllCheckState(allCheckbox, (*checkboxes.get()));
+        updateAllCheckState(allCheckbox, *checkboxes);
       };
 
       auto cb = addCheckableAction(menu, label.c_str(), checked);
@@ -247,34 +247,35 @@ static void populateMenu(pqSpreadSheetView* view, QMenu* menu)
     }
   }
 
-  updateAllCheckState(allCheckbox, (*checkboxes.get()));
-  QObject::connect(allCheckbox, &QCheckBox::stateChanged, [view, checkboxes, allCheckbox](
-                                                            int checkState) {
-    std::vector<std::string> hidden_columns;
-    for (auto cb : (*checkboxes))
-    {
-      QSignalBlocker sblocker(cb);
-      cb->setChecked(checkState == Qt::Checked);
-      if (checkState != Qt::Checked)
+  updateAllCheckState(allCheckbox, *checkboxes);
+  QObject::connect(
+    allCheckbox, &QCheckBox::stateChanged, [view, checkboxes, allCheckbox](int checkState) {
+      std::vector<std::string> hidden_columns;
+      for (auto cb : (*checkboxes))
       {
-        // all columns are hidden.
-        hidden_columns.push_back(cb->text().toLocal8Bit().data());
+        QSignalBlocker sblocker(cb);
+        cb->setChecked(checkState == Qt::Checked);
+        if (checkState != Qt::Checked)
+        {
+          // all columns are hidden.
+          hidden_columns.push_back(cb->text().toUtf8().toStdString());
+        }
       }
-    }
 
-    // turn off tristate to avoid the `All Columns` checkbox from entering the
-    // partially-checked state through user clicks.
-    allCheckbox->setTristate(false);
+      // turn off tristate to avoid the `All Columns` checkbox from entering the
+      // partially-checked state through user clicks.
+      allCheckbox->setTristate(false);
 
-    auto vproxy = view->getViewProxy();
-    auto vsvp = vtkSMStringVectorProperty::SafeDownCast(vproxy->GetProperty("HiddenColumnLabels"));
+      auto vproxy = view->getViewProxy();
+      auto vsvp =
+        vtkSMStringVectorProperty::SafeDownCast(vproxy->GetProperty("HiddenColumnLabels"));
 
-    SM_SCOPED_TRACE(PropertiesModified).arg("proxy", vproxy);
-    SCOPED_UNDO_SET("SpreadSheetView column visibilities");
-    vsvp->SetElements(hidden_columns);
-    vproxy->UpdateVTKObjects();
-    view->render();
-  });
+      SM_SCOPED_TRACE(PropertiesModified).arg("proxy", vproxy);
+      SCOPED_UNDO_SET("SpreadSheetView column visibilities");
+      vsvp->SetElements(hidden_columns);
+      vproxy->UpdateVTKObjects();
+      view->render();
+    });
 }
 }
 
@@ -301,7 +302,7 @@ pqSpreadSheetViewDecorator::pqSpreadSheetViewDecorator(pqSpreadSheetView* view)
   auto& internal = *this->Internal;
   internal.setupUi(header);
   internal.Source->setAutoUpdateIndex(false);
-  internal.Source->addCustomEntry("None", NULL);
+  internal.Source->addCustomEntry("None", nullptr);
   internal.Source->fillExistingPorts();
 
   internal.spinBoxPrecision->setValue(model->getDecimalPrecision());
@@ -370,9 +371,7 @@ pqSpreadSheetViewDecorator::pqSpreadSheetViewDecorator(pqSpreadSheetView* view)
 }
 
 //-----------------------------------------------------------------------------
-pqSpreadSheetViewDecorator::~pqSpreadSheetViewDecorator()
-{
-}
+pqSpreadSheetViewDecorator::~pqSpreadSheetViewDecorator() = default;
 
 //-----------------------------------------------------------------------------
 void pqSpreadSheetViewDecorator::setPrecision(int p)

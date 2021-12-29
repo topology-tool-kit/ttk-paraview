@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    $RCSfile: vtkDistributedPointCloudFilter.h,v $
+  Module:    vtkDistributedPointCloudFilter.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -91,7 +91,7 @@ int vtkDistributedPointCloudFilter::RequestData(
   {
     double bounds[6];
     this->OptimizeBoundingBox(subControllersTree, input, bounds);
-    this->GetPointsInsideBounds(controller, input, output, bounds);
+    vtkDistributedPointCloudFilter::GetPointsInsideBounds(controller, input, output, bounds);
   }
   else
   {

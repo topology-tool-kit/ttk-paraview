@@ -12,7 +12,7 @@
 #include "vtkInformation.h"
 #include "vtkInformationIntegerKey.h"
 #include "vtkInformationVector.h"
-#include "vtkMath.h"
+#include "vtkMinimalStandardRandomSequence.h"
 #include "vtkMultiBlockDataSet.h"
 #include "vtkNew.h"
 #include "vtkPointData.h"
@@ -71,25 +71,25 @@ const char* vtkSciVizStatistics::GetAttributeArrayName(int n)
   vtkDataObject* dobj = this->GetInputDataObject(0, 0); // First input is always the leader
   if (!dobj)
   {
-    return 0;
+    return nullptr;
   }
 
   vtkFieldData* fdata = dobj->GetAttributesAsFieldData(this->AttributeMode);
   if (!fdata)
   {
-    return 0;
+    return nullptr;
   }
 
   int numArrays = fdata->GetNumberOfArrays();
   if (n < 0 || n > numArrays)
   {
-    return 0;
+    return nullptr;
   }
 
   vtkAbstractArray* arr = fdata->GetAbstractArray(n);
   if (!arr)
   {
-    return 0;
+    return nullptr;
   }
 
   return arr->GetName();
@@ -223,7 +223,7 @@ int vtkSciVizStatistics::RequestData(
     return 1;
   }
 
-  if (!this->P->Buffer.size())
+  if (this->P->Buffer.empty())
   {
     // Silently ignore empty requests.
     return 1;
@@ -279,7 +279,7 @@ int vtkSciVizStatistics::RequestData(
     // as such. Otherwise, it is treated as a single model that is applied to each block.
     vtkDataObject* preModel =
       (compModelObjIn && compModelObjIn->GetInformation()->Has(MULTIPLE_MODELS()))
-      ? 0
+      ? nullptr
       : modelObjIn; // Pre-existing model. Initialize as if we have a single model.
     // Iterate over all blocks at the given hierarchy level looking for leaf nodes
     this->RequestData(compDataObjOu, compModelObjOu, compDataObjIn, compModelObjIn, preModel);
@@ -311,7 +311,7 @@ int vtkSciVizStatistics::RequestData(vtkCompositeDataSet* compDataOu,
   vtkCompositeDataIterator* ouModelIter = compModelOu->NewIterator();
 
   // We may have a single model for all blocks or one per block
-  vtkCompositeDataIterator* inModelIter = compModelIn ? compModelIn->NewIterator() : 0;
+  vtkCompositeDataIterator* inModelIter = compModelIn ? compModelIn->NewIterator() : nullptr;
   vtkDataObject* currentModel = singleModel;
 
   if (vtkDataObjectTreeIterator::SafeDownCast(inDataIter))
@@ -381,7 +381,8 @@ int vtkSciVizStatistics::RequestData(vtkCompositeDataSet* compDataOu,
         this->RequestData(vtkCompositeDataSet::SafeDownCast(ouDataIter->GetCurrentDataObject()),
           vtkCompositeDataSet::SafeDownCast(ouModelIter->GetCurrentDataObject()),
           vtkCompositeDataSet::SafeDownCast(inDataIter->GetCurrentDataObject()),
-          inModelIter ? vtkCompositeDataSet::SafeDownCast(inModelIter->GetCurrentDataObject()) : 0,
+          inModelIter ? vtkCompositeDataSet::SafeDownCast(inModelIter->GetCurrentDataObject())
+                      : nullptr,
           currentModel);
       if (!stat)
       {
@@ -606,9 +607,11 @@ int vtkSciVizStatistics::PrepareTrainingTable(
   std::set<vtkIdType> trainRows;
   vtkIdType N = fullDataTable->GetNumberOfRows();
   double frac = static_cast<double>(M) / static_cast<double>(N);
+  vtkNew<vtkMinimalStandardRandomSequence> rand;
   for (vtkIdType i = 0; i < N; ++i)
   {
-    if (vtkMath::Random() < frac)
+    rand->Next();
+    if (rand->GetValue() < frac)
     {
       trainRows.insert(i);
     }
@@ -617,12 +620,14 @@ int vtkSciVizStatistics::PrepareTrainingTable(
   N = N - 1;
   while (static_cast<vtkIdType>(trainRows.size()) > M)
   {
-    vtkIdType rec = static_cast<vtkIdType>(vtkMath::Random(0, N));
+    rand->Next();
+    vtkIdType rec = static_cast<vtkIdType>(rand->GetRangeValue(0, N));
     trainRows.erase(rec);
   }
   while (static_cast<vtkIdType>(trainRows.size()) < M)
   {
-    vtkIdType rec = static_cast<vtkIdType>(vtkMath::Random(0, N));
+    rand->Next();
+    vtkIdType rec = static_cast<vtkIdType>(rand->GetRangeValue(0, N));
     trainRows.insert(rec);
   }
   // Finally, copy the subset into the training table

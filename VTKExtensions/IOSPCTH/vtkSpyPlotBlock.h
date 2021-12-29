@@ -23,13 +23,13 @@ PURPOSE.  See the above copyright notice for more information.
  * transisitioning functionality from vtkSpyPlotUniReader and adding it to
  * this class.  Note that this helper class is not derived from vtkObject
  * and can be allocated on the static
-*/
+ */
 
 #ifndef vtkSpyPlotBlock_h
 #define vtkSpyPlotBlock_h
 
 #include "vtkPVVTKExtensionsIOSPCTHModule.h" //needed for exports
-#include "vtkSystemIncludes.h"
+#include "vtkType.h"                         // for vtkIdType
 
 class vtkCellData;
 class vtkDoubleArray;

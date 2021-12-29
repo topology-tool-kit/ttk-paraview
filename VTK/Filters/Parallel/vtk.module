@@ -3,6 +3,8 @@ NAME
 LIBRARY_NAME
   vtkFiltersParallel
 IMPLEMENTABLE
+IMPLEMENTS
+  VTK::FiltersCore
 KIT
   VTK::Parallel
 GROUPS
@@ -33,6 +35,7 @@ TEST_DEPENDS
   VTK::IOParallelExodus
   VTK::IOXML
   VTK::InteractionStyle
+  VTK::ParallelCore
   VTK::RenderingOpenGL2
   VTK::RenderingParallel
   VTK::TestingCore

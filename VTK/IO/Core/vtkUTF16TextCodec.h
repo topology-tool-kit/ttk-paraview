@@ -47,13 +47,13 @@ public:
   static vtkUTF16TextCodec* New();
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * The name this codec goes by - should match the string the factory will take to create it
    */
   const char* Name() override;
   bool CanHandle(const char* NameString) override;
-  //@}
+  ///@}
 
   /**
    * Set the endianness - true if Big false is little
@@ -66,11 +66,6 @@ public:
   void FindEndianness(istream& InputStream);
 
   /**
-   * is the given sample valid for this codec? - will take endianness into account
-   */
-  bool IsValid(istream& InputStream) override;
-
-  /**
    * Iterate through the sequence represented by the begin and end iterators assigning the result
    * to the output iterator.  This is the current pattern in vtkDelimitedTextReader
    */
@@ -80,7 +75,7 @@ public:
    * Return the next code point from the sequence represented by the begin, end iterators
    * advancing begin through however many places needed to assemble that code point
    */
-  vtkUnicodeString::value_type NextUnicode(istream& inputStream) override;
+  vtkTypeUInt32 NextUTF32CodePoint(istream& inputStream) override;
 
 protected:
   vtkUTF16TextCodec();

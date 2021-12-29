@@ -18,12 +18,12 @@
  * vtkPVagChartRepresentation is the vtkChartRepresentation
  * subclass for bag plots representation. It exposes API from
  * underlying vtkXYChart and vtkPlotBag.
-*/
+ */
 
 #ifndef vtkPVBagChartRepresentation_h
 #define vtkPVBagChartRepresentation_h
 
-#include "vtkBagPlotViewsAndFiltersBagPlotModule.h"
+#include "vtkBagPlotViewsAndFiltersBagPlotModule.h" // for export macro
 #include "vtkChartRepresentation.h"
 
 class vtkChartXY;

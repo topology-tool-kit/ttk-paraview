@@ -42,6 +42,8 @@ class VTKCHARTSCORE_EXPORT vtkCategoryLegend : public vtkChartLegend
 {
 public:
   vtkTypeMacro(vtkCategoryLegend, vtkChartLegend);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
+
   static vtkCategoryLegend* New();
 
   /**
@@ -64,7 +66,7 @@ public:
    */
   vtkRectf GetBoundingRect(vtkContext2D* painter) override;
 
-  //@{
+  ///@{
   /**
    * Get/Set the vtkScalarsToColors used to draw this legend.
    * Since this legend represents categorical data, this
@@ -72,9 +74,9 @@ public:
    */
   virtual void SetScalarsToColors(vtkScalarsToColors* stc);
   virtual vtkScalarsToColors* GetScalarsToColors();
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get/Set the array of values that will be represented by this legend.
    * This array must contain distinct annotated values from the ScalarsToColors.
@@ -83,23 +85,23 @@ public:
    */
   vtkGetMacro(Values, vtkVariantArray*);
   vtkSetMacro(Values, vtkVariantArray*);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get/set the title text of the legend.
    */
   virtual void SetTitle(const vtkStdString& title);
   virtual vtkStdString GetTitle();
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Get/set the label to use for outlier data.
    */
   vtkGetMacro(OutlierLabel, vtkStdString);
   vtkSetMacro(OutlierLabel, vtkStdString);
-  //@}
+  ///@}
 
 protected:
   vtkCategoryLegend();

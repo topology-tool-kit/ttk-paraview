@@ -18,7 +18,7 @@
  * vtkSMAnimationSceneProxy observe vtkCommand::ModifiedEvent on the
  * client-side VTK-object to call UpdatePropertyInformation() every time that
  * happens.
-*/
+ */
 
 #ifndef vtkSMAnimationSceneProxy_h
 #define vtkSMAnimationSceneProxy_h
@@ -49,14 +49,14 @@ public:
   //@{
   /**
    * Returns the first animation cue (enabled or otherwise) that animates the
-   * given property on the proxy. This will return NULL if none such cue exists.
+   * given property on the proxy. This will return nullptr if none such cue exists.
    */
   virtual vtkSMProxy* FindAnimationCue(vtkSMProxy* animatedProxy, const char* animatedPropertyName);
   static vtkSMProxy* FindAnimationCue(
     vtkSMProxy* scene, vtkSMProxy* animatedProxy, const char* animatedPropertyName)
   {
     vtkSMAnimationSceneProxy* self = vtkSMAnimationSceneProxy::SafeDownCast(scene);
-    return self ? self->FindAnimationCue(animatedProxy, animatedPropertyName) : NULL;
+    return self ? self->FindAnimationCue(animatedProxy, animatedPropertyName) : nullptr;
   }
   //@}
 

@@ -70,7 +70,7 @@ public:
    * filename before calling this function.  Returns true if the
    * database was opened successfully; false otherwise.
    */
-  bool Open(const char* password = 0) override;
+  bool Open(const char* password = nullptr) override;
 
   /**
    * Close the connection to the database.
@@ -97,51 +97,51 @@ public:
    */
   const char* GetLastErrorText() override;
 
-  //@{
+  ///@{
   /**
    * String representing database type (e.g. "psql").
    */
   const char* GetDatabaseType() override { return this->DatabaseType; }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * The database server host name.
    */
   virtual void SetHostName(const char*);
   vtkGetStringMacro(HostName);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * The user name for connecting to the database server.
    */
   virtual void SetUser(const char*);
   vtkGetStringMacro(User);
-  //@}
+  ///@}
 
   /**
    * The user's password for connecting to the database server.
    */
   virtual void SetPassword(const char*);
 
-  //@{
+  ///@{
   /**
    * The name of the database to connect to.
    */
   virtual void SetDatabaseName(const char*);
   vtkGetStringMacro(DatabaseName);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Additional options for the database.
    */
   virtual void SetConnectOptions(const char*);
   vtkGetStringMacro(ConnectOptions);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * The port used for connecting to the database.
    */
@@ -149,7 +149,7 @@ public:
   virtual int GetServerPortMinValue() { return 0; }
   virtual int GetServerPortMaxValue() { return VTK_INT_MAX; }
   vtkGetMacro(ServerPort, int);
-  //@}
+  ///@}
 
   /**
    * Get a URL referencing the current database connection.
@@ -195,7 +195,9 @@ public:
    * Return the SQL string with the syntax to create a column inside a
    * "CREATE TABLE" SQL statement.
    * NB: this method implements the PostgreSQL-specific syntax:
+   * \code
    * <column name> <column type> <column attributes>
+   * \endcode
    */
   vtkStdString GetColumnSpecification(
     vtkSQLDatabaseSchema* schema, int tblHandle, int colHandle) override;

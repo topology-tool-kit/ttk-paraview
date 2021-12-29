@@ -1,29 +1,29 @@
 /* Copyright 2021 NVIDIA Corporation. All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions
-* are met:
-*  * Redistributions of source code must retain the above copyright
-*    notice, this list of conditions and the following disclaimer.
-*  * Redistributions in binary form must reproduce the above copyright
-*    notice, this list of conditions and the following disclaimer in the
-*    documentation and/or other materials provided with the distribution.
-*  * Neither the name of NVIDIA CORPORATION nor the names of its
-*    contributors may be used to endorse or promote products derived
-*    from this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-* EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-* PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-* CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-* EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-* PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-* PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-* OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include <map>
 #include <string>
@@ -63,7 +63,7 @@
 class vtknvindex_irregular_volume_representation::vtkInternals
 {
 public:
-  typedef std::map<std::string, vtkSmartPointer<vtkUnstructuredGridVolumeMapper> > MapOfMappers;
+  typedef std::map<std::string, vtkSmartPointer<vtkUnstructuredGridVolumeMapper>> MapOfMappers;
   MapOfMappers Mappers;
   std::string ActiveVolumeMapper;
 };
@@ -72,7 +72,6 @@ vtkStandardNewMacro(vtknvindex_irregular_volume_representation);
 
 //----------------------------------------------------------------------------
 vtknvindex_irregular_volume_representation::vtknvindex_irregular_volume_representation()
-  : Superclass()
 {
   m_controller = vtkMultiProcessController::GetGlobalController();
 
@@ -111,7 +110,7 @@ vtknvindex_irregular_volume_representation::~vtknvindex_irregular_volume_represe
   this->DefaultMapper->shutdown();
 
   delete this->Internals;
-  this->Internals = 0;
+  this->Internals = nullptr;
 
   delete m_cluster_properties;
 }
@@ -133,7 +132,7 @@ void vtknvindex_irregular_volume_representation::SetActiveVolumeMapper(const cha
 //----------------------------------------------------------------------------
 vtkUnstructuredGridVolumeMapper* vtknvindex_irregular_volume_representation::GetActiveVolumeMapper()
 {
-  if (this->Internals->ActiveVolumeMapper != "")
+  if (!this->Internals->ActiveVolumeMapper.empty())
   {
     vtkInternals::MapOfMappers::iterator iter =
       this->Internals->Mappers.find(this->Internals->ActiveVolumeMapper);
@@ -310,7 +309,7 @@ int vtknvindex_irregular_volume_representation::ProcessViewRequest(
 #endif // VTKNVINDEX_USE_KDTREE
 
     // Retrieve ParaView's kd-tree in order to obtain domain subdivision bounding boxes.
-    if (ddm->GetCuts().size() > 0 && controller != nullptr &&
+    if (!ddm->GetCuts().empty() && controller != nullptr &&
       controller->GetLocalProcessId() < static_cast<int>(ddm->GetCuts().size()))
     {
       DefaultMapper->set_subregion_bounds(ddm->GetCuts()[controller->GetLocalProcessId()]);
@@ -376,7 +375,7 @@ bool vtknvindex_irregular_volume_representation::RemoveFromView(vtkView* view)
 void vtknvindex_irregular_volume_representation::UpdateMapperParameters()
 {
   vtkUnstructuredGridVolumeMapper* activeMapper = this->GetActiveVolumeMapper();
-  const char* colorArrayName = NULL;
+  const char* colorArrayName = nullptr;
   int fieldAssociation = vtkDataObject::FIELD_ASSOCIATION_POINTS;
 
   vtkInformation* info = this->GetInputArrayInformation(0);
@@ -418,11 +417,25 @@ void vtknvindex_irregular_volume_representation::PrintSelf(ostream& os, vtkInden
 // Forwarded to vtkVolumeRepresentationPreprocessor
 
 //----------------------------------------------------------------------------
-void vtknvindex_irregular_volume_representation::SetExtractedBlockIndex(unsigned int index)
+void vtknvindex_irregular_volume_representation::SetActiveAssembly(const char* name)
 {
-  this->Preprocessor->SetExtractedBlockIndex(index);
+  this->Preprocessor->SetAssemblyName(name);
+  this->MarkModified();
 }
 
+//----------------------------------------------------------------------------
+void vtknvindex_irregular_volume_representation::AddBlockSelector(const char* selector)
+{
+  this->Preprocessor->AddSelector(selector);
+  this->MarkModified();
+}
+
+//----------------------------------------------------------------------------
+void vtknvindex_irregular_volume_representation::RemoveAllBlockSelectors()
+{
+  this->Preprocessor->ClearSelectors();
+  this->MarkModified();
+}
 //***************************************************************************
 // Forwarded to vtkResampleToImage
 //----------------------------------------------------------------------------
@@ -533,22 +546,10 @@ void vtknvindex_irregular_volume_representation::set_roi_maxK(double val)
 }
 
 //----------------------------------------------------------------------------
-void vtknvindex_irregular_volume_representation::set_log_performance(bool is_log)
+bool vtknvindex_irregular_volume_representation::update_current_kernel()
 {
-  m_app_config_settings->set_log_performance(is_log);
-  DefaultMapper->config_settings_changed();
-}
+  bool force_render = false;
 
-//----------------------------------------------------------------------------
-void vtknvindex_irregular_volume_representation::set_dump_internal_state(bool is_dump)
-{
-  m_app_config_settings->set_dump_internal_state(is_dump);
-  DefaultMapper->config_settings_changed();
-}
-
-//----------------------------------------------------------------------------
-void vtknvindex_irregular_volume_representation::update_current_kernel()
-{
   switch (m_app_config_settings->get_rtc_kernel())
   {
     case RTC_KERNELS_ISOSURFACE:
@@ -571,16 +572,48 @@ void vtknvindex_irregular_volume_representation::update_current_kernel()
       break;
 
     case RTC_KERNELS_CUSTOM:
-      static_cast<vtknvindex_irregular_volume_mapper*>(this->DefaultMapper)
-        ->rtc_kernel_changed(RTC_KERNELS_CUSTOM, m_custom_kernel_program,
-          reinterpret_cast<void*>(&m_custom_params), sizeof(m_custom_params));
+      force_render = static_cast<vtknvindex_irregular_volume_mapper*>(this->DefaultMapper)
+                       ->rtc_kernel_changed(RTC_KERNELS_CUSTOM, m_custom_kernel_program,
+                         reinterpret_cast<void*>(&m_custom_params), sizeof(m_custom_params));
       break;
 
     case RTC_KERNELS_NONE:
     default:
       static_cast<vtknvindex_irregular_volume_mapper*>(this->DefaultMapper)
-        ->rtc_kernel_changed(RTC_KERNELS_NONE, "", 0, 0);
+        ->rtc_kernel_changed(RTC_KERNELS_NONE, "", nullptr, 0);
       break;
+  }
+
+  return force_render;
+}
+
+//----------------------------------------------------------------------------
+void vtknvindex_irregular_volume_representation::update_current_kernel_source(
+  bool need_force_render)
+{
+  if (m_custom_kernel_filename.empty())
+  {
+    m_custom_kernel_program.clear();
+  }
+  else
+  {
+    std::ifstream is(m_custom_kernel_filename);
+    m_custom_kernel_program =
+      std::string((std::istreambuf_iterator<char>(is)), std::istreambuf_iterator<char>());
+  }
+
+  if (m_app_config_settings->get_rtc_kernel() == RTC_KERNELS_CUSTOM)
+  {
+    if (update_current_kernel() && need_force_render)
+    {
+      // Pressing the "Update kernel" button does not update the property and therefore does not
+      // trigger rendering, hence do that explicitly here.
+      vtkPVRenderView* rview = vtkPVRenderView::SafeDownCast(this->GetView());
+      if (rview)
+      {
+        rview->StillRender();
+      }
+    }
   }
 }
 
@@ -795,18 +828,14 @@ void vtknvindex_irregular_volume_representation::set_edge_samples(int edge_sampl
 //----------------------------------------------------------------------------
 void vtknvindex_irregular_volume_representation::set_kernel_filename(const char* kernel_filename)
 {
-  m_custom_kernel_filename = std::string(kernel_filename);
-  set_kernel_update();
+  m_custom_kernel_filename = kernel_filename;
+  update_current_kernel_source();
 }
 
 //----------------------------------------------------------------------------
 void vtknvindex_irregular_volume_representation::set_kernel_update()
 {
-  std::ifstream is(m_custom_kernel_filename);
-  m_custom_kernel_program =
-    std::string((std::istreambuf_iterator<char>(is)), std::istreambuf_iterator<char>());
-  if (m_app_config_settings->get_rtc_kernel() == RTC_KERNELS_CUSTOM)
-    update_current_kernel();
+  update_current_kernel_source(true);
 }
 
 //----------------------------------------------------------------------------

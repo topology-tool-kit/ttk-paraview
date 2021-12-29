@@ -1,4 +1,4 @@
-// Copyright(C) 1999-2017, 2020 National Technology & Engineering Solutions
+// Copyright(C) 1999-2020 National Technology & Engineering Solutions
 // of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
 // NTESS, the U.S. Government retains certain rights in this software.
 //
@@ -19,12 +19,16 @@
 #include <adios/Ioad_Initializer.h>
 #endif
 
+#if defined(SEACAS_HAVE_CATALYST2)
+#include <catalyst/Iocatalyst_Initializer.h>
+#endif
+
 #if defined(SEACAS_HAVE_PAMGEN)
 #include <pamgen/Iopg_DatabaseIO.h>
 #endif
 
-#if defined(SEACAS_HAVE_DATAWAREHOUSE)
-#include <data_warehouse/Iodw_DatabaseIO.h>
+#if defined(SEACAS_HAVE_FAODEL)
+#include <faodel/Iofaodel_DatabaseIO.h>
 #endif
 
 #if defined(SEACAS_HAVE_CGNS)
@@ -34,9 +38,8 @@
 #include <Ioss_ConcreteVariableType.h>
 #include <Ioss_Initializer.h>
 #include <transform/Iotr_Initializer.h>
-#ifndef _MSC_VER
-//#include <visualization/Iovs_IOFactory.h>
-#endif
+// #include <visualization/cgns/Iovs_cgns_IOFactory.h>
+// #include <visualization/exodus/Iovs_exodus_IOFactory.h>
 
 namespace {
 #if defined(IOSS_THREADSAFE)
@@ -68,15 +71,16 @@ namespace Ioss {
 #if defined(SEACAS_HAVE_PAMGEN)
       Iopg::IOFactory::factory(); // Pamgen
 #endif
-#if defined(SEACAS_HAVE_DATAWAREHOUSE)
-      Iodw::IOFactory::factory(); // DataWarehouse
+#if defined(SEACAS_HAVE_FAODEL)
+      Iofaodel::IOFactory::factory();
 #endif
 #if defined(SEACAS_HAVE_CGNS)
       Iocgns::IOFactory::factory();
 #endif
 
 #ifndef _MSC_VER
-      //Iovs::IOFactory::factory(); // Visualization
+      // Iovs_cgns::IOFactory::factory();   // Visualization Catalyst CGNS
+      // Iovs_exodus::IOFactory::factory(); // Visualization Catalyst Exodus
 #endif
       Iohb::IOFactory::factory(); // HeartBeat
       Iogn::IOFactory::factory(); // Generated
@@ -86,6 +90,9 @@ namespace Ioss {
       Iotr::Initializer();
 #ifdef HAVE_SEACASIOSS_ADIOS2
       Ioad::Initializer(); // ADIOS2
+#endif
+#if defined(SEACAS_HAVE_CATALYST2)
+      Iocatalyst::Initializer(); // Catalyst 2
 #endif
     }
 

@@ -175,8 +175,7 @@ static void vtkWrapPython_PrintProtocol(
     {
       if (func->NumberOfParameters == 2 &&
         (func->Parameters[0]->Type & VTK_PARSE_UNQUALIFIED_TYPE) == VTK_PARSE_OSTREAM_REF &&
-        (func->Parameters[1]->Type & VTK_PARSE_BASE_TYPE) == VTK_PARSE_OBJECT &&
-        (func->Parameters[1]->Type & VTK_PARSE_POINTER_MASK) == 0 &&
+        vtkWrap_IsSpecialObject(func->Parameters[1]) &&
         !vtkWrap_IsNonConstRef(func->Parameters[1]) &&
         strcmp(func->Parameters[1]->Class, data->Name) == 0)
       {
@@ -224,9 +223,7 @@ static void vtkWrapPython_RichCompareProtocol(
     {
       /* member function */
       func = data->Functions[i];
-      if (func->NumberOfParameters != 1 ||
-        (func->Parameters[0]->Type & VTK_PARSE_BASE_TYPE) != VTK_PARSE_OBJECT ||
-        (func->Parameters[0]->Type & VTK_PARSE_POINTER_MASK) != 0 ||
+      if (func->NumberOfParameters != 1 || !vtkWrap_IsSpecialObject(func->Parameters[0]) ||
         strcmp(func->Parameters[0]->Class, data->Name) != 0)
       {
         continue;
@@ -236,12 +233,9 @@ static void vtkWrapPython_RichCompareProtocol(
     {
       /* non-member function: both args must be of our type */
       func = finfo->Contents->Functions[i - data->NumberOfFunctions];
-      if (func->NumberOfParameters != 2 ||
-        (func->Parameters[0]->Type & VTK_PARSE_BASE_TYPE) != VTK_PARSE_OBJECT ||
-        (func->Parameters[0]->Type & VTK_PARSE_POINTER_MASK) != 0 ||
+      if (func->NumberOfParameters != 2 || !vtkWrap_IsSpecialObject(func->Parameters[0]) ||
         strcmp(func->Parameters[0]->Class, data->Name) != 0 ||
-        (func->Parameters[1]->Type & VTK_PARSE_BASE_TYPE) != VTK_PARSE_OBJECT ||
-        (func->Parameters[1]->Type & VTK_PARSE_POINTER_MASK) != 0 ||
+        !vtkWrap_IsSpecialObject(func->Parameters[1]) ||
         strcmp(func->Parameters[1]->Class, data->Name) != 0)
       {
         continue;
@@ -512,10 +506,10 @@ static void vtkWrapPython_SequenceProtocol(
     fprintf(fp,
       "static PySequenceMethods Py%s_AsSequence = {\n"
       "  Py%s_SequenceSize, // sq_length\n"
-      "  0, // sq_concat\n"
-      "  0, // sq_repeat\n"
+      "  nullptr, // sq_concat\n"
+      "  nullptr, // sq_repeat\n"
       "  Py%s_SequenceItem, // sq_item\n"
-      "  0, // sq_slice\n",
+      "  nullptr, // sq_slice\n",
       classname, classname, classname);
 
     if (setItemFunc)
@@ -524,14 +518,14 @@ static void vtkWrapPython_SequenceProtocol(
     }
     else
     {
-      fprintf(fp, "  0, // sq_ass_item\n");
+      fprintf(fp, "  nullptr, // sq_ass_item\n");
     }
 
     fprintf(fp,
-      "  0, // sq_ass_slice\n"
-      "  0, // sq_contains\n"
-      "  0, // sq_inplace_concat\n"
-      "  0, // sq_inplace_repeat\n"
+      "  nullptr, // sq_ass_slice\n"
+      "  nullptr, // sq_contains\n"
+      "  nullptr, // sq_inplace_concat\n"
+      "  nullptr, // sq_inplace_repeat\n"
       "};\n\n");
   }
 }
@@ -582,14 +576,7 @@ static void vtkWrapPython_HashProtocol(FILE* fp, const char* classname, ClassInf
     /* if hash is not implemented, raise an exception */
     fprintf(fp,
       "{\n"
-      "#if PY_VERSION_HEX >= 0x020600B2\n"
       "  return PyObject_HashNotImplemented(self);\n"
-      "#else\n"
-      "  char text[256];\n"
-      "  sprintf(text, \"unhashable type: \'%%s\'\", Py_TYPE(self)->tp_name);\n"
-      "  PyErr_SetString(PyExc_TypeError, text);\n"
-      "  return -1;\n"
-      "#endif\n"
       "}\n"
       "\n");
   }
@@ -647,7 +634,6 @@ void vtkWrapPython_GenerateSpecialType(FILE* fp, const char* module, const char*
   int has_constants = 0;
   int has_superclass = 0;
   int has_copycons = 0;
-  int is_external = 0;
 
   /* remove namespaces and template parameters from the
    * class name to get the constructor name */
@@ -657,11 +643,10 @@ void vtkWrapPython_GenerateSpecialType(FILE* fp, const char* module, const char*
   }
 
   /* get the superclass */
-  supermodule = vtkWrapPython_HasWrappedSuperClass(hinfo, data->Name, &is_external);
-  if (supermodule)
+  name = vtkWrapPython_GetSuperClass(data, hinfo, &supermodule);
+  if (name)
   {
     has_superclass = 1;
-    name = vtkWrapPython_GetSuperClass(data, hinfo);
     vtkWrapText_PythonName(name, supername);
   }
 
@@ -676,6 +661,10 @@ void vtkWrapPython_GenerateSpecialType(FILE* fp, const char* module, const char*
 
   /* Generate the TypeObject */
   fprintf(fp,
+    "#ifdef VTK_PYTHON_NEEDS_DEPRECATION_WARNING_SUPPRESSION\n"
+    "#pragma GCC diagnostic ignored \"-Wdeprecated-declarations\"\n"
+    "#endif\n"
+    "\n"
     "static PyTypeObject Py%s_Type = {\n"
     "  PyVarObject_HEAD_INIT(&PyType_Type, 0)\n"
     "  PYTHON_PACKAGE_SCOPE \"%s.%s\", // tp_name\n"
@@ -798,17 +787,22 @@ void vtkWrapPython_GenerateSpecialType(FILE* fp, const char* module, const char*
       "  {\n"
       "    return new %s(*static_cast<const %s*>(obj));\n"
       "  }\n"
-      "  return 0;\n"
+      "  return nullptr;\n"
       "}\n"
       "\n",
       classname, data->Name, data->Name);
   }
 
   /* export New method for use by subclasses */
-  fprintf(fp, "extern \"C\" { PyObject *Py%s_TypeNew(); }\n\n", classname);
+  fprintf(fp,
+    "#ifndef DECLARED_Py%s_TypeNew\n"
+    "extern \"C\" { PyObject *Py%s_TypeNew(); }\n"
+    "#define DECLARED_Py%s_TypeNew\n"
+    "#endif\n\n",
+    classname, classname, classname);
 
   /* import New method of the superclass */
-  if (has_superclass && !is_external)
+  if (has_superclass && !supermodule)
   {
     fprintf(fp,
       "#ifndef DECLARED_Py%s_TypeNew\n"
@@ -869,7 +863,7 @@ void vtkWrapPython_GenerateSpecialType(FILE* fp, const char* module, const char*
   /* call the superclass New (initialize in dependency order) */
   if (has_superclass)
   {
-    if (!is_external) /* superclass is in the same module */
+    if (!supermodule) /* superclass is in the same module */
     {
       fprintf(fp, "  pytype->tp_base = (PyTypeObject *)Py%s_TypeNew();\n\n", supername);
     }

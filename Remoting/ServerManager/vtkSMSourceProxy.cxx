@@ -38,7 +38,7 @@
 #include "vtkSMStringVectorProperty.h"
 #include "vtkSmartPointer.h"
 
-#include <assert.h>
+#include <cassert>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -87,7 +87,7 @@ struct vtkSMSourceProxyInternals
 {
   typedef std::vector<vtkSMSourceProxyOutputPort> VectorOfPorts;
   VectorOfPorts OutputPorts;
-  std::vector<vtkSmartPointer<vtkSMSourceProxy> > SelectionProxies;
+  std::vector<vtkSmartPointer<vtkSMSourceProxy>> SelectionProxies;
   std::vector<unsigned long> SelectionObservers;
 
   // Resizes output ports and ensures that Name for each port is initialized to
@@ -125,7 +125,7 @@ vtkSMSourceProxy::vtkSMSourceProxy()
   this->PInternals = new vtkSMSourceProxyInternals;
   this->OutputPortsCreated = 0;
 
-  this->ExecutiveName = 0;
+  this->ExecutiveName = nullptr;
   this->SetExecutiveName("vtkCompositeDataPipeline");
 
   this->DisableSelectionProxies = false;
@@ -142,7 +142,7 @@ vtkSMSourceProxy::~vtkSMSourceProxy()
 {
   delete this->PInternals;
 
-  this->SetExecutiveName(0);
+  this->SetExecutiveName(nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -150,7 +150,7 @@ vtkTypeUInt32 vtkSMSourceProxy::GetGlobalID()
 {
   bool has_gid = this->HasGlobalID();
 
-  if (!has_gid && this->Session != NULL)
+  if (!has_gid && this->Session != nullptr)
   {
     // reserve 1+MAX_NUMBER_OF_PORTS contiguous IDs for the source proxies and possible extract
     // selection proxies.
@@ -169,7 +169,8 @@ unsigned int vtkSMSourceProxy::GetNumberOfOutputPorts()
 //---------------------------------------------------------------------------
 vtkSMOutputPort* vtkSMSourceProxy::GetOutputPort(unsigned int idx)
 {
-  return idx == VTK_UNSIGNED_INT_MAX ? NULL : this->PInternals->OutputPorts[idx].Port.GetPointer();
+  return idx == VTK_UNSIGNED_INT_MAX ? nullptr
+                                     : this->PInternals->OutputPorts[idx].Port.GetPointer();
 }
 
 //---------------------------------------------------------------------------
@@ -201,7 +202,7 @@ const char* vtkSMSourceProxy::GetOutputPortName(unsigned int index)
 {
   if (index >= this->PInternals->OutputPorts.size())
   {
-    return 0;
+    return nullptr;
   }
 
   return this->PInternals->OutputPorts[index].Name.c_str();
@@ -212,7 +213,7 @@ vtkSMDocumentation* vtkSMSourceProxy::GetOutputPortDocumentation(unsigned int in
 {
   if (index >= this->PInternals->OutputPorts.size())
   {
-    return 0;
+    return nullptr;
   }
 
   return this->PInternals->OutputPorts[index].Documentation;
@@ -465,7 +466,7 @@ void vtkSMSourceProxy::SetOutputPort(
   this->PInternals->OutputPorts[index].Name = name;
   this->PInternals->OutputPorts[index].Port = port;
   this->PInternals->OutputPorts[index].Documentation = doc;
-  if (port && port->GetSourceProxy() == NULL)
+  if (port && port->GetSourceProxy() == nullptr)
   {
     port->SetSourceProxy(this);
   }
@@ -524,7 +525,7 @@ void vtkSMSourceProxy::MarkDirty(vtkSMProxy* modifiedProxy)
   // Mark the extract selection proxies modified as well.
   // This is needed to be done explicitly since we don't use vtkSMInputProperty
   // to connect this proxy to the input of the extract selection filter.
-  std::vector<vtkSmartPointer<vtkSMSourceProxy> >::iterator iter;
+  std::vector<vtkSmartPointer<vtkSMSourceProxy>>::iterator iter;
   for (iter = this->PInternals->SelectionProxies.begin();
        iter != this->PInternals->SelectionProxies.end(); ++iter)
   {
@@ -541,10 +542,48 @@ vtkPVDataInformation* vtkSMSourceProxy::GetDataInformation(unsigned int idx)
   this->CreateOutputPorts();
   if (idx >= this->GetNumberOfOutputPorts())
   {
-    return 0;
+    return nullptr;
   }
 
   return this->GetOutputPort(idx)->GetDataInformation();
+}
+
+//----------------------------------------------------------------------------
+vtkPVDataInformation* vtkSMSourceProxy::GetRankDataInformation(unsigned int idx, int rank)
+{
+  this->CreateOutputPorts();
+  if (idx >= this->GetNumberOfOutputPorts())
+  {
+    return nullptr;
+  }
+
+  return this->GetOutputPort(idx)->GetRankDataInformation(rank);
+}
+
+//----------------------------------------------------------------------------
+vtkPVDataInformation* vtkSMSourceProxy::GetSubsetDataInformation(
+  unsigned int idx, const char* selector, const char* assemblyName)
+{
+  this->CreateOutputPorts();
+  if (idx >= this->GetNumberOfOutputPorts())
+  {
+    return nullptr;
+  }
+
+  return this->GetOutputPort(idx)->GetSubsetDataInformation(selector, assemblyName);
+}
+
+//----------------------------------------------------------------------------
+vtkPVDataInformation* vtkSMSourceProxy::GetSubsetDataInformation(
+  unsigned int idx, unsigned int compositeIndex)
+{
+  this->CreateOutputPorts();
+  if (idx >= this->GetNumberOfOutputPorts())
+  {
+    return nullptr;
+  }
+
+  return this->GetOutputPort(idx)->GetSubsetDataInformation(compositeIndex);
 }
 
 //----------------------------------------------------------------------------
@@ -598,7 +637,7 @@ void vtkSMSourceProxy::CreateSelectionProxies()
     // became alive because of the SelectionRepresentation before the
     // CreateSelectionProxies() get called on the original source proxy...
     if ((esProxy = vtkSMSourceProxy::SafeDownCast(
-           this->Session->GetRemoteObject(this->GetGlobalID() + j + 1))) != NULL)
+           this->Session->GetRemoteObject(this->GetGlobalID() + j + 1))) != nullptr)
     {
       esProxy->DisableSelectionProxies = true;
       this->PInternals->SelectionProxies[j] = esProxy;
@@ -666,7 +705,7 @@ vtkSMSourceProxy* vtkSMSourceProxy::GetSelectionInput(unsigned int portIndex)
       }
     }
   }
-  return 0;
+  return nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -713,7 +752,7 @@ vtkSMSourceProxy* vtkSMSourceProxy::GetSelectionOutput(unsigned int portIndex)
     return this->PInternals->SelectionProxies[portIndex];
   }
 
-  return 0;
+  return nullptr;
 }
 
 //---------------------------------------------------------------------------

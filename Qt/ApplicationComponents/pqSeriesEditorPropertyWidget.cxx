@@ -327,7 +327,6 @@ QList<QVariant> pqSeriesEditorPropertyWidget::seriesVisibility() const
 void pqSeriesEditorPropertyWidget::setPresetLabel(const QList<QVariant>& vtkNotUsed(values))
 {
   // handle by `onPresetChanged`.
-  return;
 }
 
 //-----------------------------------------------------------------------------
@@ -352,7 +351,6 @@ QList<QVariant> pqSeriesEditorPropertyWidget::seriesLabel() const
 void pqSeriesEditorPropertyWidget::setPresetColor(const QList<QVariant>& vtkNotUsed(values))
 {
   // handle by `onPresetChanged`.
-  return;
 }
 
 //-----------------------------------------------------------------------------
@@ -544,7 +542,7 @@ void pqSeriesEditorPropertyWidget::savePropertiesWidgets()
 
   QStringList selectedAnnotations = ui.SeriesTable->selectedAnnotations();
 
-  for (auto key : selectedAnnotations)
+  for (const auto& key : selectedAnnotations)
   {
     // update the parameter corresponding to the modified widget.
     if (ui.Thickness == senderWidget && this->Internals->Thickness[key] != ui.Thickness->value())
@@ -635,7 +633,7 @@ void pqSeriesEditorPropertyWidget::onPresetChanged(const QString& name)
     int idx = -1;
     if (presetAnnotations->GetLength() > 0)
     {
-      QByteArray nameArray = currentAnnotations.at(i).toString().toLocal8Bit();
+      QByteArray nameArray = currentAnnotations.at(i).toString().toUtf8();
       const char* seriesName = nameArray.data();
 
       auto seriesStringlist = QStringList(seriesName);

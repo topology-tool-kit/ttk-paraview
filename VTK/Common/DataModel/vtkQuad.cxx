@@ -125,8 +125,8 @@ int vtkQuad::EvaluatePosition(const double x[3], double closestPoint[3], int& su
   {
     //  calculate element interpolation functions and derivatives
     //
-    this->InterpolationFunctions(pcoords, weights);
-    this->InterpolationDerivs(pcoords, derivs);
+    vtkQuad::InterpolationFunctions(pcoords, weights);
+    vtkQuad::InterpolationDerivs(pcoords, derivs);
 
     //  calculate newton functions
     //
@@ -190,7 +190,7 @@ int vtkQuad::EvaluatePosition(const double x[3], double closestPoint[3], int& su
     return -1;
   }
 
-  this->InterpolationFunctions(pcoords, weights);
+  vtkQuad::InterpolationFunctions(pcoords, weights);
 
   if (pcoords[0] >= -0.001 && pcoords[0] <= 1.001 && pcoords[1] >= -0.001 && pcoords[1] <= 1.001)
   {
@@ -272,7 +272,7 @@ void vtkQuad::EvaluateLocation(
   int i, j;
   double pt[3];
 
-  this->InterpolationFunctions(pcoords, weights);
+  vtkQuad::InterpolationFunctions(pcoords, weights);
 
   x[0] = x[1] = x[2] = 0.0;
   for (i = 0; i < 4; i++)
@@ -368,7 +368,7 @@ int vtkQuad::CellBoundary(int vtkNotUsed(subId), const double pcoords[3], vtkIdL
 //
 namespace
 { // required so we don't violate ODR
-static constexpr vtkIdType edges[4][2] = {
+constexpr vtkIdType edges[4][2] = {
   { 0, 1 },
   { 1, 2 },
   { 3, 2 },
@@ -382,7 +382,7 @@ struct LINE_CASES_t
 };
 using LINE_CASES = struct LINE_CASES_t;
 
-static LINE_CASES lineCases[] = {
+LINE_CASES lineCases[] = {
   { { -1, -1, -1, -1, -1 } },
   { { 0, 3, -1, -1, -1 } },
   { { 1, 0, -1, -1, -1 } },

@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    ImageDataConverter.h
+  Module:    ImageDataConverter.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -115,13 +115,13 @@ namespace fromvtkm
 bool Convert(
   const vtkm::cont::DataSet& voutput, int extents[6], vtkImageData* output, vtkDataSet* input)
 {
-  vtkm::cont::CoordinateSystem cs = voutput.GetCoordinateSystem();
+  vtkm::cont::CoordinateSystem const& cs = voutput.GetCoordinateSystem();
   if (!cs.GetData().IsType<vtkm::cont::ArrayHandleUniformPointCoordinates>())
   {
     return false;
   }
 
-  auto points = cs.GetData().Cast<vtkm::cont::ArrayHandleUniformPointCoordinates>();
+  auto points = cs.GetData().AsArrayHandle<vtkm::cont::ArrayHandleUniformPointCoordinates>();
   auto portal = points.ReadPortal();
 
   auto origin = portal.GetOrigin();
@@ -150,13 +150,13 @@ bool Convert(
 
 bool Convert(const vtkm::cont::DataSet& voutput, vtkImageData* output, vtkDataSet* input)
 {
-  vtkm::cont::CoordinateSystem cs = voutput.GetCoordinateSystem();
+  vtkm::cont::CoordinateSystem const& cs = voutput.GetCoordinateSystem();
   if (!cs.GetData().IsType<vtkm::cont::ArrayHandleUniformPointCoordinates>())
   {
     return false;
   }
 
-  auto points = cs.GetData().Cast<vtkm::cont::ArrayHandleUniformPointCoordinates>();
+  auto points = cs.GetData().AsArrayHandle<vtkm::cont::ArrayHandleUniformPointCoordinates>();
   auto portal = points.ReadPortal();
 
   auto dim = portal.GetDimensions();

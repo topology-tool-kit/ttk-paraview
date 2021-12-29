@@ -52,21 +52,26 @@ public:
   void PrintSelf(ostream& os, vtkIndent indent) override;
   static vtkAnnotation* New();
 
-  //@{
+  /**
+   * Returns `VTK_ANNOTATION`.
+   */
+  int GetDataObjectType() override { return VTK_ANNOTATION; }
+
+  ///@{
   /**
    * The selection to which this set of annotations will apply.
    */
   vtkGetObjectMacro(Selection, vtkSelection);
   virtual void SetSelection(vtkSelection* selection);
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   /**
    * Retrieve a vtkAnnotation stored inside an information object.
    */
   static vtkAnnotation* GetData(vtkInformation* info);
   static vtkAnnotation* GetData(vtkInformationVector* v, int i = 0);
-  //@}
+  ///@}
 
   /**
    * The label for this annotation.

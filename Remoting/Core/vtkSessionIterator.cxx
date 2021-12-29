@@ -18,7 +18,7 @@
 #include "vtkProcessModule.h"
 #include "vtkProcessModuleInternals.h"
 
-#include <assert.h>
+#include <cassert>
 
 class vtkSessionIterator::vtkInternals
 {
@@ -86,7 +86,7 @@ vtkSession* vtkSessionIterator::GetCurrentSession()
   if (!pm)
   {
     vtkErrorMacro("No ProcessModule found.");
-    return NULL;
+    return nullptr;
   }
 
   assert(this->IsDoneWithTraversal() == false);

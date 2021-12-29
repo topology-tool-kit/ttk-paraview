@@ -22,14 +22,12 @@
 
 vtkStandardNewMacro(vtkSIXMLAnimationWriterRepresentationProperty);
 //----------------------------------------------------------------------------
-vtkSIXMLAnimationWriterRepresentationProperty::vtkSIXMLAnimationWriterRepresentationProperty()
-{
-}
+vtkSIXMLAnimationWriterRepresentationProperty::vtkSIXMLAnimationWriterRepresentationProperty() =
+  default;
 
 //----------------------------------------------------------------------------
-vtkSIXMLAnimationWriterRepresentationProperty::~vtkSIXMLAnimationWriterRepresentationProperty()
-{
-}
+vtkSIXMLAnimationWriterRepresentationProperty::~vtkSIXMLAnimationWriterRepresentationProperty() =
+  default;
 
 //----------------------------------------------------------------------------
 bool vtkSIXMLAnimationWriterRepresentationProperty::Push(vtkSMMessage* message, int offset)
@@ -39,7 +37,7 @@ bool vtkSIXMLAnimationWriterRepresentationProperty::Push(vtkSMMessage* message, 
   const ProxyState_Property prop = message->GetExtension(ProxyState::property, offset);
   assert(strcmp(prop.name().c_str(), this->GetXMLName()) == 0);
 
-  const Variant variant = prop.value();
+  const Variant& variant = prop.value();
   std::vector<vtkTypeUInt32> proxy_ids;
   proxy_ids.resize(variant.proxy_global_id_size());
   for (int cc = 0; cc < variant.proxy_global_id_size(); cc++)

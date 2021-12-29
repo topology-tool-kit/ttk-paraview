@@ -15,9 +15,7 @@
 #include "vtkPVGeneralSettings.h"
 
 #include "vtkObjectFactory.h"
-#include "vtkPVOptions.h"
 #include "vtkProcessModule.h"
-#include "vtkProcessModuleAutoMPI.h"
 #include "vtkSISourceProxy.h"
 #include "vtkSMArraySelectionDomain.h"
 #include "vtkSMInputArrayDomain.h"
@@ -28,6 +26,7 @@
 #endif
 
 #if VTK_MODULE_ENABLE_ParaView_RemotingViews
+#include "vtkPVView.h"
 #include "vtkPVXYChartView.h"
 #include "vtkSMChartSeriesSelectionDomain.h"
 #include "vtkSMParaViewPipelineControllerWithRendering.h"
@@ -43,7 +42,7 @@ vtkPVGeneralSettings* vtkPVGeneralSettings::New()
 {
   vtkPVGeneralSettings* instance = vtkPVGeneralSettings::GetInstance();
   assert(instance);
-  instance->Register(NULL);
+  instance->Register(nullptr);
   return instance;
 }
 
@@ -52,7 +51,7 @@ vtkPVGeneralSettings::vtkPVGeneralSettings()
   : BlockColorsDistinctValues(7)
   , AutoApply(false)
   , AutoApplyActiveOnly(false)
-  , DefaultViewType(NULL)
+  , DefaultViewType(nullptr)
 #if VTK_MODULE_ENABLE_ParaView_RemotingViews
   , TransferFunctionResetMode(vtkSMTransferFunctionManager::GROW_ON_APPLY)
 #else
@@ -79,7 +78,7 @@ vtkPVGeneralSettings::vtkPVGeneralSettings()
 //----------------------------------------------------------------------------
 vtkPVGeneralSettings::~vtkPVGeneralSettings()
 {
-  this->SetDefaultViewType(NULL);
+  this->SetDefaultViewType(nullptr);
 }
 
 //----------------------------------------------------------------------------
@@ -111,35 +110,38 @@ bool vtkPVGeneralSettings::GetAutoConvertProperties()
 }
 
 //----------------------------------------------------------------------------
-void vtkPVGeneralSettings::SetEnableAutoMPI(bool val)
+#if !defined(VTK_LEGACY_REMOVE)
+void vtkPVGeneralSettings::SetEnableAutoMPI(bool)
 {
-  if (this->GetEnableAutoMPI() != val)
-  {
-    vtkProcessModuleAutoMPI::SetEnableAutoMPI(val);
-    this->Modified();
-  }
+  VTK_LEGACY_BODY(vtkPVGeneralSettings::SetEnableAutoMPI, "ParaView 5.10");
 }
+#endif
 
 //----------------------------------------------------------------------------
+#if !defined(VTK_LEGACY_REMOVE)
 bool vtkPVGeneralSettings::GetEnableAutoMPI()
 {
-  return vtkProcessModuleAutoMPI::EnableAutoMPI;
+  VTK_LEGACY_BODY(vtkPVGeneralSettings::GetEnableAutoMPI, "ParaView 5.10");
+  return false;
 }
+#endif
 
 //----------------------------------------------------------------------------
-void vtkPVGeneralSettings::SetAutoMPILimit(int val)
+#if !defined(VTK_LEGACY_REMOVE)
+void vtkPVGeneralSettings::SetAutoMPILimit(int)
 {
-  if (this->GetAutoMPILimit() != val && val >= 1)
-  {
-    vtkProcessModuleAutoMPI::SetNumberOfCores(val);
-  }
+  VTK_LEGACY_BODY(vtkPVGeneralSettings::SetAutoMPILimit, "ParaView 5.10");
 }
+#endif
 
 //----------------------------------------------------------------------------
+#if !defined(VTK_LEGACY_REMOVE)
 int vtkPVGeneralSettings::GetAutoMPILimit()
 {
-  return vtkProcessModuleAutoMPI::NumberOfCores;
+  VTK_LEGACY_BODY(vtkPVGeneralSettings::GetAutoMPILimit, "ParaView 5.10");
+  return 1;
 }
+#endif
 
 //----------------------------------------------------------------------------
 void vtkPVGeneralSettings::SetCacheGeometryForAnimation(bool val)
@@ -280,14 +282,10 @@ void vtkPVGeneralSettings::SetEnableStreaming(bool val)
 {
   if (this->GetEnableStreaming() != val)
   {
-    vtkProcessModule* pm = vtkProcessModule::GetProcessModule();
-    if (!pm)
-    {
-      vtkErrorMacro("vtkProcessModule not initialized. Igoring streaming change.");
-      return;
-    }
-    auto options = pm->GetOptions();
-    options->SetEnableStreaming(val);
+    this->EnableStreaming = val;
+#if VTK_MODULE_ENABLE_ParaView_RemotingViews
+    vtkPVView::SetEnableStreaming(val);
+#endif
     this->Modified();
   }
 }

@@ -20,7 +20,7 @@
  * @sa vtkSMFileUtilities. Using `vtkSMFileUtilities` is recommended over
  * directly using this class since vtkSMFileUtilities handles MPI and parallel
  * file systems better.
-*/
+ */
 
 #ifndef vtkSMDirectoryProxy_h
 #define vtkSMDirectoryProxy_h
@@ -60,7 +60,8 @@ protected:
   vtkSMDirectoryProxy();
   ~vtkSMDirectoryProxy() override;
 
-  bool CallDirectoryMethod(const char* method, const char* path, const char* secondaryPath = NULL);
+  bool CallDirectoryMethod(
+    const char* method, const char* path, const char* secondaryPath = nullptr);
 
 private:
   vtkSMDirectoryProxy(const vtkSMDirectoryProxy&) = delete;

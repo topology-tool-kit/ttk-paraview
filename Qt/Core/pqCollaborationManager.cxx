@@ -114,8 +114,8 @@ public:
   //-------------------------------------------------
   void activeServerChanged(vtkObject*, unsigned long, void*)
   {
-    this->ActiveCollaborationManager = NULL;
-    this->AciveSession = NULL;
+    this->ActiveCollaborationManager = nullptr;
+    this->AciveSession = nullptr;
     this->CollaborativeTimer.stop();
     if (!this->ProxyManager)
     {
@@ -135,7 +135,7 @@ public:
   //-------------------------------------------------
   void registerServer(pqServer* server)
   {
-    if (server == NULL || !server->session()->GetCollaborationManager())
+    if (server == nullptr || !server->session()->GetCollaborationManager())
     {
       return;
     }
@@ -156,7 +156,7 @@ public:
   //-------------------------------------------------
   void unRegisterServer(pqServer* server)
   {
-    if (server == NULL || !server->session()->GetCollaborationManager())
+    if (server == nullptr || !server->session()->GetCollaborationManager())
     {
       return;
     }
@@ -184,7 +184,6 @@ public:
     return -1;
   }
 
-public:
   QMap<int, QString> UserNameMap;
   vtkWeakPointer<vtkSMSession> AciveSession;
   vtkWeakPointer<vtkSMCollaborationManager> ActiveCollaborationManager;
@@ -245,10 +244,10 @@ void pqCollaborationManager::onClientMessage(pqServer* server, vtkSMMessage* msg
   }
   else if (msg->HasExtension(MousePointer::view) &&
     (this->Internals->AciveSession ==
-             server->session()) && // Make sure we share the same active server
+      server->session()) && // Make sure we share the same active server
     (msg->GetExtension(MousePointer::forceShow) ||
-             (static_cast<int>(msg->client_id()) ==
-               this->activeCollaborationManager()->GetFollowedUser())))
+      (static_cast<int>(msg->client_id()) ==
+        this->activeCollaborationManager()->GetFollowedUser())))
   {
     this->showMousePointer(msg->GetExtension(MousePointer::view),
       msg->GetExtension(MousePointer::x), msg->GetExtension(MousePointer::y),
@@ -305,10 +304,10 @@ void pqCollaborationManager::updateMousePointerLocation(QMouseEvent* e)
   {
     bool isChartView = (vtkSMContextViewProxy::SafeDownCast(
                           this->activeCollaborationManager()->GetSession()->GetRemoteObject(
-                            widget->getProxyId())) != NULL);
+                            widget->getProxyId())) != nullptr);
 
-    double w2 = widget->width() / 2;
-    double h2 = widget->height() / 2;
+    double w2 = widget->width() / 2.0;
+    double h2 = widget->height() / 2.0;
     double px = (e->x() - w2) / (isChartView ? w2 : h2);
     double py = (e->y() - h2) / h2;
 
@@ -343,13 +342,13 @@ void pqCollaborationManager::showMousePointer(
 {
   pqServerManagerModel* smmodel = pqApplicationCore::instance()->getServerManagerModel();
   pqView* view = smmodel->findItem<pqView*>(viewId);
-  pqQVTKWidget* widget = NULL;
+  pqQVTKWidget* widget = nullptr;
   if (view && (widget = qobject_cast<pqQVTKWidget*>(view->widget())))
   {
     double xRatioBase = 1;
     double yRatioBase = 1;
-    double w2 = widget->width() / 2;
-    double h2 = widget->height() / 2;
+    double w2 = widget->width() / 2.0;
+    double h2 = widget->height() / 2.0;
     switch (useBothHeightWidth)
     {
       case 0: // both

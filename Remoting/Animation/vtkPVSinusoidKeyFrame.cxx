@@ -21,7 +21,7 @@
 //#include "vtkSMProxy.h"
 //#include "vtkSMVectorProperty.h"
 
-#include <math.h>
+#include <cmath>
 
 vtkStandardNewMacro(vtkPVSinusoidKeyFrame);
 //----------------------------------------------------------------------------
@@ -33,9 +33,7 @@ vtkPVSinusoidKeyFrame::vtkPVSinusoidKeyFrame()
 }
 
 //----------------------------------------------------------------------------
-vtkPVSinusoidKeyFrame::~vtkPVSinusoidKeyFrame()
-{
-}
+vtkPVSinusoidKeyFrame::~vtkPVSinusoidKeyFrame() = default;
 
 //----------------------------------------------------------------------------
 // remember that currenttime is 0 at the KeyTime of this key frame

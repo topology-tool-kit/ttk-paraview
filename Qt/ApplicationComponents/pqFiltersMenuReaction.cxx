@@ -117,12 +117,12 @@ void pqFiltersMenuReaction::updateEnableState(bool updateOnlyToolbars)
 
   pqActiveObjects* activeObjects = &pqActiveObjects::instance();
   pqServer* server = activeObjects->activeServer();
-  bool enabled = (server != NULL);
+  bool enabled = (server != nullptr);
   enabled = enabled ? server->isMaster() : enabled;
 
   // Make sure we already have a selection model
   vtkSMProxySelectionModel* selModel = pqActiveObjects::instance().activeSourcesSelectionModel();
-  enabled = enabled && (selModel != NULL);
+  enabled = enabled && (selModel != nullptr);
 
   // selected ports.
   QList<pqOutputPort*> outputPorts;
@@ -160,7 +160,7 @@ void pqFiltersMenuReaction::updateEnableState(bool updateOnlyToolbars)
         outputPorts.append(opPort);
       }
     }
-    if (selModel->GetNumberOfSelectedProxies() == 0 || outputPorts.size() == 0)
+    if (selModel->GetNumberOfSelectedProxies() == 0 || outputPorts.empty())
     {
       enabled = false;
     }
@@ -204,8 +204,9 @@ void pqFiltersMenuReaction::updateEnableState(bool updateOnlyToolbars)
 
     int numProcs = outputPorts[0]->getServer()->getNumberOfPartitions();
     vtkSMSourceProxy* sp = vtkSMSourceProxy::SafeDownCast(prototype);
-    if (sp && ((sp->GetProcessSupport() == vtkSMSourceProxy::SINGLE_PROCESS && numProcs > 1) ||
-                (sp->GetProcessSupport() == vtkSMSourceProxy::MULTIPLE_PROCESSES && numProcs == 1)))
+    if (sp &&
+      ((sp->GetProcessSupport() == vtkSMSourceProxy::SINGLE_PROCESS && numProcs > 1) ||
+        (sp->GetProcessSupport() == vtkSMSourceProxy::MULTIPLE_PROCESSES && numProcs == 1)))
     {
       // Skip single process filters when running in multiprocesses and vice
       // versa.
@@ -247,7 +248,7 @@ void pqFiltersMenuReaction::updateEnableState(bool updateOnlyToolbars)
         input->AddUncheckedInputConnection(port->getSource()->getProxy(), port->getPortNumber());
       }
 
-      vtkSMDomain* domain = NULL;
+      vtkSMDomain* domain = nullptr;
       if (input->IsInDomains(&domain))
       {
         action->setEnabled(true);
@@ -327,8 +328,7 @@ pqPipelineSource* pqFiltersMenuReaction::createFilter(
   }
 
   vtkSMSessionProxyManager* pxm = server->proxyManager();
-  vtkSMProxy* prototype =
-    pxm->GetPrototypeProxy(xmlgroup.toLocal8Bit().data(), xmlname.toLocal8Bit().data());
+  vtkSMProxy* prototype = pxm->GetPrototypeProxy(xmlgroup.toUtf8().data(), xmlname.toUtf8().data());
   if (!prototype)
   {
     qCritical() << "Unknown proxy type: " << xmlname;
@@ -336,7 +336,7 @@ pqPipelineSource* pqFiltersMenuReaction::createFilter(
   }
 
   // Get the list of selected sources.
-  QMap<QString, QList<pqOutputPort*> > namedInputs;
+  QMap<QString, QList<pqOutputPort*>> namedInputs;
   QList<pqOutputPort*> selectedOutputPorts;
 
   vtkSMProxySelectionModel* selModel = pqActiveObjects::instance().activeSourcesSelectionModel();
@@ -366,7 +366,7 @@ pqPipelineSource* pqFiltersMenuReaction::createFilter(
   // future to be smarter.
   if (pqPipelineFilter::getRequiredInputPorts(prototype).size() > 1)
   {
-    vtkSMProxy* filterProxy = pxm->GetPrototypeProxy("filters", xmlname.toLocal8Bit().data());
+    vtkSMProxy* filterProxy = pxm->GetPrototypeProxy("filters", xmlname.toUtf8().data());
     vtkSMPropertyHelper helper(filterProxy, inputPortNames[0]);
     helper.RemoveAllValues();
 

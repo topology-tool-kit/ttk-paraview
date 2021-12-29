@@ -40,14 +40,14 @@ public:
   vtkTypeMacro(vtkGDALRasterConverter, vtkObject);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  //@{
+  ///@{
   /**
    * No-data value for pixels in the source image
    * Default is NaN (not used).
    */
   vtkSetMacro(NoDataValue, double);
   vtkGetMacro(NoDataValue, double);
-  //@}
+  ///@}
 
   /**
    * Create GDAL dataset in memory.
@@ -95,7 +95,7 @@ public:
   /**
    * Write GDALDataset to tiff file
    */
-  void WriteTifFile(GDALDataset* dataset, const char* filename);
+  void WriteTifFile(GDALDataset* dataset, VTK_FILEPATH const char* filename);
 
   /**
    * Traverse values in specified band to find min/max.

@@ -54,6 +54,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkSMRenderViewProxy.h"
 #include "vtkSMSessionProxyManager.h"
 #include "vtkSMSourceProxy.h"
+#include "vtkSMTrace.h"
 #include "vtkSmartPointer.h"
 
 #include <QMenu>
@@ -83,21 +84,26 @@ public:
     this->PointLabelsMenu.setObjectName("PointLabelsMenu");
 
     this->Ui.setupUi(self);
-    this->Ui.interactiveSelectionColor->setVisible(false);
-    this->Ui.labelPropertiesInteractiveSelection->setVisible(false);
-    this->Ui.horizontalLayout->setMargin(pqPropertiesPanel::suggestedMargin());
-    this->Ui.horizontalLayout->setSpacing(pqPropertiesPanel::suggestedHorizontalSpacing());
+    this->Ui.mainLayout->setMargin(pqPropertiesPanel::suggestedMargin());
+    this->Ui.mainLayout->setSpacing(pqPropertiesPanel::suggestedVerticalSpacing());
 
     this->Ui.cellLabelsButton->setMenu(&this->CellLabelsMenu);
     this->Ui.pointLabelsButton->setMenu(&this->PointLabelsMenu);
 
-    self->connect(&this->CellLabelsMenu, SIGNAL(aboutToShow()), SLOT(fillCellLabels()));
-    self->connect(
-      &this->CellLabelsMenu, SIGNAL(triggered(QAction*)), SLOT(cellLabelSelected(QAction*)));
+    QObject::connect(&this->CellLabelsMenu, &QMenu::aboutToShow,
+      [this]() { this->fillLabels(vtkDataObject::FIELD_ASSOCIATION_CELLS); });
+    QObject::connect(&this->CellLabelsMenu, &QMenu::triggered, [this](QAction* actn) {
+      vtkSMInteractiveSelectionPipeline::GetInstance()->GetOrCreateSelectionRepresentation();
+      this->labelBy(vtkDataObject::FIELD_ASSOCIATION_CELLS, actn);
+    });
 
-    self->connect(&this->PointLabelsMenu, SIGNAL(aboutToShow()), SLOT(fillPointLabels()));
-    self->connect(
-      &this->PointLabelsMenu, SIGNAL(triggered(QAction*)), SLOT(pointLabelSelected(QAction*)));
+    QObject::connect(&this->PointLabelsMenu, &QMenu::aboutToShow,
+      [this]() { this->fillLabels(vtkDataObject::FIELD_ASSOCIATION_POINTS); });
+    QObject::connect(&this->PointLabelsMenu, &QMenu::triggered, [this](QAction* actn) {
+      vtkSMInteractiveSelectionPipeline::GetInstance()->GetOrCreateSelectionRepresentation();
+      this->labelBy(vtkDataObject::FIELD_ASSOCIATION_POINTS, actn);
+    });
+
     self->connect(
       this->Ui.labelPropertiesSelection, SIGNAL(clicked()), SLOT(editLabelPropertiesSelection()));
     self->connect(this->Ui.labelPropertiesInteractiveSelection, SIGNAL(clicked()),
@@ -152,7 +158,7 @@ public:
   vtkPVDataSetAttributesInformation* attributeInformation(int fieldAssociation)
   {
     return this->Port ? this->Port->getDataInformation()->GetAttributeInformation(fieldAssociation)
-                      : NULL;
+                      : nullptr;
   }
 
   //---------------------------------------------------------------------------
@@ -173,7 +179,7 @@ public:
     }
 
     pqDataRepresentation* repr = this->Port->getRepresentation(this->View);
-    assert(repr != NULL);
+    assert(repr != nullptr);
 
     menu.addAction("ID")->setData(fieldAssociation == vtkDataObject::FIELD_ASSOCIATION_CELLS
         ? "vtkOriginalCellIds"
@@ -203,19 +209,21 @@ public:
       ? "SelectionCellLabelVisibility"
       : "SelectionPointLabelVisibility";
 
-    QString cur_array;
-    if (vtkSMPropertyHelper(repr->getProxy(), vname.toLocal8Bit().data(), true).GetAsInt() != 0)
+    QString arrayName;
+    if (vtkSMPropertyHelper(repr->getProxy(), vname.toUtf8().data(), true).GetAsInt() != 0)
     {
-      cur_array = vtkSMPropertyHelper(repr->getProxy(), pname.toLocal8Bit().data(), /*quiet=*/true)
-                    .GetAsString();
+      arrayName =
+        vtkSMPropertyHelper(repr->getProxy(), pname.toUtf8().data(), /*quiet=*/true).GetAsString();
     }
 
-    foreach (QAction* action, menu.actions())
+    bool found = false;
+    for (QAction* action : menu.actions())
     {
       action->setCheckable(true);
-      if (cur_array.isEmpty() == false && action->data().toString() == cur_array)
+      if (arrayName.isEmpty() == false && action->data().toString() == arrayName)
       {
         action->setChecked(true);
+        found = true;
       }
     }
   }
@@ -250,30 +258,33 @@ public:
                                                                    : "PointLabelVisibility";
 
     BEGIN_UNDO_SET("Change labels");
-    if (action->isChecked())
     {
-      // selection
-      vtkSMPropertyHelper(selectionProxy, selectionVisibilityName, true).Set(1);
-      vtkSMPropertyHelper(selectionProxy, selectionArrayName, true)
-        .Set(action->data().toString().toLocal8Bit().data());
-      // interactive selection
-      if (iSelectionProxy)
+      SM_SCOPED_TRACE(PropertiesModified).arg("proxy", selectionProxy);
+      if (action->isChecked())
       {
-        vtkSMPropertyHelper(iSelectionProxy, iSelectionVisibilityName, true).Set(1);
-        vtkSMPropertyHelper(iSelectionProxy, iSelectionArrayName, true)
-          .Set(action->data().toString().toLocal8Bit().data());
+        // selection
+        vtkSMPropertyHelper(selectionProxy, selectionVisibilityName, true).Set(1);
+        vtkSMPropertyHelper(selectionProxy, selectionArrayName, true)
+          .Set(action->data().toString().toUtf8().data());
+        // interactive selection
+        if (iSelectionProxy)
+        {
+          vtkSMPropertyHelper(iSelectionProxy, iSelectionVisibilityName, true).Set(1);
+          vtkSMPropertyHelper(iSelectionProxy, iSelectionArrayName, true)
+            .Set(action->data().toString().toUtf8().data());
+        }
       }
-    }
-    else
-    {
-      // selection
-      vtkSMPropertyHelper(selectionProxy, selectionVisibilityName, true).Set(0);
-      vtkSMPropertyHelper(selectionProxy, selectionArrayName, true).Set("");
-      // interactive selection
-      if (iSelectionProxy)
+      else
       {
-        vtkSMPropertyHelper(iSelectionProxy, iSelectionVisibilityName, true).Set(0);
-        vtkSMPropertyHelper(iSelectionProxy, iSelectionArrayName, true).Set("");
+        // selection
+        vtkSMPropertyHelper(selectionProxy, selectionVisibilityName, true).Set(0);
+        vtkSMPropertyHelper(selectionProxy, selectionArrayName, true).Set("");
+        // interactive selection
+        if (iSelectionProxy)
+        {
+          vtkSMPropertyHelper(iSelectionProxy, iSelectionVisibilityName, true).Set(0);
+          vtkSMPropertyHelper(iSelectionProxy, iSelectionArrayName, true).Set("");
+        }
       }
     }
     selectionProxy->UpdateVTKObjects();
@@ -298,8 +309,8 @@ public:
         this->FrustumView->render();
       }
     }
-    this->FrustumWidget = NULL;
-    this->FrustumView = NULL;
+    this->FrustumWidget = nullptr;
+    this->FrustumView = nullptr;
   }
 
   //---------------------------------------------------------------------------
@@ -327,7 +338,7 @@ public:
     // doesn't result in calling this method again.
     this->Ui.showFrustumButton->setChecked(val);
 
-    if (this->FrustumWidget == NULL && val == true)
+    if (this->FrustumWidget == nullptr && val == true)
     {
       vtkSMSessionProxyManager* pxm = this->View->proxyManager();
       this->FrustumWidget.TakeReference(pxm->NewProxy("representations", "FrustumWidget"));
@@ -338,13 +349,13 @@ public:
       }
     }
 
-    if (this->FrustumWidget == NULL)
+    if (this->FrustumWidget == nullptr)
     {
       // nothing to do.
       return;
     }
 
-    pqView* targetView = val ? this->View : NULL;
+    pqView* targetView = val ? this->View : nullptr;
     if (targetView != this->FrustumView)
     {
       if (this->FrustumView)
@@ -353,7 +364,7 @@ public:
           .Remove(this->FrustumWidget);
         this->FrustumView->getProxy()->UpdateVTKObjects();
         this->FrustumView->render();
-        this->FrustumView = NULL;
+        this->FrustumView = nullptr;
       }
 
       if (targetView)
@@ -408,7 +419,7 @@ pqFindDataSelectionDisplayFrame::pqFindDataSelectionDisplayFrame(
 pqFindDataSelectionDisplayFrame::~pqFindDataSelectionDisplayFrame()
 {
   delete this->Internals;
-  this->Internals = NULL;
+  this->Internals = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -468,95 +479,12 @@ void pqFindDataSelectionDisplayFrame::setSelectedPort(pqOutputPort* port)
 }
 
 //-----------------------------------------------------------------------------
-void pqFindDataSelectionDisplayFrame::fillCellLabels()
-{
-  this->Internals->fillLabels(vtkDataObject::FIELD_ASSOCIATION_CELLS);
-}
-
-//-----------------------------------------------------------------------------
-void pqFindDataSelectionDisplayFrame::fillPointLabels()
-{
-  this->Internals->fillLabels(vtkDataObject::FIELD_ASSOCIATION_POINTS);
-}
-
-//-----------------------------------------------------------------------------
-void pqFindDataSelectionDisplayFrame::cellLabelSelected(QAction* act)
-{
-  vtkSMInteractiveSelectionPipeline::GetInstance()->GetOrCreateSelectionRepresentation();
-  this->Internals->labelBy(vtkDataObject::FIELD_ASSOCIATION_CELLS, act);
-}
-
-//-----------------------------------------------------------------------------
-void pqFindDataSelectionDisplayFrame::pointLabelSelected(QAction* act)
-{
-  vtkSMInteractiveSelectionPipeline::GetInstance()->GetOrCreateSelectionRepresentation();
-  this->Internals->labelBy(vtkDataObject::FIELD_ASSOCIATION_POINTS, act);
-}
-
-//-----------------------------------------------------------------------------
 void pqFindDataSelectionDisplayFrame::showFrustum(bool val)
 {
   this->Internals->showFrustum(val);
 }
 
 //-----------------------------------------------------------------------------
-void pqFindDataSelectionDisplayFrame::setUseVerticalLayout(bool vertical)
-{
-  // we support this so that we can add this widget in a dock panel to allow
-  // each access to these properties.
-  if (this->useVerticalLayout() == vertical)
-  {
-    return;
-  }
-
-  Ui::FindDataSelectionDisplayFrame& ui = this->Internals->Ui;
-  delete this->layout();
-  ui.horizontalLayout = NULL;
-
-  if (vertical)
-  {
-    this->Internals->Ui.interactiveSelectionColor->setVisible(true);
-    this->Internals->Ui.labelPropertiesInteractiveSelection->setVisible(true);
-
-    QVBoxLayout* vbox = new QVBoxLayout(this);
-    vbox->setMargin(pqPropertiesPanel::suggestedMargin());
-    vbox->setSpacing(pqPropertiesPanel::suggestedVerticalSpacing());
-    vbox->addWidget(ui.cellLabelsButton);
-    vbox->addWidget(ui.pointLabelsButton);
-
-    QHBoxLayout* hbox = new QHBoxLayout();
-    hbox->addWidget(ui.selectionColor);
-    hbox->addStretch();
-    hbox->addWidget(ui.showFrustumButton);
-    hbox->addWidget(ui.labelPropertiesSelection);
-    vbox->addLayout(hbox);
-
-    hbox = new QHBoxLayout();
-    hbox->addWidget(ui.interactiveSelectionColor);
-    hbox->addStretch();
-    hbox->addWidget(ui.labelPropertiesInteractiveSelection);
-    vbox->addLayout(hbox);
-    vbox->addStretch();
-  }
-  else
-  {
-    QHBoxLayout* hbox = new QHBoxLayout(this);
-    hbox->setMargin(pqPropertiesPanel::suggestedMargin());
-    hbox->setSpacing(pqPropertiesPanel::suggestedHorizontalSpacing());
-    hbox->addWidget(ui.selectionColor);
-    hbox->addWidget(ui.cellLabelsButton);
-    hbox->addWidget(ui.pointLabelsButton);
-    hbox->addWidget(ui.showFrustumButton);
-    hbox->addWidget(ui.labelPropertiesSelection);
-  }
-}
-
-//-----------------------------------------------------------------------------
-bool pqFindDataSelectionDisplayFrame::useVerticalLayout() const
-{
-  return qobject_cast<QVBoxLayout*>(this->layout()) != NULL;
-}
-
 void pqFindDataSelectionDisplayFrame::updateInteractiveSelectionLabelProperties()
 {
   vtkSMProxy* selectionProxy =
@@ -568,7 +496,7 @@ void pqFindDataSelectionDisplayFrame::updateInteractiveSelectionLabelProperties(
     return;
   }
 
-  QList<QPair<QString, QString> > prop;
+  QList<QPair<QString, QString>> prop;
   prop << QPair<QString, QString>("SelectionOpacity", "Opacity")
        << QPair<QString, QString>("SelectionPointSize", "PointSize")
        << QPair<QString, QString>("SelectionLineWidth", "LineWidth")
@@ -682,69 +610,64 @@ void pqFindDataSelectionDisplayFrame::editLabelPropertiesSelection()
 void pqFindDataSelectionDisplayFrame::onDataUpdated()
 {
   // remove a label array name that does not exist anymore
-  int fieldAssociations[] = { vtkDataObject::FIELD_ASSOCIATION_CELLS,
-    vtkDataObject::FIELD_ASSOCIATION_POINTS };
-  const char* selectionArrayNames[] = { "SelectionCellFieldDataArrayName",
-    "SelectionPointFieldDataArrayName" };
-  const char* selectionVisibilityNames[] = { "SelectionCellLabelVisibility",
-    "SelectionPointLabelVisibility" };
-  const char* iSelectionArrayNames[] = { "CellFieldDataArrayName", "PointFieldDataArrayName" };
-  const char* iSelectionVisibilityNames[] = { "CellLabelVisibility", "PointLabelVisibility" };
+  auto& internals = (*this->Internals);
+  auto updateLabels = [&internals](
+                        vtkSMProxy* repr, int fieldAssociation, const std::string& prefix) {
+    const auto arrayNameProperty = prefix +
+      (fieldAssociation == vtkDataObject::FIELD_ASSOCIATION_CELLS ? "Cell" : "Point") +
+      "FieldDataArrayName";
+    const auto visibilityProperty = prefix +
+      (fieldAssociation == vtkDataObject::FIELD_ASSOCIATION_CELLS ? "Cell" : "Point") +
+      "LabelVisibility";
 
-  pqDataRepresentation* pqrepresentation =
-    this->Internals->Port->getRepresentation(this->Internals->View);
-  if (!pqrepresentation)
-  {
-    return;
-  }
-  vtkSMProxy* selectionRepresentation = pqrepresentation->getProxy();
-  vtkSMProxy* iSelectionRepresentation =
-    vtkSMInteractiveSelectionPipeline::GetInstance()->GetOrCreateSelectionRepresentation();
-  for (int i = 0; i < 2; ++i)
-  {
-    int fieldAssociation = fieldAssociations[i];
-    const char* iSelectionVisibilityName = iSelectionVisibilityNames[i];
-    const char* iSelectionArrayName = iSelectionArrayNames[i];
-    const char* selectionVisibilityName = selectionVisibilityNames[i];
-    const char* selectionArrayName = selectionArrayNames[i];
-
-    QString arrayName;
-    if (vtkSMPropertyHelper(selectionRepresentation, selectionVisibilityName, true).GetAsInt() != 0)
+    vtkSMPropertyHelper visibilityHelper(repr, visibilityProperty.c_str(), /*quiet=*/true);
+    if (visibilityHelper.GetAsInt() == 0)
     {
-      arrayName = vtkSMPropertyHelper(selectionRepresentation, selectionArrayName,
-                    /*quiet=*/true)
-                    .GetAsString();
+      return;
     }
-    if (!arrayName.isEmpty())
+
+    vtkSMPropertyHelper arrayNameHelper(repr, arrayNameProperty.c_str(), /*quiet=*/true);
+    const std::string arrayName =
+      arrayNameHelper.GetAsString() ? arrayNameHelper.GetAsString() : "";
+    if (!arrayName.empty())
     {
-      vtkPVDataSetAttributesInformation* attrInfo =
-        this->Internals->attributeInformation(fieldAssociation);
-      if (!attrInfo)
+      // note, these are not part of the input data and hence will never be
+      // present in the data information, but are always available after
+      // "extract selection".
+      if ((fieldAssociation == vtkDataObject::FIELD_ASSOCIATION_CELLS &&
+            arrayName == "vtkOriginalCellIds") ||
+        (fieldAssociation == vtkDataObject::FIELD_ASSOCIATION_POINTS &&
+          arrayName == "vtkOriginalPointIds"))
       {
         return;
       }
 
-      bool found = false;
-      for (int cc = 0; cc < attrInfo->GetNumberOfArrays(); cc++)
+      auto dsaInfo = internals.attributeInformation(fieldAssociation);
+      if (dsaInfo && dsaInfo->GetArrayInformation(arrayName.c_str()) != nullptr)
       {
-        vtkPVArrayInformation* arrayInfo = attrInfo->GetArrayInformation(cc);
-        if (arrayName == arrayInfo->GetName())
-        {
-          found = true;
-          break;
-        }
-      }
-      if (!found)
-      {
-        // update selection representation
-        vtkSMPropertyHelper(selectionRepresentation, selectionVisibilityName, true).Set(0);
-        vtkSMPropertyHelper(selectionRepresentation, selectionArrayName, /*quiet=*/true).Set("");
-        selectionRepresentation->UpdateVTKObjects();
-        // update interactive selection representation
-        vtkSMPropertyHelper(iSelectionRepresentation, iSelectionVisibilityName, true).Set(0);
-        vtkSMPropertyHelper(iSelectionRepresentation, iSelectionArrayName, /*quiet=*/true).Set("");
-        iSelectionRepresentation->UpdateVTKObjects();
+        // all's well. no need to stop showing these labels.
+        return;
       }
     }
+
+    // hide the labels. they don't exist anymore.
+    visibilityHelper.Set(0);
+    arrayNameHelper.Set("");
+    repr->UpdateVTKObjects();
+  };
+
+  if (auto selectionRepresentation = internals.Port->getRepresentation(internals.View))
+  {
+    updateLabels(
+      selectionRepresentation->getProxy(), vtkDataObject::FIELD_ASSOCIATION_CELLS, "Selection");
+    updateLabels(
+      selectionRepresentation->getProxy(), vtkDataObject::FIELD_ASSOCIATION_POINTS, "Selection");
+  }
+
+  if (auto iSelectionRepresentation =
+        vtkSMInteractiveSelectionPipeline::GetInstance()->GetSelectionRepresentation())
+  {
+    updateLabels(iSelectionRepresentation, vtkDataObject::FIELD_ASSOCIATION_CELLS, {});
+    updateLabels(iSelectionRepresentation, vtkDataObject::FIELD_ASSOCIATION_POINTS, {});
   }
 }

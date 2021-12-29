@@ -60,7 +60,7 @@ public:
   /**
    * A simple, non-exhaustive check to see if a file is a valid ply file.
    */
-  static int CanReadFile(const char* filename);
+  static int CanReadFile(VTK_FILEPATH const char* filename);
 
   vtkGetObjectMacro(Comments, vtkStringArray);
 
@@ -71,7 +71,7 @@ public:
   vtkGetMacro(FaceTextureTolerance, float);
   vtkSetMacro(FaceTextureTolerance, float);
 
-  //@{
+  ///@{
   /**
    * Enable reading from an InputString instead of the default, a file.
    * Note that reading from an input stream would be more flexible (enabling
@@ -84,7 +84,7 @@ public:
   vtkGetMacro(ReadFromInputString, bool);
   vtkBooleanMacro(ReadFromInputString, bool);
   void SetInputString(const std::string& s) { this->InputString = s; }
-  //@}
+  ///@}
 
   /**
    * If true (default) and the "face" element has the property "texcoord" duplicate

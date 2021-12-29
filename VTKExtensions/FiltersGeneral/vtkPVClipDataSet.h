@@ -19,7 +19,7 @@
  *
  * This is a subclass of vtkTableBasedClipDataSet that allows selection of input
  * scalars.
-*/
+ */
 
 #ifndef vtkPVClipDataSet_h
 #define vtkPVClipDataSet_h
@@ -57,7 +57,7 @@ public:
   //@}
 
 protected:
-  vtkPVClipDataSet(vtkImplicitFunction* cf = NULL);
+  vtkPVClipDataSet(vtkImplicitFunction* cf = nullptr);
   ~vtkPVClipDataSet() override;
 
   int RequestData(vtkInformation*, vtkInformationVector**, vtkInformationVector*) override;

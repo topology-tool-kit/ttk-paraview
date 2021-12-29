@@ -1,7 +1,7 @@
 /*=========================================================================
 
    Program: ParaView
-   Module:    $RCSfile$
+   Module:    vtkVRControlSlicePositionStyle.cxx
 
    Copyright (c) 2005,2006 Sandia Corporation, Kitware Inc.
    All rights reserved.
@@ -31,8 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ========================================================================*/
 #include "vtkVRControlSlicePositionStyle.h"
 
-#include "pqActiveObjects.h"
-#include "pqView.h"
 #include "vtkMatrix4x4.h"
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
@@ -47,15 +45,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkSMSessionProxyManager.h"
 #include "vtkTransform.h"
 #include "vtkVRQueue.h"
+
+#include "pqActiveObjects.h"
+#include "pqView.h"
+
 #include <algorithm>
 #include <iostream>
 #include <sstream>
 
 // ----------------------------------------------------------------------------
-vtkStandardNewMacro(vtkVRControlSlicePositionStyle)
+vtkStandardNewMacro(vtkVRControlSlicePositionStyle);
 
-  // ----------------------------------------------------------------------------
-  vtkVRControlSlicePositionStyle::vtkVRControlSlicePositionStyle()
+// ----------------------------------------------------------------------------
+// Constructor method
+vtkVRControlSlicePositionStyle::vtkVRControlSlicePositionStyle()
 {
   this->Enabled = false;
   this->InitialPositionRecorded = false;
@@ -64,6 +67,11 @@ vtkStandardNewMacro(vtkVRControlSlicePositionStyle)
 }
 
 // ----------------------------------------------------------------------------
+// Destructor method
+vtkVRControlSlicePositionStyle::~vtkVRControlSlicePositionStyle() = default;
+
+// ----------------------------------------------------------------------------
+// PrintSelf() method
 void vtkVRControlSlicePositionStyle::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
@@ -77,11 +85,8 @@ void vtkVRControlSlicePositionStyle::PrintSelf(ostream& os, vtkIndent indent)
 }
 
 // ----------------------------------------------------------------------------
-vtkVRControlSlicePositionStyle::~vtkVRControlSlicePositionStyle()
-{
-}
-
-// ----------------------------------------------------------------------------
+// Update() method
+// WRS-TODO: Explain what this->ControlledProxy indicates and why it's important for Update()
 bool vtkVRControlSlicePositionStyle::Update()
 {
   if (!this->ControlledProxy)
@@ -93,25 +98,27 @@ bool vtkVRControlSlicePositionStyle::Update()
 }
 
 // ----------------------------------------------------------------------------
-void vtkVRControlSlicePositionStyle::HandleButton(const vtkVREventData& data)
+// HandleButton() method
+void vtkVRControlSlicePositionStyle::HandleButton(const vtkVREvent& event)
 {
-  std::string role = this->GetButtonRole(data.name);
+  std::string role = this->GetButtonRole(event.name);
   if (role == "Grab slice")
   {
-    if (this->Enabled && data.data.button.state == 0)
+    if (this->Enabled && event.data.button.state == 0)
     {
       this->ControlledProxy->UpdateVTKObjects();
       this->InitialPositionRecorded = false;
     }
 
-    this->Enabled = data.data.button.state;
+    this->Enabled = event.data.button.state;
   }
 }
 
 // ----------------------------------------------------------------------------
-void vtkVRControlSlicePositionStyle::HandleTracker(const vtkVREventData& data)
+// HandleTracker() method
+void vtkVRControlSlicePositionStyle::HandleTracker(const vtkVREvent& event)
 {
-  std::string role = this->GetTrackerRole(data.name);
+  std::string role = this->GetTrackerRole(event.name);
   if (role != "Slice position")
   {
     return;
@@ -138,11 +145,11 @@ void vtkVRControlSlicePositionStyle::HandleTracker(const vtkVREventData& data)
         {
           // Copy the data into matrix
           this->InitialInvertedPose->Identity();
-          this->InitialInvertedPose->SetElement(0, 3, data.data.tracker.matrix[3]);
-          this->InitialInvertedPose->SetElement(1, 3, data.data.tracker.matrix[7]);
-          this->InitialInvertedPose->SetElement(2, 3, data.data.tracker.matrix[11]);
+          this->InitialInvertedPose->SetElement(0, 3, event.data.tracker.matrix[3]);
+          this->InitialInvertedPose->SetElement(1, 3, event.data.tracker.matrix[7]);
+          this->InitialInvertedPose->SetElement(2, 3, event.data.tracker.matrix[11]);
 
-          // invert the matrix
+          // Invert the matrix
           this->InitialInvertedPose->Invert();
 
           vtkSMPropertyHelper(this->ControlledProxy, this->ControlledPropertyName)
@@ -156,9 +163,9 @@ void vtkVRControlSlicePositionStyle::HandleTracker(const vtkVREventData& data)
           double origin[4];
           vtkNew<vtkMatrix4x4> transformMatrix;
           transformMatrix->Identity();
-          transformMatrix->SetElement(0, 3, data.data.tracker.matrix[3]);
-          transformMatrix->SetElement(1, 3, data.data.tracker.matrix[7]);
-          transformMatrix->SetElement(2, 3, data.data.tracker.matrix[11]);
+          transformMatrix->SetElement(0, 3, event.data.tracker.matrix[3]);
+          transformMatrix->SetElement(1, 3, event.data.tracker.matrix[7]);
+          transformMatrix->SetElement(2, 3, event.data.tracker.matrix[11]);
 
           vtkMatrix4x4::Multiply4x4(transformMatrix.GetPointer(),
             this->InitialInvertedPose.GetPointer(), transformMatrix.GetPointer());

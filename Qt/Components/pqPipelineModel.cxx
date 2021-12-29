@@ -118,7 +118,6 @@ class pqPipelineModelDataItem : public QObject
 public:
   static vtkNew<vtkSMParaViewPipelineControllerWithRendering> Controller;
 
-public:
   pqPipelineModel* Model;
   pqPipelineModelDataItem* Parent;
   QList<pqPipelineModelDataItem*> Children;
@@ -468,7 +467,7 @@ public:
   QFont ModifiedFont;
   pqPipelineModelDataItem Root;
   pqTimer DelayedUpdateVisibilityTimer;
-  QList<QPointer<pqPipelineSource> > DelayedUpdateVisibilityItems;
+  QList<QPointer<pqPipelineSource>> DelayedUpdateVisibilityItems;
 };
 
 //-----------------------------------------------------------------------------
@@ -749,7 +748,7 @@ QModelIndex pqPipelineModel::index(int row, int column, const QModelIndex& paren
     return QModelIndex();
   }
 
-  pqPipelineModelDataItem* parentItem = 0;
+  pqPipelineModelDataItem* parentItem = nullptr;
   if (parentIndex.isValid())
   {
     parentItem = reinterpret_cast<pqPipelineModelDataItem*>(parentIndex.internalPointer());
@@ -870,7 +869,7 @@ QVariant pqPipelineModel::data(const QModelIndex& idx, int role) const
       if (!this->FilterRoleAnnotationKey.isEmpty() && proxy)
       {
         bool hasAnnotation =
-          proxy->getProxy()->HasAnnotation(this->FilterRoleAnnotationKey.toLocal8Bit().data());
+          proxy->getProxy()->HasAnnotation(this->FilterRoleAnnotationKey.toUtf8().data());
         return (this->FilterAnnotationMatching ? hasAnnotation : !hasAnnotation);
       }
       return QVariant(true);
@@ -962,18 +961,18 @@ QModelIndex pqPipelineModel::getIndexFor(pqServerManagerModelItem* item) const
 
 //-----------------------------------------------------------------------------
 pqPipelineModelDataItem* pqPipelineModel::getDataItem(
-  pqServerManagerModelItem* item, pqPipelineModelDataItem* _parent = 0,
+  pqServerManagerModelItem* item, pqPipelineModelDataItem* _parent = nullptr,
   pqPipelineModel::ItemType type /*= pqPipelineModel::Invalid*/
-  ) const
+) const
 {
-  if (_parent == 0)
+  if (_parent == nullptr)
   {
     _parent = &this->Internal->Root;
   }
 
   if (!item)
   {
-    return 0;
+    return nullptr;
   }
 
   if (_parent->Object == item && (type == pqPipelineModel::Invalid || type == _parent->Type))
@@ -989,7 +988,7 @@ pqPipelineModelDataItem* pqPipelineModel::getDataItem(
       return retVal;
     }
   }
-  return 0;
+  return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -1168,7 +1167,7 @@ void pqPipelineModel::removeSource(pqPipelineSource* source)
     return;
   }
 
-  while (item->Links.size() > 0)
+  while (!item->Links.empty())
   {
     pqPipelineModelDataItem* link = item->Links.last();
     this->removeChildFromParent(link);
@@ -1176,7 +1175,7 @@ void pqPipelineModel::removeSource(pqPipelineSource* source)
   }
 
   this->removeChildFromParent(item);
-  if (item->Children.size())
+  if (!item->Children.empty())
   {
     // Move the children to the server.
     pqServer* server = source->getServer();
@@ -1256,7 +1255,7 @@ void pqPipelineModel::addConnection(
   // sources/filters -- think of change input dialog to know why.
 
   pqPipelineModelDataItem* currentParent = sinkItem->Parent;
-  if (currentParent->Type == pqPipelineModel::Server && sinkItem->Links.size() > 0)
+  if (currentParent->Type == pqPipelineModel::Server && !sinkItem->Links.empty())
   {
     // sink has previously been identified as a "fan-in". We simply, create a
     // new link object for it.
@@ -1319,7 +1318,7 @@ void pqPipelineModel::removeConnection(
 
   // Note: this slot is invoked after the connection has been broken.
 
-  if (sinkItem->Links.size() == 0)
+  if (sinkItem->Links.empty())
   {
     // Simplest case, sink had just 1 input.
     pqServer* server = sink->getServer();

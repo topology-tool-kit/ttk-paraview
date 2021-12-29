@@ -64,7 +64,7 @@ void pqChangePipelineInputReaction::updateEnableState()
 {
   pqPipelineFilter* filter =
     qobject_cast<pqPipelineFilter*>(pqActiveObjects::instance().activeSource());
-  if (filter == NULL || filter->modifiedState() == pqProxy::UNINITIALIZED)
+  if (filter == nullptr || filter->modifiedState() == pqProxy::UNINITIALIZED)
   {
     this->parentAction()->setEnabled(false);
     return;
@@ -95,12 +95,12 @@ void pqChangePipelineInputReaction::changeInput()
   BEGIN_UNDO_SET(QString("Change Input for %1").arg(filter->getSMName()));
   SM_SCOPED_TRACE(PropertiesModified).arg("proxy", filter->getProxy());
 
-  const QMap<QString, QList<pqOutputPort*> > input_map = dialog.selectedInputs();
-  QMap<QString, QList<pqOutputPort*> >::const_iterator iter;
+  const QMap<QString, QList<pqOutputPort*>> input_map = dialog.selectedInputs();
+  QMap<QString, QList<pqOutputPort*>>::const_iterator iter;
 
   for (iter = input_map.begin(); iter != input_map.end(); iter++)
   {
-    QString inputPortName = iter.key();
+    const QString& inputPortName = iter.key();
     const QList<pqOutputPort*>& inputs = iter.value();
 
     std::vector<vtkSMProxy*> inputPtrs;
@@ -113,7 +113,7 @@ void pqChangePipelineInputReaction::changeInput()
     }
 
     vtkSMInputProperty* ip = vtkSMInputProperty::SafeDownCast(
-      filter->getProxy()->GetProperty(inputPortName.toLocal8Bit().data()));
+      filter->getProxy()->GetProperty(inputPortName.toUtf8().data()));
     ip->SetProxies(static_cast<unsigned int>(inputPtrs.size()), &inputPtrs[0], &inputPorts[0]);
   }
   filter->getProxy()->UpdateVTKObjects();

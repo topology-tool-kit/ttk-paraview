@@ -25,7 +25,7 @@
  * RenderPass mechanism to intercept render calls from a vtkRenderer. In other
  * words, if you are using render passes, you should not use this class. Your
  * render passes will  be overridden.
-*/
+ */
 
 #ifndef vtkIceTSynchronizedRenderers_h
 #define vtkIceTSynchronizedRenderers_h
@@ -76,7 +76,7 @@ public:
   }
 
   /**
-   * partition ordering that gives processes ordering. Initial value is a NULL pointer.
+   * partition ordering that gives processes ordering. Initial value is a nullptr pointer.
    * This is used only when UseOrderedCompositing is true.
    */
   void SetOrderedCompositingHelper(vtkOrderedCompositingHelper* helper)

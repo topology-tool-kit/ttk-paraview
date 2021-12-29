@@ -46,10 +46,10 @@ class VTKIOADIOS2_EXPORT vtkADIOS2VTXReader : public vtkMultiBlockDataSetAlgorit
 public:
   static vtkADIOS2VTXReader* New();
   vtkTypeMacro(vtkADIOS2VTXReader, vtkMultiBlockDataSetAlgorithm);
-  void PrintSelf(ostream& os, vtkIndent index) override;
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  vtkSetStringMacro(FileName);
-  vtkGetStringMacro(FileName);
+  vtkSetFilePathMacro(FileName);
+  vtkGetFilePathMacro(FileName);
 
 protected:
   vtkADIOS2VTXReader();
@@ -59,10 +59,11 @@ protected:
   void operator=(const vtkADIOS2VTXReader&) = delete;
 
   int RequestInformation(
-    vtkInformation*, vtkInformationVector**, vtkInformationVector* outputVector);
+    vtkInformation*, vtkInformationVector**, vtkInformationVector* outputVector) override;
   int RequestUpdateExtent(
-    vtkInformation*, vtkInformationVector**, vtkInformationVector* outputVector);
-  int RequestData(vtkInformation*, vtkInformationVector**, vtkInformationVector* outputVector);
+    vtkInformation*, vtkInformationVector**, vtkInformationVector* outputVector) override;
+  int RequestData(
+    vtkInformation*, vtkInformationVector**, vtkInformationVector* outputVector) override;
 
 private:
   char* FileName;

@@ -41,7 +41,7 @@ public:
   /**
    * Is the given file a JPEG file?
    */
-  int CanReadFile(const char* fname) override;
+  int CanReadFile(VTK_FILEPATH const char* fname) override;
 
   /**
    * Get the file extensions for this format.
@@ -58,6 +58,9 @@ public:
 protected:
   vtkJPEGReader() = default;
   ~vtkJPEGReader() override = default;
+
+  template <class OT>
+  void InternalUpdate(vtkImageData* data, OT* outPtr);
 
   void ExecuteInformation() override;
   void ExecuteDataWithInformation(vtkDataObject* out, vtkInformation* outInfo) override;

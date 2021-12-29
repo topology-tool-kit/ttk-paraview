@@ -58,9 +58,10 @@
 
 #include "vtksys/FStream.hxx"
 
-#include "cdi.h"
+#include "ThirdParty/cdi.h"
 #include "vtk_netcdf.h"
 
+#include <cmath>
 #include <sstream>
 
 using namespace std;
@@ -175,7 +176,7 @@ void cdi_get_part(CDIVar* cdiVar, int start, size_t size, T* buffer, int nlevels
 // Macro to check new didn't return an error
 //----------------------------------------------------------------------------
 #define CHECK_NEW(ptr)                                                                             \
-  if (ptr == nullptr)                                                                              \
+  if ((ptr) == nullptr)                                                                            \
   {                                                                                                \
     vtkErrorMacro("new failed!" << endl);                                                          \
     return 0;                                                                                      \
@@ -382,7 +383,7 @@ vtkCDIReader::vtkCDIReader()
   this->Internals = new vtkCDIReader::Internal;
   this->StreamID = -1;
   this->VListID = -1;
-  this->CellMask = 0;
+  this->CellMask = nullptr;
   this->LoadingDimensions = vtkSmartPointer<vtkIntArray>::New();
   this->VariableDimensions = vtkStringArray::New();
   this->AllDimensions = vtkStringArray::New();
@@ -498,6 +499,9 @@ vtkCDIReader::~vtkCDIReader()
 
   delete[] this->DomainVarDataArray;
   this->DomainVarDataArray = nullptr;
+
+  delete[] this->DomainMask;
+  this->DomainMask = nullptr;
 
   vtkDebugMacro("Destructing other stuff..." << endl);
   if (this->PointDataArraySelection)
@@ -1036,6 +1040,7 @@ void vtkCDIReader::SetDefaults()
   this->PointZ = nullptr;
   this->OrigConnections = nullptr;
   this->ModConnections = nullptr;
+  this->ModConnections_size = 0;
   this->CLon = nullptr;
   this->CLat = nullptr;
   this->BeginCell = 0;
@@ -1880,8 +1885,14 @@ int vtkCDIReader::AllocLatLonGeometry()
     this->ConstructGridGeometry();
   }
 
-  this->ModConnections = new int[this->NumberLocalCells * this->PointsPerCell];
-  CHECK_NEW(this->ModConnections);
+  const size_t newsize = this->NumberLocalCells * this->PointsPerCell;
+  if (this->ModConnections_size != newsize)
+  {
+    delete[] this->ModConnections;
+    this->ModConnections = new int[newsize];
+    CHECK_NEW(this->ModConnections);
+    this->ModConnections_size = newsize;
+  }
 
   if (this->ShowMultilayerView)
   {
@@ -2451,6 +2462,8 @@ void vtkCDIReader::OutputCells(bool init)
   {
     delete[] this->ModConnections;
     this->ModConnections = nullptr;
+    this->ModConnections_size = 0;
+
     delete[] this->OrigConnections;
     this->OrigConnections = nullptr;
   }
@@ -2485,13 +2498,15 @@ int vtkCDIReader::LoadPointVarData(int variableIndex, double dTimeStep)
   int success = false;
   if (this->DoublePrecision)
   {
-    vtkICONTemplateDispatch(VTK_DOUBLE, success = this->LoadPointVarDataTemplate<VTK_TT>(
-                                          variableIndex, dTimeStep, dataArray););
+    vtkICONTemplateDispatch(
+      VTK_DOUBLE,
+      success = this->LoadPointVarDataTemplate<VTK_TT>(variableIndex, dTimeStep, dataArray););
   }
   else
   {
-    vtkICONTemplateDispatch(VTK_FLOAT, success = this->LoadPointVarDataTemplate<VTK_TT>(
-                                         variableIndex, dTimeStep, dataArray););
+    vtkICONTemplateDispatch(
+      VTK_FLOAT,
+      success = this->LoadPointVarDataTemplate<VTK_TT>(variableIndex, dTimeStep, dataArray););
   }
 
   return success;
@@ -2523,13 +2538,15 @@ int vtkCDIReader::LoadCellVarData(int variableIndex, double dTimeStep)
   int success = false;
   if (this->DoublePrecision)
   {
-    vtkICONTemplateDispatch(VTK_DOUBLE, success = this->LoadCellVarDataTemplate<VTK_TT>(
-                                          variableIndex, dTimeStep, dataArray););
+    vtkICONTemplateDispatch(
+      VTK_DOUBLE,
+      success = this->LoadCellVarDataTemplate<VTK_TT>(variableIndex, dTimeStep, dataArray););
   }
   else
   {
-    vtkICONTemplateDispatch(VTK_FLOAT, success = this->LoadCellVarDataTemplate<VTK_TT>(
-                                         variableIndex, dTimeStep, dataArray););
+    vtkICONTemplateDispatch(
+      VTK_FLOAT,
+      success = this->LoadCellVarDataTemplate<VTK_TT>(variableIndex, dTimeStep, dataArray););
   }
 
   return success;
@@ -2801,7 +2818,7 @@ int vtkCDIReader::LoadDomainVarData(int variableIndex)
   // This is not very well implemented, also due to the organization of
   // the data available. Needs to be improved together with the modellers.
   vtkDebugMacro("In vtkCDIReader::LoadDomainVarData" << endl);
-  string variable = this->Internals->DomainVars[variableIndex].c_str();
+  string variable = this->Internals->DomainVars[variableIndex];
   this->DomainDataSelected = variableIndex;
 
   // Allocate data array for this variable
@@ -2860,7 +2877,7 @@ int vtkCDIReader::LoadDomainVarData(int variableIndex)
     // for (int l=0; l<6 ; l++)
     //  temp[l] = atof(wordVec.at(2+l).c_str());
 
-    if (strcmp(wordVec.at(1).c_str(), "L"))
+    if (wordVec.at(1) != "L")
     {
       temp[0] = atof(wordVec.at(7).c_str());
     }

@@ -71,7 +71,7 @@
 #include "vtkRenderingOpenGL2Module.h" // For export macro
 #include "vtkSmartPointer.h"           // For smart pointer
 
-#include <vector>
+#include <vector> // for std::vector
 
 class vtkOpenGLIndexBufferObject;
 class vtkOpenGLBufferObject;
@@ -83,6 +83,7 @@ class VTKRENDERINGOPENGL2_EXPORT vtkOpenGLInstanceCulling : public vtkObject
 public:
   static vtkOpenGLInstanceCulling* New();
   vtkTypeMacro(vtkOpenGLInstanceCulling, vtkObject);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   struct InstanceLOD
   {
@@ -142,13 +143,13 @@ public:
   void RunCullingShaders(vtkIdType numInstances, vtkOpenGLBufferObject* matrixBuffer,
     vtkOpenGLBufferObject* colorBuffer, vtkOpenGLBufferObject* normalBuffer);
 
-  //@{
+  ///@{
   /**
    * Overload color with unique color per LOD.
    */
   vtkSetMacro(ColorLOD, bool);
   vtkGetMacro(ColorLOD, bool);
-  //@}
+  ///@}
 
 protected:
   vtkOpenGLInstanceCulling() = default;
@@ -168,5 +169,3 @@ private:
 };
 
 #endif // vtkOpenGLInstanceCulling_h
-
-// VTK-HeaderTest-Exclude: vtkOpenGLInstanceCulling.h

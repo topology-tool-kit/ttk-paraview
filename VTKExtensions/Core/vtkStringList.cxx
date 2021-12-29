@@ -17,8 +17,8 @@
 #include "vtkObjectFactory.h"
 
 #include <algorithm>
+#include <cstdarg>
 #include <iterator>
-#include <stdarg.h>
 #include <vector>
 
 class vtkStringList::vtkInternals
@@ -37,9 +37,7 @@ vtkStringList::vtkStringList()
 }
 
 //----------------------------------------------------------------------------
-vtkStringList::~vtkStringList()
-{
-}
+vtkStringList::~vtkStringList() = default;
 
 //----------------------------------------------------------------------------
 void vtkStringList::RemoveAllItems()
@@ -56,8 +54,9 @@ int vtkStringList::GetIndex(const char* str)
   }
   const auto& internals = (*this->Internals);
   auto iter = std::find(internals.Strings.begin(), internals.Strings.end(), std::string(str));
-  return (iter == internals.Strings.end() ? -1 : static_cast<int>(
-                                                   std::distance(internals.Strings.begin(), iter)));
+  return (iter == internals.Strings.end()
+      ? -1
+      : static_cast<int>(std::distance(internals.Strings.begin(), iter)));
 }
 
 //----------------------------------------------------------------------------
@@ -66,7 +65,7 @@ const char* vtkStringList::GetString(int idx)
   const auto& internals = (*this->Internals);
   if (idx < 0 || idx >= static_cast<int>(internals.Strings.size()))
   {
-    return NULL;
+    return nullptr;
   }
 
   return internals.Strings[idx].c_str();

@@ -54,7 +54,8 @@ vtkTextProperty::vtkTextProperty()
   this->UseTightBoundingBox = 0;
 
   this->LineOffset = 0.0;
-  this->LineSpacing = 1.1; // why not 1.0 ?
+  this->LineSpacing = 1.0;
+  this->CellOffset = 0.0;
 
   this->Orientation = 0.0;
 }
@@ -101,6 +102,7 @@ void vtkTextProperty::ShallowCopy(vtkTextProperty* tprop)
 
   this->SetLineOffset(tprop->GetLineOffset());
   this->SetLineSpacing(tprop->GetLineSpacing());
+  this->SetCellOffset(tprop->GetCellOffset());
 
   this->SetShadowOffset(tprop->GetShadowOffset());
 }
@@ -157,4 +159,31 @@ void vtkTextProperty::PrintSelf(ostream& os, vtkIndent indent)
   os << indent << "Orientation: " << this->Orientation << "\n";
   os << indent << "Line Offset: " << this->LineOffset << "\n";
   os << indent << "Line Spacing: " << this->LineSpacing << "\n";
+  os << indent << "Cell Offset: " << this->CellOffset << "\n";
+}
+
+//------------------------------------------------------------------------------
+void vtkTextProperty::SetBackgroundRGBA(double rgba[4])
+{
+  this->SetBackgroundRGBA(rgba[0], rgba[1], rgba[2], rgba[3]);
+}
+
+//------------------------------------------------------------------------------
+void vtkTextProperty::SetBackgroundRGBA(double r, double g, double b, double a)
+{
+  this->SetBackgroundColor(r, g, b);
+  this->SetBackgroundOpacity(a);
+}
+
+//------------------------------------------------------------------------------
+void vtkTextProperty::GetBackgroundRGBA(double rgba[4])
+{
+  this->GetBackgroundRGBA(rgba[0], rgba[1], rgba[2], rgba[3]);
+}
+
+//------------------------------------------------------------------------------
+void vtkTextProperty::GetBackgroundRGBA(double& r, double& g, double& b, double& a)
+{
+  this->GetBackgroundColor(r, g, b);
+  a = this->GetBackgroundOpacity();
 }

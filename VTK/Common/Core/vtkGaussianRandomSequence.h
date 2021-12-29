@@ -31,13 +31,13 @@
 class VTKCOMMONCORE_EXPORT vtkGaussianRandomSequence : public vtkRandomSequence
 {
 public:
-  //@{
+  ///@{
   /**
    * Standard methods for type information and printing.
    */
   vtkTypeMacro(vtkGaussianRandomSequence, vtkRandomSequence);
   void PrintSelf(ostream& os, vtkIndent indent) override;
-  //@}
+  ///@}
 
   /**
    * Convenient method to return a value given the mean and standard deviation
@@ -46,6 +46,14 @@ public:
    * be overridden by a subclass.
    */
   virtual double GetScaledValue(double mean, double standardDeviation);
+
+  /**
+   * Return the next value in the sequence given the mean and standard
+   * deviation of the Gaussian.
+   *
+   * \see vtkGaussianRandomSequence::GetScaledValue
+   */
+  double GetNextScaledValue(double mean, double standardDeviation);
 
 protected:
   vtkGaussianRandomSequence();

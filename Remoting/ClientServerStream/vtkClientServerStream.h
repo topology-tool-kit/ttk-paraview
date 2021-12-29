@@ -22,13 +22,13 @@
  * and the message represented will remain unchanged.  Messages are
  * used to represent both commands and results for
  * vtkClientServerInterpreter, but they may be used for any purpose.
-*/
+ */
 
 #ifndef vtkClientServerStream_h
 #define vtkClientServerStream_h
 
-#include "vtkClientServerID.h"
-#include "vtkVariant.h"
+#include "vtkClientServerID.h" // for vtkClientServerID
+#include "vtkVariant.h"        // for vtkVariant
 
 class vtkClientServerStreamInternals;
 
@@ -40,7 +40,7 @@ public:
    * Constructor/Destructor manage references of vtk objects stored in
    * the stream along with the rest of the stream data.
    */
-  vtkClientServerStream(vtkObjectBase* owner = 0);
+  vtkClientServerStream(vtkObjectBase* owner = nullptr);
   ~vtkClientServerStream();
   //@}
 
@@ -48,7 +48,7 @@ public:
   /**
    * Copy constructor and assignment operator copy all stream data.
    */
-  vtkClientServerStream(const vtkClientServerStream&, vtkObjectBase* owner = 0);
+  vtkClientServerStream(const vtkClientServerStream&, vtkObjectBase* owner = nullptr);
   vtkClientServerStream& operator=(const vtkClientServerStream&);
   //@}
 
@@ -529,6 +529,7 @@ public:
 
   // Allow this object to be passed as if it were a pointer.
   operator T*() { return this->Data; }
+
 private:
   T* Data;
 };

@@ -57,9 +57,7 @@ pqCTHArraySelectionDecorator::pqCTHArraySelectionDecorator(
 }
 
 //-----------------------------------------------------------------------------
-pqCTHArraySelectionDecorator::~pqCTHArraySelectionDecorator()
-{
-}
+pqCTHArraySelectionDecorator::~pqCTHArraySelectionDecorator() = default;
 
 //-----------------------------------------------------------------------------
 void pqCTHArraySelectionDecorator::updateSelection()
@@ -73,7 +71,7 @@ void pqCTHArraySelectionDecorator::updateSelection()
 
   foreach (const QString& pname, this->PropertyNames)
   {
-    vtkSMProperty* prop = proxy->GetProperty(pname.toLocal8Bit().data());
+    vtkSMProperty* prop = proxy->GetProperty(pname.toUtf8().data());
     if (prop && prop != curProperty)
     {
       vtkSMUncheckedPropertyHelper(prop).SetNumberOfElements(0);

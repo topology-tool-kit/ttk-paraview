@@ -11,6 +11,8 @@ DEPENDS
   VTK::CommonDataModel
   VTK::CommonExecutionModel
   VTK::IOXML
+  VTK::cli11
+  VTK::fmt
 OPTIONAL_DEPENDS
   VTK::FiltersCore
 PRIVATE_DEPENDS
@@ -20,6 +22,8 @@ PRIVATE_DEPENDS
   VTK::pugixml
   VTK::vtksys
 TEST_DEPENDS
+  VTK::FiltersCore
+  VTK::FiltersSources
   VTK::TestingCore
 TEST_LABELS
   ParaView

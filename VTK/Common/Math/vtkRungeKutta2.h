@@ -36,6 +36,7 @@ class VTKCOMMONMATH_EXPORT vtkRungeKutta2 : public vtkInitialValueProblemSolver
 {
 public:
   vtkTypeMacro(vtkRungeKutta2, vtkInitialValueProblemSolver);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /**
    * Construct a vtkRungeKutta2 with no initial FunctionSet.
@@ -43,7 +44,7 @@ public:
   static vtkRungeKutta2* New();
 
   using Superclass::ComputeNextStep;
-  //@{
+  ///@{
   /**
    * Given initial values, xprev , initial time, t and a requested time
    * interval, delT calculate values of x at t+delT (xnext).
@@ -84,7 +85,7 @@ public:
   int ComputeNextStep(double* xprev, double* dxprev, double* xnext, double t, double& delT,
     double& delTActual, double minStep, double maxStep, double maxError, double& error,
     void* userData) override;
-  //@}
+  ///@}
 
 protected:
   vtkRungeKutta2();
@@ -96,5 +97,3 @@ private:
 };
 
 #endif
-
-// VTK-HeaderTest-Exclude: vtkRungeKutta2.h

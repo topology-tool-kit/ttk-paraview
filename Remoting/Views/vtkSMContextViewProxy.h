@@ -18,7 +18,7 @@
  *
  * vtkSMContextViewProxy is an abstract base class for all vtkContextView
  * subclasses.
-*/
+ */
 
 #ifndef vtkSMContextViewProxy_h
 #define vtkSMContextViewProxy_h
@@ -162,7 +162,7 @@ private:
   void operator=(const vtkSMContextViewProxy&) = delete;
 
   /**
-   * Copies axis ranges from each of the vtkAxis on the vtkChartXY to the
+   * Copies axis ranges from each of the vtkAxis on the vtkChart to the
    * SMproperties.
    */
   void CopyAxisRangesFromChart();

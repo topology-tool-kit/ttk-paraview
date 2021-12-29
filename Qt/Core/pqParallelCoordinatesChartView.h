@@ -38,10 +38,10 @@ class vtkSMSourceProxy;
 class pqDataRepresentation;
 
 /**
-* pqView subclass of ParallelCoordinatesChartView chart view. Does not do
-* anything specific besides passing the view type of pqView in the
-* constructor.
-*/
+ * pqView subclass of ParallelCoordinatesChartView chart view. Does not do
+ * anything specific besides passing the view type of pqView in the
+ * constructor.
+ */
 class PQCORE_EXPORT pqParallelCoordinatesChartView : public pqContextView
 {
   Q_OBJECT
@@ -51,7 +51,7 @@ public:
   static QString chartViewType() { return "ParallelCoordinatesChartView"; }
 
   pqParallelCoordinatesChartView(const QString& group, const QString& name,
-    vtkSMContextViewProxy* viewModule, pqServer* server, QObject* parent = NULL);
+    vtkSMContextViewProxy* viewModule, pqServer* server, QObject* parent = nullptr);
   ~pqParallelCoordinatesChartView() override;
 
 private:

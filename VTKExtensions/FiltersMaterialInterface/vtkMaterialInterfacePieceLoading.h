@@ -17,18 +17,17 @@
  *
  * Data structure that describes a fragment's loading.
  * Holds its id and its loading factor.
-*/
+ */
 
 #ifndef vtkMaterialInterfacePieceLoading_h
 #define vtkMaterialInterfacePieceLoading_h
 
 #include "vtkPVVTKExtensionsFiltersMaterialInterfaceModule.h" //needed for exports
-#include "vtkSystemIncludes.h"
 
-#include "vtkType.h"
-#include <cassert>
-#include <iostream>
-#include <vector>
+#include "vtkType.h" // for vtkIdType
+#include <cassert>   // for assert
+#include <iostream>  // for std::ostream
+#include <vector>    // for std::vector
 
 class VTKPVVTKEXTENSIONSFILTERSMATERIALINTERFACE_EXPORT vtkMaterialInterfacePieceLoading
 {
@@ -101,8 +100,6 @@ private:
 VTKPVVTKEXTENSIONSFILTERSMATERIALINTERFACE_EXPORT
 std::ostream& operator<<(std::ostream& sout, const vtkMaterialInterfacePieceLoading& fp);
 VTKPVVTKEXTENSIONSFILTERSMATERIALINTERFACE_EXPORT
-void PrintPieceLoadingHistogram(std::vector<std::vector<vtkIdType> >& pla);
+void PrintPieceLoadingHistogram(std::vector<std::vector<vtkIdType>>& pla);
 #endif
 //@}
-
-// VTK-HeaderTest-Exclude: vtkMaterialInterfacePieceLoading.h

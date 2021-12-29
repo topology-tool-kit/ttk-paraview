@@ -68,6 +68,9 @@ vtk_add_test_cxx(vtkInteractionWidgetsCxxTests tests
   TestSphereWidgetZoomInOut.cxx
   TestSplineWidget.cxx
   TestTextWidget.cxx
+  TestEqualizerContextItem.cxx
+  TestTextRepresentationWithBorders.cxx
+  TestTextWidgetBackgroundInteractive.cxx
   )
 vtk_add_test_cxx(vtkInteractionWidgetsCxxTests no_valid_tests
   NO_VALID
@@ -79,6 +82,7 @@ vtk_add_test_cxx(vtkInteractionWidgetsCxxTests no_valid_tests
   vtkBiDimensionalRepresentation2DTest1.cxx
   vtkBiDimensionalWidgetTest1.cxx
   vtkBorderWidgetTest1.cxx
+  vtkCameraPathRepresentationTest1.cxx
   vtkCaptionRepresentationTest1.cxx
   vtkCaptionWidgetTest1.cxx
   vtkConstrainedPointHandleRepresentationTest1.cxx
@@ -87,6 +91,7 @@ vtk_add_test_cxx(vtkInteractionWidgetsCxxTests no_valid_tests
   vtkLineWidget2Test1.cxx
   vtkPolyLineRepresentationTest1.cxx
   vtkPolyLineWidgetTest1.cxx
+  vtkResliceCursorRepresentationTest1.cxx
   vtkSeedRepresentationTest1.cxx
   vtkSeedWidgetTest1.cxx
   vtkSplineRepresentationTest1.cxx
@@ -99,6 +104,7 @@ vtk_add_test_cxx(vtkInteractionWidgetsCxxTests no_valid_tests
 vtk_add_test_cxx(vtkInteractionWidgetsCxxTests data_tests
   TestButtonWidget.cxx
   TestButtonWidgetMultipleViewports.cxx
+  TestButtonWidgetPlacement.cxx
   TestDijkstraGraphGeodesicPath.cxx
   TestLineWidget.cxx
   TestLineWidget2.cxx

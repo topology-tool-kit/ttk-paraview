@@ -24,8 +24,7 @@ public:
 
 //-----------------------------------------------------------------------------
 vtkPVAMRDualClip::vtkPVAMRDualClip()
-  : vtkAMRDualClip()
-  , VolumeFractionSurfaceValue(1.0)
+  : VolumeFractionSurfaceValue(1.0)
 {
   this->Implementation = new vtkPVAMRDualClipInternal();
 }
@@ -36,7 +35,7 @@ vtkPVAMRDualClip::~vtkPVAMRDualClip()
   if (this->Implementation)
   {
     delete this->Implementation;
-    this->Implementation = 0;
+    this->Implementation = nullptr;
   }
 }
 

@@ -65,7 +65,7 @@ public:
    */
   void ProcessEvents() override;
 
-  //@{
+  ///@{
   /**
    * Enable/Disable interactions.  By default interactors are enabled when
    * initialized.  Initialize() must be called prior to enabling/disabling
@@ -77,7 +77,7 @@ public:
    */
   void Enable() override;
   void Disable() override;
-  //@}
+  ///@}
 
   /**
    * Update the Size data member and set the associated RenderWindow's
@@ -112,21 +112,26 @@ protected:
   vtkXRenderWindowInteractorInternals* Internal;
 
   // Drag and drop related
+  int XdndSourceVersion;
   Window XdndSource;
+  Atom XdndFormatAtom;
+  Atom XdndURIListAtom;
+  Atom XdndTypeListAtom;
+  Atom XdndEnterAtom;
   Atom XdndPositionAtom;
   Atom XdndDropAtom;
   Atom XdndActionCopyAtom;
   Atom XdndStatusAtom;
   Atom XdndFinishedAtom;
 
-  //@{
+  ///@{
   /**
    * X-specific internal timer methods. See the superclass for detailed
    * documentation.
    */
   int InternalCreateTimer(int timerId, int timerType, unsigned long duration) override;
   int InternalDestroyTimer(int platformTimerId) override;
-  //@}
+  ///@}
 
   void FireTimers();
 

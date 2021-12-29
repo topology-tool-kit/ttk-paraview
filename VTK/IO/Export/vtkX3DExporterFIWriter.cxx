@@ -143,7 +143,7 @@ std::string vtkX3DExporterFIByteWriter::GetStringStream(vtkIdType& size)
   }
 
   size = 0;
-  return nullptr;
+  return std::string();
 }
 
 //------------------------------------------------------------------------------
@@ -152,7 +152,12 @@ void vtkX3DExporterFIByteWriter::TryFlush()
   if (this->CurrentBytePos == 8)
   {
     this->Stream->write((char*)(&(this->CurrentByte)), 1);
+#if defined(__GNUC__) && (__GNUC__ >= 7) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
     this->CurrentByte = 0;
+#pragma GCC diagnostic pop
+#endif
     this->CurrentBytePos = 0;
   }
 }

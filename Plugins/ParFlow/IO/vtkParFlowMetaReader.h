@@ -3,40 +3,40 @@
 #define vtkParFlowMetaReader_h
 
 #include "vtkDataObjectAlgorithm.h"
-#include "vtkParFlowIOModule.h"
+#include "vtkParFlowIOModule.h" // for export macro
 
-#include "vtkSmartPointer.h"
-#include "vtkVector.h"
+#include "vtkSmartPointer.h" // for ivars
+#include "vtkVector.h"       // for vtkVector*
 
-#include "nlohmann/json.hpp"
+#include "nlohmann/json.hpp" // for json bits
 
-#include <array>
-#include <set>
-#include <string>
-#include <vector>
+#include <map>    // for std::map
+#include <set>    // for std::set
+#include <string> // for std::string
+#include <vector> // for std::vector
 
 class vtkDataSet;
 class vtkDoubleArray;
 
 /**\brief Read ParFlow simulation output.
-  *
-  * Data is output as 2 images (elevation deflection turned off) or an explicit
-  * structured grid (subsurface) and image data (surface) (elevation deflection
-  * turned on).
-  * In each case, the first output is the 3-D subsurface domain and the
-  * second output in the 2-D surface domain.
-  *
-  * Nearly all variables defined on the outputs are cell-centered.
-  * However, subsurface fluid velocity (computed on 3 staggered, face-aligned
-  * grids) is interpolated to points.
-  * When deflecting by elevation, each cell's points are deflected by the cell's
-  * elevation (this feature of vtkExplicitStructuredGrid presents discontinuities
-  * at cell boundaries).
-  *
-  * This reader will work in parallel settings via a uniform grid partitioner
-  * that redistributes data from the file according to the number of ranks
-  * available.
-  */
+ *
+ * Data is output as 2 images (elevation deflection turned off) or an explicit
+ * structured grid (subsurface) and image data (surface) (elevation deflection
+ * turned on).
+ * In each case, the first output is the 3-D subsurface domain and the
+ * second output in the 2-D surface domain.
+ *
+ * Nearly all variables defined on the outputs are cell-centered.
+ * However, subsurface fluid velocity (computed on 3 staggered, face-aligned
+ * grids) is interpolated to points.
+ * When deflecting by elevation, each cell's points are deflected by the cell's
+ * elevation (this feature of vtkExplicitStructuredGrid presents discontinuities
+ * at cell boundaries).
+ *
+ * This reader will work in parallel settings via a uniform grid partitioner
+ * that redistributes data from the file according to the number of ranks
+ * available.
+ */
 class VTKPARFLOWIO_EXPORT vtkParFlowMetaReader : public vtkDataObjectAlgorithm
 {
 public:
@@ -113,6 +113,9 @@ public:
   int GetSurfaceVariableArrayStatus(const std::string& array) const;
   /// Set whether an array defined on the 2D simulation grid should be loaded.
   bool SetSurfaceVariableArrayStatus(const std::string& array, int status);
+
+  vtkParFlowMetaReader(const vtkParFlowMetaReader&) = delete;
+  void operator=(const vtkParFlowMetaReader&) = delete;
 
 protected:
   vtkParFlowMetaReader();
@@ -220,7 +223,7 @@ protected:
   int RequestDataObject(
     vtkInformation* request, vtkInformationVector** inInfo, vtkInformationVector* outInfo) override;
   /*
-    */
+   */
 
   /// Update the reader's output.
   int RequestData(
