@@ -43,8 +43,8 @@ endif ()
 get_property(generator_is_multi_config GLOBAL
   PROPERTY GENERATOR_IS_MULTI_CONFIG)
 if (NOT CMAKE_BUILD_TYPE AND NOT generator_is_multi_config)
-  message(STATUS "Setting build type to 'Debug' as none was specified.")
-  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
+  message(STATUS "Setting build type to 'Release' as none was specified.")
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
   # Set the possible values of build type for cmake-gui
   set_property(CACHE CMAKE_BUILD_TYPE
     PROPERTY
@@ -900,3 +900,39 @@ install(
 if (PARAVIEW_BUILD_EXAMPLES)
   add_subdirectory(Examples)
 endif ()
+
+#-----------------------------------------------------------------------------
+# Install TTK example data
+install(FILES ${ParaView_SOURCE_DIR}/TTK/Data/Example1.vti
+  DESTINATION share/paraview-5.10/examples/
+  COMPONENT development)
+
+install(FILES ${ParaView_SOURCE_DIR}/TTK/Data/Example2.vti
+  DESTINATION share/paraview-5.10/examples/
+  COMPONENT development)
+
+install(FILES ${ParaView_SOURCE_DIR}/TTK/Data/Example3.vti
+  DESTINATION share/paraview-5.10/examples/
+  COMPONENT development)
+
+#-----------------------------------------------------------------------------
+# Generate a .deb package
+set(CPACK_PACKAGE_NAME "TTK-ParaView")
+set(CPACK_PACKAGE_FILE_NAME "ttk-paraview")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "ParaView built with TTK patches")
+set(CPACK_PACKAGE_CONTACT "Julien Tierny <julien.tierny@sorbonne-universite.fr>")
+set(CPACK_PACKAGE_VENDOR "CNRS, Sorbonne University and contributors")
+set(CPACK_PACKAGE_HOMEPAGE_URL "https://topology-tool-kit.github.io/")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS
+  "qt5-default, qttools5-dev, libqt5x11extras5-dev, qtxmlpatterns5-dev-tools, libqt5svg5-dev, libxt-dev"
+  )
+set(CPACK_PACKAGE_VERSION_MAJOR ${PARAVIEW_VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${PARAVIEW_VERSION_MINOR})
+set(CPACK_PACKAGE_VERSION_PATCH ${PARAVIEW_VERSION_PATCH})
+# autogenerate dependency information
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+# package will be installed under %ProgramFiles%\${CPACK_PACKAGE_INSTALL_DIRECTORY} on Windows
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "TTK-ParaView")
+# let the installer uninstall previous installations on Windows
+set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+include(CPack)
