@@ -65,7 +65,7 @@ paraview_client_add(
   EXPORT            "ParaViewClient"
   APPLICATION_NAME  "ParaView"
   TITLE             "${paraview_title}"
-  ORGANIZATION      "ParaView"
+  ORGANIZATION      "TTK"
   VERSION           "${PARAVIEW_VERSION_MAJOR}.${PARAVIEW_VERSION_MINOR}.${PARAVIEW_VERSION_PATCH}"
   ${style_args}
   MAIN_WINDOW_CLASS "ParaViewMainWindow"
