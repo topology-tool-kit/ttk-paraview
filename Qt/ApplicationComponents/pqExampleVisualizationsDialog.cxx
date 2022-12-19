@@ -21,17 +21,11 @@ pqExampleVisualizationsDialog::pqExampleVisualizationsDialog(QWidget* parentObje
   ui->setupUi(this);
 
   QObject::connect(
-    this->ui->CanExampleButton, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
+    this->ui->Example1Button, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
   QObject::connect(
-    this->ui->DiskOutRefExampleButton, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
+    this->ui->Example2Button, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
   QObject::connect(
-    this->ui->HeadSQExampleButton, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
-  QObject::connect(
-    this->ui->HotGasAnalysisExampleButton, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
-  QObject::connect(
-    this->ui->TosExampleButton, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
-  QObject::connect(
-    this->ui->WaveletExampleButton, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
+    this->ui->Example3Button, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
 }
 
 //-----------------------------------------------------------------------------
@@ -49,35 +43,20 @@ void pqExampleVisualizationsDialog::onButtonPressed()
   {
     const char* stateFile = nullptr;
     bool needsData = false;
-    if (button == this->ui->CanExampleButton)
+    if (button == this->ui->Example1Button)
     {
-      stateFile = ":/pqApplicationComponents/ExampleVisualizations/CanExample.pvsm";
+      stateFile = ":/pqApplicationComponents/ExampleVisualizations/Example1.pvsm";
       needsData = true;
     }
-    else if (button == this->ui->DiskOutRefExampleButton)
+    else if (button == this->ui->Example2Button)
     {
-      stateFile = ":/pqApplicationComponents/ExampleVisualizations/DiskOutRefExample.pvsm";
+      stateFile = ":/pqApplicationComponents/ExampleVisualizations/Example2.pvsm";
       needsData = true;
     }
-    else if (button == this->ui->WaveletExampleButton)
+    else if (button == this->ui->Example3Button)
     {
-      stateFile = ":/pqApplicationComponents/ExampleVisualizations/WaveletExample.pvsm";
+      stateFile = ":/pqApplicationComponents/ExampleVisualizations/Example3.pvsm";
       needsData = false;
-    }
-    else if (button == this->ui->HotGasAnalysisExampleButton)
-    {
-      stateFile = ":/pqApplicationComponents/ExampleVisualizations/HotGasAnalysisExample.pvsm";
-      needsData = true;
-    }
-    else if (button == this->ui->HeadSQExampleButton)
-    {
-      stateFile = ":/pqApplicationComponents/ExampleVisualizations/HeadSQExample.pvsm";
-      needsData = true;
-    }
-    else if (button == this->ui->TosExampleButton)
-    {
-      stateFile = ":/pqApplicationComponents/ExampleVisualizations/TosExample.pvsm";
-      needsData = true;
     }
     else
     {
