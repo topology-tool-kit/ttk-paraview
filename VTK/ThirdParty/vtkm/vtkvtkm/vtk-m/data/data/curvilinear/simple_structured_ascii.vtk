@@ -1,3 +1,15 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:5f85560cc05688d09c21b22e91c14cec22deecb3c51dc364d82cc9fd460c6ab6
-size 328
+# vtk DataFile Version 3.0
+Structured Grid Example
+ASCII
+DATASET STRUCTURED_GRID
+DIMENSIONS 3 2 1
+POINTS 6 float
+0 0 0    1 0 0    2 0 0    0 1 0    1 1 0    2 1 0
+POINT_DATA 6
+SCALARS pointvar float 1
+LOOKUP_TABLE default
+10.1  20.1  30.1  40.1  50.1  60.1
+CELL_DATA 2
+SCALARS cellvar float 1
+LOOKUP_TABLE default
+100.1  200.1

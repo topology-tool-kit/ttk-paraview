@@ -931,7 +931,7 @@ vtkSmartPointer<vtkPolyData> SliceStructuredData(TGrid* inputGrid, vtkDataArray*
   ArrayList cellDataArrays;
   if (interpolate)
   {
-    outputCellData->InterpolateAllocate(inputGrid->GetCellData(), numberOfOutputCells);
+    outputCellData->CopyAllocate(inputGrid->GetCellData(), numberOfOutputCells);
     cellDataArrays.AddArrays(numberOfOutputCells, inputGrid->GetCellData(), outputCellData,
       /*nullValue*/ 0.0, /*promote*/ false);
   }
@@ -1233,6 +1233,9 @@ int vtkStructuredDataPlaneCutter::RequestData(vtkInformation* vtkNotUsed(request
     });
     output->GetPointData()->AddArray(newNormals);
   }
+
+  // Shallow copy field data
+  output->GetFieldData()->PassData(input->GetFieldData());
 
   return 1;
 }

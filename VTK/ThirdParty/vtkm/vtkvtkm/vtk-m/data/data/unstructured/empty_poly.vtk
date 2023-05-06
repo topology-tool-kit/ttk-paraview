@@ -1,3 +1,40 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:3d0ddc7c712a6d544db85660cd9d325884892b18d6f0ed451361aaeae2a96413
-size 204
+# vtk DataFile Version 2.0
+vtk output
+ASCII
+DATASET POLYDATA
+POINTS 8 double
+0 0 0
+0 0 1
+0 1 0
+0 1 1
+1 0 0
+1 0 1
+1 1 0
+1 1 1
+POINT_DATA 8
+VECTORS U double
+1
+2
+3
+1
+2
+3
+1
+2
+3
+1
+2
+3
+1
+2
+3
+1
+2
+3
+1
+2
+3
+1
+2
+3
+

@@ -1,3 +1,20 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:c1860e747d7f460afc63e32de184e445ffb966a42fb07f9d44ba39020584864f
-size 496
+# vtk DataFile Version 3.0
+Volume example
+ASCII
+DATASET STRUCTURED_POINTS
+DIMENSIONS 3 4 6
+SPACING 1 1 1
+ORIGIN 0 0 0
+POINT_DATA 72
+SCALARS volume_scalars char 1
+LOOKUP_TABLE default
+  0   0   0   0   0   0   0   0   0   0   0   0
+  0   5  10  15  20  25  25  20  15  10   5   0
+  0  10  20  30  40  50  50  40  30  20  10   0
+  0  10  20  30  40  50  50  40  30  20  10   0
+  0   5  10  15  20  25  25  20  15  10   5   0
+  0   0   0   0   0   0   0   0   0   0   0   0
+
+METADATA
+INFORMATION 0
+

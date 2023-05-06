@@ -18,7 +18,7 @@
 #include <algorithm>
 #include <cctype>
 #include <random>
-#include <regex>
+#include <sstream>
 
 // exprtk macros
 #define exprtk_disable_string_capabilities

@@ -940,20 +940,13 @@ bool vtkIOSSReader::vtkInternals::UpdateEntityAndFieldSelections(vtkIOSSReader* 
   // format should have been set (and synced) across all ranks by now.
   assert(this->Format != vtkIOSSUtilities::UNKNOWN);
 
-  // When each rank is reading multiple files, reading all those files for
-  // gathering meta-data can be slow. However, with CGNS, that is required
-  // since the file doesn't have information about all blocks in all files.
-  // see paraview/paraview#20873.
-  const bool readAllFilesForMetaData = (this->Format == vtkIOSSUtilities::DatabaseFormatType::CGNS);
-
   for (const auto& pair : this->DatabaseNames)
   {
+    // We need to read all files to get entity_names and field_names with certainty, because
+    // one file might have block_1 and another file might have block_1, block_2. We need to know
+    // about all blocks in all files. If we read only the first file, we will not know about
+    // block_2.
     auto fileids = this->GetFileIds(pair.first, rank, numRanks);
-    if (!readAllFilesForMetaData && fileids.size() > 1)
-    {
-      // reading 1 file is adequate, and that too on rank 0 alone.
-      fileids.resize(rank == 0 ? 1 : 0);
-    }
 
     for (const auto& fileid : fileids)
     {
@@ -1343,20 +1336,20 @@ Ioss::Region* vtkIOSSReader::vtkInternals::GetRegion(const std::string& dbasenam
       {
         switch (properties.get(name).get_type())
         {
-          case vtkioss_Ioss::Property::BasicType::POINTER:
+          case Ioss::Property::BasicType::POINTER:
             vtkLog(TRACE, << name << " : " << properties.get(name).get_pointer());
             break;
-          case vtkioss_Ioss::Property::BasicType::INTEGER:
+          case Ioss::Property::BasicType::INTEGER:
             vtkLog(TRACE, << name << " : " << std::to_string(properties.get(name).get_int()));
             break;
-          case vtkioss_Ioss::Property::BasicType::INVALID:
+          case Ioss::Property::BasicType::INVALID:
             vtkLog(TRACE, << name << " : "
                           << "invalid type");
             break;
-          case vtkioss_Ioss::Property::BasicType::REAL:
+          case Ioss::Property::BasicType::REAL:
             vtkLog(TRACE, << name << " : " << std::to_string(properties.get(name).get_real()));
             break;
-          case vtkioss_Ioss::Property::BasicType::STRING:
+          case Ioss::Property::BasicType::STRING:
             vtkLog(TRACE, << name << " : " << properties.get(name).get_string());
             break;
           default:

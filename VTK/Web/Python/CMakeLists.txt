@@ -2,6 +2,7 @@ set(files
   vtkmodules/web/__init__.py
   vtkmodules/web/camera.py
   vtkmodules/web/dataset_builder.py
+  vtkmodules/web/errors.py
   vtkmodules/web/protocols.py
   vtkmodules/web/query_data_model.py
   vtkmodules/web/render_window_serializer.py
@@ -21,4 +22,4 @@ vtk_module_add_python_module(VTK::WebPython
 
 set_property(GLOBAL APPEND
   PROPERTY
-    vtk_required_python_modules "wslink>=1.0.4")
+    vtk_web_python_modules "wslink>=1.0.4")

@@ -235,7 +235,7 @@ void vtkXRenderWindowInteractor::ProcessEvents()
       minTv.tv_sec = std::min(tv.tv_sec, minTv.tv_sec);
       minTv.tv_usec = std::min(tv.tv_usec, minTv.tv_usec);
     }
-    else
+    while (XPending((*rwi)->DisplayId) != 0)
     {
       // If events are pending, dispatch them to the right RenderWindowInteractor
       XNextEvent((*rwi)->DisplayId, &event);
@@ -460,8 +460,8 @@ void vtkXRenderWindowInteractor::UpdateSizeNoXResize(int x, int y)
   {
     this->Size[0] = x;
     this->Size[1] = y;
-    // static_cast<vtkXOpenGLRenderWindow*>(this->RenderWindow)->SetSizeNoXResize(x, y);
-    this->RenderWindow->SetSize(x, y);
+    // change the ivars but don't resize the X window
+    this->RenderWindow->vtkRenderWindow::SetSize(x, y);
   }
 }
 

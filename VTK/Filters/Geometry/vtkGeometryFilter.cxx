@@ -1780,7 +1780,7 @@ struct ExtractStructured : public ExtractCellBoundaries<TInputIdType>
       if (!minFace && !this->FastMode)
       {
         cellId = static_cast<TInputIdType>(vtkStructuredData::ComputeCellIdForExtent(extent, ijk));
-        ijk[axis] = extent[5] - 1;
+        ijk[axis] = extent[axis2 + 1] - 1;
         const auto face = this->GetFace(ijk, /*minFace=*/false, FaceMode::SHRINKING_FACES);
         polys.template InsertNextCell<TInputIdType>(4, face.data(), cellId);
       }
@@ -2836,6 +2836,11 @@ int ExecuteUnstructuredGrid(vtkGeometryFilter* self, vtkDataSet* dataSetInput, v
     vtkNew<vtkPolyData> polyDataInput;
     polyDataInput->SetPoints(uGrid->GetPoints());
     polyDataInput->GetPointData()->ShallowCopy(uGrid->GetPointData());
+    if (self->GetPassThroughPointIds() &&
+      polyDataInput->GetPointData()->HasArray(self->GetOriginalPointIdsName()))
+    {
+      polyDataInput->GetPointData()->RemoveArray(self->GetOriginalPointIdsName());
+    }
     if (info->HasOnlyVerts())
     {
       polyDataInput->SetVerts(uGrid->GetCells());
@@ -2853,6 +2858,11 @@ int ExecuteUnstructuredGrid(vtkGeometryFilter* self, vtkDataSet* dataSetInput, v
       polyDataInput->SetStrips(uGrid->GetCells());
     }
     polyDataInput->GetCellData()->ShallowCopy(uGrid->GetCellData());
+    if (self->GetPassThroughCellIds() &&
+      polyDataInput->GetCellData()->HasArray(self->GetOriginalCellIdsName()))
+    {
+      polyDataInput->GetCellData()->RemoveArray(self->GetOriginalCellIdsName());
+    }
     if (info_owned)
     {
       delete info;

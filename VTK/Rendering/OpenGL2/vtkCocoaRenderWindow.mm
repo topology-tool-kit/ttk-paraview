@@ -1046,7 +1046,10 @@ void vtkCocoaRenderWindow::CreateGLContext()
 // Initialize the rendering process.
 void vtkCocoaRenderWindow::Start()
 {
-  this->Superclass::Start();
+  if (!this->Initialized)
+  {
+    this->Initialize();
+  }
 
   // make sure the hardware is up to date otherwise
   // the backing store may not match the current window
@@ -1076,8 +1079,7 @@ void vtkCocoaRenderWindow::Start()
     [context update];
   }
 
-  // set the current window
-  this->MakeCurrent();
+  this->Superclass::Start();
 }
 
 //----------------------------------------------------------------------------

@@ -216,10 +216,14 @@ QVector<pqPipelineSource*> pqLoadDataReaction::loadFilesForSupportedTypes(QList<
         if (QRegExp(QString::fromStdString(pattern), Qt::CaseInsensitive, QRegExp::Wildcard)
               .exactMatch(fileInfo.fileName()))
         {
-          pqLoadDataReaction::loadData(file, "sources",
+          pqPipelineSource* source = pqLoadDataReaction::loadData(file, "sources",
             QString::fromStdString(
               settings->GetSettingAsString(settingName, reversedIndex * 3 + 2, "")));
           loaded = true;
+          if (source)
+          {
+            newSources << source;
+          }
           break;
         }
       }
@@ -231,7 +235,7 @@ QVector<pqPipelineSource*> pqLoadDataReaction::loadFilesForSupportedTypes(QList<
 
     if (!loaded)
     {
-      pqPipelineSource* source = pqLoadDataReaction::loadData({ file });
+      pqPipelineSource* source = pqLoadDataReaction::loadData(QStringList(file));
       if (source)
       {
         newSources << source;
