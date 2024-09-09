@@ -19,7 +19,7 @@ jobs:
       matrix:
         os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       name: Checkout TTK-ParaView source code
 
     - name: Install Ubuntu dependencies
@@ -59,7 +59,7 @@ jobs:
         cpack -G DEB
 
     - name: Upload Debian package
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ttk-paraview-headless-${{ matrix.os }}
         path: build/ttk-paraview.deb
@@ -77,7 +77,7 @@ jobs:
       CCACHE_DIR: /Users/runner/work/ttk/.ccache
       CCACHE_MAXSIZE: 200M
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       name: Checkout TTK-ParaView source code
 
     - name: Remove hosted Python
@@ -90,7 +90,7 @@ jobs:
         # ParaView dependencies
         brew reinstall python
         brew install --cask xquartz
-        brew install wget libomp ninja python open-mpi
+        brew install ninja open-mpi
 
     - name: Create & configure ParaView build directory
       run: |
@@ -113,7 +113,7 @@ jobs:
         cpack -G TGZ
 
     - name: Upload compressed binaries
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ttk-paraview-headless-${{ matrix.os }}
         path: build/ttk-paraview.tar.gz
@@ -128,7 +128,7 @@ jobs:
       CONDA_ROOT: C:\Miniconda
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       name: Checkout TTK-ParaView source code
 
     - uses: s-weigand/setup-conda@v1
@@ -172,7 +172,7 @@ jobs:
         mv ttk-paraview.exe $GITHUB_WORKSPACE
 
     - name: Upload install executable
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ttk-paraview-headless-windows
         path: ttk-paraview.exe
