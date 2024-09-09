@@ -174,7 +174,7 @@ jobs:
     - name: Upload install executable
       uses: actions/upload-artifact@v4
       with:
-        name: ttk-paraview-headless-windows
+        name: ttk-paraview-headless-windows-2022
         path: ttk-paraview.exe
 
 
@@ -253,7 +253,7 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
-        file: ttk-paraview-headless-windows/ttk-paraview.exe
+        file: ttk-paraview-headless-windows-2022/ttk-paraview.exe
         asset_name: ttk-paraview-headless.exe
 
     - name: Delete package artifacts
