@@ -245,7 +245,7 @@ jobs:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
         file: ttk-paraview-macos-14/ttk-paraview.tar.gz
-        asset_name: ttk-paraview-$tag-macos-14.tar.gz
+        asset_name: ttk-paraview-$tag-macos-14-arm64.tar.gz
 
     - name: Upload MacOS 12 .tar.gz as Release Asset
       uses: svenstaro/upload-release-action@v2
