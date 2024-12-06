@@ -72,7 +72,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-12, macos-14]
+        os: [macos-13, macos-14, macos-15]
     env:
       CCACHE_DIR: /Users/runner/work/ttk/.ccache
       CCACHE_MAXSIZE: 200M
@@ -90,14 +90,14 @@ jobs:
         # ParaView dependencies
         brew reinstall python
         brew install --cask xquartz
-        brew install ninja open-mpi
+        brew install ninja 
 
     - name: Create & configure ParaView build directory
       run: |
         mkdir build && cd build
         cmake \
           -DCMAKE_BUILD_TYPE=Release \
-          -DPARAVIEW_USE_MPI=ON \
+          -DPARAVIEW_USE_MPI=OFF \
           -DPARAVIEW_USE_QT=OFF \
           -GNinja \
           $GITHUB_WORKSPACE
@@ -240,22 +240,29 @@ jobs:
         file: ttk-paraview-headless-ubuntu-24.04/ttk-paraview.deb
         asset_name: ttk-paraview-headless-ubuntu-24.04.deb
 
+    - name: Upload MacOS 15 .tar.gz as Release Asset
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref }}
+        file: ttk-paraview-headless-macos-15/ttk-paraview.tar.gz
+        asset_name: ttk-paraview-headless-macos-15.tar.gz
 
-    - name: Upload MacOS 14 (arm64) .tar.gz as Release Asset
+    - name: Upload MacOS 14 .tar.gz as Release Asset
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
         file: ttk-paraview-headless-macos-14/ttk-paraview.tar.gz
-        asset_name: ttk-paraview-headless-macos-14-arm64.tar.gz
+        asset_name: ttk-paraview-headless-macos-14.tar.gz
 
-    - name: Upload MacOS 12 .tar.gz as Release Asset
+    - name: Upload MacOS 13 .tar.gz as Release Asset
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
-        file: ttk-paraview-headless-macos-12/ttk-paraview.tar.gz
-        asset_name: ttk-paraview-headless-macos-12.tar.gz
+        file: ttk-paraview-headless-macos-13/ttk-paraview.tar.gz
+        asset_name: ttk-paraview-headless-macos-13.tar.gz
 
 
     - name: Upload .exe as Release Asset
