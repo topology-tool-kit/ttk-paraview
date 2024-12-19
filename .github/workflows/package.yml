@@ -76,6 +76,9 @@ jobs:
     strategy:
       matrix:
         os: [macos-13, macos-14, macos-15]
+    env:
+      CCACHE_DIR: /Users/runner/work/ttk/.ccache
+      CCACHE_MAXSIZE: 200M
     steps:
     - uses: actions/checkout@v4
       name: Checkout TTK-ParaView source code
@@ -96,7 +99,6 @@ jobs:
         cmake \
           -DCMAKE_BUILD_TYPE=Release \
           -DQt5_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5 \
-          -DPython3_ROOT_DIR=$(brew --prefix python) \
           -GNinja \
           $GITHUB_WORKSPACE
 
