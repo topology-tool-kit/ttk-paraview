@@ -91,7 +91,12 @@ jobs:
       run: |
         # ParaView dependencies
         brew install --cask xquartz
-        brew install mesa glew qt@5 ninja 
+        brew install llvm mesa glew qt@5 ninja 
+
+    - name: Set compilers as environment variables
+      run: |
+        echo "CC=$(brew --prefix llvm)/bin/clang" >> $GITHUB_ENV
+        echo "CXX=$(brew --prefix llvm)/bin/clang++" >> $GITHUB_ENV
 
     - name: Create & configure ParaView build directory
       run: |
