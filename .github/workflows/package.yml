@@ -91,7 +91,7 @@ jobs:
       run: |
         # ParaView dependencies
         brew install --cask xquartz
-        brew install llvm mesa glew qt@5 ninja 
+        brew install llvm@20 mesa glew qt@5 ninja 
 
     - name: Set compilers as environment variables
       run: |
