@@ -1,0 +1,9 @@
+NAME
+  VTK::diy2
+LIBRARY_NAME
+  vtkdiy2
+OPTIONAL_DEPENDS
+  VTK::mpi
+TEST_DEPENDS
+  VTK::TestingCore
+THIRD_PARTY

@@ -1,0 +1,30 @@
+NAME
+  VTK::SerializationManager
+LIBRARY_NAME
+  vtkSerializationManager
+SPDX_LICENSE_IDENTIFIER
+  BSD-3-Clause
+SPDX_COPYRIGHT_TEXT
+  Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
+DEPENDS
+  VTK::CommonCore
+OPTIONAL_DEPENDS
+  VTK::ChartsCore
+  VTK::CommonColor
+  VTK::CommonDataModel
+  VTK::CommonExecutionModel
+  VTK::CommonTransforms
+  VTK::CommonMath
+  VTK::InteractionStyle
+  VTK::InteractionWidgets
+  VTK::RenderingAnnotation
+  VTK::RenderingCore
+  VTK::RenderingContext2D
+  VTK::RenderingContextOpenGL2
+  VTK::RenderingLabel
+  VTK::RenderingOpenGL2
+  VTK::RenderingUI
+  VTK::RenderingVolume
+  VTK::RenderingVolumeOpenGL2
+  VTK::ViewsCore
+  VTK::ViewsContext2D
