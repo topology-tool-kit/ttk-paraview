@@ -1,0 +1,362 @@
+set(classes
+  vtkAMRBox
+  vtkAMRUtilities
+  vtkAbstractCellArray
+  vtkAbstractCellLinks
+  vtkAbstractCellLocator
+  vtkAbstractElectronicData
+  vtkAbstractPointLocator
+  vtkAdjacentVertexIterator
+  vtkAnimationScene
+  vtkAnnotation
+  vtkAnnotationLayers
+  vtkAnnulus
+  vtkArrayData
+  vtkAtom
+  vtkAttributesErrorMetric
+  vtkBSPCuts
+  vtkBSPIntersections
+  vtkBezierCurve
+  vtkBezierHexahedron
+  vtkBezierInterpolation
+  vtkBezierQuadrilateral
+  vtkBezierTetra
+  vtkBezierTriangle
+  vtkBezierWedge
+  vtkBiQuadraticQuad
+  vtkBiQuadraticQuadraticHexahedron
+  vtkBiQuadraticQuadraticWedge
+  vtkBiQuadraticTriangle
+  vtkBond
+  vtkBoundingBox
+  vtkBox
+  vtkCell
+  vtkCell3D
+  vtkCellArray
+  vtkCellArrayIterator
+  vtkCellAttribute
+  vtkCellAttributeCalculator
+  vtkCellData
+  vtkCellGrid
+  vtkCellGridBoundsQuery
+  vtkCellGridCopyQuery
+  vtkCellGridEvaluator
+  vtkCellGridRangeQuery
+  vtkCellGridQuery
+  vtkCellGridResponders
+  vtkCellGridSidesCache
+  vtkCellGridSidesQuery
+  vtkCellIterator
+  vtkCellLinks
+  vtkCellLocator
+  vtkCellLocatorStrategy
+  vtkCellMetadata
+  vtkCellTreeLocator
+  vtkCellTypes
+  vtkClosestNPointsStrategy
+  vtkClosestPointStrategy
+  vtkCompositeDataIterator
+  vtkCompositeDataSet
+  vtkCone
+  vtkConvexPointSet
+  vtkCoordinateFrame
+  vtkCubicLine
+  vtkCylinder
+  vtkDataAssembly
+  vtkDataAssemblyUtilities
+  vtkDataObject
+  vtkDataObjectCollection
+  vtkDataObjectTree
+  vtkDataObjectTreeIterator
+  vtkDataObjectTypes
+  vtkDataSet
+  vtkDataSetAttributes
+  vtkDataSetAttributesFieldList
+  vtkDataSetCellIterator
+  vtkDataSetCollection
+  vtkDirectedAcyclicGraph
+  vtkDirectedGraph
+  vtkDistributedGraphHelper
+  vtkEdgeListIterator
+  vtkEdgeTable
+  vtkEmptyCell
+  vtkExplicitStructuredGrid
+  vtkExtractStructuredGridHelper
+  vtkFieldData
+  vtkFindCellStrategy
+  vtkFrustum
+  vtkGenericAdaptorCell
+  vtkGenericAttribute
+  vtkGenericAttributeCollection
+  vtkGenericCell
+  vtkGenericCellIterator
+  vtkGenericCellTessellator
+  vtkGenericDataSet
+  vtkGenericEdgeTable
+  vtkGenericInterpolatedVelocityField
+  vtkGenericPointIterator
+  vtkGenericSubdivisionErrorMetric
+  vtkGeometricErrorMetric
+  vtkGraph
+  vtkGraphEdge
+  vtkGraphInternals
+  vtkHexagonalPrism
+  vtkHexahedron
+  vtkHierarchicalBoxDataSet
+  vtkHigherOrderCurve
+  vtkHigherOrderHexahedron
+  vtkHigherOrderInterpolation
+  vtkHigherOrderQuadrilateral
+  vtkHigherOrderTetra
+  vtkHigherOrderTriangle
+  vtkHigherOrderWedge
+  vtkHyperTree
+  vtkHyperTreeGrid
+  vtkHyperTreeGridLocator
+  vtkHyperTreeGridGeometricLocator
+  vtkHyperTreeGridNonOrientedCursor
+  vtkHyperTreeGridNonOrientedGeometryCursor
+  vtkHyperTreeGridNonOrientedUnlimitedGeometryCursor
+  vtkHyperTreeGridNonOrientedMooreSuperCursor
+  vtkHyperTreeGridNonOrientedMooreSuperCursorLight
+  vtkHyperTreeGridNonOrientedUnlimitedMooreSuperCursor
+  vtkHyperTreeGridNonOrientedSuperCursor
+  vtkHyperTreeGridNonOrientedSuperCursorLight
+  vtkHyperTreeGridNonOrientedUnlimitedSuperCursor
+  vtkHyperTreeGridNonOrientedVonNeumannSuperCursor
+  vtkHyperTreeGridNonOrientedVonNeumannSuperCursorLight
+  vtkHyperTreeGridOrientedCursor
+  vtkHyperTreeGridOrientedGeometryCursor
+  vtkImageData
+  vtkImageIterator
+  vtkImageTransform
+  vtkImplicitBoolean
+  vtkImplicitDataSet
+  vtkImplicitFunction
+  vtkImplicitFunctionCollection
+  vtkImplicitHalo
+  vtkImplicitSelectionLoop
+  vtkImplicitSum
+  vtkImplicitVolume
+  vtkImplicitWindowFunction
+  vtkInEdgeIterator
+  vtkIncrementalOctreeNode
+  vtkIncrementalOctreePointLocator
+  vtkIncrementalPointLocator
+  vtkInformationQuadratureSchemeDefinitionVectorKey
+  vtkIterativeClosestPointTransform
+  vtkKdNode
+  vtkKdTree
+  vtkKdTreePointLocator
+  vtkLagrangeCurve
+  vtkLagrangeHexahedron
+  vtkLagrangeInterpolation
+  vtkLagrangeQuadrilateral
+  vtkLagrangeTetra
+  vtkLagrangeTriangle
+  vtkLagrangeWedge
+  vtkLine
+  vtkLocator
+  vtkMarchingCubesTriangleCases
+  vtkMarchingCubesPolygonCases
+  vtkMarchingSquaresLineCases
+  vtkMeanValueCoordinatesInterpolator
+  vtkMergePoints
+  vtkMolecule
+  vtkMultiBlockDataSet
+  vtkMultiPieceDataSet
+  vtkMutableDirectedGraph
+  vtkMutableUndirectedGraph
+  vtkNonLinearCell
+  vtkNonMergingPointLocator
+  vtkOctreePointLocator
+  vtkOctreePointLocatorNode
+  vtkOrderedTriangulator
+  vtkOutEdgeIterator
+  vtkPartitionedDataSet
+  vtkPartitionedDataSetCollection
+  vtkPath
+  vtkPentagonalPrism
+  vtkPerlinNoise
+  vtkPiecewiseFunction
+  vtkPixel
+  vtkPixelExtent
+  vtkPixelTransfer
+  vtkPlane
+  vtkPlaneCollection
+  vtkPlanes
+  vtkPlanesIntersection
+  vtkPointData
+  vtkPointLocator
+  vtkPointSet
+  vtkPointSetCellIterator
+  vtkPointsProjectedHull
+  vtkPolyData
+  vtkPolyDataCollection
+  vtkPolyLine
+  vtkPolyPlane
+  vtkPolyVertex
+  vtkPolygon
+  vtkPolyhedron
+  vtkPolyhedronUtilities
+  vtkPyramid
+  vtkQuad
+  vtkQuadraticEdge
+  vtkQuadraticHexahedron
+  vtkQuadraticLinearQuad
+  vtkQuadraticLinearWedge
+  vtkQuadraticPolygon
+  vtkQuadraticPyramid
+  vtkQuadraticQuad
+  vtkQuadraticTetra
+  vtkQuadraticTriangle
+  vtkQuadraticWedge
+  vtkQuadratureSchemeDefinition
+  vtkQuadric
+  vtkRectilinearGrid
+  vtkReebGraph
+  vtkReebGraphSimplificationMetric
+  vtkSelection
+  vtkSelectionNode
+  vtkSimpleCellTessellator
+  vtkSmoothErrorMetric
+  vtkSortFieldData
+  vtkSphere
+  vtkSpheres
+  vtkSphericalPointIterator
+  vtkSpline
+  vtkStaticCellLinks
+  vtkStaticCellLocator
+  vtkStaticPointLocator
+  vtkStaticPointLocator2D
+  vtkStructuredCellArray
+  vtkStructuredData
+  vtkStructuredExtent
+  vtkStructuredGrid
+  vtkStructuredPoints
+  vtkStructuredPointsCollection
+  vtkSuperquadric
+  vtkTable
+  vtkTetra
+  vtkTree
+  vtkTreeBFSIterator
+  vtkTreeDFSIterator
+  vtkTreeIterator
+  vtkTriQuadraticHexahedron
+  vtkTriQuadraticPyramid
+  vtkTriangle
+  vtkTriangleStrip
+  vtkUndirectedGraph
+  vtkUniformGrid
+  vtkUniformHyperTreeGrid
+  vtkUnstructuredGrid
+  vtkUnstructuredGridBase
+  vtkUnstructuredGridCellIterator
+  vtkVertex
+  vtkVertexListIterator
+  vtkVoxel
+  vtkWedge
+  vtkXMLDataElement
+
+  # New classes for AMR
+  vtkAMRDataInternals
+  vtkAMRInformation
+  vtkNonOverlappingAMR
+  vtkOverlappingAMR
+  vtkUniformGridAMR
+  vtkUniformGridAMRDataIterator)
+
+set(template_classes
+  vtkAngularPeriodicDataArray
+  vtkArrayListTemplate
+  vtkMappedUnstructuredGrid
+  vtkMappedUnstructuredGridCellIterator
+  vtkPeriodicDataArray
+  vtkStaticCellLinksTemplate
+  vtkStaticEdgeLocatorTemplate
+  vtkStaticFaceHashLinksTemplate)
+
+set(nowrap_classes
+  vtkHyperTreeGridEntry
+  vtkHyperTreeGridGeometryEntry
+  vtkHyperTreeGridGeometryUnlimitedEntry
+  vtkHyperTreeGridGeometryLevelEntry
+  vtkHyperTreeGridGeometryUnlimitedLevelEntry
+  vtkHyperTreeGridLevelEntry)
+
+set(headers
+  vtkCellGridResponder.h
+  vtkCellGridResponderBase.h
+  vtkCellType.h
+  vtkColor.h
+  vtkDataAssemblyVisitor.h
+  vtkDataObjectTreeInternals.h
+  vtkHyperTreeGridScales.h
+  vtkHyperTreeGridTools.h
+  vtkIntersectionCounter.h
+  vtkLabelMapLookup.h
+  vtkRect.h
+  vtkVector.h
+  vtkVectorOperators.h)
+
+set(nowrap_headers
+  vtkCompositeDataSetNodeReference.h
+  vtkCompositeDataSetRange.h
+  vtkDataObjectImplicitBackendInterface.h
+  vtkDataObjectTreeRange.h
+  vtkPolyDataInternals.h)
+
+set(templates
+  vtkCompositeDataSet.txx)
+
+set(private_templates
+  vtkDataObjectImplicitBackendInterface.txx
+  vtkImageIterator.txx)
+
+include(vtkTypeLists)
+
+set(instantiation_sources)
+foreach (INSTANTIATION_VALUE_TYPE IN LISTS vtk_numeric_types)
+  # only instantiate fundamental types, not typedefs
+  if (INSTANTIATION_VALUE_TYPE STREQUAL "vtkIdType")
+    continue()
+  endif ()
+  vtk_type_to_camel_case("${INSTANTIATION_VALUE_TYPE}" _cased_type)
+  configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/vtkDataObjectImplicitBackendInstantiate.cxx.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/vtkDataObjectImplicitBackendInstantiate${_cased_type}.cxx")
+
+    list(APPEND instantiation_sources
+      "${CMAKE_CURRENT_BINARY_DIR}/vtkDataObjectImplicitBackendInstantiate${_cased_type}.cxx")
+endforeach()
+
+# Hand written (de)serialization routines
+set(serialization_helper_sources)
+
+if (VTK_WRAP_SERIALIZATION)
+  list(APPEND serialization_helper_sources
+    vtkCellArraySerDesHelper.cxx
+    vtkDataSetAttributesSerDesHelper.cxx
+    vtkFieldDataSerDesHelper.cxx
+    vtkMultiBlockDataSetSerDesHelper.cxx
+    vtkPartitionedDataSetSerDesHelper.cxx
+    vtkPartitionedDataSetCollectionSerDesHelper.cxx
+    vtkPiecewiseFunctionSerDesHelper.cxx
+    vtkTableSerDesHelper.cxx
+    vtkUnstructuredGridSerDesHelper.cxx)
+endif ()
+
+set(sources
+  ${serialization_helper_sources}
+  ${instantiation_sources})
+
+vtk_module_add_module(VTK::CommonDataModel
+  CLASSES           ${classes}
+  NOWRAP_CLASSES    ${nowrap_classes}
+  TEMPLATES         ${templates}
+  TEMPLATE_CLASSES  ${template_classes}
+  HEADERS           ${headers}
+  SOURCES           ${sources}
+  NOWRAP_HEADERS    ${nowrap_headers}
+  PRIVATE_TEMPLATES ${private_templates})
+vtk_add_test_mangling(VTK::CommonDataModel)

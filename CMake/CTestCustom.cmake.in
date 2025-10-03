@@ -1,0 +1,95 @@
+# Inherit VTK's exclusions. We don't have to redefine them in this file anymore.
+set(paraview_use_external_vtk "@PARAVIEW_USE_EXTERNAL_VTK@")
+if (NOT paraview_use_external_vtk)
+  include("${CMAKE_CURRENT_LIST_DIR}/VTK/CTestCustom.cmake")
+endif ()
+
+# Regular expression for warning exception during build process
+list(APPEND CTEST_CUSTOM_WARNING_EXCEPTION
+  # Ignore `getenv` "deprecation" with MSVC.
+  "vtknvindex_utilities.h.*: warning C4996: 'getenv'"
+
+  # Ignore protobuf-generated source file warnings.
+  "vtkPVMessage.pb.cc"
+
+  # ignore warning from string_fortified.h inclusion
+  "string_fortified.h"
+
+  # Unreachable code in xutility causes C4702 warnings in MSVC.
+  "xutility.*unreachable code"
+
+  # exclude warnings from dmfile.cxx
+  "dmfile.*"
+
+  # exclude warnings from unreference NewInstance function
+  ".*NewInstance.*was declared but never referenced"
+
+  # Intel compiler warning about routines being both inline and noinline
+  "warning #2196.* routine is both"
+
+  # compiler optimizations may sometimes lead to this warning
+  "assuming signed overflow does not occur when assuming that"
+
+  # Visual Studio STL warnings.
+  "VC.Tools.*include.*: warning"
+
+  # Doxygen warning exclusions
+  "<unknown>:1: warning: no matching .* member found for"
+  "vtkPVMessage.pb.h:.*: warning: no.*matching class member found for"
+  "paraview/tpl/cinemasci/viewers/readme.md:10: warning: unable to resolve reference to `doc/readme_view.md' for"
+  "warning: unable to resolve reference to `https:' for \ref command"
+  "md:.*: warning:" # Disable all warnings in .md files
+  "warning: Found ';' while parsing initializer list! \\(doxygen could be confused by a macro call without semicolon\\)"
+
+  # warnings from moc generated code
+  "_autogen"
+
+  # deprecation notes
+  "note: declared here"
+)
+
+# CI-specific warning suppressions.
+#
+# Some of our CI ends up generating warnings that don't really matter. Of
+# particular interest are warnings which have different behavior in older
+# compilers than modern ones. It's not really all that important to cater to
+# old, broken warning implementations when newer compilers tell us when we
+# aren't doing things properly.
+if (NOT "$ENV{CI}" STREQUAL "")
+  # For some reason, warning flags aren't working here.
+  if ("$ENV{CMAKE_CONFIGURATION}" MATCHES "fedora40")
+    list(APPEND CTEST_CUSTOM_WARNING_EXCEPTION
+      "Wstringop-overflow="
+      "note: destination object allocated here"
+      "note: destination object '.*' of size .*"
+      "note: destination object of size .* allocated by 'operator new'"
+
+      "Wstringop-overread"
+      "note: source object '.*' of size .*"
+      "note: at offset .* into source object '.*' of size .*"
+
+      # Seems to fire for the destructor of `std::vector`? Ignoring all
+      # instances is sad, but it's not clear what to do about it otherwise.
+      "Wfree-nonheap-object"
+      "note: returned from 'void\\* operator new\\(std::size_t\\)'"
+      )
+  endif ()
+endif ()
+
+list(APPEND CTEST_CUSTOM_ERROR_EXCEPTION
+  # Xcb error does not seem to cause errors in generated test images
+  "qt.qpa.xcb: internal error"
+  # Qt lupdate writes warning on stderr when finding class as template types
+  "Ignoring definition of undeclared qualified class"
+  # Sphinx warning exclusions
+  "The str interface for _CascadingStyleSheet objects is deprecated. Use css.filename instead."
+)
+
+# Regular expression for excluding files from coverage testing
+list(APPEND CTEST_CUSTOM_COVERAGE_EXCLUDE
+  ".*/VTK/.*"
+  "vtk[^\\.]+ClientServer.cxx"
+  "vtk[^\\.]+Python.cxx"
+  "ui_[^\\.]+.h"
+  "moc_[^\\.]+.h"
+  "vtkprotobuf")

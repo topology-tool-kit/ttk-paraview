@@ -1,0 +1,105 @@
+<Servers>
+  <Server name="SimpleSshServer" configuration="" resource="cs://127.0.0.1:11111">
+    <CommandStartup>
+      <SSHCommand exec="@ParaView_BINARY_DIR@/Clients/ParaView/Testing/XML/server.sh" process_wait="0" delay="5">
+        <SSHConfig port="2222">
+          <Terminal/>
+        </SSHConfig>
+        <Arguments>
+          <Argument value="SimpleSshServer"/>
+          <Argument value="$PV_SERVER_PORT$"/>
+        </Arguments>
+      </SSHCommand>
+    </CommandStartup>
+  </Server>
+  <Server name="SimpleSshServerAskpass" configuration="" resource="cs://127.0.0.1:11111">
+    <CommandStartup>
+      <SSHCommand exec="@ParaView_BINARY_DIR@/Clients/ParaView/Testing/XML/server.sh" process_wait="0" delay="5">
+        <SSHConfig port="2222">
+          <Askpass/>
+        </SSHConfig>
+        <Arguments>
+          <Argument value="SimpleSshServerAskpass"/>
+          <Argument value="$PV_SERVER_PORT$"/>
+        </Arguments>
+      </SSHCommand>
+    </CommandStartup>
+  </Server>
+  <Server name="SimpleSshServerTermExec" configuration="" resource="cs://127.0.0.1:11111">
+    <CommandStartup>
+      <SSHCommand exec="@ParaView_BINARY_DIR@/Clients/ParaView/Testing/XML/server.sh" process_wait="0" delay="5">
+        <SSHConfig port="2222">
+          <Terminal exec="/usr/bin/xterm"/>
+          <SSH exec="/usr/bin/ssh"/>
+        </SSHConfig>
+        <Arguments>
+          <Argument value="SimpleSshServerTermExec"/>
+          <Argument value="$PV_SERVER_PORT$"/>
+        </Arguments>
+      </SSHCommand>
+    </CommandStartup>
+  </Server>
+  <Server name="SimpleRCSshServer" configuration="" resource="csrc://127.0.0.1:11111">
+    <CommandStartup>
+      <SSHCommand exec="@ParaView_BINARY_DIR@/Clients/ParaView/Testing/XML/server_rc.sh" process_wait="0" delay="5">
+        <SSHConfig port="2222">
+          <Terminal/>
+        </SSHConfig>
+        <Arguments>
+          <Argument value="SimpleRCSshServer"/>
+          <Argument value="$PV_CLIENT_HOST$"/>
+          <Argument value="$PV_SERVER_PORT$"/>
+        </Arguments>
+      </SSHCommand>
+    </CommandStartup>
+  </Server>
+  <Server name="SSHPortForwardingServer" configuration="" resource="cs://127.0.0.1:11111">
+    <CommandStartup>
+      <SSHCommand exec="@ParaView_BINARY_DIR@/Clients/ParaView/Testing/XML/server.sh" process_wait="0" delay="5">
+        <SSHConfig port="2222">
+          <Terminal/>
+          <PortForwarding local="8080"/>
+        </SSHConfig>
+        <Arguments>
+          <Argument value="SSHPortForwardingServer"/>
+          <Argument value="$PV_SERVER_PORT$"/>
+        </Arguments>
+      </SSHCommand>
+    </CommandStartup>
+  </Server>
+  <Server name="SSHPortForwardingRCServer" configuration="" resource="csrc://127.0.0.1:11114">
+    <CommandStartup>
+      <SSHCommand exec="@ParaView_BINARY_DIR@/Clients/ParaView/Testing/XML/server_rc.sh" process_wait="0" delay="5">
+        <SSHConfig port="2222">
+          <Terminal/>
+          <PortForwarding local="8080"/>
+        </SSHConfig>
+        <Arguments>
+          <Argument value="SSHPortForwardingRCServer"/>
+          <Argument value="localhost"/>
+          <Argument value="$PV_SERVER_PORT$"/>
+        </Arguments>
+      </SSHCommand>
+    </CommandStartup>
+  </Server>
+  <Server name="SSHPortForwardingRCServerOption" configuration="" resource="csrc://127.0.0.1:11114">
+    <CommandStartup>
+      <Options>
+        <Option name="PV_SSH_PF_SERVER_PORT" label="Forwarding Port: ">
+          <Range type="int" min="8080" max="8080" step="1" default="8080" />
+        </Option>
+      </Options>
+      <SSHCommand exec="@ParaView_BINARY_DIR@/Clients/ParaView/Testing/XML/server_rc.sh" process_wait="0" delay="5">
+        <SSHConfig port="2222">
+          <Terminal/>
+          <PortForwarding/>
+        </SSHConfig>
+        <Arguments>
+          <Argument value="SSHPortForwardingRCServerOption"/>
+          <Argument value="localhost"/>
+          <Argument value="$PV_SERVER_PORT$"/>
+        </Arguments>
+      </SSHCommand>
+    </CommandStartup>
+  </Server>
+</Servers>

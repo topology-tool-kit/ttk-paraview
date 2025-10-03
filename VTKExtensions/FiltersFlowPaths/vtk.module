@@ -1,0 +1,21 @@
+NAME
+  ParaView::VTKExtensionsFiltersFlowPaths
+LIBRARY_NAME
+  vtkPVVTKExtensionsFiltersFlowPaths
+SPDX_LICENSE_IDENTIFIER
+  BSD-3-Clause
+SPDX_COPYRIGHT_TEXT
+  Copyright (c) Kitware Inc.
+GROUPS
+  PARAVIEW_CANONICAL
+KIT
+  ParaView::CoreKit
+DEPENDS
+  VTK::FiltersFlowPaths
+  ParaView::Versioning
+PRIVATE_DEPENDS
+  VTK::CommonCore
+  VTK::CommonDataModel
+  VTK::CommonExecutionModel
+TEST_LABELS
+  ParaView
