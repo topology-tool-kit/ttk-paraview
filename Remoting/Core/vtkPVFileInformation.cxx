@@ -1267,6 +1267,11 @@ std::string vtkPVFileInformation::GetParaViewSharedResourcesDirectory()
     resource_dir = vtksys::SystemTools::CollapseFullPath(resource_dir);
   }
 
+  vtkProcessModule* pm = vtkProcessModule::GetProcessModule();
+
+  if((pm)&&(prefixes.size()))
+    resource_dir = pm->GetSelfDir() + "/../" + prefixes[0];
+
   return resource_dir;
 }
 

@@ -131,7 +131,7 @@ if (NOT WIN32)
   unset(_has_fortran)
 endif()
 
-vtk_deprecated_setting(python_default PARAVIEW_USE_PYTHON PARAVIEW_ENABLE_PYTHON OFF)
+vtk_deprecated_setting(python_default PARAVIEW_USE_PYTHON PARAVIEW_ENABLE_PYTHON ON)
 option(PARAVIEW_USE_PYTHON "Enable/Disable Python scripting support" "${python_default}")
 
 option(PARAVIEW_USE_SERIALIZATION "Enable/Disable Serialization support" OFF)
