@@ -120,10 +120,10 @@ jobs:
 
     - name: Test Python imports
       run: |
-        python3 -m vtk
-        python3 -m paraview.simple
-        pvpython -m vtk
-        pvpython -m paraview.simple
+        echo "import vtk" | python3
+        echo "from paraview.simple import *" | python3
+        echo "import vtk" | pvpython
+        echo "from paraview.simple import *" | pvpython
       env:
         DYLD_LIBRARY_PATH: /usr/local/lib
 
