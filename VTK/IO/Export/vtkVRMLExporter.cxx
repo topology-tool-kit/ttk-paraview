@@ -315,6 +315,10 @@ void vtkVRMLExporter::WriteAnActor(vtkActor* anActor, FILE* fp)
   exportPolyData_ = static_cast<vtkPolyData *>(pd);
   // end of BUG fix
 
+  // BUG fix
+  exportPolyData_ = static_cast<vtkPolyData *>(pd);
+  // end of BUG fix
+
   pm = vtkPolyDataMapper::New();
   pm->SetInputData(pd);
   pm->SetScalarRange(anActor->GetMapper()->GetScalarRange());
@@ -722,6 +726,23 @@ void vtkVRMLExporter::WritePointData(vtkPoints* points, vtkDataArray* normals,
     fprintf(fp, "            ]\n");
     fprintf(fp, "          }\n");
   }
+
+  // BUG fix here.
+  if(exportPolyData_){
+    fprintf(fp,"          texCoordIndex[\n");
+    vtkCellArray *cells = exportPolyData_->GetPolys();
+    vtkIdType npts = 0;
+    vtkIdType const *indx = NULL;
+    for(cells->InitTraversal(); cells->GetNextCell(npts, indx);){
+      fprintf(fp,"            ");
+      for(int i = 0; i < npts; i++){
+        fprintf(fp, "%i, ", static_cast<int>(indx[i]));
+      }
+      fprintf(fp, "-1,\n");
+    }
+    fprintf(fp,"          ]\n");
+  }
+  // end of BUG fix here.
 
   // BUG fix here.
   if(exportPolyData_){

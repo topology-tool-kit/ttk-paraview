@@ -88,14 +88,7 @@ jobs:
       run: |
         # ParaView dependencies
         brew install --cask xquartz
-        brew install llvm lld ninja open-mpi
-
-    - name: Set compilers as environment variables
-      run: |
-        echo "CC=$(brew --prefix llvm)/bin/clang" >> $GITHUB_ENV
-        echo "CXX=$(brew --prefix llvm)/bin/clang++" >> $GITHUB_ENV
-        echo "CPPFLAGS=$(brew --prefix llvm)/include" >> $GITHUB_ENV
-        echo "LDFLAGS=-L$(brew --prefix llvm)/lib/c++ -L$(brew --prefix llvm)/lib/unwind -lunwind" >> $GITHUB_ENV
+        brew install ninja open-mpi
 
     - name: Create & configure ParaView build directory
       run: |
