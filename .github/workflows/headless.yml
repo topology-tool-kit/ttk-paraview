@@ -41,6 +41,7 @@ jobs:
           -DCMAKE_INSTALL_PREFIX=/usr \
           -DPARAVIEW_PYTHON_SITE_PACKAGES_SUFFIX=lib/python3/dist-packages \
           -DPARAVIEW_USE_MPI=ON \
+          -DPARAVIEW_USE_PYTHON=ON \
           -DPARAVIEW_USE_QT=OFF \
           -DVTK_USE_X=OFF \
           -DVTK_OPENGL_HAS_OSMESA=ON \
