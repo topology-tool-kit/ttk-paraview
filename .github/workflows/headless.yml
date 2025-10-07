@@ -17,7 +17,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
+        os: [ubuntu-22.04, ubuntu-24.04]
     steps:
     - uses: actions/checkout@v4
       name: Checkout TTK-ParaView source code
@@ -230,14 +230,6 @@ jobs:
 
     - name: Fetch all uploaded artifacts
       uses: actions/download-artifact@v4
-
-    - name: Upload Ubuntu Focal .deb as Release Asset
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ github.ref }}
-        file: ttk-paraview-headless-ubuntu-20.04/ttk-paraview.deb
-        asset_name: ttk-paraview-headless-ubuntu-20.04.deb
 
     - name: Upload Ubuntu Jammy .deb as Release Asset
       uses: svenstaro/upload-release-action@v2
