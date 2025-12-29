@@ -53,8 +53,8 @@ bool pqBasicWidgetEventTranslator::translateEvent(
 #endif
         QString info = QString("%1,%2,%3,%4,%5")
                          .arg(mouseEvent->button())
-                         .arg(mouseEvent->buttons())
-                         .arg(mouseEvent->modifiers())
+                         .arg(int(mouseEvent->buttons()))
+                         .arg(int(mouseEvent->modifiers()))
                          .arg(pos.x())
                          .arg(pos.y());
 
@@ -90,7 +90,7 @@ bool pqBasicWidgetEventTranslator::translateEvent(
           if (wheelEvent)
           {
             int buttons = wheelEvent->buttons();
-            int modifiers = wheelEvent->modifiers();
+            int modifiers = int(wheelEvent->modifiers());
             int numStep = wheelEvent->angleDelta().y();
             Q_EMIT recordEvent(object, "mouseWheel",
               QString("%1,%2,%3,%4,%5")

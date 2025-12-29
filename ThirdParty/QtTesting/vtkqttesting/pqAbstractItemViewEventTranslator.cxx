@@ -90,8 +90,8 @@ bool pqAbstractItemViewEventTranslator::translateEvent(QObject* Object, QEvent* 
 
       QString info = QString("%1,%2,%3,%4,%5,%6")
                        .arg(mouseEvent->button())
-                       .arg(mouseEvent->buttons())
-                       .arg(mouseEvent->modifiers())
+                       .arg(int(mouseEvent->buttons()))
+                       .arg(int(mouseEvent->modifiers()))
                        .arg(relPt.x())
                        .arg(relPt.y())
                        .arg(idxStr);
