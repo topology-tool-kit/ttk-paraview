@@ -89,9 +89,9 @@ bool pqQVTKWidgetEventTranslator::translateEvent(
             QString("(%1,%2,%3,%4,%5)")
               .arg(normalized_x)
               .arg(normalized_y)
-              .arg(mouseEvent->button())
-              .arg(mouseEvent->buttons())
-              .arg(mouseEvent->modifiers()));
+              .arg(int(mouseEvent->button()))
+              .arg(int(mouseEvent->buttons()))
+              .arg(int(mouseEvent->modifiers())));
         }
         return true;
         break;
@@ -117,16 +117,16 @@ bool pqQVTKWidgetEventTranslator::translateEvent(
             QString("(%1,%2,%3,%4,%5)")
               .arg(normalized_x)
               .arg(normalized_y)
-              .arg(mouseEvent->button())
-              .arg(mouseEvent->buttons())
-              .arg(mouseEvent->modifiers()));
+              .arg(int(mouseEvent->button()))
+              .arg(int(mouseEvent->buttons()))
+              .arg(int(mouseEvent->modifiers())));
           Q_EMIT recordEvent(widget, "mouseRelease",
             QString("(%1,%2,%3,%4,%5)")
               .arg(normalized_x)
               .arg(normalized_y)
-              .arg(mouseEvent->button())
-              .arg(mouseEvent->buttons())
-              .arg(mouseEvent->modifiers()));
+              .arg(int(mouseEvent->button()))
+              .arg(int(mouseEvent->buttons()))
+              .arg(int(mouseEvent->modifiers())));
         }
         return true;
         break;
