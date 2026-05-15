@@ -1,3 +1,0 @@
-set(classes vtkEmulatedTimeDummySource)
-vtk_module_add_module(EmulatedTimeDummySources CLASSES ${classes})
-paraview_add_server_manager_xmls(XMLS EmulatedTimeDummySource.xml)

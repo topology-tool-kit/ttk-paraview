@@ -1,7 +1,0 @@
-NAME
-  VTK::expat
-LIBRARY_NAME
-  vtkexpat
-TEST_DEPENDS
-  VTK::TestingCore
-THIRD_PARTY
