@@ -1,0 +1,34 @@
+<ServerManagerConfiguration>
+  <ProxyGroup name="cave_interaction">
+    <VRPythonInteractorStyleProxy name="Python"
+                                  processes="client|renderserver|dataserver">
+      <StringVectorProperty animateable="0"
+                            command="SetFileName"
+                            name="FileName"
+                            number_of_elements="1">
+        <FileListDomain name="files" />
+        <Documentation>
+          File containing python interactor style implementation
+        </Documentation>
+        <Hints>
+          <FileChooser extensions="py"
+            file_description="Python" />
+        </Hints>
+      </StringVectorProperty>
+      <Property animateable="0"
+                name="Refresh"
+                panel_widget="command_button">
+        <Documentation>Reload the python file</Documentation>
+      </Property>
+      <Documentation>
+        This interactor style allows writing custom interaction code in Python.
+        Once added, you can select the style in the list to display the FileName
+        property in the UI, which allows you to choose the Python module to use.
+        The Refresh property in the UI triggers re-reading of the Python module,
+        and it requires you to reconfigure the events. For an example Python
+        interactor style, see Examples/CAVE/CustomPythonInteractorStyle.py in
+        the ParaView source repository.
+      </Documentation>
+    </VRPythonInteractorStyleProxy>
+  </ProxyGroup>
+</ServerManagerConfiguration>

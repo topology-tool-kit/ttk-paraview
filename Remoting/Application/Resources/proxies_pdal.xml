@@ -1,0 +1,69 @@
+<ServerManagerConfiguration>
+  <ProxyGroup name="sources">
+    <SourceProxy class="vtkPDALReader"
+                 label="PDAL Reader"
+                 name="PDALReader">
+      <Documentation short_help="Reads data using PDAL."
+      long_help="Reads LIDAR data using the PDAL library">The PDAL
+      Reader reads LIDAR data using the PDAL library.  See the readers
+      section on www.pdal.io for the supported formats. It produces a
+      vtkPolyData with point data arrays for attributes such as
+      Intensity, Classification, Color, etc.</Documentation>
+      <StringVectorProperty animateable="0"
+                            command="SetFileName"
+                            name="FileName"
+                            number_of_elements="1">
+        <FileListDomain name="files" />
+        <Documentation>This property specifies the file name for the
+        PDAL reader.</Documentation>
+      </StringVectorProperty>
+
+      <IntVectorProperty name="HasOffset"
+                         command="GetHasOffset"
+                         information_only="1"
+                         panel_visibility="never">
+      </IntVectorProperty>
+
+      <StringVectorProperty name="OffsetAsString"
+                            command="GetOffsetAsString"
+                            information_only="1"
+                            number_of_elements="1"
+                            panel_visibility="default"
+                            label="Offset Preview">
+        <Documentation>
+          String representation of the point cloud offset available in metadata.
+        </Documentation>
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   mode="visibility"
+                                   property="HasOffset"
+                                   value="1" />
+        </Hints>
+      </StringVectorProperty>
+
+      <IntVectorProperty name="ApplyOffset"
+                         command="SetApplyOffset"
+                         number_of_elements="1"
+                         default_values="0"
+                         label="Apply Offset">
+        <BooleanDomain name="bool" />
+        <Documentation>
+          When enabled, apply metadata offset to point coordinates.
+        </Documentation>
+        <Hints>
+          <PropertyWidgetDecorator type="GenericDecorator"
+                                   mode="visibility"
+                                   property="HasOffset"
+                                   value="1" />
+        </Hints>
+      </IntVectorProperty>
+
+      <Hints>
+        <ReaderFactory extensions="bin bpf csd csv greyhound gpkg icebride las laz mat nitf nsf ntf pcd ply pts qi rxp sbet sqlite sid tindex txt h5"
+                       file_description="PDAL Files" />
+      </Hints>
+    </SourceProxy>
+      <!-- End PDALReader -->
+  </ProxyGroup>
+
+</ServerManagerConfiguration>
