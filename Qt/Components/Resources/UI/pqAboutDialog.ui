@@ -26,7 +26,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>About ParaView</string>
+   <string>About TTK ParaView</string>
   </property>
   <property name="modal">
    <bool>true</bool>
