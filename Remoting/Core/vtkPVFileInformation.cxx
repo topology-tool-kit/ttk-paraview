@@ -47,8 +47,6 @@
 
 vtkStandardNewMacro(vtkPVFileInformation);
 
-namespace
-{
 inline void vtkPVFileInformationAddTerminatingSlash(std::string& name)
 {
   if (!name.empty())
@@ -63,7 +61,6 @@ inline void vtkPVFileInformationAddTerminatingSlash(std::string& name)
 #endif
     }
   }
-}
 }
 
 #if defined(_WIN32)
@@ -328,8 +325,6 @@ static std::string vtkPVFileInformationResolveLink(const std::string& fname, WIN
 }
 #endif
 
-namespace
-{
 std::string MakeAbsolutePath(const std::string& path, const std::string& working_dir)
 {
   std::string ret = path;
@@ -340,7 +335,6 @@ std::string MakeAbsolutePath(const std::string& path, const std::string& working
     ret = vtksys::SystemTools::CollapseFullPath(path, working_dir.c_str());
   }
   return ret;
-}
 }
 
 //-----------------------------------------------------------------------------
@@ -758,7 +752,7 @@ void vtkPVFileInformation::FetchWindowsDirectoryListing()
 
   // Search for all files in the given directory.
   std::string prefix = this->FullPath;
-  ::vtkPVFileInformationAddTerminatingSlash(prefix);
+  vtkPVFileInformationAddTerminatingSlash(prefix);
   std::wstring pattern = vtksys::Encoding::ToWide(prefix) + L"*";
   WIN32_FIND_DATAW data;
   HANDLE handle = FindFirstFileW(pattern.c_str(), &data);
@@ -882,7 +876,7 @@ void vtkPVFileInformation::FetchUnixDirectoryListing()
 
   vtkPVFileInformationSet info_set;
   std::string prefix = this->FullPath;
-  ::vtkPVFileInformationAddTerminatingSlash(prefix);
+  vtkPVFileInformationAddTerminatingSlash(prefix);
 
   // Open the directory and make sure it exists.
   DIR* dir = opendir(this->FullPath);
@@ -1057,7 +1051,7 @@ void vtkPVFileInformation::OrganizeCollection(vtkPVFileInformationSet& info_set)
   MapOfStringToInfo fileGroups;
 
   std::string prefix = this->FullPath;
-  ::vtkPVFileInformationAddTerminatingSlash(prefix);
+  vtkPVFileInformationAddTerminatingSlash(prefix);
 
   if (this->GroupFileSequences)
   {
@@ -1267,6 +1261,11 @@ std::string vtkPVFileInformation::GetParaViewSharedResourcesDirectory()
   {
     resource_dir = vtksys::SystemTools::CollapseFullPath(resource_dir);
   }
+
+  vtkProcessModule* pm = vtkProcessModule::GetProcessModule();
+
+  if((pm)&&(prefixes.size()))
+    resource_dir = pm->GetSelfDir() + "/../" + prefixes[0];
 
   return resource_dir;
 }
