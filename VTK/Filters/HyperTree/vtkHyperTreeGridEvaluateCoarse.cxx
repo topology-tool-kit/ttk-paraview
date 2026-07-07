@@ -68,34 +68,47 @@ int vtkHyperTreeGridEvaluateCoarse::ProcessTrees(vtkHyperTreeGrid* input, vtkDat
   this->InData = input->GetCellData();
   this->OutData = output->GetCellData();
   this->OutData->CopyAllocate(this->InData);
+  this->OutData->SetNumberOfTuples(this->InData->GetNumberOfTuples());
 
   // Iterate over all input and output hyper trees
   vtkIdType index;
   vtkHyperTreeGrid::vtkHyperTreeGridIterator in;
   output->InitializeTreeIterator(in);
-  vtkNew<vtkHyperTreeGridNonOrientedCursor> outCursor;
+
+  vtkThreadedTaskQueue<void, int> queue(
+    [this, &output](int startIndex)
+    {
+      vtkNew<vtkHyperTreeGridNonOrientedCursor> outCursor;
+      output->InitializeNonOrientedCursor(outCursor, startIndex);
+      // Process tree recursively
+      if (this->Operator == vtkHyperTreeGridEvaluateCoarse::OPERATOR_DON_T_CHANGE)
+      {
+        this->ProcessNodeNoChange(outCursor);
+      }
+      else
+      {
+        this->ProcessNode(outCursor);
+      }
+    },
+    true);
+
   while (in.GetNextTree(index))
   {
+// See https://gitlab.kitware.com/vtk/vtk/-/merge_requests/12383
+#if VTK_ID_TYPE_IMPL != VTK_INT
+    queue.Push(static_cast<int>(index));
+#else
+    queue.Push(std::move(index));
+#endif
+
     if (this->CheckAbort())
     {
       break;
     }
-
-    // Initialize new cursor at root of current output tree
-    output->InitializeNonOrientedCursor(outCursor, index);
-
-    // Process tree recursively
-    if (this->Operator == vtkHyperTreeGridEvaluateCoarse::OPERATOR_DON_T_CHANGE)
-    {
-      this->ProcessNodeNoChange(outCursor);
-    }
-    else
-    {
-      this->ProcessNode(outCursor);
-    }
   }
 
-  this->UpdateProgress(1.);
+  queue.Flush();
+
   return 1;
 }
 
@@ -145,31 +158,10 @@ void vtkHyperTreeGridEvaluateCoarse::ProcessNode(vtkHyperTreeGridNonOrientedCurs
   // Coarse cell: recurse and retrieve values
   int nbArray = this->InData->GetNumberOfArrays();
   std::vector<std::vector<std::vector<double>>> childrenValues(outCursor->GetNumberOfChildren());
-  if (outCursor->GetLevel() <= 2)
-  {
-    // Create a new thread for every child, when we're not too deep into the tree
-    vtkThreadedTaskQueue<void, int> queue(
-      [this, outCursor, &childrenValues](int ichild)
-      {
-        vtkSmartPointer<vtkHyperTreeGridNonOrientedCursor> childCursor =
-          vtk::TakeSmartPointer(outCursor->CloneFromCurrentEntry());
-        this->ProcessChild(childCursor, ichild, childrenValues[ichild]);
-      },
-      false);
 
-    for (unsigned char ichild = 0; ichild < outCursor->GetNumberOfChildren(); ++ichild)
-    {
-      queue.Push(static_cast<int>(ichild));
-    }
-    queue.Flush();
-  }
-  else
+  for (int ichild = 0; ichild < outCursor->GetNumberOfChildren(); ++ichild)
   {
-    // Otherwise, process the child serially
-    for (int ichild = 0; ichild < outCursor->GetNumberOfChildren(); ++ichild)
-    {
-      this->ProcessChild(outCursor, ichild, childrenValues[ichild]);
-    }
+    this->ProcessChild(outCursor, ichild, childrenValues[ichild]);
   }
 
   // Reduction operation over the resulting array

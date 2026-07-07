@@ -484,8 +484,18 @@ bool vtkIOSSReaderInternal::NeedToUpdateEntityAndFieldSelections(
   bool subsetOrEqual = true;
   for (int i = 0; i < vtkIOSSReader::NUMBER_OF_ENTITY_TYPES; ++i)
   {
+    // check entities
     subsetOrEqual &= std::includes(this->EntityNames[i].begin(), this->EntityNames[i].end(),
       entity_names[i].begin(), entity_names[i].end());
+    // check fields
+    auto fieldSelection = self->GetFieldSelection(i);
+    std::set<std::string> fieldNames;
+    for (int j = 0; j < fieldSelection->GetNumberOfArrays(); ++j)
+    {
+      fieldNames.insert(fieldSelection->GetArrayName(j));
+    }
+    subsetOrEqual &= std::includes(
+      fieldNames.begin(), fieldNames.end(), field_names[i].begin(), field_names[i].end());
   }
 
   return !subsetOrEqual;
@@ -1812,8 +1822,7 @@ vtkIOSSReaderInternal::CombineTopologies(
         const int cell_type = block.first;
         const auto cellarray = block.second;
         appendedCellArray->Append(cellarray);
-        ptr =
-          std::fill_n(ptr, block.second->GetNumberOfCells(), static_cast<unsigned char>(cell_type));
+        std::fill_n(ptr, block.second->GetNumberOfCells(), static_cast<unsigned char>(cell_type));
         ptr += block.second->GetNumberOfCells();
       }
       return { cellTypesArray, appendedCellArray };
@@ -2177,22 +2186,21 @@ bool vtkIOSSReaderInternal::GetFields(vtkDataSetAttributes* dsa, vtkDataArraySel
         // Note that the same global ID may appear multiple times (once for each
         // communicating rank). We must take the minimum across all these and the
         // local (file) rank to determine whether to mark an entry with \a ghostMask.
-        std::vector<int> entityProcessor;
-        Ioss::CommSet* css = region->get_commset("commset_node");
-        if (css)
+        if (Ioss::CommSet* css = region->get_commset("commset_node"))
         {
-          // Ioss::Utils::check_non_null(css, "communication map", "commset_node", __func__);
-          css->get_field_data("entity_processor", entityProcessor);
+          auto entityProcessorArray =
+            vtkIOSSUtilities::GetData(css, "entity_processor", /*transform=*/nullptr, &this->Cache);
+          auto entityProcessor = vtk::DataArrayValueRange<2, vtkIdType>(entityProcessorArray);
           auto rank = handle.second;
           // First build a map of gid to owning rank – but only where such ranks are not
           // the local \a rank.
           std::unordered_map<vtkIdType, vtkIdType> remoteGlobalIds;
-          if (!entityProcessor.empty())
+          if (entityProcessor.size() != 0)
           {
-            for (std::size_t ii = 0; ii < entityProcessor.size(); ii += 2)
+            for (vtkIdType ii = 0; ii < entityProcessor.size(); ii += 2)
             {
               auto dd = entityProcessor[ii];
-              auto owner = std::min(rank, entityProcessor[ii + 1]);
+              auto owner = std::min<vtkIdType>(rank, entityProcessor[ii + 1]);
               if (globalsToLocalsThisBlock.find(dd) == globalsToLocalsThisBlock.end())
               {
                 // Skip global node IDs not present in this block.
@@ -2263,16 +2271,13 @@ bool vtkIOSSReaderInternal::GetFields(vtkDataSetAttributes* dsa, vtkDataArraySel
       {
         // Fetch the sides that communicate with other ranks and transform
         // the data to use block-local cell offsets instead of global IDs.
-        std::vector<int> entityProcessor;
-        Ioss::CommSet* css = region->get_commset("commset_side");
-        if (css)
+        if (Ioss::CommSet* css = region->get_commset("commset_side"))
         {
-          Ioss::Utils::check_non_null(css, "communication map", "commset_side", __func__);
-          css->get_field_data("entity_processor", entityProcessor);
+          auto entityProcessorArray =
+            vtkIOSSUtilities::GetData(css, "entity_processor", /*transform=*/nullptr, &this->Cache);
+          auto entityProcessor = vtk::DataArrayValueRange<3, vtkIdType>(entityProcessorArray);
           auto rank = handle.second;
-          // std::cout << group_entity->name() << " commset_side entity_processor " <<
-          // entityProcessor.size() << "\n";
-          if (!entityProcessor.empty())
+          if (entityProcessor.size() != 0)
           {
             vtkNew<vtkIdTypeArray> communicatingSides;
             communicatingSides->SetName(vtkFieldData::CommunicatingSidesArrayName());

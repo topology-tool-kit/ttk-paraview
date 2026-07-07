@@ -11,6 +11,9 @@
 #include "vtkmDataArrayUtilities.h"
 
 #include <viskores/cont/ArrayCopy.h>
+#include <viskores/cont/ArrayHandleConstant.h>
+#include <viskores/cont/ArrayHandleCounting.h>
+#include <viskores/cont/ArrayHandleIndex.h>
 #include <viskores/cont/ArrayHandleRuntimeVec.h>
 #include <viskores/cont/ArrayHandleTransform.h>
 #include <viskores/cont/ArrayRangeCompute.h>
@@ -130,9 +133,10 @@ std::unique_ptr<ArrayHandleHelperBase<T>> MakeArrayHandleHelperUnknown(
 
 template <typename ArrayHandleType>
 class ArrayHandleHelperWrite
-  : public ArrayHandleHelperBase<typename ArrayHandleType::ValueType::ComponentType>
+  : public ArrayHandleHelperBase<
+      typename viskores::VecTraits<typename ArrayHandleType::ValueType>::BaseComponentType>
 {
-  using T = typename ArrayHandleType::ValueType::ComponentType;
+  using T = typename viskores::VecTraits<typename ArrayHandleType::ValueType>::BaseComponentType;
 
 public:
   ArrayHandleHelperWrite(const viskores::cont::UnknownArrayHandle& array);
@@ -154,19 +158,22 @@ private:
 };
 
 template <typename ArrayHandleType>
-std::unique_ptr<ArrayHandleHelperBase<typename ArrayHandleType::ValueType::ComponentType>>
+std::unique_ptr<ArrayHandleHelperBase<
+  typename viskores::VecTraits<typename ArrayHandleType::ValueType>::BaseComponentType>>
 MakeArrayHandleHelperWrite(const ArrayHandleType& array)
 {
-  return std::unique_ptr<ArrayHandleHelperBase<typename ArrayHandleType::ValueType::ComponentType>>{
+  return std::unique_ptr<ArrayHandleHelperBase<
+    typename viskores::VecTraits<typename ArrayHandleType::ValueType>::BaseComponentType>>{
     new ArrayHandleHelperWrite<ArrayHandleType>(array)
   };
 }
 
 template <typename ArrayHandleType>
 class ArrayHandleHelperRead
-  : public ArrayHandleHelperBase<typename ArrayHandleType::ValueType::ComponentType>
+  : public ArrayHandleHelperBase<
+      typename viskores::VecTraits<typename ArrayHandleType::ValueType>::BaseComponentType>
 {
-  using T = typename ArrayHandleType::ValueType::ComponentType;
+  using T = typename viskores::VecTraits<typename ArrayHandleType::ValueType>::BaseComponentType;
 
 public:
   ArrayHandleHelperRead(const viskores::cont::UnknownArrayHandle& array);
@@ -188,10 +195,12 @@ private:
 };
 
 template <typename ArrayHandleType>
-std::unique_ptr<ArrayHandleHelperBase<typename ArrayHandleType::ValueType::ComponentType>>
+std::unique_ptr<ArrayHandleHelperBase<
+  typename viskores::VecTraits<typename ArrayHandleType::ValueType>::BaseComponentType>>
 MakeArrayHandleHelperRead(const ArrayHandleType& array)
 {
-  return std::unique_ptr<ArrayHandleHelperBase<typename ArrayHandleType::ValueType::ComponentType>>{
+  return std::unique_ptr<ArrayHandleHelperBase<
+    typename viskores::VecTraits<typename ArrayHandleType::ValueType>::BaseComponentType>>{
     new ArrayHandleHelperRead<ArrayHandleType>(array)
   };
 }
@@ -349,9 +358,36 @@ ArrayHandleHelperBase<T>* ArrayHandleHelperUnknown<T>::SwapReadHelper(
     newHelper = MakeArrayHandleHelperRead(
       this->VtkmArray.template AsArrayHandle<viskores::cont::ArrayHandleRuntimeVec<T>>());
   }
+  else if (this->VtkmArray.template CanConvert<viskores::cont::ArrayHandleConstant<T>>())
+  {
+    newHelper = MakeArrayHandleHelperRead(
+      this->VtkmArray.template AsArrayHandle<viskores::cont::ArrayHandleConstant<T>>());
+  }
+  else if (this->VtkmArray.template CanConvert<viskores::cont::ArrayHandleCounting<T>>())
+  {
+    newHelper = MakeArrayHandleHelperRead(
+      this->VtkmArray.template AsArrayHandle<viskores::cont::ArrayHandleCounting<T>>());
+  }
   else
   {
-    newHelper = MakeArrayHandleHelperRead(this->VtkmArray.template ExtractArrayFromComponents<T>());
+    if constexpr (std::is_same_v<T, viskores::Id>)
+    {
+      if (this->VtkmArray.template CanConvert<viskores::cont::ArrayHandleIndex>())
+      {
+        newHelper = MakeArrayHandleHelperRead(
+          this->VtkmArray.template AsArrayHandle<viskores::cont::ArrayHandleIndex>());
+      }
+      else
+      {
+        newHelper =
+          MakeArrayHandleHelperRead(this->VtkmArray.template ExtractArrayFromComponents<T>());
+      }
+    }
+    else
+    {
+      newHelper =
+        MakeArrayHandleHelperRead(this->VtkmArray.template ExtractArrayFromComponents<T>());
+    }
   }
   self->Helper.swap(newHelper);
   return self->Helper.get();
@@ -391,44 +427,81 @@ void ArrayHandleHelperWrite<ArrayHandleType>::GetTuple(
   const vtkmDataArray<T>*, viskores::Id valIdx, T* values) const
 {
   auto tuple = this->WritePortal.Get(valIdx);
-  for (viskores::IdComponent cIndex = 0; cIndex < tuple.GetNumberOfComponents(); ++cIndex)
+  using VTraits = viskores::VecTraits<decltype(tuple)>;
+  for (viskores::IdComponent cIndex = 0; cIndex < VTraits::GetNumberOfComponents(tuple); ++cIndex)
   {
-    values[cIndex] = tuple[cIndex];
+    values[cIndex] = VTraits::GetComponent(tuple, cIndex);
   }
 }
+
+namespace detail
+{
+template <typename ArrayPortal, typename T>
+void SetTupleImpl(const ArrayPortal& portal, viskores::Id valIdx, const T* values, std::true_type)
+{
+  // It's a little weird to get a value to set it, but these arrays with variable length Vecs
+  // actually return a reference back to the array, so you are actually just setting values
+  // into the array.
+  auto tuple = portal.Get(valIdx);
+  using VTraits = viskores::VecTraits<decltype(tuple)>;
+  for (viskores::IdComponent cIndex = 0; cIndex < VTraits::GetNumberOfComponents(tuple); ++cIndex)
+  {
+    VTraits::SetComponent(tuple, cIndex, values[cIndex]);
+  }
+  portal.Set(valIdx, tuple);
+}
+template <typename ArrayPortal, typename T>
+void SetTupleImpl(const ArrayPortal&, viskores::Id, const T*, std::false_type)
+{
+  assert(0 && "Attempted to write to read-only Viskores array.");
+}
+} // namespace detail
 
 template <typename ArrayHandleType>
 void ArrayHandleHelperWrite<ArrayHandleType>::SetTuple(
   const vtkmDataArray<T>* vtkNotUsed(self), viskores::Id valIdx, const T* values)
 {
-  // It's a little weird to get a value to set it, but these arrays with variable length Vecs
-  // actually return a reference back to the array, so you are actually just setting values
-  // into the array.
-  auto tuple = this->WritePortal.Get(valIdx);
-  for (viskores::IdComponent cIndex = 0; cIndex < tuple.GetNumberOfComponents(); ++cIndex)
-  {
-    tuple[cIndex] = values[cIndex];
-  }
-  this->WritePortal.Set(valIdx, tuple);
+  detail::SetTupleImpl(this->WritePortal, valIdx, values,
+    viskores::internal::PortalSupportsSets<decltype(this->WritePortal)>{});
 }
 
 template <typename ArrayHandleType>
 auto ArrayHandleHelperWrite<ArrayHandleType>::GetComponent(const vtkmDataArray<T>* vtkNotUsed(self),
   viskores::Id valIdx, viskores::IdComponent compIdx) const -> T
 {
-  return this->WritePortal.Get(valIdx)[compIdx];
+  auto tuple = this->WritePortal.Get(valIdx);
+  using VTraits = viskores::VecTraits<decltype(tuple)>;
+  return VTraits::GetComponent(tuple, compIdx);
 }
+
+namespace detail
+{
+template <typename ArrayPortal, typename T>
+void SetComponentImpl(const ArrayPortal& portal, viskores::Id valIdx, viskores::IdComponent compIdx,
+  const T& value, std::true_type)
+{
+  // It's a little weird to get a value to set it, but these arrays with variable length Vecs
+  // actually return a reference back to the array, so you are actually just setting values
+  // into the array.
+  auto tuple = portal.Get(valIdx);
+  using VTraits = viskores::VecTraits<decltype(tuple)>;
+  VTraits::SetComponent(tuple, compIdx, value);
+  portal.Set(valIdx, tuple);
+}
+template <typename ArrayPortal, typename T>
+void SetComponentImpl(
+  const ArrayPortal&, viskores::Id, viskores::IdComponent, const T&, std::false_type)
+{
+  assert(0 && "Attempted to write to read-only Viskores array.");
+}
+} // namespace detail
 
 template <typename ArrayHandleType>
 void ArrayHandleHelperWrite<ArrayHandleType>::SetComponent(const vtkmDataArray<T>* vtkNotUsed(self),
   viskores::Id valIdx, viskores::IdComponent compIdx, const T& value)
 {
-  // It's a little weird to get a value to set it, but these arrays with variable length Vecs
-  // actually return a reference back to the array, so you are actually just setting values
-  // into the array.
-  auto tuple = this->WritePortal.Get(valIdx);
-  tuple[compIdx] = value;
-  this->WritePortal.Set(valIdx, tuple);
+  detail::SetComponentImpl(this->WritePortal, valIdx, compIdx, value,
+    viskores::internal::PortalSupportsSets<decltype(this->WritePortal)>{});
 }
 
 //-----------------------------------------------------------------------------
@@ -449,9 +522,10 @@ void ArrayHandleHelperRead<ArrayHandleType>::GetTuple(
   const vtkmDataArray<T>*, viskores::Id valIdx, T* values) const
 {
   auto tuple = this->ReadPortal.Get(valIdx);
-  for (viskores::IdComponent cIndex = 0; cIndex < tuple.GetNumberOfComponents(); ++cIndex)
+  using VTraits = viskores::VecTraits<decltype(tuple)>;
+  for (viskores::IdComponent cIndex = 0; cIndex < VTraits::GetNumberOfComponents(tuple); ++cIndex)
   {
-    values[cIndex] = tuple[cIndex];
+    values[cIndex] = VTraits::GetComponent(tuple, cIndex);
   }
 }
 
@@ -473,7 +547,9 @@ template <typename ArrayHandleType>
 auto ArrayHandleHelperRead<ArrayHandleType>::GetComponent(const vtkmDataArray<T>* vtkNotUsed(self),
   viskores::Id valIdx, viskores::IdComponent compIdx) const -> T
 {
-  return this->ReadPortal.Get(valIdx)[compIdx];
+  auto tuple = this->ReadPortal.Get(valIdx);
+  using VTraits = viskores::VecTraits<decltype(tuple)>;
+  return VTraits::GetComponent(tuple, compIdx);
 }
 
 template <typename ArrayHandleType>

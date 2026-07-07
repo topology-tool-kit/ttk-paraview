@@ -60,7 +60,7 @@ public:
    * numbers. This may happen in the future. (That is why there is no
    * GetFileNumberRange method. The pattern is a std::format style format.
    */
-  virtual void SetFilePattern(VTK_FILEPATH const char*);
+  vtkSetFilePathMacro(FilePattern);
   vtkGetFilePathMacro(FilePattern);
   vtkSetFilePathMacro(FilePrefix);
   vtkGetFilePathMacro(FilePrefix);

@@ -150,14 +150,6 @@ vtkPExodusIIReader::~vtkPExodusIIReader()
 }
 
 //------------------------------------------------------------------------------
-void vtkPExodusIIReader::SetFilePattern(const char* formatArg)
-{
-  std::string format = formatArg ? formatArg : "";
-  const char* formatStr = format.c_str();
-  vtkSetStringBodyMacro(FilePattern, formatStr);
-}
-
-//------------------------------------------------------------------------------
 void vtkPExodusIIReader::SetController(vtkMultiProcessController* c)
 {
   vtkSetObjectBodyMacro(Controller, vtkMultiProcessController, c);

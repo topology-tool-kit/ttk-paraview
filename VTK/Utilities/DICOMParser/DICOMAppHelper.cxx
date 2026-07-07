@@ -548,7 +548,7 @@ void DICOMAppHelper::ImagePositionPatientCallback(
     if (val)
     {
       auto result = vtk::scan<float, float, float>(
-        std::string_view(reinterpret_cast<const char*>(val)), "{:f}\\{:f}\\{:f}");
+        std::string_view(reinterpret_cast<const char*>(val)), "{:g}\\{:g}\\{:g}");
       std::tie(ord.ImagePositionPatient[0], ord.ImagePositionPatient[1],
         ord.ImagePositionPatient[2]) = result->values();
     }
@@ -574,7 +574,7 @@ void DICOMAppHelper::ImagePositionPatientCallback(
       // file found, add new values
       auto imagePositionPatient = it->second.ImagePositionPatient;
       auto result = vtk::scan<float, float, float>(
-        std::string_view(reinterpret_cast<const char*>(val)), "{:f}\\{:f}\\{:f}");
+        std::string_view(reinterpret_cast<const char*>(val)), "{:g}\\{:g}\\{:g}");
       std::tie(imagePositionPatient[0], imagePositionPatient[1], imagePositionPatient[2]) =
         result->values();
     }
@@ -604,7 +604,7 @@ void DICOMAppHelper::ImageOrientationPatientCallback(
     if (val)
     {
       auto result = vtk::scan<float, float, float, float, float, float>(
-        std::string_view(reinterpret_cast<const char*>(val)), "{:f}\\{:f}\\{:f}\\{:f}\\{:f}\\{:f}");
+        std::string_view(reinterpret_cast<const char*>(val)), "{:g}\\{:g}\\{:g}\\{:g}\\{:g}\\{:g}");
       std::tie(ord.ImageOrientationPatient[0], ord.ImageOrientationPatient[1],
         ord.ImageOrientationPatient[2], ord.ImageOrientationPatient[3],
         ord.ImageOrientationPatient[4], ord.ImageOrientationPatient[5]) = result->values();
@@ -633,7 +633,7 @@ void DICOMAppHelper::ImageOrientationPatientCallback(
     if (val)
     {
       auto result = vtk::scan<float, float, float, float, float, float>(
-        std::string_view(reinterpret_cast<const char*>(val)), "{:f}\\{:f}\\{:f}\\{:f}\\{:f}\\{:f}");
+        std::string_view(reinterpret_cast<const char*>(val)), "{:g}\\{:g}\\{:g}\\{:g}\\{:g}\\{:g}");
       auto imageOrientationPatient = it->second.ImageOrientationPatient;
       std::tie(imageOrientationPatient[0], imageOrientationPatient[1], imageOrientationPatient[2],
         imageOrientationPatient[3], imageOrientationPatient[4], imageOrientationPatient[5]) =
@@ -734,7 +734,7 @@ void DICOMAppHelper::PixelSpacingCallback(DICOMParser* parser, doublebyte group,
     // DICOM spacing is in Row/Column order rather than X/Y order,
     // so we reverse it to provide what the application expects
     auto result =
-      vtk::scan<float, float>(std::string_view(reinterpret_cast<const char*>(val)), "{}\\{}");
+      vtk::scan<float, float>(std::string_view(reinterpret_cast<const char*>(val)), "{:g}\\{:g}");
     if (!result)
     {
       this->PixelSpacing[1] = this->PixelSpacing[0] = 0.0;

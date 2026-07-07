@@ -5,13 +5,16 @@
 
 #include "pqActiveObjects.h"
 #include "pqApplicationCore.h"
+#include "pqCoreUtilities.h"
 #include "pqEventDispatcher.h"
 #include "pqLoadStateReaction.h"
 #include "vtkPVFileInformation.h"
 
 #include <QFile>
 #include <QFileInfo>
+#include <QMainWindow>
 #include <QMessageBox>
+#include <QStatusBar>
 
 #include <cassert>
 #include <iostream>
@@ -26,11 +29,23 @@ pqExampleVisualizationsDialog::pqExampleVisualizationsDialog(QWidget* parentObje
   this->setWindowFlags(this->windowFlags().setFlag(Qt::WindowContextHelpButtonHint, false));
 
   QObject::connect(
-      this->ui->Example1Button, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
-    QObject::connect(
-      this->ui->Example2Button, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
-    QObject::connect(
-      this->ui->Example3Button, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
+    this->ui->CanExampleButton, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
+  QObject::connect(
+    this->ui->DiskOutRefExampleButton, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
+  QObject::connect(
+    this->ui->HeadSQExampleButton, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
+  QObject::connect(
+    this->ui->HotGasAnalysisExampleButton, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
+  QObject::connect(
+    this->ui->TosExampleButton, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
+  QObject::connect(
+    this->ui->WaveletExampleButton, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
+  QObject::connect(
+    this->ui->RectilinearGridTimestepsButton, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
+  QObject::connect(
+    this->ui->UnstructuredGridParallelButton, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
+  QObject::connect(
+    this->ui->MandelbrotButton, SIGNAL(clicked(bool)), this, SLOT(onButtonPressed()));
 }
 
 //-----------------------------------------------------------------------------
@@ -48,19 +63,49 @@ void pqExampleVisualizationsDialog::onButtonPressed()
   {
     const char* stateFile = nullptr;
     bool needsData = false;
-    if (button == this->ui->Example1Button)
+    if (button == this->ui->CanExampleButton)
     {
-      stateFile = ":/pqApplicationComponents/ExampleVisualizations/Example1.pvsm";
+      stateFile = ":/pqApplicationComponents/ExampleVisualizations/CanExample.pvsm";
       needsData = true;
     }
-    else if (button == this->ui->Example2Button)
+    else if (button == this->ui->DiskOutRefExampleButton)
     {
-      stateFile = ":/pqApplicationComponents/ExampleVisualizations/Example2.pvsm";
+      stateFile = ":/pqApplicationComponents/ExampleVisualizations/DiskOutRefExample.pvsm";
       needsData = true;
     }
-    else if (button == this->ui->Example3Button)
+    else if (button == this->ui->WaveletExampleButton)
     {
-      stateFile = ":/pqApplicationComponents/ExampleVisualizations/Example3.pvsm";
+      stateFile = ":/pqApplicationComponents/ExampleVisualizations/WaveletExample.pvsm";
+      needsData = false;
+    }
+    else if (button == this->ui->HotGasAnalysisExampleButton)
+    {
+      stateFile = ":/pqApplicationComponents/ExampleVisualizations/HotGasAnalysisExample.pvsm";
+      needsData = true;
+    }
+    else if (button == this->ui->HeadSQExampleButton)
+    {
+      stateFile = ":/pqApplicationComponents/ExampleVisualizations/HeadSQExample.pvsm";
+      needsData = true;
+    }
+    else if (button == this->ui->TosExampleButton)
+    {
+      stateFile = ":/pqApplicationComponents/ExampleVisualizations/TosExample.pvsm";
+      needsData = true;
+    }
+    else if (button == this->ui->RectilinearGridTimestepsButton)
+    {
+      stateFile = ":/pqApplicationComponents/ExampleVisualizations/RectilinearGrid.pvsm";
+      needsData = true;
+    }
+    else if (button == this->ui->UnstructuredGridParallelButton)
+    {
+      stateFile = ":/pqApplicationComponents/ExampleVisualizations/UnstructuredGridParallel.pvsm";
+      needsData = true;
+    }
+    else if (button == this->ui->MandelbrotButton)
+    {
+      stateFile = ":/pqApplicationComponents/ExampleVisualizations/Mandelbrot.pvsm";
       needsData = false;
     }
     else
@@ -92,13 +137,11 @@ void pqExampleVisualizationsDialog::onButtonPressed()
     QFile qfile(stateFile);
     if (qfile.open(QIODevice::ReadOnly | QIODevice::Text))
     {
-      QMessageBox box(this);
-      box.setText(tr("Loading example visualization, please wait ..."));
-      box.setStandardButtons(QMessageBox::NoButton);
-      box.show();
-
-      // without this, the message box doesn't paint properly.
-      pqEventDispatcher::processEventsAndWait(100);
+      QMainWindow* mainWindow = qobject_cast<QMainWindow*>(pqCoreUtilities::mainWidget());
+      if (mainWindow)
+      {
+        mainWindow->statusBar()->showMessage(tr("Loading example visualization."), 2000);
+      }
 
       QString xmldata(qfile.readAll());
       xmldata.replace("$PARAVIEW_EXAMPLES_DATA", dataPath);

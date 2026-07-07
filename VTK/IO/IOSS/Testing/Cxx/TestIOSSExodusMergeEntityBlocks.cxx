@@ -81,6 +81,39 @@ int TestIOSSExodusMergeEntityBlocks(int argc, char* argv[])
     return EXIT_FAILURE;
   }
 
+  // Test a dataset with different cell types.
+  fileNameC =
+    vtkTestUtilities::ExpandDataFileName(argc, argv, "Data/Exodus/different_topologies.ex2");
+  fname = fileNameC;
+  delete[] fileNameC;
+  vtkNew<vtkIOSSReader> reader2;
+  reader2->MergeExodusEntityBlocksOn();
+  reader2->AddFileName(fname.c_str());
+  reader2->Update();
+  output = vtkPartitionedDataSetCollection::SafeDownCast(reader2->GetOutputDataObject(0));
+  if (!output)
+  {
+    vtkLogF(ERROR, "Expected a vtkPartitionedDataSetCollection but got a %s",
+      reader2->GetOutputDataObject(0)->GetClassName());
+    return EXIT_FAILURE;
+  }
+  if (output->GetNumberOfPartitionedDataSets() != 1)
+  {
+    vtkLogF(
+      ERROR, "Expected 1 partitioned dataset but got %u", output->GetNumberOfPartitionedDataSets());
+    return EXIT_FAILURE;
+  }
+  if (output->GetNumberOfPoints() != 3662)
+  {
+    vtkLogF(ERROR, "Expected 3662 points but got %" VTK_ID_TYPE_PRId, output->GetNumberOfPoints());
+    return EXIT_FAILURE;
+  }
+  if (output->GetNumberOfCells() != 13000)
+  {
+    vtkLogF(ERROR, "Expected 13000 cells but got %" VTK_ID_TYPE_PRId, output->GetNumberOfCells());
+    return EXIT_FAILURE;
+  }
+
   int retVal = vtkRegressionTestImage(renWin);
   if (retVal == vtkRegressionTester::DO_INTERACTOR)
   {

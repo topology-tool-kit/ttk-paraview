@@ -896,6 +896,10 @@ public:
     assert(this->Array);
     assert(beginValue >= 0 && beginValue <= endValue);
     assert(endValue >= 0 && endValue <= this->Array->GetNumberOfValues());
+    if constexpr (IsStaticTupleSize<TupleSize>::value)
+    {
+      assert(arr->GetNumberOfComponents() == TupleSize);
+    }
   }
 
   VTK_ITER_INLINE
