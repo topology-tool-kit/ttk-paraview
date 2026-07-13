@@ -170,6 +170,8 @@ jobs:
           -DCMAKE_AUTOUIC=OFF ^
           -DCMAKE_BUILD_TYPE=Release ^
           -DVTKm_MODULE_ENABLE_vtkm_filter_scalar_topology=NO ^
+          -DCMAKE_CXX_FLAGS="-Wa,-mbig-obj" ^
+          -DCMAKE_C_FLAGS="-Wa,-mbig-obj" ^
           -G "Ninja" ^
           %GITHUB_WORKSPACE%
 
