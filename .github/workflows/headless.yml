@@ -169,7 +169,7 @@ jobs:
           -DPython3_ROOT_DIR="%CONDA_ROOT%" ^
           -DCMAKE_AUTOUIC=OFF ^
           -DCMAKE_BUILD_TYPE=Release ^
-          -DVTKm_MODULE_ENABLE_vtkm_filter_scalar_topology=NO ^
+          -DPARAVIEW_USE_VISKORES=OFF ^
           -G "Ninja" ^
           %GITHUB_WORKSPACE%
 
