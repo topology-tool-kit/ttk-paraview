@@ -170,9 +170,6 @@ jobs:
           -DCMAKE_AUTOUIC=OFF ^
           -DCMAKE_BUILD_TYPE=Release ^
           -DPARAVIEW_USE_VISKORES=OFF ^
-          -DVTK_MODULE_ENABLE_VTK_tiff=DONT_WANT ^
-          -DVTK_MODULE_ENABLE_VTK_jpeg=DONT_WANT ^
-          -DVTK_MODULE_ENABLE_VTK_png=DONT_WANT ^
           -G "Ninja" ^
           %GITHUB_WORKSPACE%
 
