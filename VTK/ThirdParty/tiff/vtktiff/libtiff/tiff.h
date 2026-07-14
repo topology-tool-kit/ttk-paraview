@@ -31,12 +31,12 @@
 #ifdef _WIN32
 #if TIFF_SHARED_LIBS
 #ifdef tiff_EXPORTS
-#define vtktiff_EXPORT __declspec(dllexport)
+#define vtktiff_EXPORT extern __declspec(dllexport)
 #else
-#define vtktiff_EXPORT __declspec(dllimport)
+#define vtktiff_EXPORT extern __declspec(dllimport)
 #endif
 #else
-#define vtktiff_EXPORT
+#define vtktiff_EXPORT extern
 #endif
 #else
 #define vtktiff_EXPORT extern
