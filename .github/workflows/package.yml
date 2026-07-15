@@ -159,6 +159,11 @@ jobs:
       run: |
         rm -rf C:/hostedtoolcache/windows/Python
 
+    - name: Set up MSVC dev environment
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
     - name: Create & configure ParaView build directory
       shell: cmd
       run: |
