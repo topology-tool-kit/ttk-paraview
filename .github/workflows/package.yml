@@ -49,7 +49,6 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/usr \
           -DPARAVIEW_PYTHON_SITE_PACKAGES_SUFFIX=lib/python3/dist-packages \
-          -DVTK_OPENGL_HAS_EGL=OFF \
           -GNinja \
           $GITHUB_WORKSPACE
 
