@@ -1,7 +1,0 @@
-NAME
-  LegacyExodusWriter
-DESCRIPTION
-  Legacy writer for Exodus files
-REQUIRES_MODULES
-  VTK::IOParallelExodus
-  ParaView::VTKExtensionsIOExodus

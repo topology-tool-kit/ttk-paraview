@@ -1,7 +1,0 @@
-NAME
-  VTK::fmt
-LIBRARY_NAME
-  vtkfmt
-TEST_DEPENDS
-  VTK::TestingCore
-THIRD_PARTY

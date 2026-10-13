@@ -1,7 +1,0 @@
-NAME
-  VTK::fast_float
-LIBRARY_NAME
-  vtkfast_float
-TEST_DEPENDS
-  VTK::TestingCore
-THIRD_PARTY

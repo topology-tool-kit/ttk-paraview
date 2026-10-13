@@ -1,7 +1,0 @@
-NAME
-  VTK::eigen
-LIBRARY_NAME
-  vtkeigen
-TEST_DEPENDS
-  VTK::TestingCore
-THIRD_PARTY
