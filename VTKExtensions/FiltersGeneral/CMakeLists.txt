@@ -1,0 +1,59 @@
+# SPDX-FileCopyrightText: Copyright (c) Kitware Inc.
+# SPDX-FileCopyrightText: Copyright (c) Sandia Corporation
+# SPDX-License-Identifier: BSD-3-Clause
+set(classes
+  vtkAnnotateGlobalDataFilter
+  vtkAnnotateSelectionFilter
+  vtkAxisAlignedCutter
+  vtkCellIntegrator
+  vtkConvertPolyhedraFilter
+  vtkEquivalenceSet
+  vtkExtractScatterPlot
+  vtkFlashContour
+  vtkHierarchicalFractal
+  vtkHybridProbeFilter
+  vtkImageSimpleSource
+  vtkIntegrateFlowThroughSurface
+  vtkIsoVolume
+  vtkOMETIFFChannelCalculator
+  vtkPEquivalenceSet
+  vtkPlotEdges
+  vtkPVArrayCalculator
+  vtkPVClipClosedSurface
+  vtkPVClipDataSet
+  vtkPVConnectivityFilter
+  vtkPVContourFilter
+  vtkPVCutter
+  vtkPVDataSetAlgorithmSelectorFilter
+  vtkPVExtractComponent
+  vtkPVExtractGhostCells
+  vtkPVExtractVOI
+  vtkPVGlyphFilter
+  vtkPVGradientFilter
+  vtkPVLinearExtrusionFilter
+  vtkPVMetaClipDataSet
+  vtkPVMetaSliceDataSet
+  vtkPVPlaneCutter
+  vtkPVTableToStructuredGrid
+  vtkPVTextSource
+  vtkPVThreshold
+  vtkPVTransposeTable
+  vtkRectilinearGridConnectivity
+  vtkRulerLineForInput
+  vtkSliceAlongPolyPlane
+  vtkSurfaceVectors
+  vtkTimeStepProgressFilter
+  vtkTimeToTextConvertor)
+
+set(private_classes
+"Private/vtkEdgeInternal"
+"Private/vtkEdgesCacheInternal"
+)
+
+vtk_module_add_module(ParaView::VTKExtensionsFiltersGeneral
+  CLASSES ${classes}
+  PRIVATE_CLASSES ${private_classes})
+
+paraview_add_server_manager_xmls(
+  XMLS  Resources/general_filters.xml
+        Resources/general_sources.xml)

@@ -1,0 +1,198 @@
+// SPDX-FileCopyrightText: Copyright (c) Kitware Inc.
+// SPDX-License-Identifier: BSD-3-Clause
+/**
+ * @class   vtkPVCAVEConfigInformation
+ *
+ * A vtkClientServerStream serializable container intended to expose the
+ * api and information presented by vtkDisplayConfiguration.  The same pvx
+ * file is read on all server processes, so merging info from other servers
+ * is simply a matter of overwriting the current state with the one read
+ * from the stream or other object.
+ */
+
+#ifndef vtkPVCAVEConfigInformation_h
+#define vtkPVCAVEConfigInformation_h
+
+#include "vtkPVInformation.h" // for base class
+#include "vtkTuple.h"         // for vtkTuple
+
+#include <memory> // for std::unique_ptr
+
+class vtkClientServerStream;
+
+class VTKREMOTINGCORE_EXPORT vtkPVCAVEConfigInformation : public vtkPVInformation
+{
+public:
+  static vtkPVCAVEConfigInformation* New();
+  vtkTypeMacro(vtkPVCAVEConfigInformation, vtkPVInformation);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
+
+  /**
+   * Transfer information about a single object into this object.
+   */
+  void CopyFromObject(vtkObject*) override;
+
+  /**
+   * Merge another information object.
+   */
+  void AddInformation(vtkPVInformation*) override;
+
+  ///@{
+  /**
+   * Manage a serialized version of the information.
+   */
+  void CopyToStream(vtkClientServerStream*) override;
+  void CopyFromStream(const vtkClientServerStream*) override;
+  ///@}
+
+  ///@{
+  /**
+   * Return the whether the system is in CAVE mode
+   */
+  virtual bool GetIsInCAVE();
+  ///@}
+
+  ///@{
+  /**
+   * Return the eye separation.
+   */
+  virtual double GetEyeSeparation();
+  ///@}
+
+  /**
+   * Return the use of off axis projection.
+   */
+  virtual bool GetUseOffAxisProjection();
+
+  ///@{
+  /**
+   * Return the number of displays.
+   */
+  virtual int GetNumberOfDisplays();
+  ///@}
+
+  ///@{
+  /**
+   * Return whether or not borders are shown.
+   */
+  virtual bool GetShowBorders();
+  ///@}
+
+  ///@{
+  /**
+   * Return whether or not displays are fullscreen.
+   */
+  virtual bool GetFullScreen();
+  ///@}
+
+  ///@{
+  /**
+   * Return the (optional) name of the indexed display, or nullptr if none
+   * was set.
+   */
+  virtual const char* GetName(int index);
+
+  ///@{
+  /**
+   * Return whether or not the indexed display was configured to show 2D overlays.
+   */
+  virtual bool GetShow2DOverlays(int index);
+  ///@}
+
+  ///@{
+  /**
+   * Return the geometry of the indexed display.
+   */
+  virtual vtkTuple<int, 4> GetGeometry(int index);
+  ///@}
+
+  ///@{
+  /**
+   * Return whether or not the indexed display has screen corners.
+   */
+  virtual bool GetHasCorners(int index);
+  ///@}
+
+  ///@{
+  /**
+   * Return the lower left corner of the indexed display.
+   */
+  virtual vtkTuple<double, 3> GetLowerLeft(int index);
+  ///@}
+
+  ///@{
+  /**
+   * Return the lower right corner of the indexed display.
+   */
+  virtual vtkTuple<double, 3> GetLowerRight(int index);
+  ///@}
+
+  ///@{
+  /**
+   * Return the upper right corner of the indexed display.
+   */
+  virtual vtkTuple<double, 3> GetUpperRight(int index);
+  ///@}
+
+  ///@{
+  /**
+   * Return whether or not the indexed display has stereo enabled.
+   */
+  virtual bool GetStereoEnabled(int index);
+  ///@}
+
+  ///@{
+  /**
+   * Return configured stereo type for the indexed display.
+   */
+  virtual int GetStereoType(int index);
+  ///@}
+
+  ///@{
+  /**
+   * Return the viewer id of the given display index, or -1 if none
+   * was set.
+   */
+  int GetViewerId(int index);
+  ///@}
+
+  ///@{
+  /**
+   * Return the number of configured independent viewers.
+   */
+  int GetNumberOfViewers();
+  ///@}
+
+  ///@{
+  /**
+   * Return the id attribute of the indexed independent viewer.
+   */
+  int GetId(int viewerIndex);
+  ///@}
+
+  ///@{
+  /**
+   * Return the eye separation attribute of the indexed independent viewer.
+   */
+  double GetEyeSeparation(int viewerIndex);
+  ///@}
+
+protected:
+  vtkPVCAVEConfigInformation();
+  ~vtkPVCAVEConfigInformation() override;
+
+private:
+  class vtkInternals;
+  std::unique_ptr<vtkInternals> Internal;
+
+  // When adding information, we need to know the rank where the stereo
+  // configs were queried. This is because stereo can now be configured
+  // via pvx or cli, and while all ranks know all other ranks pvx config
+  // state, only each rank knows the cli arguments it was provided.
+  int GetRank();
+
+  vtkPVCAVEConfigInformation(const vtkPVCAVEConfigInformation&) = delete;
+  void operator=(const vtkPVCAVEConfigInformation&) = delete;
+};
+
+#endif

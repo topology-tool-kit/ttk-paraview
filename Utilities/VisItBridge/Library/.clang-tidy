@@ -1,0 +1,25 @@
+---
+# We really don't want to check third party code at all with `clang-tidy`, so
+# we enable a single set of checks (because disabling all checks is an error).
+Checks: "-*,\
+bugprone-*,\
+-bugprone-assignment-in-if-condition,\
+-bugprone-branch-clone,\
+-bugprone-easily-swappable-parameters,\
+-bugprone-implicit-widening-of-multiplication-result,\
+-bugprone-incorrect-roundings,\
+-bugprone-macro-parentheses,\
+-bugprone-multi-level-implicit-pointer-conversion,\
+-bugprone-narrowing-conversions,\
+-bugprone-parent-virtual-call,\
+-bugprone-pointer-arithmetic-on-polymorphic-object,\
+-bugprone-reserved-identifier,\
+-bugprone-signal-handler,\
+-bugprone-signed-char-misuse,\
+-bugprone-sizeof-expression,\
+-bugprone-switch-missing-default-case,\
+-bugprone-unhandled-self-assignment,\
+-bugprone-unused-local-non-trivial-variable,\
+-bugprone-virtual-near-miss,\
+"
+...

@@ -1,0 +1,1530 @@
+// SPDX-FileCopyrightText: Copyright (c) Kitware Inc.
+// SPDX-License-Identifier: BSD-3-Clause
+
+#include "vtkPVDataInformation.h"
+
+#include "vtkAlgorithm.h"
+#include "vtkAlgorithmOutput.h"
+#include "vtkBoundingBox.h"
+#include "vtkCellGrid.h"
+#include "vtkClientServerStream.h"
+#include "vtkCompositeDataIterator.h"
+#include "vtkCompositeDataSet.h"
+#include "vtkCompositeDataSetRange.h"
+#include "vtkDataArray.h"
+#include "vtkDataAssembly.h"
+#include "vtkDataAssemblyUtilities.h"
+#include "vtkDataObjectTree.h"
+#include "vtkDataObjectTreeRange.h"
+#include "vtkDataObjectTypes.h"
+#include "vtkDataSet.h"
+#include "vtkExecutive.h"
+#include "vtkExplicitStructuredGrid.h"
+#include "vtkExtractBlockUsingDataAssembly.h"
+#include "vtkHyperTreeGrid.h"
+#include "vtkImageData.h"
+#include "vtkInformation.h"
+#include "vtkMultiProcessStream.h"
+#include "vtkNew.h"
+#include "vtkObjectFactory.h"
+#include "vtkPVArrayInformation.h"
+#include "vtkPVDataSetAttributesInformation.h"
+#include "vtkPVInformationKeys.h"
+#include "vtkPVLogger.h"
+#include "vtkPartitionedDataSetCollection.h"
+#include "vtkProcessModule.h"
+#include "vtkRectilinearGrid.h"
+#include "vtkStreamingDemandDrivenPipeline.h"
+#include "vtkStructuredGrid.h"
+#include "vtkUniformGridAMR.h"
+
+#include <algorithm>
+#include <cassert>
+#include <set>
+#include <string>
+#include <vector>
+
+class vtkPVDataInformationAccumulator
+{
+  vtkNew<vtkPVDataInformation> Current;
+
+public:
+  std::set<int> UniqueBlockTypes;
+  vtkPVDataInformation* operator()(vtkPVDataInformation* info, vtkDataObject* dobj)
+  {
+    if (!dobj)
+    {
+      return info;
+    }
+    assert(vtkCompositeDataSet::SafeDownCast(dobj) == nullptr);
+
+    this->Current->Initialize();
+    this->Current->SetInspectCells(info->InspectCells);
+    this->Current->CopyFromDataObject(dobj);
+    if (this->Current->GetDataSetType() != -1)
+    {
+      assert(this->Current->GetCompositeDataSetType() == -1);
+      this->UniqueBlockTypes.insert(this->Current->GetDataSetType());
+      info->AddInformation(this->Current);
+    }
+    return info;
+  }
+
+  void AddGlobalData(vtkPVDataInformation* info, vtkDataObject* dobj)
+  {
+    vtkNew<vtkPVDataSetAttributesInformation> tempFdi;
+    tempFdi->Initialize();
+    tempFdi->SetFieldAssociation(vtkDataObject::FIELD);
+    tempFdi->CopyFromDataObject(dobj);
+    if (tempFdi->GetNumberOfArrays() > 0)
+    {
+      tempFdi->MarkArraysAsGlobal();
+      info->GetFieldDataInformation()->AddInformation(tempFdi);
+    }
+  }
+};
+
+namespace
+{
+
+void MergeBounds(double bds[6], const double obds[6])
+{
+  vtkBoundingBox bbox(bds);
+  bbox.AddBounds(obds);
+  if (bbox.IsValid())
+  {
+    bbox.GetBounds(bds);
+  }
+}
+
+void MergeExtent(int ext[6], const int oext[6])
+{
+  for (int dim = 0; dim < 3; ++dim)
+  {
+    if (oext[2 * dim] <= oext[2 * dim + 1])
+    {
+      if (ext[2 * dim] <= ext[2 * dim + 1])
+      {
+        ext[2 * dim] = std::min(ext[2 * dim], oext[2 * dim]);
+        ext[2 * dim + 1] = std::max(ext[2 * dim + 1], oext[2 * dim + 1]);
+      }
+      else
+      {
+        ext[2 * dim] = oext[2 * dim];
+        ext[2 * dim + 1] = oext[2 * dim + 1];
+      }
+    }
+  }
+}
+
+void MergeRange(double range[2], const double orange[2])
+{
+  if (orange[0] <= orange[1])
+  {
+    if (range[0] <= range[1])
+    {
+      range[0] = std::min(range[0], orange[0]);
+      range[1] = std::max(range[1], orange[1]);
+    }
+    else
+    {
+      range[0] = orange[0];
+      range[1] = orange[1];
+    }
+  }
+}
+}
+
+vtkStandardNewMacro(vtkPVDataInformation);
+//----------------------------------------------------------------------------
+vtkPVDataInformation::vtkPVDataInformation()
+{
+  this->Initialize();
+}
+
+//----------------------------------------------------------------------------
+vtkPVDataInformation::~vtkPVDataInformation()
+{
+  this->SetSubsetSelector(nullptr);
+}
+
+//----------------------------------------------------------------------------
+void vtkPVDataInformation::CopyParametersToStream(vtkMultiProcessStream& str)
+{
+  str << 828792 << this->PortNumber << std::string(this->SubsetSelector ? SubsetSelector : "")
+      << std::string(this->SubsetAssemblyName ? this->SubsetAssemblyName : "") << this->Rank
+      << this->InspectCells;
+}
+
+//----------------------------------------------------------------------------
+void vtkPVDataInformation::CopyParametersFromStream(vtkMultiProcessStream& str)
+{
+  int magic_number;
+  std::string path, name;
+  str >> magic_number >> this->PortNumber >> path >> name >> this->Rank >> this->InspectCells;
+  if (magic_number != 828792)
+  {
+    vtkErrorMacro("Magic number mismatch.");
+  }
+  this->SetSubsetSelector(path.empty() ? nullptr : path.c_str());
+  this->SetSubsetAssemblyName(name.empty() ? nullptr : name.c_str());
+}
+
+//----------------------------------------------------------------------------
+void vtkPVDataInformation::PrintSelf(ostream& os, vtkIndent indent)
+{
+  auto i2 = indent.GetNextIndent();
+
+  this->Superclass::PrintSelf(os, indent);
+
+  os << indent << "PortNumber: " << this->PortNumber << endl;
+  os << indent << "Rank: " << this->Rank << endl;
+  os << indent << "SubsetSelector: " << (this->SubsetSelector ? this->SubsetSelector : "(nullptr)")
+     << endl;
+  os << indent << "SubsetAssemblyName: "
+     << (this->SubsetAssemblyName ? this->SubsetAssemblyName : "(nullptr)") << endl;
+  os << indent << "DataSetType: " << this->DataSetType << endl;
+  os << indent << "CompositeDataSetType: " << this->CompositeDataSetType << endl;
+  os << indent << "FirstLeafCompositeIndex: " << this->FirstLeafCompositeIndex << endl;
+  os << indent << "UniqueBlockTypes: ";
+  for (size_t cc = 0; cc < this->UniqueBlockTypes.size(); ++cc)
+  {
+    if (cc > 0 && (cc % 8) == 0)
+    {
+      os << endl << i2;
+    }
+    os << this->UniqueBlockTypes[cc];
+  }
+  os << endl;
+
+  os << indent << "NumberOfPoints: " << this->GetNumberOfPoints() << endl;
+  os << indent << "NumberOfCells: " << this->GetNumberOfCells() << endl;
+  os << indent << "NumberOfVertices: " << this->GetNumberOfVertices() << endl;
+  os << indent << "NumberOfEdges: " << this->GetNumberOfEdges() << endl;
+  os << indent << "NumberOfRows: " << this->GetNumberOfRows() << endl;
+  os << indent << "NumberOfTrees: " << this->GetNumberOfTrees() << endl;
+  os << indent << "NumberOfLeaves: " << this->GetNumberOfLeaves() << endl;
+  os << indent << "NumberOfAMRLevels: " << this->GetNumberOfAMRLevels() << endl;
+  os << indent << "NumberOfDataSets: " << this->GetNumberOfDataSets() << endl;
+  os << indent << "MemorySize: " << this->MemorySize << endl;
+  os << indent << "Bounds: " << this->Bounds[0] << ", " << this->Bounds[1] << ", "
+     << this->Bounds[2] << ", " << this->Bounds[3] << ", " << this->Bounds[4] << ", "
+     << this->Bounds[5] << endl;
+  os << indent << "Extent: " << this->Extent[0] << ", " << this->Extent[1] << ", "
+     << this->Extent[2] << ", " << this->Extent[3] << ", " << this->Extent[4] << ", "
+     << this->Extent[5] << endl;
+
+  auto printDSA = [&](const char* label, vtkPVDataSetAttributesInformation* dsa)
+  {
+    os << indent << label << endl;
+    if (dsa)
+    {
+      dsa->PrintSelf(os, i2);
+    }
+  };
+  printDSA("PointDataInformation ", this->GetPointDataInformation());
+  printDSA("CellDataInformation ", this->GetCellDataInformation());
+  printDSA("VertexDataInformation", this->GetVertexDataInformation());
+  printDSA("EdgeDataInformation", this->GetEdgeDataInformation());
+  printDSA("RowDataInformation", this->GetRowDataInformation());
+  printDSA("FieldDataInformation ", this->GetFieldDataInformation());
+  os << indent << "PointArrayInformation " << endl;
+  this->GetPointArrayInformation()->PrintSelf(os, i2);
+
+  os << indent << "HasTime: " << this->HasTime << endl;
+  os << indent << "Time: " << this->Time << endl;
+  os << indent << "TimeRange: " << this->TimeRange[0] << ", " << this->TimeRange[1] << endl;
+  os << indent << "TimeLabel: " << (this->TimeLabel.empty() ? "(none)" : this->TimeLabel.c_str())
+     << endl;
+  os << indent << "NumberOfTimeSteps: " << this->TimeSteps.size() << endl;
+  os << indent << "TimeSteps: ";
+  for (double timeStep : this->TimeSteps)
+  {
+    os << timeStep;
+  }
+  os << endl;
+}
+
+//----------------------------------------------------------------------------
+int vtkPVDataInformation::GetNumberOfAttributeTypes() const
+{
+  return static_cast<int>(this->AttributeMetadata.size());
+}
+
+//----------------------------------------------------------------------------
+std::vector<int> vtkPVDataInformation::GetAttributeTypes() const
+{
+  std::vector<int> attributeTypes;
+  attributeTypes.reserve(this->AttributeMetadata.size());
+  for (const auto& [key, _] : this->AttributeMetadata)
+  {
+    attributeTypes.push_back(key);
+  }
+  return attributeTypes;
+}
+
+//----------------------------------------------------------------------------
+std::vector<std::string> vtkPVDataInformation::GetAttributeNames() const
+{
+  std::vector<std::string> attributeNames;
+  attributeNames.reserve(this->AttributeMetadata.size());
+  for (const auto& [_, value] : this->AttributeMetadata)
+  {
+    attributeNames.push_back(value.Name);
+  }
+  return attributeNames;
+}
+
+//----------------------------------------------------------------------------
+std::string vtkPVDataInformation::GetAttributeName(int attributeType) const
+{
+  auto result = this->AttributeMetadata.find(attributeType);
+  if (result != this->AttributeMetadata.end())
+  {
+    return result->second.Name;
+  }
+  return "";
+}
+
+//----------------------------------------------------------------------------
+vtkPVDataSetAttributesInformation* vtkPVDataInformation::GetAttributeInformation(
+  int attributeType) const
+{
+  auto result = this->AttributeMetadata.find(attributeType);
+  if (result != this->AttributeMetadata.end())
+  {
+    return result->second.Information.Get();
+  }
+  return nullptr;
+}
+
+//----------------------------------------------------------------------------
+vtkTypeInt64 vtkPVDataInformation::GetNumberOfElements(int elementType) const
+{
+  auto result = this->AttributeMetadata.find(elementType);
+  if (result != this->AttributeMetadata.end())
+  {
+    return result->second.NumberOfElements;
+  }
+  return 0;
+}
+
+//----------------------------------------------------------------------------
+void vtkPVDataInformation::Initialize()
+{
+  this->DataSetType = -1;
+  this->CompositeDataSetType = -1;
+  this->FirstLeafCompositeIndex = 0;
+  this->UniqueBlockTypes.clear();
+
+  this->AttributeMetadata.clear();
+  auto& attributeType = this->AttributeMetadata[vtkDataObject::FIELD];
+  attributeType.Name = "Field";
+  attributeType.NumberOfElements = 0;
+  attributeType.Information = vtkSmartPointer<vtkPVDataSetAttributesInformation>::New();
+  attributeType.Information->Initialize();
+  attributeType.Information->SetFieldAssociation(vtkDataObject::FIELD);
+  attributeType.Information->SetFieldName(attributeType.Name.c_str());
+
+  this->NumberOfTrees = 0;
+  this->NumberOfLeaves = 0;
+  this->NumberOfAMRLevels = 0;
+  this->NumberOfDataSets = 0;
+  this->MemorySize = 0;
+  this->Bounds[0] = this->Bounds[2] = this->Bounds[4] = VTK_DOUBLE_MAX;
+  this->Bounds[1] = this->Bounds[3] = this->Bounds[5] = -VTK_DOUBLE_MAX;
+  this->Extent[0] = this->Extent[2] = this->Extent[4] = VTK_INT_MAX;
+  this->Extent[1] = this->Extent[3] = this->Extent[5] = -VTK_INT_MAX;
+
+  this->PointArrayInformation->Initialize();
+  this->HasTime = false;
+  this->Time = 0.0;
+  this->TimeRange[0] = VTK_DOUBLE_MAX;
+  this->TimeRange[1] = -VTK_DOUBLE_MAX;
+  this->TimeLabel.clear();
+  this->TimeSteps.clear();
+  this->AMRNumberOfDataSets.clear();
+
+  this->Hierarchy->Initialize();
+  this->DataAssembly->Initialize();
+}
+
+//----------------------------------------------------------------------------
+vtkSmartPointer<vtkCompositeDataSet> vtkPVDataInformation::SimplifyCompositeDataSet(
+  vtkCompositeDataSet* cd)
+{
+  return cd;
+}
+
+//----------------------------------------------------------------------------
+void vtkPVDataInformation::CopyFromObject(vtkObject* object)
+{
+  this->Initialize();
+
+  if (object == nullptr)
+  {
+    return;
+  }
+
+  auto pm = vtkProcessModule::GetProcessModule();
+  if (this->Rank != -1 && this->Rank != pm->GetPartitionId())
+  {
+    // nothing to do.
+    return;
+  }
+
+  vtkDataObject* dobj = vtkDataObject::SafeDownCast(object);
+
+  vtkInformation* pipelineInfo = nullptr;
+  // Handle the case where the a vtkAlgorithmOutput is passed instead of
+  // the data object. vtkSMPart uses vtkAlgorithmOutput.
+  if (!dobj)
+  {
+    vtkAlgorithmOutput* algOutput = vtkAlgorithmOutput::SafeDownCast(object);
+    vtkAlgorithm* algo = vtkAlgorithm::SafeDownCast(object);
+    if (algOutput && algOutput->GetProducer())
+    {
+      if (strcmp(algOutput->GetProducer()->GetClassName(), "vtkPVNullSource") == 0)
+      {
+        // Don't gather any data information from the hypothetical null source.
+        return;
+      }
+
+      if (algOutput->GetProducer()->IsA("vtkPVPostFilter"))
+      {
+        algOutput = algOutput->GetProducer()->GetInputConnection(0, 0);
+      }
+      pipelineInfo = algOutput->GetProducer()->GetOutputInformation(this->PortNumber);
+      dobj = algOutput->GetProducer()->GetOutputDataObject(algOutput->GetIndex());
+    }
+    else if (algo)
+    {
+      // We don't use vtkAlgorithm::GetOutputDataObject() since that call a
+      // UpdateDataObject() pass, which may raise errors if the algo is not
+      // fully setup yet.
+      if (strcmp(algo->GetClassName(), "vtkPVNullSource") == 0)
+      {
+        // Don't gather any data information from the hypothetical null source.
+        return;
+      }
+      pipelineInfo = algo->GetExecutive()->GetOutputInformation(this->PortNumber);
+      if (!pipelineInfo || vtkDataObject::GetData(pipelineInfo) == nullptr)
+      {
+        return;
+      }
+      dobj = algo->GetOutputDataObject(this->PortNumber);
+    }
+  }
+
+  if (!dobj)
+  {
+    vtkErrorMacro("Could not cast object to a known data set: " << (object ? object->GetClassName()
+                                                                           : "(null)"));
+    return;
+  }
+
+  vtkSmartPointer<vtkDataObject> subset;
+  if (vtkCompositeDataSet::SafeDownCast(dobj) && this->SubsetSelector != nullptr)
+  {
+    subset = this->GetSubset(dobj);
+  }
+  else
+  {
+    subset = dobj;
+  }
+
+  vtkPVDataInformationAccumulator accumulator;
+  if (auto cd = vtkCompositeDataSet::SafeDownCast(subset))
+  {
+    vtkSmartPointer<vtkCompositeDataSet> simpleCD = this->SimplifyCompositeDataSet(cd);
+    decltype(this->FirstLeafCompositeIndex) leaf_index = 0;
+    using Opts = vtk::CompositeDataSetOptions;
+    for (const auto& item : vtk::Range(simpleCD, Opts::None))
+    {
+      if (leaf_index == 0)
+      {
+        leaf_index = item.GetFlatIndex();
+      }
+      if (item)
+      {
+        assert(vtkCompositeDataSet::SafeDownCast(item) == nullptr);
+        accumulator(this, item);
+      }
+    }
+
+    // The range above misses the root node; gather its field data separately
+    // and mark those arrays as global (root-level composite field data).
+    accumulator.AddGlobalData(this, subset);
+
+    this->CompositeDataSetType = subset->GetDataObjectType();
+    this->FirstLeafCompositeIndex = leaf_index;
+    vtkDataAssemblyUtilities::GenerateHierarchy(cd, this->Hierarchy);
+    if (auto pdc = vtkPartitionedDataSetCollection::SafeDownCast(cd))
+    {
+      this->DataAssembly->DeepCopy(pdc->GetDataAssembly());
+    }
+
+    if (auto amr = vtkAMRDataObject::SafeDownCast(subset))
+    {
+      this->NumberOfAMRLevels = amr->GetNumberOfLevels();
+      this->AMRNumberOfDataSets.resize(this->NumberOfAMRLevels);
+      for (unsigned int l = 0; l < this->NumberOfAMRLevels; ++l)
+      {
+        this->AMRNumberOfDataSets[l] = amr->GetNumberOfBlocks(l);
+      }
+    }
+  }
+  else if (subset)
+  {
+    accumulator(this, subset);
+  }
+
+  this->UniqueBlockTypes.clear();
+  if (this->CompositeDataSetType != -1)
+  {
+    this->UniqueBlockTypes.insert(this->UniqueBlockTypes.end(),
+      accumulator.UniqueBlockTypes.begin(), accumulator.UniqueBlockTypes.end());
+  }
+
+  // Copy information from `pipelineInfo`
+  this->CopyFromPipelineInformation(pipelineInfo);
+
+  // Copy data time.
+  auto dinfo = dobj->GetInformation();
+  if (dinfo && dinfo->Has(vtkDataObject::DATA_TIME_STEP()))
+  {
+    this->Time = dinfo->Get(vtkDataObject::DATA_TIME_STEP());
+    this->HasTime = true;
+  }
+}
+
+//----------------------------------------------------------------------------
+void vtkPVDataInformation::CopyFromPipelineInformation(vtkInformation* pinfo)
+{
+  // Gather some common stuff
+  if (pinfo)
+  {
+    if (pinfo->Has(vtkStreamingDemandDrivenPipeline::TIME_RANGE()) &&
+      pinfo->Length(vtkStreamingDemandDrivenPipeline::TIME_RANGE()) == 2)
+    {
+      const double* times = pinfo->Get(vtkStreamingDemandDrivenPipeline::TIME_RANGE());
+      this->TimeRange[0] = times[0];
+      this->TimeRange[1] = times[1];
+    }
+
+    if (pinfo->Has(vtkStreamingDemandDrivenPipeline::TIME_STEPS()))
+    {
+      vtkTypeInt64 numberOfTimeSteps =
+        pinfo->Length(vtkStreamingDemandDrivenPipeline::TIME_STEPS());
+      double* inTimes = pinfo->Get(vtkStreamingDemandDrivenPipeline::TIME_STEPS());
+      for (int i = 0; i < numberOfTimeSteps; i++)
+      {
+        this->TimeSteps.insert(inTimes[i]);
+      }
+    }
+
+    if (pinfo->Has(vtkPVInformationKeys::TIME_LABEL_ANNOTATION()))
+    {
+      this->TimeLabel = pinfo->Get(vtkPVInformationKeys::TIME_LABEL_ANNOTATION());
+    }
+  }
+}
+
+//----------------------------------------------------------------------------
+void vtkPVDataInformation::CopyFromDataObject(vtkDataObject* dobj)
+{
+  if (!dobj)
+  {
+    return;
+  }
+  assert(vtkCompositeDataSet::SafeDownCast(dobj) == nullptr);
+  assert(this->DataSetType == -1); // ensure that we're not accidentally accumulating.
+
+  this->DataSetType = dobj->GetDataObjectType();
+  this->MemorySize = dobj->GetActualMemorySize();
+  this->NumberOfDataSets = 1;
+
+  const bool isCellGrid = dobj->IsA("vtkCellGrid");
+  for (int cc = 0; cc < vtkDataObject::NUMBER_OF_ATTRIBUTE_TYPES; ++cc)
+  {
+    if (dobj->GetFieldData() && cc == vtkDataObject::FIELD)
+    {
+      auto& attributeMetadata = this->AttributeMetadata[cc];
+      attributeMetadata.Information->CopyFromDataObject(dobj);
+      // for field data, we get the maximum number of tuples in field data.
+      attributeMetadata.NumberOfElements =
+        attributeMetadata.Information->GetMaximumNumberOfTuples();
+    }
+    else if ((!isCellGrid && dobj->GetAttributesAsFieldData(cc)) ||
+      (isCellGrid && cc == vtkDataObject::CELL))
+    {
+      std::string_view prefix = "vtkDataObject::";
+      std::string_view attributeNameView = vtkDataObject::GetAttributeTypeAsString(cc);
+      assert(attributeNameView.substr(0, prefix.size()) == prefix);
+      attributeNameView.remove_prefix(prefix.size());
+      std::string attributeName(attributeNameView);
+      std::transform(attributeName.begin() + 1, attributeName.end(), attributeName.begin() + 1,
+        [](unsigned char c) { return std::tolower(c); });
+      this->AttributeMetadata[cc] = { attributeName, dobj->GetNumberOfElements(cc),
+        vtkSmartPointer<vtkPVDataSetAttributesInformation>::New() };
+      auto& attributeMetadata = this->AttributeMetadata[cc];
+      attributeMetadata.Information->Initialize();
+      attributeMetadata.Information->SetFieldAssociation(cc);
+      attributeMetadata.Information->SetFieldName(attributeMetadata.Name.c_str());
+      attributeMetadata.Information->CopyFromDataObject(dobj);
+    }
+  }
+
+  if (auto ds = vtkDataSet::SafeDownCast(dobj))
+  {
+    ds->GetBounds(this->Bounds);
+    if (auto img = vtkImageData::SafeDownCast(ds))
+    {
+      img->GetExtent(this->Extent);
+    }
+    else if (auto rg = vtkRectilinearGrid::SafeDownCast(ds))
+    {
+      rg->GetExtent(this->Extent);
+    }
+    else if (auto sg = vtkStructuredGrid::SafeDownCast(ds))
+    {
+      sg->GetExtent(this->Extent);
+    }
+    else if (auto esg = vtkExplicitStructuredGrid::SafeDownCast(ds))
+    {
+      esg->GetExtent(this->Extent);
+    }
+
+    if (this->InspectCells)
+    {
+      vtkNew<vtkCellTypes> cellTypes;
+      ds->GetDistinctCellTypes(cellTypes);
+      std::set<unsigned int> uniqueTypeSet;
+      for (int idx = 0; idx < cellTypes->GetNumberOfTypes(); idx++)
+      {
+        uniqueTypeSet.insert(cellTypes->GetCellType(idx));
+      }
+      this->UniqueCellTypes =
+        std::vector<unsigned char>{ uniqueTypeSet.begin(), uniqueTypeSet.end() };
+    }
+
+    if (auto ps = vtkPointSet::SafeDownCast(dobj))
+    {
+      if (ps->GetPoints() && ps->GetPoints()->GetData())
+      {
+        this->PointArrayInformation->CopyFromArray(ps->GetPoints()->GetData());
+        // irrespective of the name used by the internally vtkDataArray, always
+        // rename the points as "Points" so the application always identifies
+        // them as such.
+        this->PointArrayInformation->SetName("Points");
+      }
+    }
+  }
+  else if (auto htg = vtkHyperTreeGrid::SafeDownCast(dobj))
+  {
+    // for vtkHyperTreeGrid, leaves and trees are counted specially.
+    this->NumberOfTrees = htg->GetMaxNumberOfTrees();
+    this->NumberOfLeaves = htg->GetNumberOfLeaves();
+
+    htg->GetBounds(this->Bounds);
+    htg->GetExtent(this->Extent);
+  }
+  else if (auto cg = vtkCellGrid::SafeDownCast(dobj))
+  {
+    cg->GetBounds(this->Bounds);
+    for (const auto& [key, value] : cg->GetArrayGroups())
+    {
+      vtkStringToken::Hash hash = key;
+      vtkStringToken token(hash);
+      if (token.HasData())
+      {
+        this->AttributeMetadata[key] = { token.Data(), cg->GetNumberOfElements(key),
+          vtkSmartPointer<vtkPVDataSetAttributesInformation>::New() };
+        auto& attributeMetadata = this->AttributeMetadata[key];
+        attributeMetadata.Information->Initialize();
+        attributeMetadata.Information->SetFieldAssociation(key);
+        attributeMetadata.Information->SetFieldName(attributeMetadata.Name.c_str());
+        attributeMetadata.Information->CopyFromDataObject(dobj);
+      }
+    }
+  }
+}
+
+//----------------------------------------------------------------------------
+void vtkPVDataInformation::AddInformation(vtkPVInformation* oinfo)
+{
+  auto other = vtkPVDataInformation::SafeDownCast(oinfo);
+  if (other == nullptr)
+  {
+    return;
+  }
+  if (this->CompositeDataSetType == -1 && this->DataSetType == -1)
+  {
+    this->DeepCopy(other);
+    return;
+  }
+
+  this->DataSetType =
+    vtkDataObjectTypes::GetCommonBaseTypeId(this->DataSetType, other->DataSetType);
+  this->CompositeDataSetType = vtkDataObjectTypes::GetCommonBaseTypeId(
+    this->CompositeDataSetType, other->CompositeDataSetType);
+  this->FirstLeafCompositeIndex =
+    std::max(this->FirstLeafCompositeIndex, other->FirstLeafCompositeIndex);
+  this->NumberOfTrees += other->NumberOfTrees;
+  this->NumberOfLeaves += other->NumberOfLeaves; // TODO: max?
+  this->NumberOfAMRLevels = std::max(this->NumberOfAMRLevels, other->NumberOfAMRLevels);
+  this->NumberOfDataSets += other->NumberOfDataSets;
+  this->MemorySize += other->MemorySize;
+  ::MergeBounds(this->Bounds, other->Bounds);
+  ::MergeExtent(this->Extent, other->Extent);
+  if (other->HasTime)
+  {
+    if (this->HasTime && this->Time != other->Time)
+    {
+      vtkLogF(TRACE, "time mismatch: %lf != %lf", this->Time, other->Time);
+    }
+    this->HasTime = other->HasTime;
+    this->Time = other->Time;
+  }
+  ::MergeRange(this->TimeRange, other->TimeRange);
+  if (!other->TimeLabel.empty())
+  {
+    if (!this->TimeLabel.empty() && this->TimeLabel != other->TimeLabel)
+    {
+      vtkLogF(TRACE, "time-label mismatch: '%s' != '%s'", this->TimeLabel.c_str(),
+        other->TimeLabel.c_str());
+    }
+    this->TimeLabel = other->TimeLabel;
+  }
+
+  this->TimeSteps.insert(other->TimeSteps.begin(), other->TimeSteps.end());
+
+  std::set<int> types;
+  std::copy(this->UniqueBlockTypes.begin(), this->UniqueBlockTypes.end(),
+    std::inserter(types, types.end()));
+  std::copy(other->UniqueBlockTypes.begin(), other->UniqueBlockTypes.end(),
+    std::inserter(types, types.end()));
+
+  this->UniqueBlockTypes.clear();
+  this->UniqueBlockTypes.insert(this->UniqueBlockTypes.end(), types.begin(), types.end());
+
+  std::set<unsigned char> cellTypes{ this->UniqueCellTypes.begin(), this->UniqueCellTypes.end() };
+  std::set<unsigned char> otherCellTypes{ other->UniqueCellTypes.begin(),
+    other->UniqueCellTypes.end() };
+  cellTypes.merge(otherCellTypes);
+  this->UniqueCellTypes = std::vector<unsigned char>(cellTypes.begin(), cellTypes.end());
+
+  for (const auto& [key, otherAttributeMetadata] : other->AttributeMetadata)
+  {
+    auto result = this->AttributeMetadata.find(key);
+    if (result == this->AttributeMetadata.end())
+    {
+      this->AttributeMetadata[key] = { otherAttributeMetadata.Name,
+        otherAttributeMetadata.NumberOfElements,
+        vtkSmartPointer<vtkPVDataSetAttributesInformation>::New() };
+      this->AttributeMetadata[key].Information->DeepCopy(otherAttributeMetadata.Information);
+      continue;
+    }
+    auto& attributeMetadata = result->second;
+    switch (key)
+    {
+      case vtkDataObject::FIELD:
+        attributeMetadata.NumberOfElements =
+          std::max(attributeMetadata.NumberOfElements, otherAttributeMetadata.NumberOfElements);
+        break;
+
+      default:
+        attributeMetadata.NumberOfElements += otherAttributeMetadata.NumberOfElements;
+    }
+
+    attributeMetadata.Information->AddInformation(otherAttributeMetadata.Information);
+  }
+  this->PointArrayInformation->AddInformation(other->PointArrayInformation, vtkDataObject::POINT);
+
+  this->AMRNumberOfDataSets.resize(this->NumberOfAMRLevels);
+  for (vtkIdType cc = 0; cc < std::min(this->NumberOfAMRLevels, other->NumberOfAMRLevels); ++cc)
+  {
+    this->AMRNumberOfDataSets[cc] =
+      std::max(this->AMRNumberOfDataSets[cc], other->AMRNumberOfDataSets[cc]);
+  }
+
+  // How to merge assemblies/structure?
+  // we don't do anything currently since they are expected to be same on all
+  // ranks.
+}
+
+//----------------------------------------------------------------------------
+void vtkPVDataInformation::DeepCopy(vtkPVDataInformation* other)
+{
+  if (!other || other->DataSetType == -1)
+  {
+    this->Initialize();
+    return;
+  }
+
+  this->DataSetType = other->DataSetType;
+  this->CompositeDataSetType = other->CompositeDataSetType;
+  this->FirstLeafCompositeIndex = other->FirstLeafCompositeIndex;
+  this->NumberOfTrees = other->NumberOfTrees;
+  this->NumberOfLeaves = other->NumberOfLeaves;
+  this->NumberOfAMRLevels = other->NumberOfAMRLevels;
+  this->AMRNumberOfDataSets = other->AMRNumberOfDataSets;
+  this->NumberOfDataSets = other->NumberOfDataSets;
+  this->MemorySize = other->MemorySize;
+  std::copy_n(other->Bounds, 6, this->Bounds);
+  std::copy_n(other->Extent, 6, this->Extent);
+  this->HasTime = other->HasTime;
+  this->Time = other->Time;
+  std::copy_n(other->TimeRange, 2, this->TimeRange);
+  this->TimeSteps = other->TimeSteps;
+  this->TimeLabel = other->TimeLabel;
+  this->UniqueBlockTypes = other->UniqueBlockTypes;
+  this->UniqueCellTypes = other->UniqueCellTypes;
+  this->AttributeMetadata.clear();
+  for (const auto& [key, value] : other->AttributeMetadata)
+  {
+    this->AttributeMetadata[key] = { value.Name, value.NumberOfElements,
+      vtkSmartPointer<vtkPVDataSetAttributesInformation>::New() };
+    this->AttributeMetadata[key].Information->DeepCopy(value.Information);
+  }
+  this->PointArrayInformation->DeepCopy(other->PointArrayInformation);
+  this->Hierarchy->DeepCopy(other->Hierarchy);
+  this->DataAssembly->DeepCopy(other->DataAssembly);
+}
+
+//----------------------------------------------------------------------------
+const char* vtkPVDataInformation::GetPrettyDataTypeString() const
+{
+  const int dataType =
+    this->CompositeDataSetType == -1 ? this->DataSetType : this->CompositeDataSetType;
+  return vtkPVDataInformation::GetPrettyDataTypeString(dataType);
+}
+//----------------------------------------------------------------------------
+const char* vtkPVDataInformation::GetPrettyDataTypeString(int dataType)
+{
+  const char* className = vtkPVDataInformation::GetDataSetTypeAsString(dataType);
+  switch (dataType)
+  {
+    case VTK_POLY_DATA:
+      return "Polygonal Mesh";
+    case VTK_STRUCTURED_POINTS:
+      return "Image (Uniform Rectilinear Grid)";
+    case VTK_STRUCTURED_GRID:
+      return "Structured (Curvilinear) Grid";
+    case VTK_RECTILINEAR_GRID:
+      return "Rectilinear Grid";
+    case VTK_UNSTRUCTURED_GRID:
+      return "Unstructured Grid";
+    case VTK_PIECEWISE_FUNCTION:
+      return "Piecewise function";
+    case VTK_IMAGE_DATA:
+      return "Image (Uniform Rectilinear Grid)";
+    case VTK_DATA_OBJECT:
+      return "Data Object";
+    case VTK_DATA_SET:
+      return "Data Set";
+    case VTK_POINT_SET:
+      return "Point Set";
+    case VTK_UNIFORM_GRID:
+      return "Image (Uniform Rectilinear Grid) with blanking";
+    case VTK_COMPOSITE_DATA_SET:
+      return "Composite Dataset";
+    case VTK_MULTIBLOCK_DATA_SET:
+      return "Multi-block Dataset";
+    case VTK_NON_OVERLAPPING_AMR:
+      return "Non-Overlapping AMR Dataset";
+    case VTK_OVERLAPPING_AMR:
+      return "Overlapping AMR Dataset";
+    case VTK_GENERIC_DATA_SET:
+      return "Generic Dataset";
+    case VTK_HYPER_TREE_GRID:
+      return "Hyper-tree Grid";
+    case VTK_TABLE:
+      return "Table";
+    case VTK_GRAPH:
+      return "Graph";
+    case VTK_TREE:
+      return "Tree";
+    case VTK_SELECTION:
+      return "Selection";
+    case VTK_DIRECTED_GRAPH:
+      return "Directed Graph";
+    case VTK_UNDIRECTED_GRAPH:
+      return "Undirected Graph";
+    case VTK_MULTIPIECE_DATA_SET:
+      return "Multi-piece Dataset";
+    case VTK_DIRECTED_ACYCLIC_GRAPH:
+      return "Directed Acyclic Graph";
+    case VTK_EXPLICIT_STRUCTURED_GRID:
+      return "Explicit Structured Grid";
+    case VTK_MOLECULE:
+      return "Molecule";
+    case VTK_PARTITIONED_DATA_SET:
+      return "Partitioned Dataset";
+    case VTK_PARTITIONED_DATA_SET_COLLECTION:
+      return "Partitioned Dataset Collection";
+    case VTK_CELL_GRID:
+      return "Cell Grid";
+    case VTK_STATISTICAL_MODEL:
+      return "Statistical Model";
+    default:
+      break;
+  }
+  return (className && className[0]) ? className : "UnknownType";
+}
+
+//----------------------------------------------------------------------------
+const char* vtkPVDataInformation::GetDataSetTypeAsString(int type)
+{
+  return (type == -1 ? "UnknownType" : vtkDataObjectTypes::GetClassNameFromTypeId(type));
+}
+
+//----------------------------------------------------------------------------
+bool vtkPVDataInformation::DataSetTypeIsA(const char* type) const
+{
+  const int targetTypeId = vtkDataObjectTypes::GetTypeIdFromClassName(type);
+  if (targetTypeId == -1)
+  {
+    vtkErrorMacro("Unknown data object type '" << (type ? type : "(nullptr)") << "'.");
+    return false;
+  }
+
+  return this->DataSetTypeIsA(targetTypeId);
+}
+
+//----------------------------------------------------------------------------
+bool vtkPVDataInformation::DataSetTypeIsA(int typeId) const
+{
+  if (this->CompositeDataSetType != -1 &&
+    vtkDataObjectTypes::TypeIdIsA(this->CompositeDataSetType, typeId))
+  {
+    return true;
+  }
+  return vtkDataObjectTypes::TypeIdIsA(this->DataSetType, typeId);
+}
+
+//----------------------------------------------------------------------------
+bool vtkPVDataInformation::HasDataSetType(const char* type) const
+{
+  const int targetTypeId = vtkDataObjectTypes::GetTypeIdFromClassName(type);
+  if (targetTypeId == -1)
+  {
+    vtkErrorMacro("Unknown data object type '" << (type ? type : "(nullptr)") << "'.");
+    return false;
+  }
+
+  return this->HasDataSetType(targetTypeId);
+}
+
+//----------------------------------------------------------------------------
+bool vtkPVDataInformation::HasDataSetType(int typeId) const
+{
+  if (this->DataSetTypeIsA(typeId))
+  {
+    return true;
+  }
+
+  if (this->CompositeDataSetType != -1)
+  {
+    for (auto& leafType : this->UniqueBlockTypes)
+    {
+      // NOLINTNEXTLINE(readability-suspicious-call-argument)
+      if (vtkDataObjectTypes::TypeIdIsA(leafType, typeId))
+      {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+//----------------------------------------------------------------------------
+bool vtkPVDataInformation::IsDataStructured() const
+{
+  // if this->DataSetType is structured, means even for composite datasets
+  // all non-null leaves are structured.
+  if (this->DataSetType != -1 &&
+    vtkPVDataInformation::GetExtentType(this->DataSetType) == VTK_3D_EXTENT)
+  {
+    return true;
+  }
+
+  if (this->CompositeDataSetType != -1 && !this->UniqueBlockTypes.empty())
+  {
+    for (auto& type : this->UniqueBlockTypes)
+    {
+      if (vtkPVDataInformation::GetExtentType(type) != VTK_3D_EXTENT)
+      {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  return false;
+}
+
+//----------------------------------------------------------------------------
+bool vtkPVDataInformation::HasStructuredData() const
+{
+  if (this->DataSetType != -1 &&
+    vtkPVDataInformation::GetExtentType(this->DataSetType) == VTK_3D_EXTENT)
+  {
+    return true;
+  }
+
+  if (this->CompositeDataSetType != -1 && !this->UniqueBlockTypes.empty())
+  {
+    for (auto& type : this->UniqueBlockTypes)
+    {
+      if (vtkPVDataInformation::GetExtentType(type) == VTK_3D_EXTENT)
+      {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+//----------------------------------------------------------------------------
+bool vtkPVDataInformation::HasUnstructuredData() const
+{
+  // TODO: this needs improvement. currently this will return true for "base classes"
+  if (vtkPVDataInformation::GetExtentType(this->DataSetType) != VTK_3D_EXTENT)
+  {
+    return true;
+  }
+
+  if (this->CompositeDataSetType != -1 && !this->UniqueBlockTypes.empty())
+  {
+    for (auto& type : this->UniqueBlockTypes)
+    {
+      if (vtkPVDataInformation::GetExtentType(type) != VTK_3D_EXTENT)
+      {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+//----------------------------------------------------------------------------
+bool vtkPVDataInformation::IsAttributeValid(int attributeType) const
+{
+  auto f = [&attributeType](int dtype)
+  {
+    switch (attributeType)
+    {
+      case vtkDataObject::FIELD:
+        return true;
+
+      case vtkDataObject::POINT:
+        return vtkDataObjectTypes::TypeIdIsA(dtype, VTK_DATA_SET);
+
+      case vtkDataObject::CELL:
+        return vtkDataObjectTypes::TypeIdIsA(dtype, VTK_DATA_SET) ||
+          vtkDataObjectTypes::TypeIdIsA(dtype, VTK_HYPER_TREE_GRID) ||
+          vtkDataObjectTypes::TypeIdIsA(dtype, VTK_CELL_GRID);
+
+      case vtkDataObject::VERTEX:
+        return vtkDataObjectTypes::TypeIdIsA(dtype, VTK_GRAPH);
+
+      case vtkDataObject::EDGE:
+        return vtkDataObjectTypes::TypeIdIsA(dtype, VTK_GRAPH);
+
+      case vtkDataObject::ROW:
+        return vtkDataObjectTypes::TypeIdIsA(dtype, VTK_TABLE);
+
+      default:
+        if (vtkDataObjectTypes::TypeIdIsA(dtype, VTK_CELL_GRID) &&
+          vtkStringToken(static_cast<vtkStringToken::Hash>(attributeType)).HasData())
+        {
+          return true;
+        }
+        return false;
+    }
+  };
+
+  if (this->IsCompositeDataSet())
+  {
+    for (auto& type : this->UniqueBlockTypes)
+    {
+      if (f(type))
+      {
+        return true;
+      }
+    }
+
+    if (this->UniqueBlockTypes.empty())
+    {
+      // if uniqueBlockTypesLength is empty, we most likely don't
+      // have complete input data information and hence we cant determine which
+      // attribute is valid conclusively yet. Just return true.
+      // Fixes issue with paraviewPython-AppendAttributes test.
+      return true;
+    }
+  }
+  return f(this->DataSetType);
+}
+
+//----------------------------------------------------------------------------
+void vtkPVDataInformation::CopyToStream(vtkClientServerStream* css)
+{
+  css->Reset();
+  *css << vtkClientServerStream::Reply;
+  *css << this->DataSetType << this->CompositeDataSetType << this->FirstLeafCompositeIndex
+       << this->NumberOfTrees << this->NumberOfLeaves << this->NumberOfAMRLevels
+       << this->NumberOfDataSets << this->MemorySize
+       << vtkClientServerStream::InsertArray(this->Bounds, 6)
+       << vtkClientServerStream::InsertArray(this->Extent, 6) << this->HasTime << this->Time
+       << vtkClientServerStream::InsertArray(this->TimeRange, 2) << this->TimeLabel
+       << static_cast<int>(this->AttributeMetadata.size());
+  if (!this->AttributeMetadata.empty())
+  {
+    std::vector<int> attributeTypes;
+    std::vector<vtkTypeInt64> numberOfElements;
+    std::vector<std::string> attributeNames;
+    attributeTypes.reserve(this->AttributeMetadata.size());
+    numberOfElements.reserve(this->AttributeMetadata.size());
+    attributeNames.reserve(this->AttributeMetadata.size());
+    for (const auto& [key, value] : this->AttributeMetadata)
+    {
+      attributeTypes.push_back(key);
+      numberOfElements.push_back(value.NumberOfElements);
+      attributeNames.push_back(value.Name);
+    }
+    int attributeMetadataSize = static_cast<int>(this->AttributeMetadata.size());
+    *css << vtkClientServerStream::InsertArray(attributeTypes.data(), attributeMetadataSize)
+         << vtkClientServerStream::InsertArray(numberOfElements.data(), attributeMetadataSize);
+    for (const auto& name : attributeNames)
+    {
+      *css << name;
+    }
+  }
+
+  *css << static_cast<int>(this->TimeSteps.size());
+  if (!this->TimeSteps.empty())
+  {
+    std::vector<double> vec;
+    std::copy(this->TimeSteps.begin(), this->TimeSteps.end(), std::back_inserter(vec));
+    *css << vtkClientServerStream::InsertArray(&vec.front(), static_cast<int>(vec.size()));
+  }
+
+  *css << static_cast<int>(this->UniqueBlockTypes.size());
+  if (!this->UniqueBlockTypes.empty())
+  {
+    *css << vtkClientServerStream::InsertArray(
+      &this->UniqueBlockTypes.front(), static_cast<int>(this->UniqueBlockTypes.size()));
+  }
+
+  *css << static_cast<int>(this->UniqueCellTypes.size());
+  if (!this->UniqueCellTypes.empty())
+  {
+    std::vector<int> uniqueVector{ this->UniqueCellTypes.begin(), this->UniqueCellTypes.end() };
+    *css << vtkClientServerStream::InsertArray(
+      uniqueVector.data(), static_cast<int>(uniqueVector.size()));
+  }
+
+  vtkClientServerStream temp;
+  this->PointArrayInformation->CopyToStream(&temp);
+  *css << temp;
+
+  for (const auto& [key, value] : this->AttributeMetadata)
+  {
+    temp.Reset();
+    this->AttributeMetadata[key].Information->CopyToStream(&temp);
+    *css << temp;
+  }
+
+  if (this->CompositeDataSetType != -1)
+  {
+    *css << this->DataAssembly->SerializeToXML(vtkIndent());
+    *css << this->Hierarchy->SerializeToXML(vtkIndent());
+  }
+
+  if (!this->AMRNumberOfDataSets.empty())
+  {
+    *css << vtkClientServerStream::InsertArray(
+      &this->AMRNumberOfDataSets.front(), static_cast<int>(this->AMRNumberOfDataSets.size()));
+  }
+  else
+  {
+    assert(this->NumberOfAMRLevels == 0);
+  }
+  *css << vtkClientServerStream::End;
+}
+
+//----------------------------------------------------------------------------
+void vtkPVDataInformation::CopyFromStream(const vtkClientServerStream* css)
+{
+  // argument counter.
+  int argument = 0, attributeMetadataSize = 0;
+
+  if (!css->GetArgument(0, argument++, &this->DataSetType) ||
+    !css->GetArgument(0, argument++, &this->CompositeDataSetType) ||
+    !css->GetArgument(0, argument++, &this->FirstLeafCompositeIndex) ||
+    !css->GetArgument(0, argument++, &this->NumberOfTrees) ||
+    !css->GetArgument(0, argument++, &this->NumberOfLeaves) ||
+    !css->GetArgument(0, argument++, &this->NumberOfAMRLevels) ||
+    !css->GetArgument(0, argument++, &this->NumberOfDataSets) ||
+    !css->GetArgument(0, argument++, &this->MemorySize) ||
+    !css->GetArgument(0, argument++, this->Bounds, 6) ||
+    !css->GetArgument(0, argument++, this->Extent, 6) ||
+    !css->GetArgument(0, argument++, &this->HasTime) ||
+    !css->GetArgument(0, argument++, &this->Time) ||
+    !css->GetArgument(0, argument++, this->TimeRange, 2) ||
+    !css->GetArgument(0, argument++, &this->TimeLabel))
+  {
+    this->Initialize();
+    vtkErrorMacro("Error parsing stream.");
+    return;
+  }
+  if (!css->GetArgument(0, argument++, &attributeMetadataSize))
+  {
+    this->Initialize();
+    vtkErrorMacro("Error parsing stream.");
+    return;
+  }
+  std::vector<int> attributeTypes;
+  std::vector<vtkTypeInt64> numberOfElements;
+  std::vector<std::string> attributeNames;
+  attributeTypes.resize(attributeMetadataSize);
+  numberOfElements.resize(attributeMetadataSize);
+  attributeNames.resize(attributeMetadataSize);
+  if (attributeMetadataSize > 0 &&
+    (!css->GetArgument(0, argument++, attributeTypes.data(), attributeMetadataSize) ||
+      !css->GetArgument(0, argument++, numberOfElements.data(), attributeMetadataSize)))
+  {
+    this->Initialize();
+    vtkErrorMacro("Error parsing stream.");
+    return;
+  }
+  for (int i = 0; i < attributeMetadataSize; i++)
+  {
+    if (!css->GetArgument(0, argument++, &attributeNames[i]))
+    {
+      this->Initialize();
+      vtkErrorMacro("Error parsing stream.");
+      return;
+    }
+  }
+  for (int i = 0; i < attributeMetadataSize; ++i)
+  {
+    this->AttributeMetadata[attributeTypes[i]] = { attributeNames[i], numberOfElements[i],
+      vtkSmartPointer<vtkPVDataSetAttributesInformation>::New() };
+  }
+
+  // read TimeSteps
+  int timeStepsLength;
+  if (!css->GetArgument(0, argument++, &timeStepsLength))
+  {
+    this->Initialize();
+    vtkErrorMacro("Error parsing stream.");
+    return;
+  }
+  std::vector<double> vec;
+  vec.resize(timeStepsLength);
+  if (timeStepsLength > 0 && !css->GetArgument(0, argument++, vec.data(), timeStepsLength))
+  {
+    this->Initialize();
+    vtkErrorMacro("Error parsing stream.");
+    return;
+  }
+  this->TimeSteps.insert(vec.begin(), vec.end());
+
+  // read UniqueBlockTypes.
+  int uniqueBlockTypesLength;
+  if (!css->GetArgument(0, argument++, &uniqueBlockTypesLength))
+  {
+    this->Initialize();
+    vtkErrorMacro("Error parsing stream.");
+    return;
+  }
+  this->UniqueBlockTypes.resize(uniqueBlockTypesLength);
+  if (uniqueBlockTypesLength > 0 &&
+    !css->GetArgument(0, argument++, this->UniqueBlockTypes.data(), uniqueBlockTypesLength))
+  {
+    this->Initialize();
+    vtkErrorMacro("Error parsing stream.");
+    return;
+  }
+
+  // read UniqueCellTypes
+  int uniqueCellTypesLength = 0;
+  if (!css->GetArgument(0, argument++, &uniqueCellTypesLength))
+  {
+    this->Initialize();
+    vtkErrorMacro("Error parsing stream");
+    return;
+  }
+  this->UniqueCellTypes.resize(uniqueCellTypesLength);
+  if (uniqueCellTypesLength > 0 &&
+    !css->GetArgument(0, argument++, this->UniqueCellTypes.data(), uniqueCellTypesLength))
+  {
+    this->Initialize();
+    vtkErrorMacro("Error parsing stream");
+    return;
+  }
+
+  vtkClientServerStream temp;
+  if (!css->GetArgument(0, argument++, &temp))
+  {
+    this->Initialize();
+    vtkErrorMacro("Error parsing stream.");
+    return;
+  }
+  this->PointArrayInformation->CopyFromStream(&temp);
+
+  for (const auto& [key, value] : this->AttributeMetadata)
+  {
+    temp.Reset();
+    if (!css->GetArgument(0, argument++, &temp))
+    {
+      this->Initialize();
+      vtkErrorMacro("Error parsing stream.");
+      return;
+    }
+    this->AttributeMetadata[key].Information->CopyFromStream(&temp);
+  }
+
+  if (this->CompositeDataSetType != -1)
+  {
+    std::string hierarchy, assembly;
+    if (!css->GetArgument(0, argument++, &assembly) ||
+      !this->DataAssembly->InitializeFromXML(assembly.c_str()) ||
+      !css->GetArgument(0, argument++, &hierarchy) ||
+      !this->Hierarchy->InitializeFromXML(hierarchy.c_str()))
+    {
+      this->Initialize();
+      vtkErrorMacro("Error parsing stream.");
+      return;
+    }
+  }
+
+  // read AMRNumberOfDataSets.
+  this->AMRNumberOfDataSets.resize(this->NumberOfAMRLevels);
+  if (this->NumberOfAMRLevels > 0 &&
+    !css->GetArgument(
+      0, argument++, this->AMRNumberOfDataSets.data(), static_cast<int>(this->NumberOfAMRLevels)))
+  {
+    this->Initialize();
+    vtkErrorMacro("Error parsing stream.");
+    return;
+  }
+}
+
+//----------------------------------------------------------------------------
+vtkPVArrayInformation* vtkPVDataInformation::GetArrayInformation(
+  const char* arrayname, int attributeType) const
+{
+  vtkPVDataSetAttributesInformation* attrInfo = this->GetAttributeInformation(attributeType);
+  return attrInfo ? attrInfo->GetArrayInformation(arrayname) : nullptr;
+}
+
+//----------------------------------------------------------------------------
+int vtkPVDataInformation::GetExtentType(int type)
+{
+  // types defined in vtkType.h
+  switch (type)
+  {
+    case VTK_EXPLICIT_STRUCTURED_GRID:
+    case VTK_STRUCTURED_POINTS:
+    case VTK_STRUCTURED_GRID:
+    case VTK_RECTILINEAR_GRID:
+    case VTK_IMAGE_DATA:
+    case VTK_UNIFORM_GRID:
+      return VTK_3D_EXTENT;
+
+    case VTK_POLY_DATA:
+    case VTK_UNSTRUCTURED_GRID:
+    case VTK_PIECEWISE_FUNCTION:
+    case VTK_DATA_OBJECT:
+    case VTK_DATA_SET:
+    case VTK_POINT_SET:
+    case VTK_COMPOSITE_DATA_SET:
+    case VTK_MULTIBLOCK_DATA_SET:
+    case VTK_GENERIC_DATA_SET:
+    case VTK_TABLE:
+    case VTK_GRAPH:
+    case VTK_TREE:
+    case VTK_SELECTION:
+    case VTK_DIRECTED_GRAPH:
+    case VTK_UNDIRECTED_GRAPH:
+    case VTK_MULTIPIECE_DATA_SET:
+    case VTK_DIRECTED_ACYCLIC_GRAPH:
+    case VTK_ARRAY_DATA:
+    case VTK_REEB_GRAPH:
+    case VTK_UNIFORM_GRID_AMR:
+    case VTK_NON_OVERLAPPING_AMR:
+    case VTK_OVERLAPPING_AMR:
+    case VTK_HYPER_TREE_GRID:
+    case VTK_MOLECULE:
+    case VTK_PATH:
+    case VTK_UNSTRUCTURED_GRID_BASE:
+    case VTK_PARTITIONED_DATA_SET:
+    case VTK_PARTITIONED_DATA_SET_COLLECTION:
+    case VTK_UNIFORM_HYPER_TREE_GRID:
+    case VTK_CELL_GRID:
+    case VTK_STATISTICAL_MODEL:
+      return VTK_PIECES_EXTENT;
+
+    default:
+      vtkLogF(ERROR, "Unknown type: %d", type);
+      return VTK_PIECES_EXTENT;
+  }
+}
+
+//----------------------------------------------------------------------------
+vtkSmartPointer<vtkDataObject> vtkPVDataInformation::GetSubset(vtkDataObject* dobj) const
+{
+  auto cd = vtkCompositeDataSet::SafeDownCast(dobj);
+  if (!this->SubsetSelector || cd == nullptr)
+  {
+    return dobj;
+  }
+
+  auto activeAssembly = vtkDataAssemblyUtilities::GetDataAssembly(this->SubsetAssemblyName, cd);
+  if (!activeAssembly)
+  {
+    return nullptr;
+  }
+
+  const auto cids = vtkDataAssemblyUtilities::GetSelectedCompositeIds(
+    { this->SubsetSelector }, activeAssembly, vtkPartitionedDataSetCollection::SafeDownCast(cd));
+  if (cids.empty())
+  {
+    return nullptr;
+  }
+
+  // vtkAMRUniformGrid needs to use the other path because indexing is done differently.
+  // See issue #20947
+  if (cids.size() == 1 && cids.front() != 0 && !cd->IsA("vtkUniformGridAMR"))
+  {
+    auto iter = vtk::TakeSmartPointer(cd->NewIterator());
+    if (auto diter = vtkDataObjectTreeIterator::SafeDownCast(iter))
+    {
+      diter->VisitOnlyLeavesOff();
+      diter->TraverseSubTreeOn();
+    }
+    for (iter->InitTraversal(); !iter->IsDoneWithTraversal(); iter->GoToNextItem())
+    {
+      if (iter->GetCurrentFlatIndex() == cids.front())
+      {
+        return iter->GetCurrentDataObject();
+      }
+    }
+    return nullptr;
+  }
+  else
+  {
+    vtkNew<vtkExtractBlockUsingDataAssembly> extractor;
+    extractor->SetInputDataObject(dobj);
+    extractor->SetAssemblyName(this->SubsetAssemblyName);
+    extractor->SetSelector(this->SubsetSelector);
+    extractor->Update();
+    return extractor->GetOutputDataObject(0);
+  }
+}
+
+//----------------------------------------------------------------------------
+void vtkPVDataInformation::SetSubsetAssemblyNameToHierarchy()
+{
+  this->SetSubsetAssemblyName(vtkDataAssemblyUtilities::HierarchyName());
+}
+
+//----------------------------------------------------------------------------
+vtkDataAssembly* vtkPVDataInformation::GetHierarchy() const
+{
+  return this->IsCompositeDataSet() ? this->Hierarchy.Get() : nullptr;
+}
+
+//----------------------------------------------------------------------------
+vtkDataAssembly* vtkPVDataInformation::GetDataAssembly(const char* assemblyName) const
+{
+  if (assemblyName && strcmp(vtkDataAssemblyUtilities::HierarchyName(), assemblyName) == 0)
+  {
+    return this->GetHierarchy();
+  }
+  return this->GetDataAssembly();
+}
+
+//----------------------------------------------------------------------------
+vtkDataAssembly* vtkPVDataInformation::GetDataAssembly() const
+{
+  return vtkDataObjectTypes::TypeIdIsA(
+           this->CompositeDataSetType, VTK_PARTITIONED_DATA_SET_COLLECTION)
+    ? this->DataAssembly.Get()
+    : nullptr;
+}
+
+//----------------------------------------------------------------------------
+int vtkPVDataInformation::GetUniqueBlockType(unsigned int index) const
+{
+  return index < this->GetNumberOfUniqueBlockTypes() ? this->UniqueBlockTypes[index] : -1;
+}
+
+//----------------------------------------------------------------------------
+std::string vtkPVDataInformation::GetBlockName(vtkTypeUInt64 cid) const
+{
+  if (this->DataSetTypeIsA(VTK_MULTIBLOCK_DATA_SET))
+  {
+    auto hierarchy = this->GetHierarchy();
+    const auto selector = vtkDataAssemblyUtilities::GetSelectorForCompositeId(cid, hierarchy);
+    const auto nodes = hierarchy->SelectNodes({ selector });
+    if (!nodes.empty())
+    {
+      return hierarchy->GetAttributeOrDefault(nodes.front(), "label", "");
+    }
+  }
+  return {};
+}
+
+//----------------------------------------------------------------------------
+std::vector<std::string> vtkPVDataInformation::GetBlockNames(
+  const std::vector<std::string>& selectors, const char* assemblyName) const
+{
+  auto assembly = this->GetDataAssembly(assemblyName);
+  if (!assembly)
+  {
+    return {};
+  }
+
+  const auto nodes = assembly->SelectNodes(selectors);
+  std::set<std::string> labels;
+  for (const auto& node : nodes)
+  {
+    labels.insert(assembly->GetAttributeOrDefault(node, "label", assembly->GetNodeName(node)));
+  }
+  return std::vector<std::string>(labels.begin(), labels.end());
+}
+
+//----------------------------------------------------------------------------
+vtkTypeInt64 vtkPVDataInformation::GetNumberOfAMRDataSets(vtkTypeInt64 level) const
+{
+  if (level >= 0 && level < this->NumberOfAMRLevels)
+  {
+    return this->AMRNumberOfDataSets[level];
+  }
+
+  return -1;
+}
+
+//----------------------------------------------------------------------------
+unsigned int vtkPVDataInformation::ComputeCompositeIndexForAMR(
+  unsigned int level, unsigned int index) const
+{
+  if (!this->DataSetTypeIsA(VTK_UNIFORM_GRID_AMR))
+  {
+    vtkErrorMacro("ComputeCompositeIndexForAMR called on a non-AMR dataset!");
+    return 0;
+  }
+
+  unsigned int compositeIndex = 0;
+  for (unsigned int l = 0; l < this->NumberOfAMRLevels && l < level; ++l)
+  {
+    compositeIndex += this->AMRNumberOfDataSets[l];
+  }
+
+  return (compositeIndex + index);
+}

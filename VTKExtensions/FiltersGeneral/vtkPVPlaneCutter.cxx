@@ -1,0 +1,144 @@
+// SPDX-FileCopyrightText: Copyright (c) Kitware Inc.
+// SPDX-License-Identifier: BSD-3-Clause
+#include "vtkPVPlaneCutter.h"
+
+#include "vtkAMRCutPlane.h"
+#include "vtkDataObjectMeshCache.h"
+#include "vtkDemandDrivenPipeline.h"
+#include "vtkHyperTreeGrid.h"
+#include "vtkHyperTreeGridPlaneCutter.h"
+#include "vtkInformation.h"
+#include "vtkInformationVector.h"
+#include "vtkMeshCacheRunner.h"
+#include "vtkMultiBlockDataSet.h"
+#include "vtkNew.h"
+#include "vtkObjectFactory.h"
+#include "vtkOverlappingAMR.h"
+#include "vtkPlane.h"
+#include "vtkPlaneCutter.h"
+
+#include "Private/vtkEdgesCacheInternal.h"
+
+//----------------------------------------------------------------------------
+vtkStandardNewMacro(vtkPVPlaneCutter);
+
+//----------------------------------------------------------------------------
+vtkPVPlaneCutter::vtkPVPlaneCutter()
+  : EdgesCache(std::make_unique<vtkEdgesCacheInternal>())
+{
+  this->MeshCache->SetConsumer(this);
+  this->MeshCache->ForwardAttribute(vtkDataObject::CELL);
+}
+
+//----------------------------------------------------------------------------
+vtkPVPlaneCutter::~vtkPVPlaneCutter() = default;
+
+//----------------------------------------------------------------------------
+void vtkPVPlaneCutter::PrintSelf(ostream& os, vtkIndent indent)
+{
+  this->Superclass::PrintSelf(os, indent);
+  os << indent << "Dual: " << this->Dual << endl;
+  os << indent << "LevelOfResolution: " << this->LevelOfResolution << endl;
+  os << indent << "UseNativeCutter: " << (this->UseNativeCutter ? "On" : "Off") << endl;
+}
+
+//----------------------------------------------------------------------------
+int vtkPVPlaneCutter::RequestData(
+  vtkInformation* request, vtkInformationVector** inputVector, vtkInformationVector* outputVector)
+{
+  vtkInformation* inInfo = inputVector[0]->GetInformationObject(0);
+  vtkInformation* outInfo = outputVector->GetInformationObject(0);
+
+  vtkDataObject* input = vtkDataObject::GetData(inInfo);
+  vtkDataObject* output = vtkDataObject::GetData(outInfo);
+
+  vtkPlane* plane = vtkPlane::SafeDownCast(this->Plane);
+  if (!plane)
+  {
+    vtkErrorMacro(<< "Failed to get plane.");
+    return 0;
+  }
+
+  vtkMeshCacheRunner runner{ this->MeshCache, input, output, false };
+  if (runner.GetCacheLoaded())
+  {
+    this->EdgesCache->UpdateAttributes(input, output);
+    return 1;
+  }
+
+  this->EdgesCache->InvalidateCache();
+
+  int ret = 0;
+  if (auto inHyperTreeGrid = vtkHyperTreeGrid::SafeDownCast(input))
+  {
+    double* normal = plane->GetNormal();
+    this->HTGPlaneCutter->SetPlane(normal[0], normal[1], normal[2], -plane->FunctionValue(0, 0, 0));
+    this->HTGPlaneCutter->SetDual(this->GetDual());
+    this->HTGPlaneCutter->SetInputData(inHyperTreeGrid);
+    this->HTGPlaneCutter->Update();
+    output->ShallowCopy(this->HTGPlaneCutter->GetOutput());
+    ret = 1;
+  }
+  else if (auto inOverlappingAMR = vtkOverlappingAMR::SafeDownCast(input))
+  {
+    double* normal = plane->GetNormal();
+    double* origin = plane->GetOrigin();
+    this->AMRPlaneCutter->SetInitialRequest(false);
+    this->AMRPlaneCutter->SetNormal(normal);
+    this->AMRPlaneCutter->SetCenter(origin);
+    this->AMRPlaneCutter->SetLevelOfResolution(this->GetLevelOfResolution());
+    this->AMRPlaneCutter->SetUseNativeCutter(this->GetUseNativeCutter());
+    this->AMRPlaneCutter->SetInputData(inOverlappingAMR);
+    this->AMRPlaneCutter->Update();
+    vtkMultiBlockDataSet::SafeDownCast(output)->CompositeShallowCopy(
+      this->AMRPlaneCutter->GetOutput());
+    ret = 1;
+  }
+  else
+  {
+    // Not dealing with hyper tree grids, we execute RequestData of vtkCutter
+    ret = this->Superclass::RequestData(request, inputVector, outputVector);
+  }
+
+  if (ret == 1)
+  {
+    runner.UpdateCache();
+  }
+
+  return ret;
+}
+
+//----------------------------------------------------------------------------
+int vtkPVPlaneCutter::RequestDataObject(
+  vtkInformation* request, vtkInformationVector** inputVector, vtkInformationVector* outputVector)
+{
+  auto inputDO = vtkDataObject::GetData(inputVector[0], 0);
+  int outputType = -1;
+
+  vtkPlane* plane = vtkPlane::SafeDownCast(this->GetPlane());
+  if (!plane)
+  {
+    vtkErrorMacro(<< "No plane function");
+    return 0;
+  }
+
+  if (vtkHyperTreeGrid::SafeDownCast(inputDO))
+  {
+    outputType = VTK_POLY_DATA;
+  }
+  else if (vtkOverlappingAMR::SafeDownCast(inputDO))
+  {
+    outputType = VTK_MULTIBLOCK_DATA_SET;
+  }
+  if (outputType != -1)
+  {
+    return vtkDataObjectAlgorithm::SetOutputDataObject(
+             outputType, outputVector->GetInformationObject(0), /*exact*/ true)
+      ? 1
+      : 0;
+  }
+  else
+  {
+    return this->Superclass::RequestDataObject(request, inputVector, outputVector);
+  }
+}

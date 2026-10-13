@@ -1,0 +1,8 @@
+NAME
+  VTKmFilters
+CONDITION
+  PARAVIEW_USE_VISKORES
+DESCRIPTION
+  Viskores (Previously known as VTKm) filters
+REQUIRES_MODULES
+  VTK::AcceleratorsVTKmFilters

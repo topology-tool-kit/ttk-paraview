@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-FileCopyrightText: Copyright (c) Kitware Inc. -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+<ui version="4.0">
+ <class>pqLightToolbar</class>
+ <widget class="QToolBar" name="pqLightToolbar">
+  <property name="enabled">
+   <bool>true</bool>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>136</width>
+    <height>24</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Light controls</string>
+  </property>
+  <property name="orientation">
+   <enum>Qt::Orientation::Horizontal</enum>
+  </property>
+  <action name="actionActiveLightKit">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../../../Components/Resources/pqComponents.qrc">
+     <normaloff>:/pqWidgets/Icons/pqLightOff.svg</normaloff>
+     <normalon>:/pqWidgets/Icons/pqLightOn.svg</normalon>
+     <activeoff>:/pqWidgets/Icons/pqLightOff.svg</activeoff>
+     <activeon>:/pqWidgets/Icons/pqLightOn.svg</activeon>:/pqWidgets/Icons/pqLightOff.svg</iconset>
+   </property>
+   <property name="text" >
+    <string>Enable/Disable Light Kit</string>
+   </property>
+  </action>
+  <addaction name="actionActiveLightKit" />
+ </widget>
+ <resources>
+  <include location="../../../Components/Resources/pqComponents.qrc"/>
+  <include location="../pqComponents.qrc"/>
+ </resources>
+ <connections/>
+</ui>

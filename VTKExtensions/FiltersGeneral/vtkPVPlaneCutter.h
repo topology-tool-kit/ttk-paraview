@@ -1,0 +1,91 @@
+// SPDX-FileCopyrightText: Copyright (c) Kitware Inc.
+// SPDX-License-Identifier: BSD-3-Clause
+/**
+ * @class   vtkPVPlaneCutter
+ * @brief   Slice with plane filter
+ *
+ * This is a subclass of vtkPlaneCutter that allows selection of input vtkHyperTreeGrid,
+ * vtkOverlappingAMR.
+ */
+
+#ifndef vtkPVPlaneCutter_h
+#define vtkPVPlaneCutter_h
+
+#include "vtkPVVTKExtensionsFiltersGeneralModule.h" //needed for exports
+#include "vtkPlaneCutter.h"
+#include <memory>
+
+class vtkDataObjectMeshCache;
+class vtkEdgesCacheInternal;
+class vtkAMRCutPlane;
+class vtkHyperTreeGridPlaneCutter;
+
+class VTKPVVTKEXTENSIONSFILTERSGENERAL_EXPORT vtkPVPlaneCutter : public vtkPlaneCutter
+{
+public:
+  vtkTypeMacro(vtkPVPlaneCutter, vtkPlaneCutter);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
+
+  static vtkPVPlaneCutter* New();
+
+  ///@
+  /**
+   * If set to true, the dual grid is used for cutting.
+   *
+   * Default is false.
+   *
+   * Note: Only used for cutting hyper tree grids.
+   */
+  vtkGetMacro(Dual, bool);
+  vtkSetMacro(Dual, bool);
+  ///@}
+
+  ///@{
+  /**
+   * Sets the level of resolution
+   *
+   * Default is 0.
+   *
+   * Note: Only used for cutting overlapping AMR.
+   */
+  vtkSetMacro(LevelOfResolution, int);
+  vtkGetMacro(LevelOfResolution, int);
+  ///@}
+
+  ///@{
+  /**
+   * Sets if plane cutter is used instead of the specialized AMR cutter.
+   *
+   * Default is true.
+   *
+   * Note: Only used for cutting overlapping AMR.
+   */
+  vtkSetMacro(UseNativeCutter, bool);
+  vtkGetMacro(UseNativeCutter, bool);
+  vtkBooleanMacro(UseNativeCutter, bool);
+  ///@}
+
+protected:
+  vtkPVPlaneCutter();
+  ~vtkPVPlaneCutter() override;
+
+  int RequestData(vtkInformation*, vtkInformationVector**, vtkInformationVector*) override;
+
+  int RequestDataObject(vtkInformation*, vtkInformationVector**, vtkInformationVector*) override;
+
+  bool Dual = false;
+  int LevelOfResolution = 0;
+  bool UseNativeCutter = true;
+
+  vtkNew<vtkAMRCutPlane> AMRPlaneCutter;
+  vtkNew<vtkHyperTreeGridPlaneCutter> HTGPlaneCutter;
+
+private:
+  vtkPVPlaneCutter(const vtkPVPlaneCutter&) = delete;
+  void operator=(const vtkPVPlaneCutter&) = delete;
+
+  vtkNew<vtkDataObjectMeshCache> MeshCache;
+  std::unique_ptr<vtkEdgesCacheInternal> EdgesCache;
+};
+
+#endif
